@@ -14,6 +14,7 @@ import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput
+import net.kyori.adventure.text.event.ClickEvent
 import org.bukkit.Material
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
@@ -35,7 +36,18 @@ object MenuUI {
         val inputList = mutableListOf<DialogInput>()
         val inputKeys = mutableListOf<String>()
 
-        // 1. 解析 Body (展示内容)
+        // 0. 解析设置
+        val canEscape = config.getBoolean("Settings.can_escape", true)
+        val pauseGame = config.getBoolean("Settings.pause", false) // 仅单机有效，一般设为 false
+        val afterActionStr = config.getString("Settings.after_action", "CLOSE")?.uppercase() ?: "CLOSE"
+
+        val afterAction = try {
+            DialogBase.DialogAfterAction.valueOf(afterActionStr)
+        } catch (e: Exception) {
+            DialogBase.DialogAfterAction.CLOSE
+        }
+
+        // 1. 解析 Body (展示内容) - 保持不变
         config.getConfigurationSection("Body")?.let { section ->
             for (key in section.getKeys(false)) {
                 val type = section.getString("$key.type")
@@ -48,28 +60,21 @@ object MenuUI {
                             meta.displayName(color(section.getString("$key.name")))
                             meta.lore(section.getStringList("$key.lore").map { color(it) })
                         }
-
-                        // 1. 创建描述 (右侧文本)
                         val descriptionText = section.getString("$key.description")
-                        val descriptionBody = if (descriptionText != null) {
-                            // 创建一个 PlainMessageDialogBody 作为描述
-                            DialogBody.plainMessage(color(descriptionText))
-                        } else null
+                        val descriptionBody = descriptionText?.let { DialogBody.plainMessage(color(it)) }
 
-                        // 2. 读取尺寸和装饰设置
-                        val width = section.getInt("$key.width", 64)   // 物品占据的宽度
-                        val height = section.getInt("$key.height", 64) // 物品占据的高度
+                        val width = section.getInt("$key.width", 16)
+                        val height = section.getInt("$key.height", 16)
                         val decorations = section.getBoolean("$key.decorations", true)
                         val tooltip = section.getBoolean("$key.tooltip", true)
 
-                        // 3. 使用源码中的完整构造方法：item(物品, 描述体, 显示装饰, 显示提示, 宽, 高)
                         bodyList.add(DialogBody.item(item, descriptionBody, decorations, tooltip, width, height))
                     }
                 }
             }
         }
 
-        // 2. 解析 Inputs (高级交互组件)
+        // 2. 解析 Inputs (高级交互组件) - 保持不变，收集 inputKeys
         config.getConfigurationSection("Inputs")?.let { section ->
             for (key in section.getKeys(false)) {
                 val type = section.getString("$key.type") ?: "text"
@@ -77,36 +82,20 @@ object MenuUI {
 
                 when (type) {
                     "checkbox" -> {
-                        val onTrue = section.getString("$key.on_true", "true")!!
-                        val onFalse = section.getString("$key.on_false", "false")!!
-                        val def = section.getBoolean("$key.default", false)
-
-                        val boolInput = DialogInput.bool(key, prompt)
-                            .initial(def)
-                            .onTrue(onTrue)
-                            .onFalse(onFalse)
-                            .build()
-                        inputList.add(boolInput)
+                        inputList.add(DialogInput.bool(key, prompt)
+                            .initial(section.getBoolean("$key.default", false))
+                            .onTrue(section.getString("$key.on_true", "true")!!)
+                            .onFalse(section.getString("$key.on_false", "false")!!)
+                            .build())
                     }
                     "slider" -> {
                         val start = section.getDouble("$key.min", 0.0).toFloat()
                         val end = section.getDouble("$key.max", 10.0).toFloat()
-                        val def = section.getDouble("$key.default", start.toDouble()).toFloat()
-                        val step = section.getDouble("$key.step", 1.0).toFloat()
-
-                        // 第一个 %s 是 prompt (label)，第二个 %s 是当前的数字值
-                        val format = section.getString("$key.format") ?: "%s: %s"
-
-                        //  numberRange(key, width, label, labelFormat, start, end, initial, step)
                         inputList.add(DialogInput.numberRange(
-                            key,
-                            250,
-                            prompt,
-                            format,
-                            start,
-                            end,
-                            def,
-                            step
+                            key, 250, prompt,
+                            section.getString("$key.format") ?: "%s: %s",
+                            start, end, section.getDouble("$key.default", start.toDouble()).toFloat(),
+                            section.getDouble("$key.step", 1.0).toFloat()
                         ))
                     }
                     "input" -> {
@@ -114,67 +103,87 @@ object MenuUI {
                             .width(section.getInt("$key.width", 250))
                             .initial(section.getString("$key.default", "")!!)
                             .maxLength(section.getInt("$key.max_length", 256))
-                            .labelVisible(section.getBoolean("$key.label_visible", true))
 
-                        // 重点：处理多行设置
                         if (section.contains("$key.multiline")) {
-                            val maxLines = section.getInt("$key.multiline.max_lines", 5)
-                            val height = section.getInt("$key.multiline.height", 100)
-                            builder.multiline(TextDialogInput.MultilineOptions.create(maxLines, height))
+                            builder.multiline(TextDialogInput.MultilineOptions.create(
+                                section.getInt("$key.multiline.max_lines", 5),
+                                section.getInt("$key.multiline.height", 100)
+                            ))
                         }
-
                         inputList.add(builder.build())
                     }
                     "dropdown" -> {
                         val entries = section.getStringList("$key.options").map {
                             SingleOptionDialogInput.OptionEntry.create(it, color(it), it == section.getString("$key.default_id"))
                         }
-                        val dropdown = DialogInput.singleOption(key, prompt, entries)
-                            .width(section.getInt("$key.width", 200))
-                            .labelVisible(section.getBoolean("$key.label_visible", true)) // 新增控制
-                            .build()
-                        inputList.add(dropdown)
-                    }
-                    else -> {
-                        plugin.logger.info("Unsupported input type: $type")
+                        inputList.add(DialogInput.singleOption(key, prompt, entries).width(section.getInt("$key.width", 200)).build())
                     }
                 }
                 inputKeys.add(key)
             }
         }
 
-
-        // 3. 处理底部按钮布局 (Notice / Confirmation)
+        // 3. 处理底部布局 (引入 MultiActionType)
         val bottomSection = config.getConfigurationSection("Bottom")
         val bottomType = bottomSection?.getString("type") ?: "notice"
 
-        val dialogType = if (bottomType == "confirmation") {
-            // 确认按钮：直接调用 buildActionFromConfig
-            val confirmBtn = ActionButton.builder(color(bottomSection?.getString("confirm.text") ?: "确认"))
-                .action(buildActionFromConfig(player, config, "Bottom.confirm.action", inputKeys))
-                .build()
+        val dialogType = when (bottomType) {
+            "multi" -> {
+                // 矩阵按钮解析
+                val actionButtons = mutableListOf<ActionButton>()
+                bottomSection?.getConfigurationSection("buttons")?.let { btnSection ->
+                    for (btnKey in btnSection.getKeys(false)) {
+                        val btnText = btnSection.getString("$btnKey.text") ?: "按钮"
+                        actionButtons.add(
+                            ActionButton.builder(color(btnText))
+                                .action(buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.action", inputKeys))
+                                .build()
+                        )
+                    }
+                }
 
-            // 取消按钮：同样支持自定义动作
-            val denyBtn = ActionButton.builder(color(bottomSection?.getString("deny.text") ?: "取消"))
-                .action(buildActionFromConfig(player, config, "Bottom.deny.action", inputKeys))
-                .build()
+                // 退出/返回按钮
+                val exitBtn = bottomSection?.getString("exit.text")?.let { text ->
+                    ActionButton.builder(color(text))
+                        .action(buildActionFromConfig(player, config, "Bottom.exit.action", inputKeys))
+                        .build()
+                }
 
-            DialogType.confirmation(confirmBtn, denyBtn)
-        } else {
-            // 单按钮模式 (Notice)
-            val path = if (config.contains("Bottom.confirm.action")) "Bottom.confirm.action" else "Bottom.button1.action"
-            val btnText = bottomSection?.getString("confirm.text") ?: bottomSection?.getString("button1.text") ?: "确认"
+                DialogType.multiAction(actionButtons)
+                    .columns(bottomSection?.getInt("columns", 2) ?: 2)
+                    .exitAction(exitBtn)
+                    .build()
+            }
 
-            val confirmBtn = ActionButton.builder(color(btnText))
-                .action(buildActionFromConfig(player, config, path, inputKeys))
-                .build()
-            DialogType.notice(confirmBtn)
+            "confirmation" -> {
+                val confirmBtn = ActionButton.builder(color(bottomSection?.getString("confirm.text") ?: "确认"))
+                    .action(buildActionFromConfig(player, config, "Bottom.confirm.action", inputKeys))
+                    .build()
+                val denyBtn = ActionButton.builder(color(bottomSection?.getString("deny.text") ?: "取消"))
+                    .action(buildActionFromConfig(player, config, "Bottom.deny.action", inputKeys))
+                    .build()
+                DialogType.confirmation(confirmBtn, denyBtn)
+            }
+
+            else -> { // notice 模式
+                val path = if (config.contains("Bottom.confirm.action")) "Bottom.confirm.action" else "Bottom.button1.action"
+                val btnText = bottomSection?.getString("confirm.text") ?: bottomSection?.getString("button1.text") ?: "确认"
+                val confirmBtn = ActionButton.builder(color(btnText))
+                    .action(buildActionFromConfig(player, config, path, inputKeys))
+                    .build()
+                DialogType.notice(confirmBtn)
+            }
         }
 
         // 4. 显示 Dialog
-        val base = DialogBase.builder(title).body(bodyList).inputs(inputList).build()
+        val base = DialogBase.builder(title)
+            .body(bodyList)
+            .inputs(inputList)
+            .canCloseWithEscape(canEscape)
+            .pause(pauseGame)
+            .afterAction(afterAction)
+            .build()
         player.showDialog(Dialog.create { it.empty().base(base).type(dialogType) })
-
     }
 
     /**
@@ -182,25 +191,37 @@ object MenuUI {
      */
     fun buildActionFromConfig(player: Player, config: YamlConfiguration, path: String, inputKeys: List<String>): DialogAction {
         val actionList = config.getStringList(path)
+        if (actionList.isEmpty()) return DialogAction.staticAction(ClickEvent.runCommand("/empty"))
 
+        val firstAction = actionList[0]
+
+        // 1. 优先处理不需要服务器参与的静态动作
+        if (actionList.size == 1) {
+            when {
+                firstAction.startsWith("url:") ->
+                    return DialogAction.staticAction(ClickEvent.openUrl(firstAction.removePrefix("url:").trim()))
+                firstAction.startsWith("copy:") ->
+                    return DialogAction.staticAction(ClickEvent.copyToClipboard(firstAction.removePrefix("copy:").trim()))
+            }
+        }
+
+        // 2. 统一处理所有复杂逻辑 (多行指令、变量、声音等)
         return DialogAction.customClick({ response, _ ->
             val variables = mutableMapOf<String, String>()
-
             inputKeys.forEach { key ->
                 val value = when {
-                    // 1. 优先尝试滑块数值
                     response.getFloat(key) != null -> {
                         val f = response.getFloat(key)!!
                         if (f == f.toInt().toFloat()) f.toInt().toString() else f.toString()
                     }
-                    // 2. 尝试文本 (文本框、下拉框)
                     response.getText(key) != null -> response.getText(key)
-                    // 3. 尝试布尔值 (勾选框)
                     response.getBoolean(key) != null -> response.getBoolean(key).toString()
                     else -> ""
                 }
                 variables[key] = value ?: ""
             }
+
+            // 执行多行动作
             executeActions(player, actionList, variables)
         }, ClickCallback.Options.builder().lifetime(Duration.ofMinutes(5)).build())
     }
@@ -209,7 +230,7 @@ object MenuUI {
         actions.forEach { action ->
             var finalCmd = action
             variables.forEach { (key, value) ->
-                finalCmd = finalCmd.replace("\${$key.input}", value)
+                finalCmd = finalCmd.replace("\$($key)", value)
             }
 
             when {
