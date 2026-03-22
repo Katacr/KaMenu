@@ -1,0 +1,67 @@
+Title: '&8» &6&lKaMenu 旗舰版演示 &8«'
+
+Body:
+  welcome_msg:
+    type: 'message'
+    text: '&7欢迎使用基于 Paper 1.21.8 原生 Dialog API 构建的高级菜单。'
+
+  info_card:
+    type: 'item'
+    material: 'KNOWLEDGE_BOOK'
+    name: '&b&l系统说明'
+    # 这里的文本会显示在书本图标的右侧 (左图右文)
+    description: '&f本菜单展示了多行文本输入。'
+    width: 64
+    height: 64
+    decorations: true
+
+Inputs:
+  # 1. 修复了显示 Bug 的滑块
+  volume_setting:
+    type: 'slider'
+    text: '&e音量调节'
+    min: 0
+    max: 100
+    step: 1
+    default: 50
+    # 必须包含两个 %s，否则看不到数字
+    format: '%s: %s%%'
+
+  # 2. 开启多行模式的文本框
+  user_feedback:
+    type: 'input'
+    text: '&a您的意见'
+    default: '请在此输入内容...'
+    multiline:
+      max_lines: 5
+      height: 80
+
+
+  # 3. 带有隐藏标签的下拉框
+  color_select:
+    type: 'dropdown'
+    text: '颜色选择' # 如果 label_visible 为 false，这个文本会被隐藏
+    label_visible: false
+    options:
+      - '&c红色'
+      - '&a绿色'
+      - '&b蓝色'
+    default_id: '&a绿色'
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&a[ 确认提交 ]'
+    action:
+      - 'tell: &8&l--------------------------------'
+      - 'tell: &6感谢提交！您的偏好：'
+      - 'tell: &f音量: &e${volume_setting.input}'
+      - 'tell: &f反馈: &f${user_feedback.input}'
+      - 'tell: &f颜色: &f${color_select.input}'
+      - 'tell: &8&l--------------------------------'
+      - 'sound: entity.experience_orb.pickup'
+  deny:
+    text: '&c[ 以后再说 ]'
+    action:
+      - 'tell: &7您已取消提交，修改未生效。'
+      - 'sound: block.chest.close'

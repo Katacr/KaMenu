@@ -1,0 +1,9 @@
+name: KaMenu
+version: '1.0.0'
+main: org.katacr.kamenu.KaMenu
+api-version: '1.21'
+commands:
+  km:
+    description: KaMenu 主指令
+    usage: /km open <menuId>
+    permission: kamenu.use
