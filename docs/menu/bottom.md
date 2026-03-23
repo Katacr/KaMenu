@@ -120,7 +120,6 @@ Bottom:
         - 'open: settings'
 
     btn_admin:
-      condition: '%player_is_op% == true'    # 仅 OP 可见
       text: '&4[ 管理面板 ]'
       actions:
         - 'open: admin/tools'
@@ -130,6 +129,27 @@ Bottom:
     actions:
       - 'actionbar: &7菜单已关闭'
       - 'close'
+```
+
+
+在 Multi 模式下，还可以使用 `show-condition` 来控制按钮是否显示：
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    1:
+      show-condition: "%player_is_op% == true"  # 只有管理员才能看到此按钮
+      text: '[ 管理员按钮 ]'
+      actions: ...
+    2:
+      show-condition: "%player_level% >= 10"  # 玩家大于等于 10 级才能看到
+      text: '[ VIP 按钮 ]'
+      actions: ...
+    3:
+      text: '[ 普通按钮 ]'  # 无显示条件，所有玩家可见
+      actions: ...
 ```
 
 ---
