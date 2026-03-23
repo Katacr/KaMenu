@@ -83,6 +83,9 @@ class KaMenu : JavaPlugin() {
         ConditionUtils.setLanguageManager(languageManager)
         MenuActions.setLanguageManager(languageManager)
 
+        // 初始化 MenuUI
+        MenuUI.init(this)
+
         // 3. 初始化菜单管理器
         menuManager = MenuManager(this)
         menuManager.loadMenus()

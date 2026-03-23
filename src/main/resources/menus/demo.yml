@@ -17,11 +17,8 @@ Body:
 Inputs:
   volume_setting:
     type: 'slider'
-    text: '&e音量调节'
-    min: # 根据条件定义不同的最低值
-      - condition: "%player_is_op% == true"
-        allow: 10
-        deny: 0
+    text: '%button_name%' #举例 papi变量
+    min: '{data:var}'  # {data:var}/{gdata:var}内置值，从数据库中获取
     max: 100 # 同理
     step: 1 # 同理
     default: 50 # 同理

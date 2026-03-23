@@ -20,12 +20,51 @@ import org.bukkit.inventory.ItemStack
 
 object MenuUI {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
+    private lateinit var plugin: KaMenu
+
+    /**
+     * 初始化插件引用
+     */
+    fun init(kaMenu: KaMenu) {
+        this.plugin = kaMenu
+    }
 
     /**
      * 将颜色代码转换为 Adventure Component
      */
     internal fun color(text: String?): Component =
         if (text == null) Component.empty() else serializer.deserialize(text)
+
+    /**
+     * 解析变量（PAPI + 内置变量）
+     * @param player 玩家对象
+     * @param text 原始文本
+     * @return 解析后的文本
+     */
+    private fun resolveVariables(player: Player, text: String): String {
+        var result = text
+
+        // 1. 解析内置变量 {data:key} 和 {gdata:key}
+        result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
+            val key = matchResult.groupValues[1]
+            plugin.databaseManager.getPlayerData(player.uniqueId, key) ?: ""
+        }
+        result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
+            val key = matchResult.groupValues[1]
+            plugin.databaseManager.getGlobalData(key) ?: ""
+        }
+
+        // 2. 解析 PAPI 变量
+        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            try {
+                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
+            } catch (_: Exception) {
+                // PAPI 解析失败，忽略
+            }
+        }
+
+        return result
+    }
 
     /**
      * 获取配置路径下适合当前玩家的值（支持条件判断）
@@ -58,10 +97,12 @@ object MenuUI {
         // 检查该路径下是否为列表格式（条件判断）
         if (section.isList(path)) {
             val conditions = section.getList(path) ?: return defaultValue
-            return ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
+            val value = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
+            return resolveVariables(player, value)
         } else {
             // 简单字符串值
-            return section.getString(path, defaultValue) ?: defaultValue
+            val value = section.getString(path, defaultValue) ?: defaultValue
+            return resolveVariables(player, value)
         }
     }
 
@@ -77,9 +118,12 @@ object MenuUI {
         if (section.isList(path)) {
             val conditions = section.getList(path) ?: return defaultValue
             val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
-            return stringValue.toIntOrNull() ?: defaultValue
+            val resolved = resolveVariables(player, stringValue)
+            return resolved.toIntOrNull() ?: defaultValue
         } else {
-            return section.getInt(path, defaultValue)
+            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
+            val resolved = resolveVariables(player, value)
+            return resolved.toIntOrNull() ?: defaultValue
         }
     }
 
@@ -95,9 +139,12 @@ object MenuUI {
         if (section.isList(path)) {
             val conditions = section.getList(path) ?: return defaultValue
             val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
-            return stringValue.toDoubleOrNull() ?: defaultValue
+            val resolved = resolveVariables(player, stringValue)
+            return resolved.toDoubleOrNull() ?: defaultValue
         } else {
-            return section.getDouble(path, defaultValue)
+            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
+            val resolved = resolveVariables(player, value)
+            return resolved.toDoubleOrNull() ?: defaultValue
         }
     }
 
@@ -113,9 +160,12 @@ object MenuUI {
         if (section.isList(path)) {
             val conditions = section.getList(path) ?: return defaultValue
             val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
-            return stringValue.toBooleanStrictOrNull() ?: defaultValue
+            val resolved = resolveVariables(player, stringValue)
+            return resolved.toBooleanStrictOrNull() ?: defaultValue
         } else {
-            return section.getBoolean(path, defaultValue)
+            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
+            val resolved = resolveVariables(player, value)
+            return resolved.toBooleanStrictOrNull() ?: defaultValue
         }
     }
 
@@ -133,10 +183,12 @@ object MenuUI {
             // 检查是否为条件判断格式（第一个元素是 Map）
             if (firstItem is Map<*, *>) {
                 val conditions = section.getList(path) ?: return defaultValue
-                return ConditionUtils.getConditionalListFromList(player, conditions, defaultValue)
+                val list = ConditionUtils.getConditionalListFromList(player, conditions, defaultValue)
+                return list.map { resolveVariables(player, it) }
             } else {
                 // 普通字符串列表
-                return section.getStringList(path)
+                val list = section.getStringList(path)
+                return list.map { resolveVariables(player, it) }
             }
         } else {
             return defaultValue
@@ -149,7 +201,8 @@ object MenuUI {
             player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
             return
         }
-        val title = color(getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title")))
+        val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
+        val title = color(resolveVariables(player, rawTitle))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -164,7 +217,7 @@ object MenuUI {
 
         val afterAction = try {
             DialogBase.DialogAfterAction.valueOf(afterActionStr)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             DialogBase.DialogAfterAction.CLOSE
         }
 
