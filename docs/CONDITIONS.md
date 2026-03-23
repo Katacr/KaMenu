@@ -131,6 +131,35 @@ Bottom:
     actions: ...
 ```
 
+#### Multi 模式 - 按钮显示条件
+
+在 Multi 模式下，还可以使用 `show-condition` 来控制按钮是否显示：
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    1:
+      show-condition: "%player_is_op% == true"  # 只有管理员才能看到此按钮
+      text: '[ 管理员按钮 ]'
+      actions: ...
+    2:
+      show_condition: "%player_level% >= 10"  # 兼容写法：使用下划线
+      text: '[ VIP 按钮 ]'
+      actions: ...
+    3:
+      text: '[ 普通按钮 ]'  # 无显示条件，所有玩家可见
+      actions: ...
+```
+
+**show-condition 说明：**
+- 使用 `show-condition` 或 `show_condition` 两种写法均可
+- 当条件不满足时，按钮完全不可见（不是禁用状态）
+- 与 `condition/allow/deny` 的区别：
+  - `show-condition`：控制按钮是否显示（UI层面）
+  - `condition/allow/deny`：控制按钮点击后的行为（逻辑层面）
+
 #### Notice 模式
 
 ```yaml
@@ -179,6 +208,33 @@ Bottom:
             - 'actionbar: &e达到 10 级即可解锁'
 ```
 
+#### 嵌套条件判断
+
+支持在 `allow` 或 `deny` 中嵌套使用条件判断：
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    1:
+      text: '数据操作按钮'
+      actions:
+        - condition: "{data:counter} == null"
+          allow:
+            - 'tell: &e数据不存在，已设置初始值: 1'
+            - 'set-data: counter 1'
+          deny:
+            - 'tell: &e数据已存在，值为: {data:counter}'
+            - 'wait: 20'
+            - condition: "{data:counter} == 10"
+              allow:
+                - 'tell: &e数据为10，现已设置为1'
+                - 'set-data: counter 1'
+              deny:
+                - 'tell: &e数据不为10，现已设置为10'
+                - 'set-data: counter 10'
+```
+
 #### 格式说明
 
 **条件判断动作格式：**
@@ -222,6 +278,7 @@ actions:
 | condition | 条件表达式，支持复杂逻辑 | 是 |
 | allow | 条件满足时执行的内容 | 是 |
 | deny | 条件不满足时执行的内容 | 是 |
+| show-condition | 控制按钮是否显示（仅在 Multi 模式可用） | 否 |
 
 ## 条件表达式语法
 
@@ -252,7 +309,9 @@ actions:
 'condition=(%player_level% >= 5 && %player_level% <= 10) || %player_is_op% == true'
 ```
 
-## PAPI 变量支持
+## 变量支持
+
+### PAPI 变量
 
 所有 PlaceholderAPI 变量都可以在条件中使用：
 
@@ -271,6 +330,122 @@ actions:
 
 # 检查玩家是否是管理员
 'condition=%player_is_op% == true'
+```
+
+### 内置变量
+
+KaMenu 提供了内置变量，用于读取插件内的持久化数据：
+
+#### 个人数据变量 `{data:key}`
+
+读取特定玩家的个人持久化数据（由 `set-data` 动作写入）。
+
+**格式：** `{data:<键名>}`
+
+**示例：**
+
+```yaml
+# 检查个人数据是否存在
+condition: "{data:test_key} == null"
+
+# 检查个人数据的值
+condition: "{data:vip_level} == 3"
+
+# 检查个人数据是否为特定值
+condition: "{data:nickname} == Steve"
+```
+
+**数据存在性判断：**
+- 数据不存在时，`{data:key}` 会被替换为字面量字符串 `"null"`
+- 可以使用 `== null` 或 `!= null` 来判断数据是否存在
+- 示例：`{data:counter} != null` 表示数据存在
+
+#### 全局数据变量 `{gdata:key}`
+
+读取服务器级别的全局共享数据（由 `set-gdata` 动作写入）。
+
+**格式：** `{gdata:<键名>}`
+
+**示例：**
+
+```yaml
+# 检查全局数据是否存在
+condition: "{gdata:server_status} != null"
+
+# 检查全局数据的值
+condition: "{gdata:server_status} == running"
+
+# 检查全局数据是否为特定值
+condition: "{gdata:event_winner} == Steve"
+```
+
+**数据存在性判断：**
+- 数据不存在时，`{gdata:key}` 会被替换为字面量字符串 `"null"`
+- 可以使用 `== null` 或 `!= null` 来判断数据是否存在
+
+### 内置条件方法
+
+KaMenu 提供了内置的条件判断方法，使用 `@` 符号调用：
+
+#### 支持的方法
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `isNum` | 判断是否为数字 | `value @ isNum` |
+| `isPosNum` | 判断是否为正数 | `value @ isPosNum` |
+| `hasPerm` | 判断玩家是否拥有权限 | `permission.node @ hasPerm` |
+| `hasMoney` | 判断玩家是否有足够的金币 | `100 @ hasMoney` |
+
+**使用示例：**
+
+```yaml
+# 检查输入值是否为数字
+condition: "$(input_value) @ isNum"
+
+# 检查输入值是否为正数
+condition: "$(input_value) @ isPosNum"
+
+# 检查玩家是否有权限
+condition: "kamenu.admin @ hasPerm"
+
+# 检查玩家是否有足够金币
+condition: "1000 @ hasMoney"
+```
+
+### 输入框变量 $(variable)
+
+在条件中使用输入框的值，使用 `$(变量名)` 格式：
+
+```yaml
+Inputs:
+  test_input:
+    type: 'input'
+    text: '输入测试'
+    default: ''
+
+Bottom:
+  type: multi
+  buttons:
+    1:
+      text: '检查输入'
+      actions:
+        - condition: "$(test_input) == Hello World"
+          allow:
+            - 'tell: 你输入的是 Hello World'
+          deny:
+            - 'tell: 你输入的不是 Hello World'
+```
+
+### 双引号包裹
+
+如果值包含空格或特殊字符，使用双引号包裹：
+
+```yaml
+# 字符串包含空格
+condition: '$(test_input) == "Hello World"'
+
+# 值包含运算符
+condition: "$(test_input) == "value >= 10"'
 ```
 
 ## 使用示例
@@ -350,6 +525,103 @@ actions:
       - 'tell: 经验不足'
 ```
 
+### 示例 7：按钮显示条件
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    admin_panel:
+      show-condition: "%player_name% == Steve"  # 只有Steve能看到此按钮
+      text: '[ 管理面板 ]'
+      actions:
+        - 'open: admin/tools'
+    vip_panel:
+      show-condition: "%player_level% >= 10"  # 10级以上能看到
+      text: '[ VIP 面板 ]'
+      actions:
+        - 'open: vip/rewards'
+    normal_panel:
+      text: '[ 普通面板 ]'  # 所有人可见
+      actions:
+        - 'open: player/info'
+```
+
+### 示例 8：嵌套条件判断
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    1:
+      text: '执行复杂操作'
+      actions:
+        - condition: "%player_is_op% == true"
+          allow:
+            - 'tell: 开始管理员操作...'
+            - 'wait: 20'
+            - condition: "%player_health% >= 15"
+              allow:
+                - 'tell: 生命值充足，继续操作'
+                - 'console: say 管理员 %player_name% 执行了高级操作'
+              deny:
+                - 'tell: 生命值不足，跳过操作'
+          deny:
+            - 'tell: 你不是管理员'
+```
+
+### 示例 9：使用内置变量
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    1:
+      text: '检查数据'
+      actions:
+        - condition: "{data:visited_count} != null"
+          allow:
+            - 'tell: 你已访问次数: {data:visited_count}'
+          deny:
+            - 'tell: 这是你的第一次访问！'
+            - 'set-data: visited_count 1'
+
+    2:
+      text: '检查服务器状态'
+      actions:
+        - condition: "{gdata:server_event} == running"
+          allow:
+            - 'tell: 当前活动正在进行中'
+          deny:
+            - 'tell: 当前没有活动'
+```
+
+### 示例 10：使用内置条件方法
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    1:
+      text: '检查数值'
+      actions:
+        - condition: "$(input_value) @ isPosNum"
+          allow:
+            - 'tell: 输入的是正数'
+          deny:
+            - 'tell: 输入的不是正数'
+
+    2:
+      text: '检查权限'
+      actions:
+        - condition: "kamenu.admin @ hasPerm"
+          allow:
+            - 'tell: 你有管理员权限'
+          deny:
+            - 'tell: 你没有管理员权限'
+```
+
 ## 注意事项
 
 1. **PAPI 依赖**：使用 PAPI 变量需要安装 PlaceholderAPI 插件
@@ -358,13 +630,23 @@ actions:
    - `&&`：第一个条件为 false 时，不计算后续条件
 3. **大小写**：字符串比较默认不区分大小写（`==` 和 `!=`）
 4. **数值转换**：无法转换为数值的字符串会被当作 0 处理
-5. **条件嵌套**：支持多层括号嵌套
+5. **条件嵌套**：支持多层括号嵌套和动作嵌套
 6. **菜单标题**：支持条件判断，可为不同玩家显示不同的菜单顶部标题
 7. **动作执行**：`actions` 键支持条件判断，可在 `allow` 和 `deny` 中执行多个动作
+8. **按钮显示**：Multi 模式支持 `show-condition` 控制按钮是否可见
+   - `show-condition`：控制显示（不满足时按钮完全不可见）
+   - `condition/allow/deny`：控制行为（点击后的执行逻辑）
+9. **内置变量**：
+   - `{data:key}`：读取玩家个人数据，不存在时返回 `"null"`
+   - `{gdata:key}`：读取全局数据，不存在时返回 `"null"`
+   - 使用 `== null` 或 `!= null` 判断数据是否存在
+10. **输入框变量**：使用 `$(变量名)` 在条件中引用输入框的值
+11. **双引号包裹**：包含空格或特殊字符的值需要用双引号包裹
+12. **show-condition 兼容性**：支持 `show-condition`（推荐）和 `show_condition`（兼容）两种写法
 
 ## 测试菜单
 
-插件提供了三个条件判断演示菜单：
+插件提供了条件判断演示菜单：
 
 ### 1. 条件动作演示（condition_demo）
 
@@ -372,10 +654,15 @@ actions:
 /km open examples/condition_demo
 ```
 
-该菜单演示了文本字段的条件判断功能，包含以下测试项：
+该菜单演示了条件判断的完整功能，包含以下测试项：
 1. 菜单标题条件判断
 2. 按钮文本条件判断
 3. 动作执行条件判断
+4. 嵌套条件判断
+5. 内置变量使用
+6. 按钮显示条件
+7. PAPI 变量使用
+8. 逻辑运算符组合
 
 ### 2. 通用条件值演示（conditional_value_demo）
 
@@ -402,6 +689,7 @@ actions:
 3. **组合条件**：使用 OR 逻辑组合多个条件
 4. **多个动作**：根据输入框的值执行不同的动作列表
 5. **混合使用**：展示如何在 `allow` 和 `deny` 中执行多个动作
+6. **嵌套条件**：展示多层条件判断的使用
 
 ## 未来计划
 

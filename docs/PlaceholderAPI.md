@@ -65,13 +65,13 @@ announcements:
 
 KaMenu 也完整支持**解析来自其他 PAPI 扩展的变量**，可以在菜单的任意文本字段和条件判断中使用：
 
-**菜单标题：**
+### 菜单标题
 
 ```yaml
 Title: '&a欢迎，&f%player_name%！'
 ```
 
-**组件文字：**
+### 组件文字
 
 ```yaml
 Body:
@@ -80,13 +80,13 @@ Body:
     text: '&7等级: &f%player_level% &7| 血量: &c%player_health%'
 ```
 
-**条件判断：**
+### 条件判断
 
 ```yaml
 condition: "%player_level% >= 10 && %player_balance% >= 500"
 ```
 
-**动作中：**
+### 动作中
 
 ```yaml
 actions:
@@ -96,6 +96,80 @@ actions:
 
 ---
 
-## 数据未找到的提示
+## 数据未找到的处理
 
-当指定键名对应的数据不存在时，PAPI 变量将返回一个提示信息（由语言文件 `papi.data_not_found` 定义），默认为空字符串。可在语言文件中自定义此提示。
+当指定键名对应的数据不存在时：
+
+1. **PAPI 变量（%kamenu_data_key%）**：
+   - 返回语言文件中定义的提示（键名：`papi.data_not_found`）
+   - 默认返回空字符串
+   - 可在语言文件中自定义此提示
+
+2. **内置变量（{data:key}）**：
+   - 返回字面量字符串 `"null"`
+   - 可以在条件判断中使用 `{data:key} == null` 来判断数据是否存在
+   - 例如：`{data:counter} != null` 表示数据存在
+
+**示例：**
+
+```yaml
+# 在条件判断中使用内置变量判断数据是否存在
+actions:
+  - condition: "{data:counter} != null"
+    allow:
+      - 'tell: 数据存在，值为: {data:counter}'
+    deny:
+      - 'tell: 数据不存在'
+
+# 在记分板中使用 PAPI 变量（数据不存在时显示自定义提示）
+scoreboard:
+  - '&6访问次数: &f%kamenu_data_visit_count%'
+  # 如果 visit_count 不存在，显示默认提示或空字符串
+```
+
+---
+
+## 变量使用场景示例
+
+### 在记分板中显示玩家数据
+
+```yaml
+scoreboard:
+  title: '&6玩家信息'
+  lines:
+    - '&a玩家: &f%player_name%'
+    - '&b等级: &f%player_level%'
+    - '&cVIP: &f%kamenu_data_vip_level%'
+    - '&d昵称: &f%kamenu_data_nickname%'
+    - '&e访问次数: &f%kamenu_data_visit_count%'
+```
+
+### 在公告栏中显示全局数据
+
+```yaml
+announcements:
+  - '&6当前活动: &f%kamenu_gdata_server_event%'
+  - '&a获胜者: &f%kamenu_gdata_event_winner%'
+  - '&b服务器状态: &f%kamenu_gdata_server_status%'
+```
+
+### 在聊天格式中使用
+
+```yaml
+chat_format:
+  format: '&7[%kamenu_data_vip_level%&7] &f%player_name%: &7%message%'
+  # 如果玩家没有 VIP 等级数据，显示 [空] 或自定义提示
+```
+
+---
+
+## 注意事项
+
+1. **PAPI 插件依赖**：需要安装 PlaceholderAPI 才能使用这些变量
+2. **数据持久化**：使用 `set-data` 和 `set-gdata` 动作写入的数据会持久化保存
+3. **键名区分**：玩家数据键和全局数据键使用相同的前缀（`data_` 和 `gdata_`），但存储位置不同
+4. **类型限制**：所有数据都以字符串形式存储，使用时需要根据需要进行类型转换
+5. **性能考虑**：频繁读取大量数据可能影响性能，建议合理使用
+6. **数据存在性判断**：
+   - PAPI 变量：数据不存在时返回提示或空字符串
+   - 内置变量：数据不存在时返回 `"null"`，便于条件判断
