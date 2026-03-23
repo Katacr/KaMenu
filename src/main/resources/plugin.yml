@@ -2,6 +2,9 @@ name: KaMenu
 version: '1.1.0'
 main: org.katacr.kamenu.KaMenu
 api-version: '1.21'
+softdepend:
+  - PlaceholderAPI
+  - Vault
 commands:
   km:
     description: KaMenu 主指令

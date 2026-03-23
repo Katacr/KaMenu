@@ -21,12 +21,20 @@ import java.time.Duration
 object MenuActions {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
     private var languageManager: LanguageManager? = null
+    private var databaseManager: DatabaseManager? = null
 
     /**
      * 设置语言管理器引用
      */
     fun setLanguageManager(manager: LanguageManager) {
         languageManager = manager
+    }
+
+    /**
+     * 设置数据库管理器引用
+     */
+    fun setDatabaseManager(manager: DatabaseManager) {
+        databaseManager = manager
     }
 
     /**
@@ -210,6 +218,26 @@ object MenuActions {
             finalCmd.startsWith("close") -> {
                 // Paper API 会自动处理
                 player.closeInventory()
+            }
+
+            // set-data: 设置玩家数据
+            finalCmd.startsWith("set-data:") -> {
+                val args = finalCmd.removePrefix("set-data:").trim().split(" ", limit = 2)
+                if (args.size >= 2) {
+                    val key = args[0]
+                    val value = args[1]
+                    databaseManager?.setPlayerData(player.uniqueId, key, value)
+                }
+            }
+
+            // set-gdata: 设置全局数据
+            finalCmd.startsWith("set-gdata:") -> {
+                val args = finalCmd.removePrefix("set-gdata:").trim().split(" ", limit = 2)
+                if (args.size >= 2) {
+                    val key = args[0]
+                    val value = args[1]
+                    databaseManager?.setGlobalData(key, value)
+                }
             }
         }
     }

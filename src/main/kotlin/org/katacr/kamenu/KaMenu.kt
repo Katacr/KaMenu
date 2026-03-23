@@ -2,7 +2,11 @@
 
 package org.katacr.kamenu
 
+import net.byteflux.libby.BukkitLibraryManager
+import net.byteflux.libby.Library
 import net.milkbowl.vault.economy.Economy
+import org.bstats.bukkit.Metrics
+import org.bstats.charts.SingleLineChart
 import org.bukkit.command.CommandSender
 import org.bukkit.plugin.RegisteredServiceProvider
 import org.bukkit.plugin.java.JavaPlugin
@@ -11,7 +15,54 @@ class KaMenu : JavaPlugin() {
 
     lateinit var menuManager: MenuManager
     lateinit var languageManager: LanguageManager
+    lateinit var databaseManager: DatabaseManager
     var economy: Economy? = null
+
+    /**
+     * 在插件加载时优先处理依赖下载
+     */
+    override fun onLoad() {
+        val libraryManager = BukkitLibraryManager(this)
+
+        // 添加 Maven 中央仓库和阿里云镜像（加速国内下载）
+        libraryManager.addMavenCentral()
+        libraryManager.addRepository("https://maven.aliyun.com/repository/public")
+
+        // Kotlin 标准库
+        val kotlinStd = Library.builder()
+            .groupId("org{}jetbrains{}kotlin")
+            .artifactId("kotlin-stdlib")
+            .version("1.9.22")
+            .build()
+
+        // SQLite JDBC 驱动
+        val sqlite = Library.builder()
+            .groupId("org{}xerial")
+            .artifactId("sqlite-jdbc")
+            .version("3.46.1.0")
+            .build()
+
+        // MySQL Connector/J 驱动
+        val mysql = Library.builder()
+            .groupId("com{}mysql")
+            .artifactId("mysql-connector-j")
+            .version("9.1.0")
+            .build()
+
+        // HikariCP 连接池
+        val hikari = Library.builder()
+            .groupId("com{}zaxxer")
+            .artifactId("HikariCP")
+            .version("5.1.0")
+            .build()
+
+        logger.info("Checking and downloading necessary dependent libraries, please wait...")
+
+        libraryManager.loadLibrary(kotlinStd)
+        libraryManager.loadLibrary(sqlite)
+        libraryManager.loadLibrary(mysql)
+        libraryManager.loadLibrary(hikari)
+    }
 
     override fun onEnable() {
         // 1. 保存并加载配置
@@ -40,16 +91,35 @@ class KaMenu : JavaPlugin() {
         // 5. 注册监听器
         server.pluginManager.registerEvents(MenuListener(this), this)
 
-        // 6. 设置经济系统
+        // 6. 初始化数据库管理器
+        databaseManager = DatabaseManager(this)
+        databaseManager.setup()
+        MenuActions.setDatabaseManager(databaseManager)
+
+        // 7. 设置经济系统
         setupEconomy()
 
-        // 7. 打印启动信息
+        // 8. 统计数据
+        val metrics = Metrics(this, 30376)
+        metrics.addCustomChart(SingleLineChart("menus_total") {
+            menuManager.getAllMenuIds().size
+        })
+
+        // 9. 注册 PlaceholderAPI 扩展
+        if (server.pluginManager.getPlugin("PlaceholderAPI") != null) {
+            KaMenuExpansion(this).register()
+        }
+
+        // 10. 打印启动信息
         sendStartupMessage()
     }
 
     override fun onDisable() {
         if (::menuManager.isInitialized) {
             menuManager.clear()
+        }
+        if (::databaseManager.isInitialized) {
+            databaseManager.close()
         }
         server.scheduler.cancelTasks(this)
 

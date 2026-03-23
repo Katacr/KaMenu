@@ -9,7 +9,6 @@ version = "1.1.0"
 
 repositories {
     mavenCentral()
-
     maven("https://maven.aliyun.com/repository/public/"){
         name = "Aliyun"
     }
@@ -22,11 +21,6 @@ repositories {
     maven("https://repo.codemc.org/repository/maven-public/") {
         name = "codemc"
     }
-    maven("https://mvnrepository.com/artifact/com.mojang/authlib/") {
-        name = "authlib"
-    }
-    maven("https://repo.papermc.io/repository/maven-offline/")
-
     maven("https://repo.papermc.io/repository/maven-public/") {
         name = "papermc-repo"
     }
@@ -39,12 +33,15 @@ repositories {
 }
 
 dependencies {
+    implementation("net.byteflux:libby-bukkit:1.3.0")
+    implementation("org.bstats:bstats-bukkit:3.1.0")
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    compileOnly("org.jetbrains.kotlin:kotlin-stdlib")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude(group = "org.bukkit", module = "bukkit")
     }
+    compileOnly("com.zaxxer:HikariCP:5.1.0")
 }
 
 tasks {
@@ -63,6 +60,11 @@ kotlin {
 
 tasks.build {
     dependsOn("shadowJar")
+}
+
+tasks.shadowJar {
+    relocate("org.bstats", project.group.toString())
+    archiveClassifier.set("")
 }
 
 tasks.processResources {

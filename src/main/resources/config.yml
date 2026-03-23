@@ -3,16 +3,15 @@
 # 插件语言 (对应 lang/ 文件夹下的文件名)
 language: 'zh_CN'
 
-# 数据库配置 (预留)
+# 数据库配置
 storage:
   # 可选: sqlite, mysql
   type: 'sqlite'
-  mysql:
-    host: 'localhost'
-    port: 3306
-    database: 'minecraft'
-    username: 'root'
-    password: ''
+  host: 'localhost'
+  port: 3306
+  db: 'minecraft'
+  user: 'root'
+  password: ''
 
 # 快捷键/动作监听配置
 listeners:
