@@ -7,6 +7,18 @@ plugin:
   disabled: "§e[KaMenu] Plugin has been disabled."
   language_set: "Current language set to: {0}"
 
+# Startup Info
+logo:
+  version: "§bPlugin Version: §a{0}"
+  minecraft: "§bServer Version: §a{0}"
+  language: "§bLanguage: §a{0}"
+  placeholderapi: "§bPlaceholderAPI: {0}"
+  vault: "§bVault: {0}"
+  database: "§bDatabase: §a{0}"
+  hook_true: "§aHooked"
+  hook_false: "§cNot Hooked"
+  menu_count: "§bLoaded Menus: §a{0}"
+
 # Command Messages
 command:
   player_only: "§cOnly players can execute this command!"

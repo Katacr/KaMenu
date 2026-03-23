@@ -34,12 +34,18 @@ class LanguageManager(private val plugin: KaMenu) {
      * 保存默认语言文件到插件文件夹
      */
     private fun saveDefaultMessages() {
+        // 确保 lang 文件夹存在
+        val langFolder = File(plugin.dataFolder, "lang")
+        if (!langFolder.exists()) {
+            langFolder.mkdirs()
+        }
+
         val languages = listOf("zh_CN", "en_US")
         languages.forEach { lang ->
-            val file = File(plugin.dataFolder, "${lang}.yml")
+            val file = File(langFolder, "${lang}.yml")
             if (!file.exists()) {
-                plugin.saveResource("${lang}.yml", false)
-                plugin.logger.info("已释放默认语言文件: ${lang}.yml")
+                plugin.saveResource("lang/${lang}.yml", false)
+                plugin.logger.info("已释放默认语言文件: lang/${lang}.yml")
             }
         }
     }
@@ -48,9 +54,10 @@ class LanguageManager(private val plugin: KaMenu) {
      * 加载指定语言的消息文件
      */
     private fun loadMessages(language: String) {
-        val file = File(plugin.dataFolder, "${language}.yml")
+        val langFolder = File(plugin.dataFolder, "lang")
+        val file = File(langFolder, "${language}.yml")
         if (!file.exists()) {
-            plugin.logger.warning("语言文件不存在: ${language}.yml，使用默认语言")
+            plugin.logger.warning("语言文件不存在: lang/${language}.yml，使用默认语言")
             if (language != defaultLanguage) {
                 loadMessages(defaultLanguage)
             }

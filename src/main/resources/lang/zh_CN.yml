@@ -7,6 +7,18 @@ plugin:
   disabled: "§e[KaMenu] 插件已关闭。"
   language_set: "当前语言设置为: {0}"
 
+# 启动信息
+logo:
+  version: "§b插件版本: §a{0}"
+  minecraft: "§b服务器版本: §a{0}"
+  language: "§b语言设置: §a{0}"
+  placeholderapi: "§bPlaceholderAPI: {0}"
+  vault: "§bVault: {0}"
+  database: "§b数据库: §a{0}"
+  hook_true: "§a已挂钩"
+  hook_false: "§c未挂钩"
+  menu_count: "§b已加载菜单: §a{0}个"
+
 # 命令消息
 command:
   player_only: "§c只有玩家可以执行此指令！"
