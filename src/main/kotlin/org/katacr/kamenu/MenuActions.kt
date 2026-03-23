@@ -61,6 +61,37 @@ object MenuActions {
         if (text == null) Component.empty() else serializer.deserialize(text)
 
     /**
+     * 解析变量（内置变量 + PAPI）
+     * @param player 玩家对象
+     * @param text 原始文本
+     * @return 解析后的文本
+     */
+    private fun resolveVariables(player: Player, text: String): String {
+        var result = text
+
+        // 1. 解析内置变量 {data:key} 和 {gdata:key}
+        result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
+            val key = matchResult.groupValues[1]
+            databaseManager?.getPlayerData(player.uniqueId, key) ?: ""
+        }
+        result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
+            val key = matchResult.groupValues[1]
+            databaseManager?.getGlobalData(key) ?: ""
+        }
+
+        // 2. 解析 PAPI 变量
+        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            try {
+                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
+            } catch (_: Exception) {
+                // PAPI 解析失败，忽略
+            }
+        }
+
+        return result
+    }
+
+    /**
      * 从配置文件中构建一个 DialogAction 对象
      */
     fun buildActionFromConfig(
@@ -259,14 +290,8 @@ object MenuActions {
             finalCmd = finalCmd.replace("$($key)", value)
         }
 
-        // 支持 PlaceholderAPI 变量 (%player%, %world% 等)
-        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            try {
-                finalCmd = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, finalCmd)
-            } catch (e: Exception) {
-                // PAPI 解析失败，忽略
-            }
-        }
+        // 解析内置变量 {data:var} 和 {gdata:var}，以及 PAPI 变量
+        finalCmd = resolveVariables(player, finalCmd)
 
         when {
             // tell: 普通消息

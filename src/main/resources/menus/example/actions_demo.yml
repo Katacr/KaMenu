@@ -23,6 +23,13 @@ Bottom:
   columns: 3
 
   buttons:
+    test_op_tell:
+      conditions: '%player_is_op% == true'
+      text: '&a[ OP tell ]'
+      actions:
+        - 'tell: &a这是OP消息'
+        - 'tell: &7只有OP看得到这个按钮'
+
     test_tell:
       text: '&a[ tell ]'
       actions:
@@ -116,7 +123,7 @@ Bottom:
         - 'tell: &e正在设置test个人数据为“Hello”...'
         - 'set-data: test Hello'
         - 'wait: 1'
-        - 'tell: &a1设置成功！test值为: 内置:{data:test}/PAPI:%kamenu_data_test%'
+        - 'tell: &a设置成功！test值为: 内置:{data:test}/PAPI:%kamenu_data_test%'
 
     test_gdata:
       text: '&a[ set gdata ]'
@@ -125,7 +132,7 @@ Bottom:
         - 'tell: &e正在设置test全局数据“Global”...'
         - 'set-gdata: test Global'
         - 'wait: 1'
-        - 'tell: &a1设置成功！test值为: 内置:{gdata:test}/PAPI:%kamenu_gdata_test%'
+        - 'tell: &a设置成功！test值为: 内置:{gdata:test}/PAPI:%kamenu_gdata_test%'
 
   exit:
     text: '&8[ 退出 ]'

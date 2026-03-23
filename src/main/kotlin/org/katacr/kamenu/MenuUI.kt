@@ -195,6 +195,35 @@ object MenuUI {
         }
     }
 
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的类型值（支持条件判断和 'none'）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 类型值，如果类型为 'none' 或为空则返回 'none'
+     */
+    private fun getConditionalTypeFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: String = ""): String {
+        val rawValue = getConditionalValueFromSection(player, section, path, defaultValue)
+        if (rawValue.isEmpty()) {
+            return "none"
+        }
+
+        // 检查是否为列表格式（条件判断）
+        if (section.isList(path)) {
+            val firstItem = section.getList(path)?.firstOrNull()
+            // 检查是否为条件判断格式（第一个元素是 Map）
+            if (firstItem is Map<*, *>) {
+                val conditions = section.getList(path) ?: return "none"
+                val result = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
+                return if (result.isEmpty()) "none" else result
+            }
+        }
+
+        // 返回解析后的值
+        return rawValue
+    }
+
     fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
@@ -224,7 +253,10 @@ object MenuUI {
         // 1. 解析 Body
         config.getConfigurationSection("Body")?.let { section ->
             for (key in section.getKeys(false)) {
-                val type = getConditionalValueFromSection(player, section, "$key.type", "")
+                val type = getConditionalTypeFromSection(player, section, "$key.type", "")
+                // 如果类型为 'none'，跳过此组件
+                if (type == "none") continue
+
                 when (type) {
                     "message" -> {
                         val text = getConditionalValueFromSection(player, section, "$key.text", "")
@@ -257,7 +289,10 @@ object MenuUI {
         // 2. 解析 Inputs
         config.getConfigurationSection("Inputs")?.let { section ->
             for (key in section.getKeys(false)) {
-                val type = getConditionalValueFromSection(player, section, "$key.type", "text")
+                val type = getConditionalTypeFromSection(player, section, "$key.type", "text")
+                // 如果类型为 'none'，跳过此组件
+                if (type == "none") continue
+
                 val prompt = color(getConditionalValueFromSection(player, section, "$key.text", ""))
 
                 when (type) {
@@ -332,6 +367,13 @@ object MenuUI {
                 val actionButtons = mutableListOf<ActionButton>()
                 bottomSection?.getConfigurationSection("buttons")?.let { btnSection ->
                     for (btnKey in btnSection.getKeys(false)) {
+                        // 检查按钮条件
+                        val condition = btnSection.getString("$btnKey.condition")
+                        if (condition != null && !ConditionUtils.checkCondition(player, condition)) {
+                            // 条件不满足，跳过此按钮
+                            continue
+                        }
+
                         val btnText = getConditionalValueFromSection(player, btnSection, "$btnKey.text", "按钮")
                         actionButtons.add(
                             ActionButton.builder(color(btnText))
