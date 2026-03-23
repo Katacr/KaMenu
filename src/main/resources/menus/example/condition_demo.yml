@@ -1,0 +1,213 @@
+Title: '&8» &e&l条件判断演示 &8«'
+
+Settings:
+  can_escape: false
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7此菜单展示了各种条件判断的用法，包括权限、PAPI变量、内置变量等。'
+
+  player_info:
+    type:
+      - condition: '%player_is_op% == true'
+        allow: 'item'
+        deny: 'none'
+    material: 'DIAMOND'
+    name: '&a&l管理员信息'
+    description: '&f你是OP，可以看到此物品'
+
+  normal_info:
+    type:
+      - condition: '%player_is_op% == false'
+        allow: 'item'
+        deny: 'none'
+    material: 'IRON_INGOT'
+    name: '&7&l普通玩家信息'
+    description: '&f你是普通玩家，可以看到此物品'
+
+Inputs:
+  test_input:
+    type: 'input'
+    text: '&a测试输入'
+    default: 'Hello World'
+    max_length: 50
+
+  admin_input:
+    type:
+      - condition: 'hasPermission admin.test'
+        allow: 'input'
+        deny: 'none'
+    text: '&c管理员输入'
+    default: 'admin_only'
+    max_length: 50
+
+Bottom:
+  type: 'multi'
+  columns: 2
+
+  buttons:
+    # 1. 权限判断演示
+    perm_demo:
+      conditions: 'hasPermission kamenu.admin'
+      text: '&c[ 权限判断 ]'
+      actions:
+        - 'tell: &a你有 kamenu.admin 权限'
+        - 'console: say %player_name% 拥有管理员权限'
+
+    perm_deny:
+      conditions: '!hasPermission kamenu.admin'
+      text: '&7[ 无权限 ]'
+      actions:
+        - 'tell: &c你没有 kamenu.admin 权限'
+
+    # 2. PAPI 变量判断演示
+    papi_health:
+      conditions: '%player_health% >= 18'
+      text: '&c[ 高血量 ]'
+      actions:
+        - 'tell: &a你的血量很高: %player_health%'
+
+    papi_low_health:
+      conditions: '%player_health% < 10'
+      text: '&4[ 低血量 ]'
+      actions:
+        - 'tell: &c你的血量较低: %player_health%'
+        - 'sound: entity.experience_orb.pickup'
+
+    papi_world:
+      conditions: '%player_world% == world'
+      text: '&a[ 主世界 ]'
+      actions:
+        - 'tell: &a你在主世界'
+
+    # 3. 内置变量判断演示
+    input_check:
+      conditions: '{data:test_input} == Hello World'
+      text: '&a[ 输入检查 ]'
+      actions:
+        - 'tell: &a你输入的内容是 "Hello World"'
+
+    input_other:
+      conditions: '{data:test_input} != Hello World'
+      text: '&7[ 其他输入 ]'
+      actions:
+        - 'tell: &e你输入的内容是: {data:test_input}'
+
+    data_exists:
+      conditions: '{data:test_key} != null'
+      text: '&b[ 数据存在 ]'
+      actions:
+        - 'tell: &b个人数据 test_key 存在，值为: {data:test_key}'
+
+    data_not_exists:
+      conditions: '{data:test_key} == null'
+      text: '&8[ 数据不存在 ]'
+      actions:
+        - 'tell: &7个人数据 test_key 不存在'
+        - 'set-data: test_key demo_value'
+
+    # 4. 条件动作演示
+    condition_action:
+      text: '&d[ 条件动作 ]'
+      actions:
+        - condition: 'hasPermission kamenu.admin'
+          actions:
+            - 'tell: &c管理员专用消息'
+            - 'sound: entity.ender_dragon.growl'
+          deny:
+            - 'tell: &7普通玩家消息'
+
+    # 5. 复合条件判断
+    and_condition:
+      conditions: 'hasPermission kamenu.admin && %player_health% >= 10'
+      text: '&6[ AND条件 ]'
+      actions:
+        - 'tell: &a你有管理员权限 且 血量>=10'
+
+    or_condition:
+      conditions: 'hasPermission kamenu.admin || %player_world% == world'
+      text: '&5[ OR条件 ]'
+      actions:
+        - 'tell: &a你是管理员 或 在主世界'
+
+    not_condition:
+      conditions: '!hasPermission kamenu.admin'
+      text: '&7[ NOT条件 ]'
+      actions:
+        - 'tell: &c你不是管理员'
+
+    # 6. 数值比较演示
+    x_coord:
+      conditions: '%player_x% >= 0 && %player_x% < 1000'
+      text: '&a[ 坐标X: 0-1000 ]'
+      actions:
+        - 'tell: &a你的X坐标在0-1000之间: %player_x%'
+
+    y_high:
+      conditions: '%player_y% >= 64'
+      text: '&b[ 高空 ]'
+      actions:
+        - 'tell: &b你在高空: Y=%player_y%'
+        - 'sound: entity.ghast.scream'
+
+    # 7. 数据操作演示
+    set_data:
+      text: '&e[ 设置数据 ]'
+      actions:
+        - condition: '{data:counter} == null'
+          actions:
+            - 'set-data: counter 1'
+          deny:
+            - condition: '{data:counter} == "10"'
+              actions:
+                - 'set-data: counter 1'
+              deny:
+                - 'tell: &e当前计数: {data:counter}'
+                - 'set-data: counter {data:counter}+1'
+
+    show_data:
+      text: '&f[ 查看数据 ]'
+      actions:
+        - 'tell: &acounter = {data:counter}'
+        - 'tell: &btest_input = {data:test_input}'
+
+    # 8. 列表条件演示
+    list_condition:
+      text: '&d[ 列表条件 ]'
+      actions:
+        - ['tell: &a多条消息1', 'tell: &a多条消息2', 'wait: 20', 'tell: &a延迟后的消息']
+        - condition: 'hasPermission kamenu.admin'
+          actions:
+            - 'tell: &c管理员专属消息'
+            - 'console: say 管理员操作'
+          deny:
+            - 'tell: &7普通玩家消息'
+
+    # 9. 复杂条件组合
+    complex_condition:
+      conditions: 'hasPermission kamenu.admin && %player_health% >= 10 && %player_world% == world'
+      text: '&6&l[ 复杂条件 ]'
+      actions:
+        - 'tell: &a满足所有条件：管理员 + 高血量 + 主世界'
+        - 'title: title=&6复杂条件测试;subtitle=&e条件全部满足;in=10;keep=60;out=20'
+
+    # 10. 全局数据演示
+    global_data:
+      conditions: '{gdata:server_status} != null'
+      text: '&5[ 全局数据 ]'
+      actions:
+        - 'tell: &d服务器状态: {gdata:server_status}'
+
+    set_global:
+      conditions: '{gdata:server_status} == null'
+      text: '&8[ 初始化数据 ]'
+      actions:
+        - 'set-gdata: server_status running'
+        - 'tell: &a已初始化服务器状态'
+
+  exit:
+    text: '&4[ 退出 ]'
+    actions:
+      - 'tell: &c再见！'
+      - 'close'
