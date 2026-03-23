@@ -1,0 +1,44 @@
+# KaMenu 中文语言文件
+# Language: zh_CN
+
+# 插件消息
+plugin:
+  enabled: "§a[KaMenu] 插件已就绪！"
+  disabled: "§e[KaMenu] 插件已关闭。"
+  language_set: "当前语言设置为: {0}"
+
+# 命令消息
+command:
+  player_only: "§c只有玩家可以执行此指令！"
+  usage: "§e用法: /km open <菜单名> 或 /km reload"
+  no_permission: "§c你没有权限执行此指令！"
+  reloaded: "§a[KaMenu] 配置与菜单已重载成功！"
+  no_menu_name: "§c请输入菜单名！"
+
+# 菜单管理
+menu:
+  not_found: "§c[KaMenu] 菜单 '{0}' 不存在！"
+  loaded: "已加载菜单: {0}"
+  reloaded: "§a[KaMenu] 菜单已重载，共加载 {0} 个菜单。"
+
+# 菜单管理器
+manager:
+  resource_not_found: "未找到资源路径: {0}"
+  unsupported_protocol: "不支持的协议: {0}"
+  save_error: "释放默认菜单文件时出错: {0}"
+  folder_created: "创建文件夹: {0}/{1}"
+  file_saved: "已释放默认菜单文件: {0}/{1}"
+  jar_extract_error: "从 jar 包提取文件失败: {0}"
+
+# 菜单UI
+ui:
+  default_title: "KaMenu"
+
+# 条件工具
+condition:
+  unknown_method: "[KaMenu] 未知内置条件方法: {0}"
+  vault_error: "[KaMenu] Vault经济插件检查失败: {0}"
+
+# 动作处理
+actions:
+  unknown_sound_category: "§c未知的声音类别: {0}"

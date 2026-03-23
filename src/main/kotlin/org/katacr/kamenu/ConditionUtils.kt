@@ -8,6 +8,14 @@ import org.bukkit.entity.Player
  * 支持复杂的逻辑表达式、PAPI 变量和多种比较运算符
  */
 object ConditionUtils {
+    private var languageManager: LanguageManager? = null
+
+    /**
+     * 设置语言管理器引用
+     */
+    fun setLanguageManager(manager: LanguageManager) {
+        languageManager = manager
+    }
 
     /**
      * 动作执行器接口
@@ -299,7 +307,7 @@ object ConditionUtils {
                 checkPlayerMoney(player, amount)
             }
             else -> {
-                println("[KaMenu] 未知内置条件方法: $method")
+                println(languageManager?.getMessage("condition.unknown_method", method) ?: "[KaMenu] 未知内置条件方法: $method")
                 false
             }
         }
@@ -322,7 +330,7 @@ object ConditionUtils {
                     return econ.getBalance(player) >= amount
                 }
             } catch (e: Exception) {
-                println("[KaMenu] Vault经济插件检查失败: ${e.message}")
+                println(languageManager?.getMessage("condition.vault_error", e.message ?: "Unknown error") ?: "[KaMenu] Vault经济插件检查失败: ${e.message}")
             }
         }
 

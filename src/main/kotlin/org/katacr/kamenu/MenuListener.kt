@@ -24,7 +24,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
             // 取消交换动作的动画，直接打开菜单
             event.isCancelled = true
-            MenuUI.openMenu(player, menuName, plugin.menuManager)
+            MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
         }
     }
 }

@@ -32,7 +32,7 @@ class MenuManager(private val plugin: KaMenu) {
             val url = plugin.javaClass.classLoader.getResource(resourcePath)
 
             if (url == null) {
-                plugin.logger.warning("未找到资源路径: $resourcePath")
+                plugin.logger.warning(plugin.languageManager.getMessage("manager.resource_not_found", resourcePath))
                 return
             }
 
@@ -49,11 +49,11 @@ class MenuManager(private val plugin: KaMenu) {
                     saveDefaultMenusFromJar(folder, jarFile, resourcePath)
                 }
                 else -> {
-                    plugin.logger.warning("不支持的协议: ${url.protocol}")
+                    plugin.logger.warning(plugin.languageManager.getMessage("manager.unsupported_protocol", url.protocol))
                 }
             }
         } catch (e: Exception) {
-            plugin.logger.warning("释放默认菜单文件时出错: ${e.message}")
+            plugin.logger.warning(plugin.languageManager.getMessage("manager.save_error", e.message ?: "Unknown error"))
         }
     }
 
@@ -68,14 +68,14 @@ class MenuManager(private val plugin: KaMenu) {
                 // 递归创建子文件夹
                 if (!targetFile.exists()) {
                     targetFile.mkdirs()
-                    plugin.logger.info("创建文件夹: $resourcePath/${file.name}")
+                    plugin.logger.info(plugin.languageManager.getMessage("manager.folder_created", resourcePath, file.name))
                 }
                 saveDefaultMenusFromFileSystem(targetFile, file, "$resourcePath/${file.name}")
             } else if (file.name.endsWith(".yml")) {
                 // 复制 yml 文件
                 if (!targetFile.exists()) {
                     file.copyTo(targetFile, overwrite = false)
-                    plugin.logger.info("已释放默认菜单文件: $resourcePath/${file.name}")
+                    plugin.logger.info(plugin.languageManager.getMessage("manager.file_saved", resourcePath, file.name))
                 }
             }
         }
@@ -103,14 +103,14 @@ class MenuManager(private val plugin: KaMenu) {
                             zip.getInputStream(entry).use { input ->
                                 targetFile.outputStream().use { output ->
                                     input.copyTo(output)
-                                    plugin.logger.info("已释放默认菜单文件: $resourcePath/$relativePath")
+                                    plugin.logger.info(plugin.languageManager.getMessage("manager.file_saved", resourcePath, relativePath))
                                 }
                             }
                         }
                     }
             }
         } catch (e: Exception) {
-            plugin.logger.warning("从 jar 包提取文件失败: ${e.message}")
+            plugin.logger.warning(plugin.languageManager.getMessage("manager.jar_extract_error", e.message ?: "Unknown error"))
         }
     }
 
@@ -130,7 +130,7 @@ class MenuManager(private val plugin: KaMenu) {
                 val menuId = if (prefix.isEmpty()) file.nameWithoutExtension else "$prefix/${file.nameWithoutExtension}"
                 val config = YamlConfiguration.loadConfiguration(file)
                 menus[menuId] = config
-                plugin.logger.info("已加载菜单: $menuId")
+                plugin.logger.info(plugin.languageManager.getMessage("menu.loaded", menuId))
             }
         }
     }
@@ -144,7 +144,7 @@ class MenuManager(private val plugin: KaMenu) {
     fun reload() {
         menus.clear()
         loadMenus()
-        plugin.logger.info("§a[KaMenu] 菜单已重载，共加载 ${menus.size} 个菜单。")
+        plugin.logger.info(plugin.languageManager.getMessage("menu.reloaded", menus.size))
     }
     fun clear() {
         menus.clear()

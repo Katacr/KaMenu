@@ -11,33 +11,34 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
 
         if (sender !is Player) {
-            sender.sendMessage("§c只有玩家可以执行此指令！")
+            sender.sendMessage(plugin.languageManager.getMessage("command.player_only"))
             return true
         }
 
         if (args.isEmpty()) {
-            sender.sendMessage("§e用法: /km open <菜单名> 或 /km reload")
+            sender.sendMessage(plugin.languageManager.getMessage("command.usage"))
             return true
         }
 
         if (args[0].equals("reload", ignoreCase = true)) {
             if (!sender.hasPermission("kamenu.admin")) {
-                sender.sendMessage("§c你没有权限执行此指令！")
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
                 return true
             }
             plugin.reloadConfig()
+            plugin.languageManager.reload()
             plugin.menuManager.reload()
 
-            sender.sendMessage("§a[KaMenu] 配置与菜单已重载成功！")
+            sender.sendMessage(plugin.languageManager.getMessage("command.reloaded"))
             return true
         }
 
         if (args[0].equals("open", ignoreCase = true)) {
             if (args.size < 2) {
-                sender.sendMessage("§c请输入菜单名！")
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_menu_name"))
                 return true
             }
-            MenuUI.openMenu(sender, args[1], plugin.menuManager)
+            MenuUI.openMenu(sender, args[1], plugin.menuManager, plugin)
         }
 
         return true

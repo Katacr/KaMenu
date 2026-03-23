@@ -65,13 +65,13 @@ object MenuUI {
         }
     }
 
-    fun openMenu(player: Player, menuId: String, manager: MenuManager) {
+    fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
-            player.sendMessage("§c[KaMenu] 菜单 '$menuId' 不存在！")
+            player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
             return
         }
-        val title = color(getConditionalValue(player, config, "Title", "KaMenu"))
+        val title = color(getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title")))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -182,7 +182,7 @@ object MenuUI {
             val plugin = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
             if (plugin != null) {
                 Bukkit.getScheduler().runTask(plugin, Runnable {
-                    openMenu(p, menuName, plugin.menuManager)
+                    openMenu(p, menuName, plugin.menuManager, plugin)
                 })
             }
         }

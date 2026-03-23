@@ -20,6 +20,14 @@ import java.time.Duration
  */
 object MenuActions {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
+    private var languageManager: LanguageManager? = null
+
+    /**
+     * 设置语言管理器引用
+     */
+    fun setLanguageManager(manager: LanguageManager) {
+        languageManager = manager
+    }
 
     /**
      * 将颜色代码转换为 Adventure Component
@@ -239,7 +247,7 @@ object MenuActions {
                             "voice" -> SoundCategory.VOICE
                             "ui" -> SoundCategory.UI
                             else -> {
-                                player.sendMessage("§c未知的声音类别: $cat")
+                                player.sendMessage(languageManager?.getMessage("actions.unknown_sound_category", cat) ?: "§c未知的声音类别: $cat")
                                 SoundCategory.MASTER
                             }
                         }
