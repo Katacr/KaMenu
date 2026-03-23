@@ -6,15 +6,15 @@
 
 ## 🎮 系统要求
 
-| 项目 | 支持详情 |
-|------|---------|
-| Minecraft 版本 | 1.21.4+ |
-| Java 版本 | Java 21+ |
-| 服务器类型 | **Paper** 及其衍生核心（Purpur 等）|
-| 数据库 | SQLite（默认）、MySQL 5.7+ |
+| 项目 | 支持详情                       |
+|------|----------------------------|
+| Minecraft 版本 | 1.21.8+                    |
+| Java 版本 | Java 21+                   |
+| 服务器类型 | **Paper** 及其衍生核心（Purpur 等） |
+| 数据库 | SQLite（默认）、MySQL 5.7+      |
 
 {% hint style="warning" %}
-KaMenu 依赖 Paper 1.21.4+ 原生 **Dialog API**，**不支持** Spigot、CraftBukkit 等非 Paper 服务端。
+KaMenu 依赖 Paper 1.21.8+ 原生 **Dialog API**，**不支持** Spigot、CraftBukkit 等非 Paper 服务端。
 {% endhint %}
 
 ---
