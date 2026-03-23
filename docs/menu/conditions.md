@@ -164,8 +164,15 @@ condition: "(%player_level% >= 5 && %player_level% <= 10) || %player_is_op% == t
 | 变量格式 | 说明 | 示例 |
 |---------|------|------|
 | `%papi_var%` | PlaceholderAPI 变量 | `%player_level%` |
-| `{data:key}` | 玩家个人数据 | `{data:vip_level}` |
-| `{gdata:key}` | 全局共享数据 | `{gdata:server_status}` |
+| `{data:key}` | 玩家个人数据（持久化）| `{data:vip_level}` |
+| `{gdata:key}` | 全局共享数据（持久化）| `{gdata:server_status}` |
+| `{meta:key}` | 玩家元数据（内存缓存）| `{meta:last_visit}` |
+
+**元数据说明：**
+- 元数据仅存储在内存中，不持久化到数据库
+- 玩家退出时自动清理该玩家的元数据
+- 插件重载或关服时清理全部元数据
+- 适用于需要短时间存储临时数据的场景
 
 ---
 
@@ -237,6 +244,33 @@ actions:
       - 'tell: &c不符合条件'
 ```
 
+### 示例 5：元数据状态检查
+
+```yaml
+actions:
+  - condition: "{meta:temp_status} != null"
+    allow:
+      - 'tell: &a临时状态存在: {meta:temp_status}'
+    deny:
+      - 'tell: &7未设置临时状态'
+  - 'set-meta: last_action clicked'
+```
+
+### 示例 6：元数据与条件结合
+
+```yaml
+actions:
+  # 设置临时状态
+  - 'set-meta: temp_user true'
+
+  - condition: "{meta:temp_user} == true"
+    allow:
+      - 'tell: &a已标记为临时用户'
+      - 'open: temp_menu'
+    deny:
+      - 'tell: &c未标记为临时用户'
+```
+
 ---
 
 ## 注意事项
@@ -246,6 +280,10 @@ actions:
 3. **大小写不敏感**：`==` 和 `!=` 运算符在字符串比较时不区分大小写
 4. **deny 可省略**：动作条件中 `deny` 字段为可选；文本字段条件中 `deny` 建议填写以避免空白显示
 5. **嵌套括号**：支持多层括号嵌套来构建复杂的逻辑表达式
+6. **数据持久化**：
+   - `{data:key}` 和 `{gdata:key}` 存储在数据库中，持久化保存
+   - `{meta:key}` 仅存储在内存中，玩家退出或插件重载后自动清空
+   - 使用 `{meta:key} != null` 判断元数据是否存在
 
 ---
 

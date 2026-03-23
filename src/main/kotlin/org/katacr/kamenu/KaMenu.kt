@@ -16,6 +16,7 @@ class KaMenu : JavaPlugin() {
     lateinit var menuManager: MenuManager
     lateinit var languageManager: LanguageManager
     lateinit var databaseManager: DatabaseManager
+    lateinit var metaDataManager: MetaDataManager
     var economy: Economy? = null
 
     /**
@@ -108,6 +109,10 @@ class KaMenu : JavaPlugin() {
         databaseManager.setup()
         MenuActions.setDatabaseManager(databaseManager)
 
+        // 6.5 初始化元数据管理器
+        metaDataManager = MetaDataManager()
+        MenuActions.setMetaDataManager(metaDataManager)
+
         // 设置 ConditionUtils 插件引用
         ConditionUtils.setPlugin(this)
 
@@ -135,6 +140,9 @@ class KaMenu : JavaPlugin() {
         }
         if (::databaseManager.isInitialized) {
             databaseManager.close()
+        }
+        if (::metaDataManager.isInitialized) {
+            metaDataManager.clearAll()
         }
         server.scheduler.cancelTasks(this)
 

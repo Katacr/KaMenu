@@ -4,6 +4,7 @@ package org.katacr.kamenu
 
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
 
 class MenuListener(private val plugin: KaMenu) : Listener {
@@ -26,5 +27,11 @@ class MenuListener(private val plugin: KaMenu) : Listener {
             event.isCancelled = true
             MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
         }
+    }
+
+    @EventHandler
+    fun onPlayerQuit(event: PlayerQuitEvent) {
+        // 清理该玩家的元数据缓存
+        plugin.metaDataManager.clearPlayerMeta(event.player.uniqueId)
     }
 }

@@ -24,6 +24,7 @@ object MenuActions {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
     private var languageManager: LanguageManager? = null
     private var databaseManager: DatabaseManager? = null
+    private var metaDataManager: MetaDataManager? = null
     private var plugin: KaMenu? = null
 
     /**
@@ -47,6 +48,13 @@ object MenuActions {
      */
     fun setDatabaseManager(manager: DatabaseManager) {
         databaseManager = manager
+    }
+
+    /**
+     * 设置元数据管理器引用
+     */
+    fun setMetaDataManager(manager: MetaDataManager) {
+        metaDataManager = manager
     }
 
     /**
@@ -81,6 +89,10 @@ object MenuActions {
             val key = matchResult.groupValues[1]
             databaseManager?.getGlobalData(key)
                 ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
+        }
+        result = result.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
+            val key = matchResult.groupValues[1]
+            metaDataManager?.getPlayerMeta(player.uniqueId, key) ?: "null"
         }
 
         // 2. 解析 PAPI 变量
@@ -357,6 +369,16 @@ object MenuActions {
                     val key = args[0]
                     val value = args[1]
                     databaseManager?.setGlobalData(key, value)
+                }
+            }
+
+            // set-meta: 设置玩家元数据（内存缓存）
+            finalCmd.startsWith("set-meta:") -> {
+                val args = finalCmd.removePrefix("set-meta:").trim().split(" ", limit = 2)
+                if (args.size >= 2) {
+                    val key = args[0]
+                    val value = args[1]
+                    metaDataManager?.setPlayerMeta(player.uniqueId, key, value)
                 }
             }
 

@@ -7,6 +7,7 @@ import org.bukkit.OfflinePlayer
  * 支持的变量格式：
  * - %kamenu_data_key% - 获取玩家数据
  * - %kamenu_gdata_key% - 获取全局数据
+ * - %kamenu_meta_key% - 获取玩家元数据（内存缓存）
  */
 class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
 
@@ -38,6 +39,13 @@ class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
                 val key = params.substring(6)
                 plugin.databaseManager.getGlobalData(key)
                     ?: plugin.languageManager.getMessage("papi.data_not_found", key)
+            }
+
+            // 玩家元数据: %kamenu_meta_key%
+            paramsLower.startsWith("meta_") -> {
+                if (player == null) return null
+                val key = params.substring(5)
+                plugin.metaDataManager.getPlayerMeta(player.uniqueId, key)
             }
 
             else -> null
