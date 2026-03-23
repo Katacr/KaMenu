@@ -75,9 +75,9 @@ Bottom:
       text: '&3[ PAPI ]'
       actions:
         - 'tell: &a玩家: %player_name%'
-        - 'tell: &b世界: %world%'
-        - 'tell: &c坐标: %x%, %y%, %z%'
-        - 'tell: &d血量: %health%/%max_health%'
+        - 'tell: &b世界: %player_world%'
+        - 'tell: &c坐标: %player_x%, %player_y%, %player_z%'
+        - 'tell: &d血量: %player_health%/%player_max_health%'
 
     test_variable:
       text: '&7[ 变量 ]'
@@ -96,6 +96,36 @@ Bottom:
       actions:
         - 'tell: &c再见！'
         - 'close'
+
+    test_wait:
+      text: '&a[ wait ]'
+      actions:
+        - 'close'
+        - 'tell: &e开始执行...'
+        - 'wait: 20'
+        - 'tell: &a1秒后...'
+        - 'wait: 20'
+        - 'tell: &b2秒后...'
+        - 'wait: 20'
+        - 'tell: &c3秒完成！'
+
+    test_data:
+      text: '&a[ set data ]'
+      actions:
+        - 'close'
+        - 'tell: &e正在设置test个人数据为“Hello”...'
+        - 'set-data: test Hello'
+        - 'wait: 1'
+        - 'tell: &a1设置成功！test值为: 内置:{data:test}/PAPI:%kamenu_data_test%'
+
+    test_gdata:
+      text: '&a[ set gdata ]'
+      actions:
+        - 'close'
+        - 'tell: &e正在设置test全局数据“Global”...'
+        - 'set-gdata: test Global'
+        - 'wait: 1'
+        - 'tell: &a1设置成功！test值为: 内置:{gdata:test}/PAPI:%kamenu_gdata_test%'
 
   exit:
     text: '&8[ 退出 ]'

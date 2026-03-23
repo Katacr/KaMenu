@@ -22,6 +22,16 @@ object MenuActions {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
     private var languageManager: LanguageManager? = null
     private var databaseManager: DatabaseManager? = null
+    private var plugin: KaMenu? = null
+
+    /**
+     * 延迟动作数据类
+     */
+    private data class DeferredAction(
+        val delay: Long,
+        val action: String,
+        val variables: Map<String, String>
+    )
 
     /**
      * 设置语言管理器引用
@@ -35,6 +45,13 @@ object MenuActions {
      */
     fun setDatabaseManager(manager: DatabaseManager) {
         databaseManager = manager
+    }
+
+    /**
+     * 设置插件引用
+     */
+    fun setPlugin(kamenu: KaMenu) {
+        plugin = kamenu
     }
 
     /**
@@ -123,7 +140,7 @@ object MenuActions {
     }
 
     /**
-     * 执行动作列表（支持简单动作和条件判断动作）
+     * 执行动作列表（支持简单动作、列表动作和条件判断动作）
      */
     private fun executeActionList(
         player: Player,
@@ -131,19 +148,100 @@ object MenuActions {
         variables: Map<String, String>,
         menuOpener: (Player, String) -> Unit
     ) {
+        val actionsToExecute = mutableListOf<DeferredAction>()
+        var currentDelay = 0L
+
         for (action in actionList) {
             when (action) {
                 is Map<*, *> -> {
                     // 条件判断动作 - 使用 ConditionUtils 处理
-                    ConditionUtils.executeConditionalAction(player, action, variables) { actionStr ->
-                        executeSingleAction(player, actionStr, variables, menuOpener)
+                    val group = action
+                    val conditionStr = group["condition"] as? String
+                    val successActions = (group["allow"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                    val denyActions = (group["deny"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+
+                    val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) {
+                        successActions
+                    } else {
+                        denyActions
+                    }
+
+                    // 重置延迟为0，重新计算
+                    var groupDelay = 0L
+
+                    actionsToUse.forEach { actionStr ->
+                        var finalAction = actionStr
+                        variables.forEach { (key, value) ->
+                            finalAction = finalAction.replace("$($key)", value)
+                        }
+
+                        // 检查是否是 wait 动作
+                        if (finalAction.startsWith("wait:", ignoreCase = true)) {
+                            val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
+                            groupDelay += waitTime
+                        } else {
+                            actionsToExecute.add(DeferredAction(groupDelay, finalAction, variables))
+                        }
+                    }
+                }
+                is List<*> -> {
+                    // 普通动作列表 - 遍历并执行每个动作
+                    action.forEach { subAction ->
+                        val actionStr = subAction?.toString() ?: return@forEach
+                        var finalAction = actionStr
+                        variables.forEach { (key, value) ->
+                            finalAction = finalAction.replace("$($key)", value)
+                        }
+
+                        // 检查是否是 wait 动作
+                        if (finalAction.startsWith("wait:", ignoreCase = true)) {
+                            val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
+                            currentDelay += waitTime
+                        } else {
+                            actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
+                        }
                     }
                 }
                 is String -> {
-                    // 简单字符串动作
-                    executeSingleAction(player, action, variables, menuOpener)
+                    var finalAction: String = action
+                    variables.forEach { (key, value) ->
+                        finalAction = finalAction.replace("$($key)", value)
+                    }
+
+                    // 检查是否是 wait 动作
+                    if (finalAction.startsWith("wait:", ignoreCase = true)) {
+                        val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
+                        currentDelay += waitTime
+                    } else {
+                        actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
+                    }
+                }
+                else -> {
+                    // 忽略其他类型的值（数字、布尔值等）
                 }
             }
+        }
+
+        // 按延迟时间执行所有动作
+        actionsToExecute.forEach { deferred ->
+            executeDeferredAction(player, deferred, menuOpener)
+        }
+    }
+
+    /**
+     * 执行延迟动作
+     */
+    private fun executeDeferredAction(
+        player: Player,
+        deferred: DeferredAction,
+        menuOpener: (Player, String) -> Unit
+    ) {
+        if (deferred.delay > 0) {
+            Bukkit.getScheduler().runTaskLater(plugin ?: return, Runnable {
+                executeSingleAction(player, deferred.action, deferred.variables, menuOpener)
+            }, deferred.delay)
+        } else {
+            executeSingleAction(player, deferred.action, deferred.variables, menuOpener)
         }
     }
 

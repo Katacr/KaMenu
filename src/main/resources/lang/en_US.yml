@@ -48,7 +48,7 @@ ui:
 
 # PAPI Variables
 papi:
-  data_not_found: "Null"
+  data_not_found: "null"
 
 # Condition Utils
 condition:

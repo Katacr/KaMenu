@@ -86,6 +86,9 @@ class KaMenu : JavaPlugin() {
         // 初始化 MenuUI
         MenuUI.init(this)
 
+        // 设置 MenuActions 插件引用
+        MenuActions.setPlugin(this)
+
         // 3. 初始化菜单管理器
         menuManager = MenuManager(this)
         menuManager.loadMenus()
