@@ -18,3 +18,4 @@
 * [💾 数据存储](data/README.md)
   * [📊 玩家数据与全局数据](data/storage.md)
 * [🔖 PlaceholderAPI](PlaceholderAPI.md)
+* [🔌 API 接口](API.md)

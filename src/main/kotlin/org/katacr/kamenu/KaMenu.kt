@@ -120,6 +120,9 @@ class KaMenu : JavaPlugin() {
         setupEconomy()
         MenuActions.setEconomy(economy)
 
+        // 7.5 初始化 API
+        org.katacr.kamenu.api.KaMenuAPI.init(this)
+
         // 8. 统计数据
         val metrics = Metrics(this, 30376)
         metrics.addCustomChart(SingleLineChart("menus_total") {
