@@ -8,6 +8,7 @@ import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.kyori.adventure.title.Title
+import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
 import org.bukkit.NamespacedKey
 import org.bukkit.SoundCategory
@@ -25,6 +26,7 @@ object MenuActions {
     private var languageManager: LanguageManager? = null
     private var databaseManager: DatabaseManager? = null
     private var metaDataManager: MetaDataManager? = null
+    private var economy: Economy? = null
     private var plugin: KaMenu? = null
 
     /**
@@ -55,6 +57,13 @@ object MenuActions {
      */
     fun setMetaDataManager(manager: MetaDataManager) {
         metaDataManager = manager
+    }
+
+    /**
+     * 设置经济系统引用
+     */
+    fun setEconomy(econ: Economy?) {
+        economy = econ
     }
 
     /**
@@ -387,6 +396,12 @@ object MenuActions {
                 val args = finalCmd.removePrefix("toast:").trim()
                 parseAndSendToast(player, args)
             }
+
+            // money: 操作玩家金币
+            finalCmd.startsWith("money:") -> {
+                val args = finalCmd.removePrefix("money:").trim()
+                parseAndHandleMoney(player, args)
+            }
         }
     }
 
@@ -692,6 +707,59 @@ object MenuActions {
             plugin?.logger?.severe("Toast 发送失败: ${e.message}")
             // 打印出生成的 JSON 方便调试
             plugin?.logger?.info("生成的 JSON: $advancementJson")
+        }
+    }
+
+    /**
+     * 解析并处理金币操作
+     * 格式: type=add;num=100 | type=take;num=100 | type=reset;num=100
+     */
+    private fun parseAndHandleMoney(player: Player, args: String) {
+        if (economy == null) {
+            plugin?.logger?.warning("经济系统未启用，无法执行 money 动作。玩家: ${player.name}")
+            return
+        }
+
+        var type = ""
+        var amount = 0.0
+
+        val params = args.split(";")
+        for (param in params) {
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val key = parts[0].trim().lowercase()
+                val value = parts[1].trim()
+                when (key) {
+                    "type" -> type = value.lowercase()
+                    "num" -> amount = value.toDoubleOrNull() ?: 0.0
+                }
+            }
+        }
+
+        val balance = economy!!.getBalance(player)
+
+        when (type) {
+            "add" -> {
+                economy!!.depositPlayer(player, amount)
+            }
+            "take" -> {
+                if (balance >= amount) {
+                    economy!!.withdrawPlayer(player, amount)
+                } else {
+                    plugin?.logger?.warning("玩家 ${player.name} 余额不足，无法扣除 ${amount} 金币。当前余额: $balance")
+                }
+            }
+            "reset" -> {
+                val difference = amount - balance
+                if (difference > 0) {
+                    economy!!.depositPlayer(player, difference)
+                } else if (difference < 0) {
+                    economy!!.withdrawPlayer(player, -difference)
+                }
+            }
+            else -> {
+                plugin?.logger?.warning("无效的金币操作类型: $type。玩家: ${player.name}")
+            }
         }
     }
 }

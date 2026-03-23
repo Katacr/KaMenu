@@ -118,6 +118,7 @@ class KaMenu : JavaPlugin() {
 
         // 7. 设置经济系统
         setupEconomy()
+        MenuActions.setEconomy(economy)
 
         // 8. 统计数据
         val metrics = Metrics(this, 30376)
