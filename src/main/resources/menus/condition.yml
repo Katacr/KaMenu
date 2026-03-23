@@ -1,4 +1,9 @@
-Title: '&8» &6&lKaMenu 旗舰版演示 &8«'
+Title:
+  - condition: '%player_is_op% == true'
+    meet: '你是服务器管理员'
+    deny: '你不是服务器管理员'
+
+
 
 Body:
   welcome_msg:
@@ -52,7 +57,7 @@ Bottom:
   type: 'confirmation'
   confirm:
     text: '&a[ 确认提交 ]'
-    actions:
+    action:
       - 'tell: &8&l--------------------------------'
       - 'tell: &6感谢提交！您的偏好：'
       - 'tell: &f音量: &e$(volume_setting)%'
@@ -65,6 +70,6 @@ Bottom:
       - 'sound: entity.experience_orb.pickup;volume=1.0;pitch=1.5'
   deny:
     text: '&c[ 以后再说 ]'
-    actions:
+    action:
       - 'actionbar: &c您已取消操作'
       - 'sound: block.chest.close;volume=0.8;pitch=0.8'

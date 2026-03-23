@@ -1,0 +1,27 @@
+Title: '&8» &a&l教程菜单 &8«'
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7这是一个位于 examples 文件夹下的教程菜单。'
+
+  info_item:
+    type: 'item'
+    material: 'BOOK'
+    name: '&e&l教程说明'
+    description: '&f子文件夹中的菜单可以通过路径访问'
+
+Inputs:
+  tutorial_input:
+    type: 'input'
+    text: '&a你的名字'
+    default: '玩家'
+    max_length: 20
+
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a[ 完成 ]'
+    action:
+      - 'tell: &a你好, $(tutorial_input)!'
+      - 'tell: &e这是 examples/tutorial.yml 菜单'

@@ -1,0 +1,35 @@
+Title:
+  - condition: "%player_is_op% == true"
+    meet: '&8» &4&l条件判断系统 &8« &7[管理员]'
+    deny: '&8» &6&l条件判断系统 &8« &7[玩家]'
+Settings:
+  can_escape: true
+  pause: false
+
+Body:
+  message1:
+    type: message
+    text: "&a&l这是条件判断功能的演示菜单！"
+
+
+Bottom:
+  type: multi
+  columns: 2
+
+  buttons:
+    1:
+      text:
+        - condition: "%player_is_op% == true"
+          meet: '欢迎管理员'
+          deny: '没有权限'
+      actions:
+        - condition: "%player_is_op% == true"
+          meet:
+            - 'tell: 欢迎管理员'
+          deny:
+            - 'tell: 没有权限'
+
+  exit:
+    text: "&c退出"
+    action:
+      - 'close'

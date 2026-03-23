@@ -1,0 +1,77 @@
+Title:
+  - condition: "%player_is_op% == true"
+    meet: '&8» &4&l通用条件判断演示 &8« &7[管理员]'
+    deny: '&8» &6&l通用条件判断演示 &8« &7[玩家]'
+
+Settings:
+  can_escape: true
+  pause: false
+
+Body:
+  message1:
+    type: message
+    text: "&a&l演示：所有键都支持条件判断！"
+
+Inputs:
+  # 滑块文本支持条件判断
+  volume_setting:
+    type: 'slider'
+    text:
+      - condition: "%player_is_op% == true"
+        meet: '&e管理员音量调节'
+        deny: '&e玩家音量调节'
+    min: 0
+    max: 100
+    step: 1
+    default: 50
+    format: '%s: %s%%'
+
+  # 文本框文本支持条件判断
+  user_feedback:
+    type: 'input'
+    text:
+      - condition: "%player_level% >= 10"
+        meet: '&aVIP 留言板'
+        deny: '&7普通留言板'
+    default: '请在此输入内容...'
+    multiline:
+      max_lines: 3
+      height: 60
+
+  # 下拉框文本支持条件判断
+  color_select:
+    type: 'dropdown'
+    text:
+      - condition: "%player_is_op% == true"
+        meet: '&6管理员颜色选择'
+        deny: '&b玩家颜色选择'
+    options:
+      - '&c红色'
+      - '&a绿色'
+      - '&b蓝色'
+    default_id: '&a绿色'
+
+Bottom:
+  type: confirmation
+  confirm:
+    text:
+      - condition: "%player_level% >= 10"
+        meet: '&6[ VIP 提交 ]'
+        deny: '&a[ 提交 ]'
+    actions:
+      - 'tell: &8&l--------------------------------'
+      - 'tell: &6感谢提交！您的偏好：'
+      - 'tell: &f音量: &e$(volume_setting)%'
+      - 'tell: &f反馈: &f$(user_feedback)'
+      - 'tell: &f颜色: &f$(color_select)'
+      - 'tell: &f玩家: &a%player_name% &f所在世界: &e%world%'
+      - 'actionbar: &a提交成功！3秒后关闭...'
+      - 'sound: entity.experience_orb.pickup;volume=1.0;pitch=1.5'
+  deny:
+    text:
+      - condition: "%player_is_op% == true"
+        meet: '&c[ 管理员取消 ]'
+        deny: '&c[ 以后再说 ]'
+    actions:
+      - 'actionbar: &c您已取消操作'
+      - 'sound: block.chest.close;volume=0.8;pitch=0.8'

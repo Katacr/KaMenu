@@ -5,32 +5,73 @@ package org.katacr.kamenu
 import io.papermc.paper.dialog.Dialog
 import io.papermc.paper.registry.data.dialog.ActionButton
 import io.papermc.paper.registry.data.dialog.DialogBase
-import io.papermc.paper.registry.data.dialog.action.DialogAction
 import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.input.DialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput
-import net.kyori.adventure.text.event.ClickEvent
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import java.time.Duration
 
 object MenuUI {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
-    lateinit var plugin: KaMenu
 
-    private fun color(text: String?): Component =
+    /**
+     * 将颜色代码转换为 Adventure Component
+     */
+    internal fun color(text: String?): Component =
         if (text == null) Component.empty() else serializer.deserialize(text)
 
+    /**
+     * 获取配置路径下适合当前玩家的值（支持条件判断）
+     * @param player 玩家对象
+     * @param config 菜单配置
+     * @param path 配置路径
+     * @param defaultValue 默认值
+     * @return 字符串值
+     */
+    internal fun getConditionalValue(player: Player, config: YamlConfiguration, path: String, defaultValue: String = ""): String {
+        // 检查该路径下是否为列表格式（条件判断）
+        if (config.isList(path)) {
+            val conditions = config.getList(path) ?: return defaultValue
+            return ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
+        } else {
+            // 简单字符串值
+            return config.getString(path, defaultValue) ?: defaultValue
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 字符串值
+     */
+    private fun getConditionalValueFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: String = ""): String {
+        // 检查该路径下是否为列表格式（条件判断）
+        if (section.isList(path)) {
+            val conditions = section.getList(path) ?: return defaultValue
+            return ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
+        } else {
+            // 简单字符串值
+            return section.getString(path, defaultValue) ?: defaultValue
+        }
+    }
+
     fun openMenu(player: Player, menuId: String, manager: MenuManager) {
-        val config = manager.getMenuConfig(menuId) ?: return
-        val title = color(config.getString("Title", "KaMenu"))
+        val config = manager.getMenuConfig(menuId)
+        if (config == null) {
+            player.sendMessage("§c[KaMenu] 菜单 '$menuId' 不存在！")
+            return
+        }
+        val title = color(getConditionalValue(player, config, "Title", "KaMenu"))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -47,7 +88,7 @@ object MenuUI {
             DialogBase.DialogAfterAction.CLOSE
         }
 
-        // 1. 解析 Body (展示内容) - 保持不变
+        // 1. 解析 Body
         config.getConfigurationSection("Body")?.let { section ->
             for (key in section.getKeys(false)) {
                 val type = section.getString("$key.type")
@@ -74,11 +115,11 @@ object MenuUI {
             }
         }
 
-        // 2. 解析 Inputs (高级交互组件) - 保持不变，收集 inputKeys
+        // 2. 解析 Inputs
         config.getConfigurationSection("Inputs")?.let { section ->
             for (key in section.getKeys(false)) {
                 val type = section.getString("$key.type") ?: "text"
-                val prompt = color(section.getString("$key.text"))
+                val prompt = color(getConditionalValueFromSection(player, section, "$key.text", ""))
 
                 when (type) {
                     "checkbox" -> {
@@ -123,9 +164,19 @@ object MenuUI {
             }
         }
 
-        // 3. 处理底部布局 (引入 MultiActionType)
+        // 3. 处理底部布局
         val bottomSection = config.getConfigurationSection("Bottom")
         val bottomType = bottomSection?.getString("type") ?: "notice"
+
+        // 定义菜单打开器
+        val menuOpener: (Player, String) -> Unit = { p, menuName ->
+            val plugin = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
+            if (plugin != null) {
+                Bukkit.getScheduler().runTask(plugin, Runnable {
+                    openMenu(p, menuName, plugin.menuManager)
+                })
+            }
+        }
 
         val dialogType = when (bottomType) {
             "multi" -> {
@@ -133,20 +184,23 @@ object MenuUI {
                 val actionButtons = mutableListOf<ActionButton>()
                 bottomSection?.getConfigurationSection("buttons")?.let { btnSection ->
                     for (btnKey in btnSection.getKeys(false)) {
-                        val btnText = btnSection.getString("$btnKey.text") ?: "按钮"
+                        val btnText = getConditionalValueFromSection(player, btnSection, "$btnKey.text", "按钮")
                         actionButtons.add(
                             ActionButton.builder(color(btnText))
-                                .action(buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.action", inputKeys))
+                                .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, menuOpener))
                                 .build()
                         )
                     }
                 }
 
                 // 退出/返回按钮
-                val exitBtn = bottomSection?.getString("exit.text")?.let { text ->
-                    ActionButton.builder(color(text))
-                        .action(buildActionFromConfig(player, config, "Bottom.exit.action", inputKeys))
-                        .build()
+                val exitBtn = bottomSection?.let { section ->
+                    val exitText = getConditionalValueFromSection(player, section, "exit.text", "")
+                    if (exitText.isNotEmpty()) {
+                        ActionButton.builder(color(exitText))
+                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, menuOpener))
+                            .build()
+                    } else null
                 }
 
                 DialogType.multiAction(actionButtons)
@@ -156,20 +210,25 @@ object MenuUI {
             }
 
             "confirmation" -> {
-                val confirmBtn = ActionButton.builder(color(bottomSection?.getString("confirm.text") ?: "确认"))
-                    .action(buildActionFromConfig(player, config, "Bottom.confirm.action", inputKeys))
+                val confirmBtnText = bottomSection?.let { getConditionalValueFromSection(player, it, "confirm.text", "确认") } ?: "确认"
+                val denyBtnText = bottomSection?.let { getConditionalValueFromSection(player, it, "deny.text", "取消") } ?: "取消"
+
+                val confirmBtn = ActionButton.builder(color(confirmBtnText))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, menuOpener))
                     .build()
-                val denyBtn = ActionButton.builder(color(bottomSection?.getString("deny.text") ?: "取消"))
-                    .action(buildActionFromConfig(player, config, "Bottom.deny.action", inputKeys))
+                val denyBtn = ActionButton.builder(color(denyBtnText))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, menuOpener))
                     .build()
                 DialogType.confirmation(confirmBtn, denyBtn)
             }
 
             else -> { // notice 模式
-                val path = if (config.contains("Bottom.confirm.action")) "Bottom.confirm.action" else "Bottom.button1.action"
-                val btnText = bottomSection?.getString("confirm.text") ?: bottomSection?.getString("button1.text") ?: "确认"
+                val path = if (config.contains("Bottom.confirm.actions")) "Bottom.confirm.actions" else "Bottom.button1.actions"
+                val btnText = bottomSection?.let { getConditionalValueFromSection(player, it, "confirm.text", "") }?.takeIf { it.isNotEmpty() }
+                    ?: bottomSection?.let { getConditionalValueFromSection(player, it, "button1.text", "") }?.takeIf { it.isNotEmpty() }
+                    ?: "确认"
                 val confirmBtn = ActionButton.builder(color(btnText))
-                    .action(buildActionFromConfig(player, config, path, inputKeys))
+                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, menuOpener))
                     .build()
                 DialogType.notice(confirmBtn)
             }
@@ -184,67 +243,5 @@ object MenuUI {
             .afterAction(afterAction)
             .build()
         player.showDialog(Dialog.create { it.empty().base(base).type(dialogType) })
-    }
-
-    /**
-     * 从配置文件中构建一个 DialogAction 对象
-     */
-    fun buildActionFromConfig(player: Player, config: YamlConfiguration, path: String, inputKeys: List<String>): DialogAction {
-        val actionList = config.getStringList(path)
-        if (actionList.isEmpty()) return DialogAction.staticAction(ClickEvent.runCommand("/empty"))
-
-        val firstAction = actionList[0]
-
-        // 1. 优先处理不需要服务器参与的静态动作
-        if (actionList.size == 1) {
-            when {
-                firstAction.startsWith("url:") ->
-                    return DialogAction.staticAction(ClickEvent.openUrl(firstAction.removePrefix("url:").trim()))
-                firstAction.startsWith("copy:") ->
-                    return DialogAction.staticAction(ClickEvent.copyToClipboard(firstAction.removePrefix("copy:").trim()))
-            }
-        }
-
-        // 2. 统一处理所有复杂逻辑 (多行指令、变量、声音等)
-        return DialogAction.customClick({ response, _ ->
-            val variables = mutableMapOf<String, String>()
-            inputKeys.forEach { key ->
-                val value = when {
-                    response.getFloat(key) != null -> {
-                        val f = response.getFloat(key)!!
-                        if (f == f.toInt().toFloat()) f.toInt().toString() else f.toString()
-                    }
-                    response.getText(key) != null -> response.getText(key)
-                    response.getBoolean(key) != null -> response.getBoolean(key).toString()
-                    else -> ""
-                }
-                variables[key] = value ?: ""
-            }
-
-            // 执行多行动作
-            executeActions(player, actionList, variables)
-        }, ClickCallback.Options.builder().lifetime(Duration.ofMinutes(5)).build())
-    }
-
-    fun executeActions(player: Player, actions: List<String>, variables: Map<String, String>) {
-        actions.forEach { action ->
-            var finalCmd = action
-            variables.forEach { (key, value) ->
-                finalCmd = finalCmd.replace("\$($key)", value)
-            }
-
-            when {
-                finalCmd.startsWith("tell:") ->
-                    player.sendMessage(color(finalCmd.removePrefix("tell:").trim()))
-                finalCmd.startsWith("cmd:") ->
-                    org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), finalCmd.removePrefix("cmd:").trim())
-                finalCmd.startsWith("pcmd:") ->
-                    player.performCommand(finalCmd.removePrefix("pcmd:").trim())
-                finalCmd.startsWith("sound:") -> {
-                    val sound = finalCmd.removePrefix("sound:").trim()
-                    player.playSound(player.location, sound, 1f, 1f)
-                }
-            }
-        }
     }
 }
