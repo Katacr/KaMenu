@@ -108,6 +108,12 @@ Bottom:
         - 'tell: &c再见！'
         - 'close'
 
+    test_toast:
+      text: '&6[ 吐司 ]'
+      actions:
+        - 'toast: type=challenge;msg=&f恭喜你完成了挑战！;icon=diamond'
+        - 'close'
+
     test_wait:
       text: '&a[ wait ]'
       actions:

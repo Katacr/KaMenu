@@ -2,7 +2,6 @@ package org.katacr.kamenu
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion
 import org.bukkit.OfflinePlayer
-
 /**
  * KaMenu PlaceholderAPI 扩展
  * 支持的变量格式：

@@ -9,10 +9,12 @@ import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
+import org.bukkit.NamespacedKey
 import org.bukkit.SoundCategory
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import java.time.Duration
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 
 /**
  * 菜单动作处理器
@@ -357,6 +359,12 @@ object MenuActions {
                     databaseManager?.setGlobalData(key, value)
                 }
             }
+
+            // toast: 显示 Toast 通知
+            finalCmd.startsWith("toast:") -> {
+                val args = finalCmd.removePrefix("toast:").trim()
+                parseAndSendToast(player, args)
+            }
         }
     }
 
@@ -586,5 +594,82 @@ object MenuActions {
      */
     private fun createAdventureText(text: String): Component {
         return color(text)
+    }
+
+    /**
+     * 解析并发送 Toast 通知
+     * 格式: frame=类型;icon=物品ID;title=标题;description=描述
+     * 参数:
+     * - frame: task(默认), goal, challenge
+     * - icon: 物品ID (如 diamond_sword)
+     * - title: 标题文本
+     * - description: 描述文本
+     */
+    private fun parseAndSendToast(player: Player, args: String) {
+        var frameType = "task"
+        var iconItem = "minecraft:stone"
+        var title = "提示"
+        var description = ""
+
+        // 解析参数
+        args.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val key = parts[0].trim().lowercase()
+                val value = parts[1].trim()
+                when (key) {
+                    "type" -> frameType = value.lowercase()
+                    "icon" -> iconItem = if (value.contains(":")) value else "minecraft:$value"
+                    "msg" -> title = value
+                    "description" -> description = value
+                }
+            }
+        }
+
+        // 生成唯一 Key
+        val randomKey = NamespacedKey("kamenu", "toast_${System.currentTimeMillis()}")
+
+        val titleJson = GsonComponentSerializer.gson().serialize(color(title))
+        val descJson = GsonComponentSerializer.gson().serialize(color(description))
+
+        val advancementJson = """
+    {
+      "display": {
+        "icon": {
+          "id": "${iconItem.lowercase()}"
+        },
+        "title": $titleJson,
+        "description": $descJson,
+        "frame": "${if (frameType in listOf("task", "goal", "challenge")) frameType else "task"}",
+        "show_toast": true,
+        "announce_to_chat": false,
+        "hidden": true
+      },
+      "criteria": {
+        "impossible": {
+          "trigger": "minecraft:impossible"
+        }
+      }
+    }
+    """.trimIndent()
+
+        try {
+            val advancement = Bukkit.getUnsafe().loadAdvancement(randomKey, advancementJson)
+            val progress = player.getAdvancementProgress(advancement)
+            progress.awardCriteria("impossible")
+
+            plugin?.let {
+                Bukkit.getScheduler().runTaskLater(it, Runnable {
+                    if (player.isOnline) {
+                        progress.revokeCriteria("impossible")
+                        Bukkit.getUnsafe().removeAdvancement(randomKey)
+                    }
+                }, 10L)
+            }
+        } catch (e: Exception) {
+            plugin?.logger?.severe("Toast 发送失败: ${e.message}")
+            // 打印出生成的 JSON 方便调试
+            plugin?.logger?.info("生成的 JSON: $advancementJson")
+        }
     }
 }
