@@ -108,6 +108,9 @@ class KaMenu : JavaPlugin() {
         databaseManager.setup()
         MenuActions.setDatabaseManager(databaseManager)
 
+        // 设置 ConditionUtils 插件引用
+        ConditionUtils.setPlugin(this)
+
         // 7. 设置经济系统
         setupEconomy()
 

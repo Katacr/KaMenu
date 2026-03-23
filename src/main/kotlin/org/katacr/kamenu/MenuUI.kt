@@ -47,11 +47,13 @@ object MenuUI {
         // 1. 解析内置变量 {data:key} 和 {gdata:key}
         result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
             val key = matchResult.groupValues[1]
-            plugin.databaseManager.getPlayerData(player.uniqueId, key) ?: ""
+            plugin.databaseManager.getPlayerData(player.uniqueId, key)
+                ?: plugin.languageManager.getMessage("papi.data_not_found", key)
         }
         result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
             val key = matchResult.groupValues[1]
-            plugin.databaseManager.getGlobalData(key) ?: ""
+            plugin.databaseManager.getGlobalData(key)
+                ?: plugin.languageManager.getMessage("papi.data_not_found", key)
         }
 
         // 2. 解析 PAPI 变量
@@ -367,10 +369,11 @@ object MenuUI {
                 val actionButtons = mutableListOf<ActionButton>()
                 bottomSection?.getConfigurationSection("buttons")?.let { btnSection ->
                     for (btnKey in btnSection.getKeys(false)) {
-                        // 检查按钮条件
-                        val condition = btnSection.getString("$btnKey.condition")
-                        if (condition != null && !ConditionUtils.checkCondition(player, condition)) {
-                            // 条件不满足，跳过此按钮
+                        // 检查按钮显示条件（兼容 show-condition 和 show_condition 两种写法）
+                        val showCondition = btnSection.getString("$btnKey.show-condition") ?: btnSection.getString("$btnKey.show_condition")
+
+                        if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition)) {
+                            // 条件不满足，不显示此按钮
                             continue
                         }
 

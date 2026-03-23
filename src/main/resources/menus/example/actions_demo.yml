@@ -23,12 +23,16 @@ Bottom:
   columns: 3
 
   buttons:
-    test_op_tell:
-      conditions: '%player_is_op% == true'
-      text: '&a[ OP tell ]'
+    katacr_tell:
+      show-condition: '%player_name% == Katacr'
+      text: '&a[ Katacr tell ]'
       actions:
-        - 'tell: &a这是OP消息'
-        - 'tell: &7只有OP看得到这个按钮'
+        - condition: '%player_name% == Katacr'
+          allow:
+            - 'tell: &a这是Katacr专属消息'
+          deny:
+            - 'tell: &7你是%player_name%，只有Katacr看得到消息'
+
 
     test_tell:
       text: '&a[ tell ]'

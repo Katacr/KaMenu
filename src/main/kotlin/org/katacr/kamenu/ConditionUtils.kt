@@ -9,12 +9,20 @@ import org.bukkit.entity.Player
  */
 object ConditionUtils {
     private var languageManager: LanguageManager? = null
+    private var plugin: KaMenu? = null
 
     /**
      * 设置语言管理器引用
      */
     fun setLanguageManager(manager: LanguageManager) {
         languageManager = manager
+    }
+
+    /**
+     * 设置插件引用
+     */
+    fun setPlugin(kamenu: KaMenu) {
+        plugin = kamenu
     }
 
     /**
@@ -32,8 +40,21 @@ object ConditionUtils {
     fun checkCondition(player: Player, condition: String?): Boolean {
         if (condition == null || condition.isBlank()) return true
 
-        // 先进行 PAPI 变量替换
         var processed = condition
+
+        // 1. 先解析内置变量 {data:key} 和 {gdata:key}
+        if (plugin != null) {
+            processed = processed.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
+                val key = matchResult.groupValues[1]
+                plugin!!.databaseManager.getPlayerData(player.uniqueId, key) ?: "null"
+            }
+            processed = processed.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
+                val key = matchResult.groupValues[1]
+                plugin!!.databaseManager.getGlobalData(key) ?: "null"
+            }
+        }
+
+        // 2. 进行 PAPI 变量替换
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
                 processed = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, processed)
@@ -240,28 +261,46 @@ object ConditionUtils {
     }
 
     /**
-     * 按运算符分割表达式（考虑括号和优先级）
+     * 按运算符分割表达式（考虑括号、引号和优先级）
      */
     private fun splitByOperator(expression: String, operator: String): List<String> {
         val result = mutableListOf<String>()
         var current = StringBuilder()
         var parenDepth = 0
+        var inSingleQuote = false
+        var inDoubleQuote = false
         var i = 0
 
         while (i < expression.length) {
             val char = expression[i]
 
             when {
-                char == '(' -> {
+                char == '\\' -> {
+                    // 转义字符，跳过下一个字符
+                    current.append(char)
+                    i++
+                    if (i < expression.length) {
+                        current.append(expression[i])
+                    }
+                }
+                char == '\'' && !inDoubleQuote -> {
+                    inSingleQuote = !inSingleQuote
+                    current.append(char)
+                }
+                char == '"' && !inSingleQuote -> {
+                    inDoubleQuote = !inDoubleQuote
+                    current.append(char)
+                }
+                char == '(' && !inSingleQuote && !inDoubleQuote -> {
                     parenDepth++
                     current.append(char)
                 }
-                char == ')' -> {
+                char == ')' && !inSingleQuote && !inDoubleQuote -> {
                     parenDepth--
                     current.append(char)
                 }
-                parenDepth > 0 -> {
-                    // 括号内不分割
+                parenDepth > 0 || inSingleQuote || inDoubleQuote -> {
+                    // 括号内、引号内不分割
                     current.append(char)
                 }
                 else -> {
@@ -294,43 +333,51 @@ object ConditionUtils {
         val trimmed = condition.trim()
 
         // 处理内置条件方法 @ symbol
-        if (trimmed.contains("@")) {
+        if (trimmed.contains("@") && !trimmed.matches(Regex("\".*\".*@.*"))) {
             return evaluateBuiltinCondition(player, trimmed)
         }
 
         // 如果是括号包裹的表达式，去掉括号后递归解析
-        if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
+        if (trimmed.startsWith("(") && trimmed.endsWith(")") && !trimmed.matches(Regex("\".*\".*\\(.*\\)"))) {
             val inner = trimmed.substring(1, trimmed.length - 1).trim()
-            // 确保括号是成对的
+            // 确保括号是成对的（考虑引号）
             var parenCount = 0
+            var inSingleQuote = false
+            var inDoubleQuote = false
             var isCompletePair = true
             for (char in inner) {
-                when (char) {
-                    '(' -> parenCount++
-                    ')' -> parenCount--
+                when {
+                    char == '\\' -> continue // 跳过转义字符的下一个字符
+                    char == '\'' && !inDoubleQuote -> inSingleQuote = !inSingleQuote
+                    char == '"' && !inSingleQuote -> inDoubleQuote = !inDoubleQuote
+                    char == '(' && !inSingleQuote && !inDoubleQuote -> parenCount++
+                    char == ')' && !inSingleQuote && !inDoubleQuote -> parenCount--
                 }
                 if (parenCount < 0) {
                     isCompletePair = false
                     break
                 }
             }
-            if (isCompletePair && parenCount == 0) {
+            if (isCompletePair && parenCount == 0 && !inSingleQuote && !inDoubleQuote) {
                 return parseLogicalExpression(player, inner)
             }
         }
 
         // 匹配比较运算符
         val regex = "(>=|<=|==|!=|>|<)".toRegex()
-        val match = regex.find(trimmed) ?: return false
+        val match = regex.find(trimmed)
+        if (match == null) {
+            return false
+        }
 
         val op = match.value
         val parts = trimmed.split(op, limit = 2)
-        val left = parts[0].trim()
-        val right = parts[1].trim()
+        val left = parseQuotedString(parts[0].trim())
+        val right = parseQuotedString(parts[1].trim())
 
         return when (op) {
-            "==" -> left.equals(right, ignoreCase = true)
-            "!=" -> !left.equals(right, ignoreCase = true)
+            "==" -> compareEquals(left, right)
+            "!=" -> !compareEquals(left, right)
             ">"  -> left.toDoubleDefault(0.0) > right.toDoubleDefault(0.0)
             ">=" -> left.toDoubleDefault(0.0) >= right.toDoubleDefault(0.0)
             "<"  -> left.toDoubleDefault(0.0) < right.toDoubleDefault(0.0)
@@ -350,7 +397,9 @@ object ConditionUtils {
      */
     private fun evaluateBuiltinCondition(player: Player, condition: String): Boolean {
         val parts = condition.split("@", limit = 2)
-        if (parts.size != 2) return false
+        if (parts.size != 2) {
+            return false
+        }
 
         val value = parts[0].trim()
         val method = parts[1].trim()
@@ -360,11 +409,11 @@ object ConditionUtils {
             "isPosNum" -> value.toDoubleOrNull()?.let { it > 0 } ?: false
             "hasPerm" -> player.hasPermission(value)
             "hasMoney" -> {
-                val amount = value.toDoubleOrNull() ?: return false
-                checkPlayerMoney(player, amount)
+                val amount = value.toDoubleOrNull()
+                if (amount == null) false else checkPlayerMoney(player, amount)
             }
             else -> {
-                println(languageManager?.getMessage("condition.unknown_method", method) ?: "[KaMenu] 未知内置条件方法: $method")
+                languageManager?.getMessage("condition.unknown_method", method) ?: "[KaMenu] 未知内置条件方法: $method"
                 false
             }
         }
@@ -386,8 +435,8 @@ object ConditionUtils {
                     val econ = economyProvider.provider
                     return econ.getBalance(player) >= amount
                 }
-            } catch (e: Exception) {
-                println(languageManager?.getMessage("condition.vault_error", e.message ?: "Unknown error") ?: "[KaMenu] Vault经济插件检查失败: ${e.message}")
+            } catch (_: Exception) {
+                // Vault 检查失败，忽略
             }
         }
 
@@ -395,4 +444,76 @@ object ConditionUtils {
     }
 
     private fun String.toDoubleDefault(default: Double): Double = this.toDoubleOrNull() ?: default
+
+    /**
+     * 解析引号包裹的字符串
+     * 支持单引号和双引号包裹，如果未用引号包裹则直接返回原字符串
+     * @param str 原始字符串
+     * @return 去除引号后的字符串
+     */
+    private fun parseQuotedString(str: String): String {
+        val trimmed = str.trim()
+
+        // 检查是否被双引号包裹
+        if (trimmed.startsWith("\"") && trimmed.endsWith("\"") && trimmed.length >= 2) {
+            // 检查引号是否匹配（避免像 "test 这样的情况）
+            val content = trimmed.substring(1, trimmed.length - 1)
+            // 检查内容中是否有未转义的引号
+            if (!content.contains("\"")) {
+                return content
+            }
+        }
+
+        // 检查是否被单引号包裹
+        if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2) {
+            val content = trimmed.substring(1, trimmed.length - 1)
+            if (!content.contains("'")) {
+                return content
+            }
+        }
+
+        // 未用引号包裹，直接返回
+        return trimmed
+    }
+
+    /**
+     * 比较两个值是否相等（支持数值和字符串）
+     * 优先使用数值比较，失败则使用字符串比较
+     */
+    private fun compareEquals(left: String, right: String): Boolean {
+        // 1. 先尝试数值比较
+        val leftNum = left.toDoubleOrNull()
+        val rightNum = right.toDoubleOrNull()
+
+        if (leftNum != null && rightNum != null) {
+            // 两边都是数字，使用数值比较
+            return leftNum == rightNum
+        }
+
+        // 2. 尝试布尔值比较
+        val leftBool = parseBoolean(left)
+        val rightBool = parseBoolean(right)
+
+        if (leftBool != null && rightBool != null) {
+            return leftBool == rightBool
+        }
+
+        // 3. 字符串比较（忽略大小写）
+        return left.equals(right, ignoreCase = true)
+    }
+
+    /**
+     * 解析字符串为布尔值
+     * 支持的 true 值：true, yes, 1, t, y
+     * 支持的 false 值：false, no, 0, f, n
+     * 其他情况返回 null
+     */
+    private fun parseBoolean(value: String): Boolean? {
+        val normalized = value.trim().lowercase()
+        return when (normalized) {
+            "true", "yes", "1", "t", "y" -> true
+            "false", "no", "0", "f", "n" -> false
+            else -> null
+        }
+    }
 }

@@ -72,11 +72,13 @@ object MenuActions {
         // 1. 解析内置变量 {data:key} 和 {gdata:key}
         result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
             val key = matchResult.groupValues[1]
-            databaseManager?.getPlayerData(player.uniqueId, key) ?: ""
+            databaseManager?.getPlayerData(player.uniqueId, key)
+                ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
         }
         result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
             val key = matchResult.groupValues[1]
-            databaseManager?.getGlobalData(key) ?: ""
+            databaseManager?.getGlobalData(key)
+                ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
         }
 
         // 2. 解析 PAPI 变量
@@ -177,19 +179,27 @@ object MenuActions {
         player: Player,
         actionList: List<Any>,
         variables: Map<String, String>,
-        menuOpener: (Player, String) -> Unit
+        menuOpener: (Player, String) -> Unit,
+        baseDelay: Long = 0L
     ) {
         val actionsToExecute = mutableListOf<DeferredAction>()
-        var currentDelay = 0L
+        var currentDelay = baseDelay
 
         for (action in actionList) {
             when (action) {
                 is Map<*, *> -> {
                     // 条件判断动作 - 使用 ConditionUtils 处理
                     val group = action
-                    val conditionStr = group["condition"] as? String
-                    val successActions = (group["allow"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
-                    val denyActions = (group["deny"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                    var conditionStr = group["condition"] as? String ?: ""
+
+                    // 支持 'actions' 和 'allow' 两个键名
+                    val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
+                    val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
+
+                    // 先替换条件中的变量 $(key)
+                    variables.forEach { (key, value) ->
+                        conditionStr = conditionStr.replace("$($key)", value)
+                    }
 
                     val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) {
                         successActions
@@ -197,23 +207,8 @@ object MenuActions {
                         denyActions
                     }
 
-                    // 重置延迟为0，重新计算
-                    var groupDelay = 0L
-
-                    actionsToUse.forEach { actionStr ->
-                        var finalAction = actionStr
-                        variables.forEach { (key, value) ->
-                            finalAction = finalAction.replace("$($key)", value)
-                        }
-
-                        // 检查是否是 wait 动作
-                        if (finalAction.startsWith("wait:", ignoreCase = true)) {
-                            val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
-                            groupDelay += waitTime
-                        } else {
-                            actionsToExecute.add(DeferredAction(groupDelay, finalAction, variables))
-                        }
-                    }
+                    // 递归执行子动作列表（支持嵌套的条件判断），传入当前延迟作为基准
+                    executeActionList(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, currentDelay)
                 }
                 is List<*> -> {
                     // 普通动作列表 - 遍历并执行每个动作
