@@ -46,6 +46,10 @@ manager:
 ui:
   default_title: "KaMenu"
 
+# PAPI Variables
+papi:
+  data_not_found: "Null"
+
 # Condition Utils
 condition:
   unknown_method: "[KaMenu] Unknown built-in condition method: {0}"

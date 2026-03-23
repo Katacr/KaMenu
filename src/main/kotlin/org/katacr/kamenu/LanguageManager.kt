@@ -2,7 +2,6 @@ package org.katacr.kamenu
 
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
-import java.util.*
 
 /**
  * 语言管理器
@@ -27,7 +26,6 @@ class LanguageManager(private val plugin: KaMenu) {
         // 加载语言文件
         loadMessages(currentLanguage)
 
-        plugin.logger.info("语言系统已初始化，当前语言: $currentLanguage")
     }
 
     /**
@@ -45,7 +43,7 @@ class LanguageManager(private val plugin: KaMenu) {
             val file = File(langFolder, "${lang}.yml")
             if (!file.exists()) {
                 plugin.saveResource("lang/${lang}.yml", false)
-                plugin.logger.info("已释放默认语言文件: lang/${lang}.yml")
+
             }
         }
     }
@@ -117,7 +115,6 @@ class LanguageManager(private val plugin: KaMenu) {
         currentLanguage = plugin.config.getString("language") ?: defaultLanguage
         saveDefaultMessages()
         loadMessages(currentLanguage)
-        plugin.logger.info("语言系统已重载，当前语言: $currentLanguage")
     }
 
     /**
@@ -125,12 +122,4 @@ class LanguageManager(private val plugin: KaMenu) {
      */
     fun getCurrentLanguage(): String = currentLanguage
 
-    /**
-     * 设置当前语言（不保存到配置文件）
-     */
-    fun setLanguage(language: String) {
-        currentLanguage = language
-        loadMessages(language)
-        plugin.logger.info("语言已切换为: $language")
-    }
 }

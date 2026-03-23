@@ -146,6 +146,63 @@ object ConditionUtils {
     }
 
     /**
+     * 获取条件列表值（支持条件判断的列表返回）
+     * 格式:
+     *   - condition: "%player_is_op% == true"
+     *     allow:
+     *       - '管理员行1'
+     *       - '管理员行2'
+     *     deny:
+     *       - '普通玩家行1'
+     *       - '普通玩家行2'
+     *
+     * @param player 玩家对象
+     * @param conditionMap 条件映射，包含 condition、allow、deny 键
+     * @return 条件满足时的 allow 列表，否则返回 deny 列表
+     */
+    fun getConditionalList(
+        player: Player,
+        conditionMap: Map<*, *>,
+        defaultValue: List<String> = emptyList()
+    ): List<String> {
+        val condition = conditionMap["condition"] as? String ?: return defaultValue
+        val allow = (conditionMap["allow"] as? List<*>)?.filterIsInstance<String>() ?: defaultValue
+        val deny = (conditionMap["deny"] as? List<*>)?.filterIsInstance<String>() ?: defaultValue
+
+        // 检查条件并返回相应的列表
+        return if (checkCondition(player, condition)) {
+            allow
+        } else {
+            deny
+        }
+    }
+
+    /**
+     * 从列表中获取条件列表值（支持多个条件判断）
+     * 遍历条件列表，返回第一个匹配条件的 allow 列表，否则返回默认列表
+     *
+     * @param player 玩家对象
+     * @param conditions 条件列表
+     * @param defaultValue 默认列表
+     * @return 第一个匹配条件的 allow 列表，否则返回默认列表
+     */
+    fun getConditionalListFromList(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: List<String> = emptyList()
+    ): List<String> {
+        for (condition in conditions) {
+            if (condition is Map<*, *>) {
+                val result = getConditionalList(player, condition)
+                if (result.isNotEmpty()) {
+                    return result
+                }
+            }
+        }
+        return defaultValue
+    }
+
+    /**
      * 递归解析逻辑表达式（支持 && 和 ||）
      * 优先级：&& 高于 ||
      */

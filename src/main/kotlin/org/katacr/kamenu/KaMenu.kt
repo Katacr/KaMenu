@@ -7,9 +7,9 @@ import net.byteflux.libby.Library
 import net.milkbowl.vault.economy.Economy
 import org.bstats.bukkit.Metrics
 import org.bstats.charts.SingleLineChart
-import org.bukkit.command.CommandSender
 import org.bukkit.plugin.RegisteredServiceProvider
 import org.bukkit.plugin.java.JavaPlugin
+import java.io.File
 
 class KaMenu : JavaPlugin() {
 
@@ -22,7 +22,13 @@ class KaMenu : JavaPlugin() {
      * 在插件加载时优先处理依赖下载
      */
     override fun onLoad() {
-        val libraryManager = BukkitLibraryManager(this)
+        // 创建共享的库目录（服务器根目录下的libraries文件夹）
+        val librariesDir = File(dataFolder.parentFile.parentFile, "libraries")
+        if (!librariesDir.exists()) {
+            librariesDir.mkdirs()
+        }
+
+        val libraryManager = BukkitLibraryManager(this, librariesDir.absolutePath)
 
         // 添加 Maven 中央仓库和阿里云镜像（加速国内下载）
         libraryManager.addMavenCentral()

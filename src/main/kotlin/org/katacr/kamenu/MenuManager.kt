@@ -68,14 +68,14 @@ class MenuManager(private val plugin: KaMenu) {
                 // 递归创建子文件夹
                 if (!targetFile.exists()) {
                     targetFile.mkdirs()
-                    plugin.logger.info(plugin.languageManager.getMessage("manager.folder_created", resourcePath, file.name))
+
                 }
                 saveDefaultMenusFromFileSystem(targetFile, file, "$resourcePath/${file.name}")
             } else if (file.name.endsWith(".yml")) {
                 // 复制 yml 文件
                 if (!targetFile.exists()) {
                     file.copyTo(targetFile, overwrite = false)
-                    plugin.logger.info(plugin.languageManager.getMessage("manager.file_saved", resourcePath, file.name))
+
                 }
             }
         }
@@ -103,7 +103,6 @@ class MenuManager(private val plugin: KaMenu) {
                             zip.getInputStream(entry).use { input ->
                                 targetFile.outputStream().use { output ->
                                     input.copyTo(output)
-                                    plugin.logger.info(plugin.languageManager.getMessage("manager.file_saved", resourcePath, relativePath))
                                 }
                             }
                         }
@@ -130,7 +129,6 @@ class MenuManager(private val plugin: KaMenu) {
                 val menuId = if (prefix.isEmpty()) file.nameWithoutExtension else "$prefix/${file.nameWithoutExtension}"
                 val config = YamlConfiguration.loadConfiguration(file)
                 menus[menuId] = config
-                plugin.logger.info(plugin.languageManager.getMessage("menu.loaded", menuId))
             }
         }
     }
@@ -141,10 +139,10 @@ class MenuManager(private val plugin: KaMenu) {
     fun getAllMenuIds(): List<String> {
         return menus.keys.toList()
     }
-    fun reload() {
+    fun reload(): Int {
         menus.clear()
         loadMenus()
-        plugin.logger.info(plugin.languageManager.getMessage("menu.reloaded", menus.size))
+        return getAllMenuIds().size
     }
     fun clear() {
         menus.clear()

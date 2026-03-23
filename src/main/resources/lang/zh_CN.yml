@@ -38,13 +38,15 @@ manager:
   resource_not_found: "未找到资源路径: {0}"
   unsupported_protocol: "不支持的协议: {0}"
   save_error: "释放默认菜单文件时出错: {0}"
-  folder_created: "创建文件夹: {0}/{1}"
-  file_saved: "已释放默认菜单文件: {0}/{1}"
   jar_extract_error: "从 jar 包提取文件失败: {0}"
 
 # 菜单UI
 ui:
   default_title: "KaMenu"
+
+# PAPI变量
+papi:
+  data_not_found: "Null"
 
 # 条件工具
 condition:

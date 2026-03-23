@@ -31,12 +31,14 @@ class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
                 if (player == null) return null
                 val key = params.substring(5)
                 plugin.databaseManager.getPlayerData(player.uniqueId, key)
+                    ?: plugin.languageManager.getMessage("papi.data_not_found", key)
             }
 
             // 全局数据: %kamenu_gdata_key%
             paramsLower.startsWith("gdata_") -> {
                 val key = params.substring(6)
                 plugin.databaseManager.getGlobalData(key)
+                    ?: plugin.languageManager.getMessage("papi.data_not_found", key)
             }
 
             else -> null

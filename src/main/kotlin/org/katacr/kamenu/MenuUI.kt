@@ -65,6 +65,84 @@ object MenuUI {
         }
     }
 
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的整数值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 整数值
+     */
+    private fun getConditionalIntFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: Int = 0): Int {
+        if (section.isList(path)) {
+            val conditions = section.getList(path) ?: return defaultValue
+            val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
+            return stringValue.toIntOrNull() ?: defaultValue
+        } else {
+            return section.getInt(path, defaultValue)
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的双精度浮点数值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 双精度浮点数值
+     */
+    private fun getConditionalDoubleFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: Double = 0.0): Double {
+        if (section.isList(path)) {
+            val conditions = section.getList(path) ?: return defaultValue
+            val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
+            return stringValue.toDoubleOrNull() ?: defaultValue
+        } else {
+            return section.getDouble(path, defaultValue)
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的布尔值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 布尔值
+     */
+    private fun getConditionalBooleanFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: Boolean = false): Boolean {
+        if (section.isList(path)) {
+            val conditions = section.getList(path) ?: return defaultValue
+            val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
+            return stringValue.toBooleanStrictOrNull() ?: defaultValue
+        } else {
+            return section.getBoolean(path, defaultValue)
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的列表值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认列表
+     * @return 列表值
+     */
+    private fun getConditionalListFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: List<String> = emptyList()): List<String> {
+        if (section.isList(path)) {
+            val firstItem = section.getList(path)?.firstOrNull()
+            // 检查是否为条件判断格式（第一个元素是 Map）
+            if (firstItem is Map<*, *>) {
+                val conditions = section.getList(path) ?: return defaultValue
+                return ConditionUtils.getConditionalListFromList(player, conditions, defaultValue)
+            } else {
+                // 普通字符串列表
+                return section.getStringList(path)
+            }
+        } else {
+            return defaultValue
+        }
+    }
+
     fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
@@ -93,23 +171,29 @@ object MenuUI {
         // 1. 解析 Body
         config.getConfigurationSection("Body")?.let { section ->
             for (key in section.getKeys(false)) {
-                val type = section.getString("$key.type")
+                val type = getConditionalValueFromSection(player, section, "$key.type", "")
                 when (type) {
-                    "message" -> bodyList.add(DialogBody.plainMessage(color(section.getString("$key.text"))))
+                    "message" -> {
+                        val text = getConditionalValueFromSection(player, section, "$key.text", "")
+                        bodyList.add(DialogBody.plainMessage(color(text)))
+                    }
                     "item" -> {
-                        val material = Material.matchMaterial(section.getString("$key.material") ?: "PAPER") ?: Material.PAPER
+                        val materialStr = getConditionalValueFromSection(player, section, "$key.material", "PAPER")
+                        val material = Material.matchMaterial(materialStr) ?: Material.PAPER
                         val item = ItemStack(material)
                         item.editMeta { meta ->
-                            meta.displayName(color(section.getString("$key.name")))
-                            meta.lore(section.getStringList("$key.lore").map { color(it) })
+                            val name = getConditionalValueFromSection(player, section, "$key.name", "")
+                            meta.displayName(color(name))
+                            val lore = getConditionalListFromSection(player, section, "$key.lore")
+                            meta.lore(lore.map { color(it) })
                         }
-                        val descriptionText = section.getString("$key.description")
-                        val descriptionBody = descriptionText?.let { DialogBody.plainMessage(color(it)) }
+                        val descriptionText = getConditionalValueFromSection(player, section, "$key.description", "")
+                        val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let { DialogBody.plainMessage(color(it)) }
 
-                        val width = section.getInt("$key.width", 16)
-                        val height = section.getInt("$key.height", 16)
-                        val decorations = section.getBoolean("$key.decorations", true)
-                        val tooltip = section.getBoolean("$key.tooltip", true)
+                        val width = getConditionalIntFromSection(player, section, "$key.width", 16)
+                        val height = getConditionalIntFromSection(player, section, "$key.height", 16)
+                        val decorations = getConditionalBooleanFromSection(player, section, "$key.decorations", true)
+                        val tooltip = getConditionalBooleanFromSection(player, section, "$key.tooltip", true)
 
                         bodyList.add(DialogBody.item(item, descriptionBody, decorations, tooltip, width, height))
                     }
@@ -120,53 +204,55 @@ object MenuUI {
         // 2. 解析 Inputs
         config.getConfigurationSection("Inputs")?.let { section ->
             for (key in section.getKeys(false)) {
-                val type = section.getString("$key.type") ?: "text"
+                val type = getConditionalValueFromSection(player, section, "$key.type", "text")
                 val prompt = color(getConditionalValueFromSection(player, section, "$key.text", ""))
 
                 when (type) {
                     "checkbox" -> {
                         inputTypes[key] = "checkbox"  // 记录为布尔类型
-                        val onTrue = section.getString("$key.on_true", "true")!!
-                        val onFalse = section.getString("$key.on_false", "false")!!
+                        val onTrue = getConditionalValueFromSection(player, section, "$key.on_true", "true")
+                        val onFalse = getConditionalValueFromSection(player, section, "$key.on_false", "false")
                         checkboxMappings[key] = Pair(onTrue, onFalse)  // 记录映射
                         inputList.add(DialogInput.bool(key, prompt)
-                            .initial(section.getBoolean("$key.default", false))
+                            .initial(getConditionalBooleanFromSection(player, section, "$key.default", false))
                             .onTrue(onTrue)
                             .onFalse(onFalse)
                             .build())
                     }
                     "slider" -> {
                         inputTypes[key] = "number"  // 记录为数值类型
-                        val start = section.getDouble("$key.min", 0.0).toFloat()
-                        val end = section.getDouble("$key.max", 10.0).toFloat()
+                        val start = getConditionalDoubleFromSection(player, section, "$key.min", 0.0).toFloat()
+                        val end = getConditionalDoubleFromSection(player, section, "$key.max", 10.0).toFloat()
                         inputList.add(DialogInput.numberRange(
                             key, 250, prompt,
-                            section.getString("$key.format") ?: "%s: %s",
-                            start, end, section.getDouble("$key.default", start.toDouble()).toFloat(),
-                            section.getDouble("$key.step", 1.0).toFloat()
+                            getConditionalValueFromSection(player, section, "$key.format", "%s: %s"),
+                            start, end, getConditionalDoubleFromSection(player, section, "$key.default", start.toDouble()).toFloat(),
+                            getConditionalDoubleFromSection(player, section, "$key.step", 1.0).toFloat()
                         ))
                     }
                     "input" -> {
                         inputTypes[key] = "text"  // 记录为文本类型
                         val builder = DialogInput.text(key, prompt)
-                            .width(section.getInt("$key.width", 250))
-                            .initial(section.getString("$key.default", "")!!)
-                            .maxLength(section.getInt("$key.max_length", 256))
+                            .width(getConditionalIntFromSection(player, section, "$key.width", 250))
+                            .initial(getConditionalValueFromSection(player, section, "$key.default", ""))
+                            .maxLength(getConditionalIntFromSection(player, section, "$key.max_length", 256))
 
                         if (section.contains("$key.multiline")) {
                             builder.multiline(TextDialogInput.MultilineOptions.create(
-                                section.getInt("$key.multiline.max_lines", 5),
-                                section.getInt("$key.multiline.height", 100)
+                                getConditionalIntFromSection(player, section, "$key.multiline.max_lines", 5),
+                                getConditionalIntFromSection(player, section, "$key.multiline.height", 100)
                             ))
                         }
                         inputList.add(builder.build())
                     }
                     "dropdown" -> {
                         inputTypes[key] = "text"  // 记录为文本类型
-                        val entries = section.getStringList("$key.options").map {
-                            SingleOptionDialogInput.OptionEntry.create(it, color(it), it == section.getString("$key.default_id"))
+                        val defaultId = getConditionalValueFromSection(player, section, "$key.default_id", "")
+                        val options = getConditionalListFromSection(player, section, "$key.options")
+                        val entries = options.map {
+                            SingleOptionDialogInput.OptionEntry.create(it, color(it), it == defaultId)
                         }
-                        inputList.add(DialogInput.singleOption(key, prompt, entries).width(section.getInt("$key.width", 200)).build())
+                        inputList.add(DialogInput.singleOption(key, prompt, entries).width(getConditionalIntFromSection(player, section, "$key.width", 200)).build())
                     }
                 }
                 inputKeys.add(key)
