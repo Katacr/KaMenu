@@ -42,6 +42,9 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
+        exclude(group = "org.bukkit", module = "bukkit")
+    }
 }
 
 tasks {

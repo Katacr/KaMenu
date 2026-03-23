@@ -1,6 +1,6 @@
 Title:
   - condition: "%player_is_op% == true"
-    meet: '&8» &4&l通用条件判断演示 &8« &7[管理员]'
+    allow: '&8» &4&l通用条件判断演示 &8« &7[管理员]'
     deny: '&8» &6&l通用条件判断演示 &8« &7[玩家]'
 
 Settings:
@@ -18,7 +18,7 @@ Inputs:
     type: 'slider'
     text:
       - condition: "%player_is_op% == true"
-        meet: '&e管理员音量调节'
+        allow: '&e管理员音量调节'
         deny: '&e玩家音量调节'
     min: 0
     max: 100
@@ -31,7 +31,7 @@ Inputs:
     type: 'input'
     text:
       - condition: "%player_level% >= 10"
-        meet: '&aVIP 留言板'
+        allow: '&aVIP 留言板'
         deny: '&7普通留言板'
     default: '请在此输入内容...'
     multiline:
@@ -43,7 +43,7 @@ Inputs:
     type: 'dropdown'
     text:
       - condition: "%player_is_op% == true"
-        meet: '&6管理员颜色选择'
+        allow: '&6管理员颜色选择'
         deny: '&b玩家颜色选择'
     options:
       - '&c红色'
@@ -56,7 +56,7 @@ Bottom:
   confirm:
     text:
       - condition: "%player_level% >= 10"
-        meet: '&6[ VIP 提交 ]'
+        allow: '&6[ VIP 提交 ]'
         deny: '&a[ 提交 ]'
     actions:
       - 'tell: &8&l--------------------------------'
@@ -70,7 +70,7 @@ Bottom:
   deny:
     text:
       - condition: "%player_is_op% == true"
-        meet: '&c[ 管理员取消 ]'
+        allow: '&c[ 管理员取消 ]'
         deny: '&c[ 以后再说 ]'
     actions:
       - 'actionbar: &c您已取消操作'

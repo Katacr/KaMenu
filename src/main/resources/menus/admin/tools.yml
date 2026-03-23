@@ -24,16 +24,16 @@ Bottom:
   buttons:
     kick:
       text: '&c[ 踢出 ]'
-      action:
+      actions:
         - 'command: kick $(target_player)'
         - 'tell: &c已踢出玩家: $(target_player)'
 
     ban:
       text: '&4[ 封禁 ]'
-      action:
+      actions:
         - 'console: ban $(target_player)'
 
   exit:
     text: '&8[ 关闭 ]'
-    action:
+    actions:
       - 'close'

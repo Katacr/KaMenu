@@ -35,6 +35,8 @@ object MenuActions {
         config: YamlConfiguration,
         path: String,
         inputKeys: List<String>,
+        inputTypes: Map<String, String>,
+        checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit
     ): DialogAction {
         // 只使用 actions（复数）键
@@ -76,7 +78,20 @@ object MenuActions {
                 val value = when {
                     response.getFloat(key) != null -> {
                         val f = response.getFloat(key)!!
-                        if (f == f.toInt().toFloat()) f.toInt().toString() else f.toString()
+                        if (f == f.toInt().toFloat()) {
+                            val intVal = f.toInt()
+                            // 检查是否为 checkbox，且用户未配置自定义映射
+                            val mapping = checkboxMappings[key]
+                            if (inputTypes[key] == "checkbox" && mapping != null && mapping.first == "true" && mapping.second == "false") {
+                                // 默认映射，转换为布尔字符串
+                                (intVal == 1).toString()
+                            } else {
+                                // 用户有自定义映射或非 checkbox，保持原值
+                                intVal.toString()
+                            }
+                        } else {
+                            f.toString()
+                        }
                     }
                     response.getText(key) != null -> response.getText(key)
                     response.getBoolean(key) != null -> response.getBoolean(key).toString()
@@ -104,7 +119,7 @@ object MenuActions {
             when (action) {
                 is Map<*, *> -> {
                     // 条件判断动作 - 使用 ConditionUtils 处理
-                    ConditionUtils.executeConditionalAction(player, action) { actionStr ->
+                    ConditionUtils.executeConditionalAction(player, action, variables) { actionStr ->
                         executeSingleAction(player, actionStr, variables, menuOpener)
                     }
                 }
@@ -140,26 +155,20 @@ object MenuActions {
         }
 
         when {
-            // tell: 普通消息 (使用 Paper Adventure API)
+            // tell: 普通消息
             finalCmd.startsWith("tell:") ->
                 player.sendMessage(color(finalCmd.removePrefix("tell:").trim()))
 
-            // actionbar: ActionBar 消息 (使用 Paper API)
+            // actionbar: ActionBar 消息
             finalCmd.startsWith("actionbar:") -> {
                 val message = finalCmd.removePrefix("actionbar:").trim()
                 player.sendActionBar(color(message))
             }
 
-            // title: 发送标题（支持条件判断）
+            // title: 发送标题
             finalCmd.startsWith("title:") -> {
                 val args = finalCmd.removePrefix("title:").trim()
                 parseAndSendTitle(player, args)
-            }
-
-            // Title: 带条件判断的标题
-            finalCmd.startsWith("Title:") -> {
-                val args = finalCmd.removePrefix("Title:").trim()
-                parseConditionalTitle(player, args)
             }
 
             // hovertext: 可点击文本
@@ -189,33 +198,11 @@ object MenuActions {
                 menuOpener(player, menuName)
             }
 
-            // pcmd: 玩家执行指令（兼容旧写法）
-            finalCmd.startsWith("pcmd:") ->
-                player.performCommand(finalCmd.removePrefix("pcmd:").trim())
-
-            // cmd: 控制台执行指令（兼容旧写法）
-            finalCmd.startsWith("cmd:") ->
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd.removePrefix("cmd:").trim())
-
             // close: 关闭对话框
             finalCmd.startsWith("close") -> {
                 // Paper API 会自动处理
+                player.closeInventory()
             }
-        }
-    }
-
-    /**
-     * 执行动作列表（向后兼容）
-     * @deprecated 使用 executeActionList 代替
-     */
-    fun executeActions(
-        player: Player,
-        actions: List<String>,
-        variables: Map<String, String>,
-        menuOpener: (Player, String) -> Unit
-    ) {
-        actions.forEach { action ->
-            executeSingleAction(player, action, variables, menuOpener)
         }
     }
 
@@ -311,48 +298,6 @@ object MenuActions {
         )
         val adventureTitle = Title.title(titleComponent, subtitleComponent, titleTimes)
         player.showTitle(adventureTitle)
-    }
-
-    /**
-     * 解析并处理带条件判断的标题
-     * 格式: condition=%player_is_op% == true;meet=成功消息;deny=失败消息
-     *       或: condition=%level% >= 10;meet=title=恭喜;subtitle=升级成功;in=10;keep=60;out=20
-     */
-    private fun parseConditionalTitle(player: Player, args: String) {
-        var condition = ""
-        var meet = ""
-        var deny = ""
-
-        val params = args.split(";")
-        for (param in params) {
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "condition" -> condition = value
-                    "meet" -> meet = value
-                    "deny" -> deny = value
-                }
-            }
-        }
-
-        // 检查条件
-        val conditionMet = ConditionUtils.checkCondition(player, condition)
-
-        // 根据条件结果执行相应的动作
-        val actionToExecute = if (conditionMet) meet else deny
-
-        if (actionToExecute.isNotEmpty()) {
-            // 判断 meet/deny 内容是简单的消息还是标题参数
-            if (actionToExecute.contains("=") && (actionToExecute.contains("title=") || actionToExecute.contains("subtitle="))) {
-                // 是标题参数格式，发送标题
-                parseAndSendTitle(player, actionToExecute)
-            } else {
-                // 是简单消息，发送普通消息
-                player.sendMessage(color(actionToExecute))
-            }
-        }
     }
 
     /**

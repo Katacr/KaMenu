@@ -76,6 +76,8 @@ object MenuUI {
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
         val inputKeys = mutableListOf<String>()
+        val inputTypes = mutableMapOf<String, String>()  // 记录输入类型
+        val checkboxMappings = mutableMapOf<String, Pair<String, String>>()  // 记录 checkbox 的 on_true/on_false 映射
 
         // 0. 解析设置
         val canEscape = config.getBoolean("Settings.can_escape", true)
@@ -123,13 +125,18 @@ object MenuUI {
 
                 when (type) {
                     "checkbox" -> {
+                        inputTypes[key] = "checkbox"  // 记录为布尔类型
+                        val onTrue = section.getString("$key.on_true", "true")!!
+                        val onFalse = section.getString("$key.on_false", "false")!!
+                        checkboxMappings[key] = Pair(onTrue, onFalse)  // 记录映射
                         inputList.add(DialogInput.bool(key, prompt)
                             .initial(section.getBoolean("$key.default", false))
-                            .onTrue(section.getString("$key.on_true", "true")!!)
-                            .onFalse(section.getString("$key.on_false", "false")!!)
+                            .onTrue(onTrue)
+                            .onFalse(onFalse)
                             .build())
                     }
                     "slider" -> {
+                        inputTypes[key] = "number"  // 记录为数值类型
                         val start = section.getDouble("$key.min", 0.0).toFloat()
                         val end = section.getDouble("$key.max", 10.0).toFloat()
                         inputList.add(DialogInput.numberRange(
@@ -140,6 +147,7 @@ object MenuUI {
                         ))
                     }
                     "input" -> {
+                        inputTypes[key] = "text"  // 记录为文本类型
                         val builder = DialogInput.text(key, prompt)
                             .width(section.getInt("$key.width", 250))
                             .initial(section.getString("$key.default", "")!!)
@@ -154,6 +162,7 @@ object MenuUI {
                         inputList.add(builder.build())
                     }
                     "dropdown" -> {
+                        inputTypes[key] = "text"  // 记录为文本类型
                         val entries = section.getStringList("$key.options").map {
                             SingleOptionDialogInput.OptionEntry.create(it, color(it), it == section.getString("$key.default_id"))
                         }
@@ -187,7 +196,7 @@ object MenuUI {
                         val btnText = getConditionalValueFromSection(player, btnSection, "$btnKey.text", "按钮")
                         actionButtons.add(
                             ActionButton.builder(color(btnText))
-                                .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, menuOpener))
+                                .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                                 .build()
                         )
                     }
@@ -198,7 +207,7 @@ object MenuUI {
                     val exitText = getConditionalValueFromSection(player, section, "exit.text", "")
                     if (exitText.isNotEmpty()) {
                         ActionButton.builder(color(exitText))
-                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, menuOpener))
+                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                             .build()
                     } else null
                 }
@@ -214,10 +223,10 @@ object MenuUI {
                 val denyBtnText = bottomSection?.let { getConditionalValueFromSection(player, it, "deny.text", "取消") } ?: "取消"
 
                 val confirmBtn = ActionButton.builder(color(confirmBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, menuOpener))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                     .build()
                 val denyBtn = ActionButton.builder(color(denyBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, menuOpener))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                     .build()
                 DialogType.confirmation(confirmBtn, denyBtn)
             }
@@ -228,7 +237,7 @@ object MenuUI {
                     ?: bottomSection?.let { getConditionalValueFromSection(player, it, "button1.text", "") }?.takeIf { it.isNotEmpty() }
                     ?: "确认"
                 val confirmBtn = ActionButton.builder(color(btnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, menuOpener))
+                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener))
                     .build()
                 DialogType.notice(confirmBtn)
             }

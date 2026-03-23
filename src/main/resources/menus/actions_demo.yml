@@ -25,55 +25,55 @@ Bottom:
   buttons:
     test_tell:
       text: '&a[ tell ]'
-      action:
+      actions:
         - 'tell: &a这是普通消息'
         - 'tell: &7支持颜色代码 &颜色&f'
 
     test_actionbar:
       text: '&b[ actionbar ]'
-      action:
+      actions:
         - 'actionbar: &b这是 ActionBar 消息！'
 
     test_title:
       text: '&c[ title ]'
-      action:
+      actions:
         - 'title: title=&c&l标题;subtitle=&e副标题;in=10;keep=60;out=20'
 
     test_hovertext:
       text: '&d[ hovertext ]'
-      action:
+      actions:
         - 'hovertext: &7普通文本 <text=&a&l点击我;hover=&c执行指令 /help;command=/help> 更多文本'
 
     test_command:
       text: '&e[ command ]'
-      action:
+      actions:
         - 'command: say 我执行了玩家指令'
 
     test_console:
       text: '&6[ console ]'
-      action:
+      actions:
         - 'console: say 这是控制台执行的消息'
 
     test_sound:
       text: '&f[ sound ]'
-      action:
+      actions:
         - 'sound: entity.player.levelup;volume=1.5;pitch=1.2'
 
     test_sound_category:
       text: '&8[ sound+ ]'
-      action:
+      actions:
         - 'tell: &f播放不同类别的声音'
         - 'sound: ambient.cave;category=ambient'
         - 'sound: entity.experience_orb.pickup;volume=2.0;category=player'
 
     test_open:
       text: '&5[ open ]'
-      action:
+      actions:
         - 'open: demo'
 
     test_papi:
       text: '&3[ PAPI ]'
-      action:
+      actions:
         - 'tell: &a玩家: %player_name%'
         - 'tell: &b世界: %world%'
         - 'tell: &c坐标: %x%, %y%, %z%'
@@ -81,24 +81,24 @@ Bottom:
 
     test_variable:
       text: '&7[ 变量 ]'
-      action:
+      actions:
         - 'tell: &f你输入的内容: &e$(test_input)'
 
     test_combine:
       text: '&9[ 组合 ]'
-      action:
+      actions:
         - 'title: title=&6组合测试;subtitle=&f变量: $(test_input);in=5;keep=40;out=10'
         - 'actionbar: &aActionBar + PAPI: %player_name%'
         - 'sound: block.note_block.pling'
 
     test_close:
       text: '&4[ 关闭 ]'
-      action:
+      actions:
         - 'tell: &c再见！'
         - 'close'
 
   exit:
     text: '&8[ 退出 ]'
-    action:
+    actions:
       - 'actionbar: &7菜单已关闭'
       - 'close'

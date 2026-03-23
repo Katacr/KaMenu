@@ -35,37 +35,46 @@ object ConditionUtils {
         }
 
         // 解析逻辑表达式（支持 && 和 ||）
-        return parseLogicalExpression(processed)
+        return parseLogicalExpression(player, processed)
     }
 
     /**
      * 执行条件判断动作
      * 格式:
      *   - condition: "%player_is_op% == true"
-     *     meet:
+     *     allow:
      *       - 'open: manage'
      *       - 'tell: 管理员专属'
      *     deny:
      *       - 'tell: 没有权限'
      *
      * @param player 玩家对象
-     * @param conditionMap 条件映射，包含 condition、meet、deny 键
+     * @param conditionMap 条件映射，包含 condition、allow、deny 键
+     * @param variables 变量映射，用于替换 $(variable) 格式的变量
      * @param executor 动作执行器，用于执行具体的动作
      */
     fun executeConditionalAction(
         player: Player,
         conditionMap: Map<*, *>,
+        variables: Map<String, String>,
         executor: ActionExecutor
     ) {
-        val condition = conditionMap["condition"] as? String ?: return
-        val meetActions = conditionMap["meet"] as? List<*> ?: emptyList<Any>()
+        var condition = conditionMap["condition"] as? String ?: return
+        val allowActions = conditionMap["allow"] as? List<*> ?: emptyList<Any>()
         val denyActions = conditionMap["deny"] as? List<*> ?: emptyList<Any>()
+
+        // 先替换变量 $(variable) - 使用精确匹配避免误替换
+        variables.forEach { (key, value) ->
+            // 构造 $(key) 字面量，避免字符串插值
+            val pattern = "$(" + key + ")"
+            condition = condition.replace(pattern, value)
+        }
 
         // 检查条件
         val conditionMet = checkCondition(player, condition)
 
         // 根据条件结果执行相应的动作列表
-        val actionsToExecute = if (conditionMet) meetActions else denyActions
+        val actionsToExecute = if (conditionMet) allowActions else denyActions
 
         // 执行动作列表
         for (action in actionsToExecute) {
@@ -79,12 +88,12 @@ object ConditionUtils {
      * 获取条件值（支持条件判断的单值返回）
      * 格式:
      *   - condition: "%player_is_op% == true"
-     *     meet: "管理员专属文本"
+     *     allow: "管理员专属文本"
      *     deny: "普通玩家文本"
      *
      * @param player 玩家对象
-     * @param conditionMap 条件映射，包含 condition、meet、deny 键
-     * @return 条件满足时的 meet 值，否则返回 deny 值
+     * @param conditionMap 条件映射，包含 condition、allow、deny 键
+     * @return 条件满足时的 allow 值，否则返回 deny 值
      */
     fun getConditionalValue(
         player: Player,
@@ -92,12 +101,12 @@ object ConditionUtils {
         defaultValue: String = ""
     ): String {
         val condition = conditionMap["condition"] as? String ?: return defaultValue
-        val meet = conditionMap["meet"] as? String ?: defaultValue
+        val allow = conditionMap["allow"] as? String ?: defaultValue
         val deny = conditionMap["deny"] as? String ?: defaultValue
 
         // 检查条件并返回相应的值
         return if (checkCondition(player, condition)) {
-            meet
+            allow
         } else {
             deny
         }
@@ -132,7 +141,7 @@ object ConditionUtils {
      * 递归解析逻辑表达式（支持 && 和 ||）
      * 优先级：&& 高于 ||
      */
-    private fun parseLogicalExpression(expression: String): Boolean {
+    private fun parseLogicalExpression(player: Player, expression: String): Boolean {
         val trimmed = expression.trim()
 
         // 1. 先检查是否包含 ||（优先级最低）
@@ -140,12 +149,12 @@ object ConditionUtils {
         if (orParts.size > 1) {
             // 如果有 ||，先解析第一部分，如果为 true 则直接返回 true（短路求值）
             val firstPart = orParts[0]
-            val firstResult = parseLogicalExpression(firstPart)
+            val firstResult = parseLogicalExpression(player, firstPart)
             if (firstResult) return true // || 短路求值
 
             // 否则继续解析剩余部分
             val remaining = trimmed.substring(firstPart.length).trim().removePrefix("||").trim()
-            return parseLogicalExpression(remaining)
+            return parseLogicalExpression(player, remaining)
         }
 
         // 2. 再检查是否包含 &&（优先级高于 ||）
@@ -153,16 +162,16 @@ object ConditionUtils {
         if (andParts.size > 1) {
             // 如果有 &&，先解析第一部分，如果为 false 则直接返回 false（短路求值）
             val firstPart = andParts[0]
-            val firstResult = parseLogicalExpression(firstPart)
+            val firstResult = parseLogicalExpression(player, firstPart)
             if (!firstResult) return false // && 短路求值
 
             // 否则继续解析剩余部分
             val remaining = trimmed.substring(firstPart.length).trim().removePrefix("&&").trim()
-            return parseLogicalExpression(remaining)
+            return parseLogicalExpression(player, remaining)
         }
 
         // 3. 如果没有逻辑运算符，则为基本条件
-        return evaluateSingleCondition(trimmed)
+        return evaluateSingleCondition(player, trimmed)
     }
 
     /**
@@ -214,10 +223,15 @@ object ConditionUtils {
     }
 
     /**
-     * 评估单个条件（如 "5 >= 3"）
+     * 评估单个条件（如 "5 >= 3" 或 "value @ method"）
      */
-    private fun evaluateSingleCondition(condition: String): Boolean {
+    private fun evaluateSingleCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
+
+        // 处理内置条件方法 @ symbol
+        if (trimmed.contains("@")) {
+            return evaluateBuiltinCondition(player, trimmed)
+        }
 
         // 如果是括号包裹的表达式，去掉括号后递归解析
         if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
@@ -236,7 +250,7 @@ object ConditionUtils {
                 }
             }
             if (isCompletePair && parenCount == 0) {
-                return parseLogicalExpression(inner)
+                return parseLogicalExpression(player, inner)
             }
         }
 
@@ -258,6 +272,61 @@ object ConditionUtils {
             "<=" -> left.toDoubleDefault(0.0) <= right.toDoubleDefault(0.0)
             else -> false
         }
+    }
+
+    /**
+     * 解析并执行内置条件方法
+     * 格式: "value @ method"
+     * 支持的方法:
+     *   - isNum: 判断是否为数字
+     *   - isPosNum: 判断是否为正数
+     *   - hasPerm: 判断玩家是否拥有权限 (value应为权限节点)
+     *   - hasMoney: 判断玩家是否有足够的金币 (value应为金额)
+     */
+    private fun evaluateBuiltinCondition(player: Player, condition: String): Boolean {
+        val parts = condition.split("@", limit = 2)
+        if (parts.size != 2) return false
+
+        val value = parts[0].trim()
+        val method = parts[1].trim()
+
+        return when (method) {
+            "isNum" -> value.toDoubleOrNull() != null
+            "isPosNum" -> value.toDoubleOrNull()?.let { it > 0 } ?: false
+            "hasPerm" -> player.hasPermission(value)
+            "hasMoney" -> {
+                val amount = value.toDoubleOrNull() ?: return false
+                checkPlayerMoney(player, amount)
+            }
+            else -> {
+                println("[KaMenu] 未知内置条件方法: $method")
+                false
+            }
+        }
+    }
+
+    /**
+     * 检查玩家是否有足够的金币
+     * 支持 Vault 和其他经济插件
+     */
+    private fun checkPlayerMoney(player: Player, amount: Double): Boolean {
+        // 检查Vault经济插件
+        val economy = Bukkit.getPluginManager().getPlugin("Vault")
+        if (economy != null && economy.isEnabled) {
+            try {
+                val economyProvider = Bukkit.getServicesManager().getRegistration(
+                    net.milkbowl.vault.economy.Economy::class.java
+                )
+                if (economyProvider != null) {
+                    val econ = economyProvider.provider
+                    return econ.getBalance(player) >= amount
+                }
+            } catch (e: Exception) {
+                println("[KaMenu] Vault经济插件检查失败: ${e.message}")
+            }
+        }
+
+        return false
     }
 
     private fun String.toDoubleDefault(default: Double): Double = this.toDoubleOrNull() ?: default

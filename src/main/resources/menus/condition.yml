@@ -1,6 +1,6 @@
 Title:
   - condition: '%player_is_op% == true'
-    meet: '你是服务器管理员'
+    allow: '你是服务器管理员'
     deny: '你不是服务器管理员'
 
 
@@ -16,8 +16,8 @@ Body:
     name: '&b&l系统说明'
     # 这里的文本会显示在书本图标的右侧 (左图右文)
     description: '&f本菜单展示了多行文本输入。'
-    width: 64
-    height: 64
+    width: 16
+    height: 16
     decorations: true
 
 Inputs:
@@ -57,7 +57,7 @@ Bottom:
   type: 'confirmation'
   confirm:
     text: '&a[ 确认提交 ]'
-    action:
+    actions:
       - 'tell: &8&l--------------------------------'
       - 'tell: &6感谢提交！您的偏好：'
       - 'tell: &f音量: &e$(volume_setting)%'
@@ -70,6 +70,6 @@ Bottom:
       - 'sound: entity.experience_orb.pickup;volume=1.0;pitch=1.5'
   deny:
     text: '&c[ 以后再说 ]'
-    action:
+    actions:
       - 'actionbar: &c您已取消操作'
       - 'sound: block.chest.close;volume=0.8;pitch=0.8'

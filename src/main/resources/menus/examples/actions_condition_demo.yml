@@ -25,7 +25,7 @@ Bottom:
       # 使用 actions（复数）键，支持条件判断
       actions:
         - condition: "%player_is_op% == true"
-          meet:
+          allow:
             - 'tell: &a✓ 您是管理员'
             - 'open: examples/manage_menu'
             - 'sound: entity.player.levelup;volume=1.0;pitch=1.0'
@@ -37,7 +37,7 @@ Bottom:
       text: '&b[ VIP 按钮 ]'
       actions:
         - condition: "%player_level% >= 10"
-          meet:
+          allow:
             - 'tell: &b✓ 您是 VIP 玩家'
             - 'title: title=欢迎 VIP;subtitle=尊贵的会员;in=10;keep=60;out=20'
             - 'console: give %player_name% diamond 1'
@@ -49,7 +49,7 @@ Bottom:
       text: '&e[ 组合条件 ]'
       actions:
         - condition: "%player_is_op% == true || %player_level% >= 20"
-          meet:
+          allow:
             - 'tell: &e✓ 满足条件（管理员或高等级）'
             - 'open: examples/conditional_value_demo'
           deny:
@@ -57,10 +57,10 @@ Bottom:
             - 'sound: block.fire.extinguish;volume=0.5;pitch=1.0'
 
     4:
-      text: '&6[ 多个动作 ]'
+      text: '&6[ 内置参数 ]'
       actions:
         - condition: "$(setting) == true"
-          meet:
+          allow:
             - 'tell: &6✓ 高级功能已启用'
             - 'tell: &7您勾选了复选框'
             - 'sound: entity.experience_orb.pickup;volume=1.0;pitch=1.5'
