@@ -21,69 +21,57 @@ Inputs:
 Bottom:
   type: 'multi'
   columns: 3
-
   buttons:
-    katacr_tell:
-      show-condition: '%player_name% == Katacr'
-      text: '&a[ Katacr tell ]'
-      actions:
-        - condition: '%player_name% == Katacr'
-          allow:
-            - 'tell: &a这是Katacr专属消息'
-          deny:
-            - 'tell: &7你是%player_name%，只有Katacr看得到消息'
-
-
     test_tell:
-      text: '&a[ tell ]'
+      text: '&a[ Tell ]'
       actions:
         - 'tell: &a这是普通消息'
         - 'tell: &7支持颜色代码 &颜色&f'
 
     test_actionbar:
-      text: '&b[ actionbar ]'
+      text: '&b[ Actionbar ]'
       actions:
         - 'actionbar: &b这是 ActionBar 消息！'
 
     test_title:
-      text: '&c[ title ]'
+      text: '&c[ Title ]'
       actions:
         - 'title: title=&c&l标题;subtitle=&e副标题;in=10;keep=60;out=20'
 
     test_hovertext:
-      text: '&d[ hovertext ]'
+      text: '&d[ Hover Text ]'
       actions:
         - 'hovertext: &7普通文本 <text=&a&l点击我;hover=&c执行指令 /help;command=/help> 更多文本'
 
     test_command:
-      text: '&e[ command ]'
+      text: '&e[ Command ]'
       actions:
         - 'command: say 我执行了玩家指令'
 
     test_console:
-      text: '&6[ console ]'
+      text: '&6[ Console ]'
       actions:
         - 'console: say 这是控制台执行的消息'
 
     test_sound:
-      text: '&f[ sound ]'
+      text: '&f[ Sound ]'
       actions:
         - 'sound: entity.player.levelup;volume=1.5;pitch=1.2'
 
     test_sound_category:
-      text: '&8[ sound+ ]'
+      text: '&8[ Sound+ ]'
       actions:
         - 'tell: &f播放不同类别的声音'
         - 'sound: ambient.cave;category=ambient'
         - 'sound: entity.experience_orb.pickup;volume=2.0;category=player'
 
     test_open:
-      text: '&5[ open ]'
+      text: '&5[ 0pen Menu ]'
       actions:
         - 'open: demo'
 
     test_papi:
-      text: '&3[ PAPI ]'
+      text: '&3[ Placeholder ]'
       actions:
         - 'tell: &a玩家: %player_name%'
         - 'tell: &b世界: %player_world%'
@@ -91,31 +79,26 @@ Bottom:
         - 'tell: &d血量: %player_health%/%player_max_health%'
 
     test_variable:
-      text: '&7[ 变量 ]'
+      text: '&7[ Input ]'
       actions:
         - 'tell: &f你输入的内容: &e$(test_input)'
 
-    test_combine:
-      text: '&9[ 组合 ]'
-      actions:
-        - 'title: title=&6组合测试;subtitle=&f变量: $(test_input);in=5;keep=40;out=10'
-        - 'actionbar: &aActionBar + PAPI: %player_name%'
-        - 'sound: block.note_block.pling'
+
 
     test_close:
-      text: '&4[ 关闭 ]'
+      text: '&4[ Close ]'
       actions:
         - 'tell: &c再见！'
         - 'close'
 
     test_toast:
-      text: '&6[ 吐司 ]'
+      text: '&6[ Toast ]'
       actions:
         - 'toast: type=challenge;msg=&f恭喜你完成了挑战！;icon=diamond'
         - 'close'
 
     test_wait:
-      text: '&a[ wait ]'
+      text: '&a[ Wait ]'
       actions:
         - 'close'
         - 'tell: &e开始执行...'
@@ -144,8 +127,17 @@ Bottom:
         - 'wait: 1'
         - 'tell: &a设置成功！test值为: 内置:{gdata:test}/PAPI:%kamenu_gdata_test%'
 
+    test_meta:
+      text: '&a[ set meta ]'
+      actions:
+        - 'close'
+        - 'tell: &e正在设置test临时数据“steve”...'
+        - 'set-meta: test steve'
+        - 'wait: 1'
+        - 'tell: &a设置成功！test值为: 内置:{meta:test}/PAPI:%kamenu_meta_test%'
+
   exit:
-    text: '&8[ 退出 ]'
+    text: '&8[ Exit ]'
     actions:
       - 'actionbar: &7菜单已关闭'
       - 'close'

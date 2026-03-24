@@ -1,0 +1,44 @@
+Title: '&fIssue Feedback'
+
+Settings:
+  can_escape: true
+  after_action: 'CLOSE'
+
+Body:
+  item:
+    type: 'item'
+    material: 'BOOK'
+    name: 'Issue Feedback'
+    description: '&ePlease report the issues you encountered in the input box below.'
+
+  info2:
+    type: 'message'
+    text: '&a'
+
+Inputs:
+  feedback:
+    type: 'input'
+    text: '&7Feedback Content'
+    default: 'Please enter here...'
+    multiline:
+      max_lines: 5
+      height: 80
+  enable:
+    type: 'checkbox'
+    text: '&aI have read the terms of service'
+    default: false
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&fConfirm Send'
+    width: 200
+    actions:
+      - 'tell: &aSent successfully!'
+      - 'sound: entity.experience_orb.pickup'
+  deny:
+    text: '&fCancel'
+    width: 50
+    actions:
+      - 'tell: &7Feedback cancelled.'
+      - 'sound: block.note_block.bass'

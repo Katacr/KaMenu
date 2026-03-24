@@ -1,0 +1,143 @@
+Title: '&8» &d&lExtended Features Demo &8«'
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7This menu demonstrates all extended Action features, including PAPI, titles, clickable text, etc.'
+
+  display_item:
+    type: 'item'
+    material: 'ENCHANTED_BOOK'
+    name: '&c&lFeature List'
+    description: '&fClick the buttons below to test different features'
+
+Inputs:
+  test_input:
+    type: 'input'
+    text: '&aTest Input'
+    default: 'Default text'
+    max_length: 50
+
+Bottom:
+  type: 'multi'
+  columns: 3
+  buttons:
+    test_tell:
+      text: '&a[ Tell ]'
+      actions:
+        - 'tell: &aThis is a normal message'
+        - 'tell: &7Supports color codes &color&f'
+
+    test_actionbar:
+      text: '&b[ Actionbar ]'
+      actions:
+        - 'actionbar: &bThis is an ActionBar message!'
+
+    test_title:
+      text: '&c[ Title ]'
+      actions:
+        - 'title: title=&c&lTitle;subtitle=&eSubtitle;in=10;keep=60;out=20'
+
+    test_hovertext:
+      text: '&d[ Hover Text ]'
+      actions:
+        - 'hovertext: &7Normal text <text=&a&lClick me;hover=&cExecute command /help;command=/help> More text'
+
+    test_command:
+      text: '&e[ Command ]'
+      actions:
+        - 'command: say I executed a player command'
+
+    test_console:
+      text: '&6[ Console ]'
+      actions:
+        - 'console: say This is a console executed message'
+
+    test_sound:
+      text: '&f[ Sound ]'
+      actions:
+        - 'sound: entity.player.levelup;volume=1.5;pitch=1.2'
+
+    test_sound_category:
+      text: '&8[ Sound+ ]'
+      actions:
+        - 'tell: &fPlaying sounds from different categories'
+        - 'sound: ambient.cave;category=ambient'
+        - 'sound: entity.experience_orb.pickup;volume=2.0;category=player'
+
+    test_open:
+      text: '&5[ Open Menu ]'
+      actions:
+        - 'open: demo'
+
+    test_papi:
+      text: '&3[ Placeholder ]'
+      actions:
+        - 'tell: &aPlayer: %player_name%'
+        - 'tell: &bWorld: %player_world%'
+        - 'tell: &cCoordinates: %player_x%, %player_y%, %player_z%'
+        - 'tell: &dHealth: %player_health%/%player_max_health%'
+
+    test_variable:
+      text: '&7[ Input ]'
+      actions:
+        - 'tell: &fYou entered: &e$(test_input)'
+
+
+
+    test_close:
+      text: '&4[ Close ]'
+      actions:
+        - 'tell: &cGoodbye!'
+        - 'close'
+
+    test_toast:
+      text: '&6[ Toast ]'
+      actions:
+        - 'toast: type=challenge;msg=&fCongratulations! You completed the challenge!;icon=diamond'
+        - 'close'
+
+    test_wait:
+      text: '&a[ Wait ]'
+      actions:
+        - 'close'
+        - 'tell: &eStarting execution...'
+        - 'wait: 20'
+        - 'tell: &a1 second later...'
+        - 'wait: 20'
+        - 'tell: &b2 seconds later...'
+        - 'wait: 20'
+        - 'tell: &c3 seconds done!'
+
+    test_data:
+      text: '&a[ set data ]'
+      actions:
+        - 'close'
+        - 'tell: &eSetting test player data to "Hello"...'
+        - 'set-data: test Hello'
+        - 'wait: 1'
+        - 'tell: &aSet successfully! test value: built-in:{data:test}/PAPI:%kamenu_data_test%'
+
+    test_gdata:
+      text: '&a[ set gdata ]'
+      actions:
+        - 'close'
+        - 'tell: &eSetting test global data "Global"...'
+        - 'set-gdata: test Global'
+        - 'wait: 1'
+        - 'tell: &aSet successfully! test value: built-in:{gdata:test}/PAPI:%kamenu_gdata_test%'
+
+    test_meta:
+      text: '&a[ set meta ]'
+      actions:
+        - 'close'
+        - 'tell: &eSetting test temporary data "steve"...'
+        - 'set-meta: test steve'
+        - 'wait: 1'
+        - 'tell: &aSet successfully! test value: built-in:{meta:test}/PAPI:%kamenu_meta_test%'
+
+  exit:
+    text: '&8[ Exit ]'
+    actions:
+      - 'actionbar: &7Menu closed'
+      - 'close'

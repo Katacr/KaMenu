@@ -1,0 +1,202 @@
+Title: '&8» &e&lCondition Demo &8«'
+
+Settings:
+  can_escape: false
+
+Events:
+  Open:
+    - condition: '%player_level% >= 10' # Actions executed when opening the menu (conditional)
+      allow:
+        - 'tell: &aYou opened the condition demo menu'
+      deny:
+        - 'tell: &cYour level needs to be greater than 10 to access the demo menu'
+        - 'return'
+        - 'tell: You should theoretically never see this message'
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7This menu demonstrates various condition usages, including permissions, PAPI variables, built-in variables, etc.'
+
+  player_info:
+    type:
+      - condition: '%player_is_op% == true'
+        allow: 'item'
+        deny: 'none'
+    material: 'DIAMOND'
+    name: '&a&lAdmin Info'
+    description: '&fYou are an OP, you can see this item'
+
+  normal_info:
+    type:
+      - condition: '%player_is_op% == false'
+        allow: 'item'
+        deny: 'none'
+    material: 'IRON_INGOT'
+    name: '&7&lPlayer Info'
+    description: '&fYou are a regular player, you can see this item'
+
+Inputs:
+  test_input:
+    type: 'input'
+    text: '&aTest Input'
+    default: 'Hello World'
+    max_length: 50
+
+  admin_input:
+    type:
+      - condition: 'hasPerm.admin.test'
+        allow: 'input'
+        deny: 'none'
+    text: '&cAdmin Input'
+    default: 'Visible to admins only'
+    max_length: 50
+
+Bottom:
+  type: 'multi'
+  columns: 2
+
+  buttons:
+    # 1. Permission check demo
+
+    perm_deny:
+      text: '&7[ Permission ]'
+      actions:
+        - condition: 'hasPerm.kamenu.admin'
+          allow:
+            - 'tell: &aYou have the kamenu.admin permission'
+          deny:
+            - 'tell: &cYou do not have the kamenu.admin permission'
+
+    # 2. PAPI variable check demo
+    papi_health:
+      text: '&c[ Health Check ]'
+      actions:
+        - condition: '%player_health% > 10'
+          allow:
+            - 'tell: &aYour health >= 10: %player_health%'
+          deny:
+            - 'tell: &cYour health < 10: %player_health%'
+
+
+    # 3. Built-in variable check demo
+    input_check:
+      text: '&a[ Input Check ]'
+      actions:
+        - condition: '$(test_input) == "Hello World"'
+          allow:
+            - 'tell: &aYou entered Hello World'
+          deny:
+            - 'tell: &fYou did not enter &aHello World&f, you entered: &c$(test_input)'
+
+
+    # 4. Data existence check
+    data_exists:
+      text: '&b[ Data Exists ]'
+      actions:
+        - condition: '{data:test_key} != null'
+          allow:
+            - 'tell: &bPersonal data test_key exists, value: {data:test_key}'
+          deny:
+            - 'tell: &7Personal data test_key does not exist, value: {data:test_key}'
+
+    # 5. Composite condition check
+    and_condition:
+      text: '&6[ AND Condition ]'
+      actions:
+        - condition: 'hasPerm.kamenu.admin && %player_health% >= 10'
+          allow:
+            - 'tell: &aYou have admin permission AND health >= 10'
+          deny:
+            - 'tell: &cYou do not have admin permission OR health < 10'
+    or_condition:
+      text: '&5[ OR Condition ]'
+      actions:
+        - condition: 'hasPerm.kamenu.admin || %player_world% == world'
+          allow:
+            - 'tell: &aYou are an admin OR in the main world'
+          deny:
+            - 'tell: &cYou are not an admin AND not in the main world'
+    not_condition:
+      text: '&7[ NOT Condition ]'
+      actions:
+        - condition: '%player_level% != 5'
+          allow:
+            - 'tell: &cYour level is not 5'
+          deny:
+            - 'tell: &aYour level is 5'
+
+    # 6. Data/complex logic operation demo
+    set_data:
+      text: '&e[ Set data ]'
+      actions:
+        - condition: '%kamenu_data_counter% == null'
+          allow:
+            - 'tell: &eData does not exist, setting initial value: 1'
+            - 'set-data: counter 1'
+          deny:
+            - 'tell: &eData exists, value: {data:counter}'
+            - 'tell: &eAfter 1 second, check if it is 10 and reset'
+            - 'wait: 20'
+            - condition: '%kamenu_data_counter% == 10'
+              allow:
+                - 'tell: &eData is 10, now set to 1'
+                - 'set-data: counter 1'
+              deny:
+                - 'tell: &eData is not 10, now set to 10'
+                - 'set-data: counter 10'
+
+    show_data:
+      text: '&f[ View data ]'
+      actions:
+        - 'tell: &aCurrent: %kamenu_data_counter%'
+
+
+    # 7. Global data demo
+    set_global:
+      text: '&8[ Set global gdata ]'
+      actions:
+        - condition: '{gdata:server_status} == running'
+          allow:
+            - 'tell: &aYou have already set the server status to running'
+          deny:
+            - 'tell: &cYou have not set the server status yet, setting it now'
+            - 'set-gdata: server_status running'
+            - 'tell: &aServer status set to running'
+
+    global_data:
+      text: '&5[ View global gdata ]'
+      actions:
+        - condition: '{gdata:server_status} != null'
+          allow:
+            - 'tell: &dServer status: {gdata:server_status}'
+          deny:
+            - 'tell: &dServer status data does not exist ({gdata:server_status})'
+    # 8. papi variable check
+    papi_check:
+      text: '&5[ Are you Katacr ]'
+      actions:
+        - condition: '%player_name% == Katacr'
+          allow:
+            - 'tell: &dYou are Katacr'
+          deny:
+            - 'tell: &dYou are not Katacr, you are %player_name%'
+
+    # 9. Show condition
+    show_condition_panel:
+      show-condition: '%player_level% >= 10' # Only show this button when player level is greater than or equal to 10
+      text:
+        - condition: "%player_is_op% == true"
+          allow: '&4[ Admin ]'
+          deny: '&8[ Player ]'
+      actions:
+        - condition: "%player_is_op% != true"
+          allow:
+            - 'tell: &cYou are a player'
+          deny:
+            - 'tell: &cYou are an admin'
+  exit:
+    text: '&4[ Exit ]'
+    actions:
+      - 'tell: &cGoodbye!'
+      - 'close'

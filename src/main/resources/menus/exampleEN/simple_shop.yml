@@ -1,0 +1,54 @@
+Title: '&8» &d&lApple Purchase Demo &8«'
+
+Settings:
+  can_escape: true
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7This menu demonstrates how to use slider and condition checks to implement the apple purchase feature.'
+  apple_item:
+    type: 'item'
+    material: 'apple'
+    name: '&a&lApple'
+    description: '&fPrice: 10 gold coins each'
+
+Inputs:
+  amount:
+    type: 'slider'
+    text: '&6Quantity to purchase: '
+    min: 1
+    max: 64
+    step: 1
+    default: 1
+    format: '%s%s pieces'
+  enable:
+    type: 'checkbox'
+    text: '&aI have read the store terms of service'
+    default: false
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&a[ Confirm Purchase ]'
+    actions:
+      - 'tell: Processing your purchase request...'
+      - 'wait: 1'
+      - condition: 'hasMoney.%math_2_$(amount)*10%'
+        allow:
+          - 'tell: &aYou purchased &6$(amount) &aapples, costing &6%math_2_$(amount)*10% &agold coins.'
+          - 'money: type=take;num=%math_2_$(amount)*10%'
+          - 'console: give %player_name% apple $(amount)'
+          - 'close'
+
+        deny:
+          - condition: 'hasMoney.%math_2_$(amount)*10%'
+            deny:
+              - 'tell: &cYou do not have enough money'
+              - 'open: exampleEN/simple_shop'
+
+  deny:
+    text: '&c[ Cancel ]'
+    actions:
+      - 'tell: Purchase cancelled'
+      - 'close'

@@ -1,4 +1,4 @@
-Title: '&f服务器主菜单'
+Title: '&fServer Main Menu'
 
 Settings:
   can_escape: true
@@ -6,16 +6,16 @@ Settings:
 
 Events:
   Open:
-    - 'tell: &a感谢你选择我们的服务器！'
+    - 'tell: &aThank you for choosing our server!'
 
 Body:
   item:
     type: 'item'
     material: 'DIAMOND'
-    name: '服务器图标'
+    name: 'Server Icon'
   info:
     type: 'message'
-    text: '&a请在以下列表中选择你想使用的功能。'
+    text: '&aPlease select the feature you want to use from the list below.'
   info2:
     type: 'message'
     text: '&a'
@@ -25,36 +25,36 @@ Bottom:
   columns: 1
   buttons:
     world:
-      text: '&9[ 世界传送 ]'
+      text: '&9[ World Teleport ]'
       actions:
         - 'open: world_menu'
     land:
-      text: '&c[ 领地管理 ]'
+      text: '&c[ Land Management ]'
       actions:
         - 'open: land_menu'
     bag:
-      text: '&a[ 随身背包 ]'
+      text: '&a[ Portable Backpack ]'
       actions:
         - 'open: bag_menu'
     friend:
-      text: '&b[ 我的好友 ]'
+      text: '&b[ My Friends ]'
       actions:
         - 'open: friend_menu'
     sign:
-      text: '&d[ 每日签到 ]'
+      text: '&d[ Daily Check-in ]'
       actions:
         - 'open: sign_menu'
     game_event:
-      text: '&5[ 活动中心 ]'
+      text: '&5[ Event Center ]'
       actions:
         - 'open: event_menu'
     market:
-      text: '&6[ 玩家市场 ]'
+      text: '&6[ Player Market ]'
       actions:
         - 'open: market_menu'
 
   exit:
-    text: '&4[ 退出 ]'
+    text: '&4[ Exit ]'
     actions:
-      - 'tell: &c再见！'
+      - 'tell: &cGoodbye!'
       - 'close'

@@ -22,6 +22,10 @@ Inputs:
     step: 1
     default: 1
     format: '%s%s个'
+  enable:
+    type: 'checkbox'
+    text: '&a我已阅读商店服务条款'
+    default: false
 
 Bottom:
   type: 'confirmation'
@@ -46,4 +50,5 @@ Bottom:
   deny:
     text: '&c[ 取消 ]'
     actions:
+      - 'tell: 购买已取消'
       - 'close'

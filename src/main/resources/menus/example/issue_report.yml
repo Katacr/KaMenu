@@ -1,0 +1,44 @@
+Title: '&f问题反馈'
+
+Settings:
+  can_escape: true
+  after_action: 'CLOSE'
+
+Body:
+  item:
+    type: 'item'
+    material: 'BOOK'
+    name: '问题反馈'
+    description: '&e请在下方的输入框内，反馈你遇到的问题。'
+
+  info2:
+    type: 'message'
+    text: '&a'
+
+Inputs:
+  feedback:
+    type: 'input'
+    text: '&7反馈内容'
+    default: '请在此输入...'
+    multiline:
+      max_lines: 5
+      height: 80
+  enable:
+    type: 'checkbox'
+    text: '&a我已阅读服务条款'
+    default: false
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&f确认发送'
+    width: 200
+    actions:
+      - 'tell: &a发送成功！'
+      - 'sound: entity.experience_orb.pickup'
+  deny:
+    text: '&f取消'
+    width: 50
+    actions:
+      - 'tell: &7已取消反馈。'
+      - 'sound: block.note_block.bass'
