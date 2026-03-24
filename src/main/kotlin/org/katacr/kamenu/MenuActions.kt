@@ -443,13 +443,20 @@ object MenuActions {
             // data: 玩家数据操作
             finalCmd.startsWith("data:") -> {
                 val args = finalCmd.removePrefix("data:").trim()
-                parseAndExecuteDataAction(args, player, "data") { key, value ->
-                    databaseManager?.setPlayerData(player.uniqueId, key, value)
-                } { key, delta ->
-                    databaseManager?.modifyPlayerData(player.uniqueId, key, delta)
-                } { key ->
-                    databaseManager?.deletePlayerData(player.uniqueId, key)
-                }
+                parseAndExecuteDataAction(
+                    args = args,
+                    player = player,
+                    dataType = "data",
+                    setAction = { key, value ->
+                        databaseManager?.setPlayerData(player.uniqueId, key, value)
+                    },
+                    modifyAction = { key, delta ->
+                        databaseManager?.modifyPlayerData(player.uniqueId, key, delta)
+                    },
+                    deleteAction = { key ->
+                        databaseManager?.deletePlayerData(player.uniqueId, key)
+                    }
+                )
             }
 
             // set-gdata: 设置全局数据
@@ -463,13 +470,20 @@ object MenuActions {
             // gdata: 全局数据操作
             finalCmd.startsWith("gdata:") -> {
                 val args = finalCmd.removePrefix("gdata:").trim()
-                parseAndExecuteDataAction(args, player, "gdata") { key, value ->
-                    databaseManager?.setGlobalData(key, value)
-                } { key, delta ->
-                    databaseManager?.modifyGlobalData(key, delta)
-                } { key ->
-                    databaseManager?.deleteGlobalData(key)
-                }
+                parseAndExecuteDataAction(
+                    args = args,
+                    player = player,
+                    dataType = "gdata",
+                    setAction = { key, value ->
+                        databaseManager?.setGlobalData(key, value)
+                    },
+                    modifyAction = { key, delta ->
+                        databaseManager?.modifyGlobalData(key, delta)
+                    },
+                    deleteAction = { key ->
+                        databaseManager?.deleteGlobalData(key)
+                    }
+                )
             }
 
             // set-meta: 设置玩家元数据（内存缓存）
@@ -483,28 +497,35 @@ object MenuActions {
             // meta: 玩家元数据操作
             finalCmd.startsWith("meta:") -> {
                 val args = finalCmd.removePrefix("meta:").trim()
-                parseAndExecuteDataAction(args, player, "meta") { key, value ->
-                    metaDataManager?.setPlayerMeta(player.uniqueId, key, value)
-                } { key, delta ->
-                    val uuid = player.uniqueId
-                    val currentValue = metaDataManager?.getPlayerMeta(uuid, key)
-                    if (currentValue != null) {
-                        val currentNum = currentValue.toDoubleOrNull()
-                        if (currentNum != null) {
-                            val numDelta = delta.toDoubleOrNull()
-                            if (numDelta != null) {
-                                val newValue = (currentNum + numDelta).toString()
-                                metaDataManager?.setPlayerMeta(uuid, key, newValue)
+                parseAndExecuteDataAction(
+                    args = args,
+                    player = player,
+                    dataType = "meta",
+                    setAction = { key, value ->
+                        metaDataManager?.setPlayerMeta(player.uniqueId, key, value)
+                    },
+                    modifyAction = { key, delta ->
+                        val uuid = player.uniqueId
+                        val currentValue = metaDataManager?.getPlayerMeta(uuid, key)
+                        if (currentValue != null) {
+                            val currentNum = currentValue.toDoubleOrNull()
+                            if (currentNum != null) {
+                                val numDelta = delta.toDoubleOrNull()
+                                if (numDelta != null) {
+                                    val newValue = (currentNum + numDelta).toString()
+                                    metaDataManager?.setPlayerMeta(uuid, key, newValue)
+                                } else {
+                                    plugin?.logger?.warning("meta 操作失败: 变化量 '$delta' 不是数字，无法执行 add/take 操作")
+                                }
                             } else {
-                                plugin?.logger?.warning("meta 操作失败: 变化量 '$delta' 不是数字，无法执行 add/take 操作")
+                                plugin?.logger?.warning("meta 操作失败: 键 '$key' 的当前值 '$currentValue' 不是数字，无法执行 add/take 操作")
                             }
-                        } else {
-                            plugin?.logger?.warning("meta 操作失败: 键 '$key' 的当前值 '$currentValue' 不是数字，无法执行 add/take 操作")
                         }
+                    },
+                    deleteAction = { key ->
+                        metaDataManager?.removePlayerMeta(player.uniqueId, key)
                     }
-                } { key ->
-                    metaDataManager?.removePlayerMeta(player.uniqueId, key)
-                }
+                )
             }
 
             // set-gdata: 设置全局数据
