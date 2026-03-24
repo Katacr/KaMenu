@@ -1,8 +1,7 @@
 Title: '&8» &d&l购买苹果演示 &8«'
 
 Settings:
-  can_escape: false
-  after_action: 'NONE'
+  can_escape: true
 
 Body:
   intro:
@@ -29,6 +28,8 @@ Bottom:
   confirm:
     text: '&a[ 确认购买 ]'
     actions:
+      - 'tell: 正在开始处理的你的购买请求...'
+      - 'wait: 1'
       - condition: 'hasMoney.%math_2_$(amount)*10%'
         allow:
           - 'tell: &a你购买了 &6$(amount) &a个苹果，消费了 &6%math_2_$(amount)*10% &a金币。'

@@ -133,6 +133,60 @@ class DatabaseManager(val plugin: KaMenu) {
     }
 
     /**
+     * 删除玩家数据
+     */
+    fun deletePlayerData(playerUuid: UUID, key: String): Boolean {
+        connection.use { conn ->
+            val sql = "DELETE FROM player_data WHERE player_uuid = ? AND data_key = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, playerUuid.toString())
+                stmt.setString(2, key)
+                return stmt.executeUpdate() > 0
+            }
+        }
+    }
+
+    /**
+     * 修改玩家数据（增加或减少数值）
+     * @param playerUuid 玩家 UUID
+     * @param key 数据键
+     * @param delta 变化量（正数增加，负数减少，String 类型）
+     */
+    fun modifyPlayerData(playerUuid: UUID, key: String, delta: String) {
+        val numDelta = delta.toDoubleOrNull()
+        if (numDelta == null) {
+            plugin.logger.warning("玩家数据修改失败: 变化量 '$delta' 不是数字")
+            return
+        }
+
+        connection.use { conn ->
+            // 获取当前值
+            val sql = "SELECT data_value FROM player_data WHERE player_uuid = ? AND data_key = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, playerUuid.toString())
+                stmt.setString(2, key)
+                stmt.executeQuery().use { rs ->
+                    if (rs.next()) {
+                        val currentValue = rs.getString("data_value")
+                        val currentNum = currentValue.toDoubleOrNull()
+                        if (currentNum != null) {
+                            // 当前值是数字，可以进行加减操作
+                            val newValue = (currentNum + numDelta).toString()
+                            setPlayerData(playerUuid, key, newValue)
+                        } else {
+                            // 当前值不是数字，无法进行加减操作
+                            plugin.logger.warning("玩家数据修改失败: 键 '$key' 的当前值 '$currentValue' 不是数字")
+                        }
+                    } else {
+                        // 键不存在，直接设置为 delta 的值
+                        setPlayerData(playerUuid, key, numDelta.toString())
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * 设置全局数据
      */
     fun setGlobalData(key: String, value: String) {
@@ -178,6 +232,57 @@ class DatabaseManager(val plugin: KaMenu) {
                 stmt.setString(1, key)
                 stmt.executeQuery().use { rs ->
                     return if (rs.next()) rs.getString("data_value") else null
+                }
+            }
+        }
+    }
+
+    /**
+     * 删除全局数据
+     */
+    fun deleteGlobalData(key: String): Boolean {
+        connection.use { conn ->
+            val sql = "DELETE FROM global_data WHERE data_key = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, key)
+                return stmt.executeUpdate() > 0
+            }
+        }
+    }
+
+    /**
+     * 修改全局数据（增加或减少数值）
+     * @param key 数据键
+     * @param delta 变化量（正数增加，负数减少，String 类型）
+     */
+    fun modifyGlobalData(key: String, delta: String) {
+        val numDelta = delta.toDoubleOrNull()
+        if (numDelta == null) {
+            plugin.logger.warning("全局数据修改失败: 变化量 '$delta' 不是数字")
+            return
+        }
+
+        connection.use { conn ->
+            // 获取当前值
+            val sql = "SELECT data_value FROM global_data WHERE data_key = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, key)
+                stmt.executeQuery().use { rs ->
+                    if (rs.next()) {
+                        val currentValue = rs.getString("data_value")
+                        val currentNum = currentValue.toDoubleOrNull()
+                        if (currentNum != null) {
+                            // 当前值是数字，可以进行加减操作
+                            val newValue = (currentNum + numDelta).toString()
+                            setGlobalData(key, newValue)
+                        } else {
+                            // 当前值不是数字，无法进行加减操作
+                            plugin.logger.warning("全局数据修改失败: 键 '$key' 的当前值 '$currentValue' 不是数字")
+                        }
+                    } else {
+                        // 键不存在，直接设置为 delta 的值
+                        setGlobalData(key, numDelta.toString())
+                    }
                 }
             }
         }

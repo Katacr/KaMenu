@@ -207,7 +207,7 @@ object MenuActions {
 
             // 执行动作列表（支持条件判断）
 
-            executeActionList(player, actionList.map { it ?: Any() }, variables, menuOpener)
+            executeActionList(player, actionList.map { it ?: Any() }, variables, menuOpener, 0L, config)
         }, ClickCallback.Options.builder().lifetime(Duration.ofMinutes(5)).build())
     }
 
@@ -220,7 +220,8 @@ object MenuActions {
         actionList: List<Any>,
         variables: Map<String, String>,
         menuOpener: (Player, String) -> Unit,
-        baseDelay: Long = 0L
+        baseDelay: Long = 0L,
+        config: YamlConfiguration? = null
     ): Boolean {
         val actionsToExecute = mutableListOf<DeferredAction>()
         var currentDelay = baseDelay
@@ -249,7 +250,7 @@ object MenuActions {
                     }
 
                     // 递归执行子动作列表（支持嵌套的条件判断），传入当前延迟作为基准
-                    val subResult = executeActionList(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, currentDelay)
+                    val subResult = executeActionList(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, currentDelay, config)
                     if (subResult) {
                         shouldReturn = true
                         break
@@ -303,7 +304,7 @@ object MenuActions {
 
         // 按延迟时间执行所有动作
         actionsToExecute.forEach { deferred ->
-            executeDeferredAction(player, deferred, menuOpener)
+            executeDeferredAction(player, deferred, menuOpener, config)
         }
 
         return shouldReturn
@@ -334,7 +335,7 @@ object MenuActions {
         }
 
         // 执行事件动作（没有输入变量，也不支持 $(input) 变量）
-        return executeActionList(player, eventActions.map { it ?: Any() }, emptyMap(), menuOpener)
+        return executeActionList(player, eventActions.map { it ?: Any() }, emptyMap(), menuOpener, 0L, config)
     }
 
     /**
@@ -343,14 +344,15 @@ object MenuActions {
     private fun executeDeferredAction(
         player: Player,
         deferred: DeferredAction,
-        menuOpener: (Player, String) -> Unit
+        menuOpener: (Player, String) -> Unit,
+        config: YamlConfiguration? = null
     ) {
         if (deferred.delay > 0) {
             Bukkit.getScheduler().runTaskLater(plugin ?: return, Runnable {
-                executeSingleAction(player, deferred.action, deferred.variables, menuOpener)
+                executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config)
             }, deferred.delay)
         } else {
-            executeSingleAction(player, deferred.action, deferred.variables, menuOpener)
+            executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config)
         }
     }
 
@@ -361,7 +363,8 @@ object MenuActions {
         player: Player,
         action: String,
         variables: Map<String, String>,
-        menuOpener: (Player, String) -> Unit
+        menuOpener: (Player, String) -> Unit,
+        config: YamlConfiguration? = null
     ) {
         var finalCmd = action
         variables.forEach { (key, value) ->
@@ -417,17 +420,90 @@ object MenuActions {
 
             // close: 关闭对话框
             finalCmd.startsWith("close") -> {
-                // Paper API 会自动处理
+                // 先执行 Events.Close 事件
+                if (config != null) {
+                    val shouldInterrupt = executeEvent(player, config, "Close")
+                    if (shouldInterrupt) {
+                        // Close 事件中遇到 return，不关闭菜单
+                        return
+                    }
+                }
+                // Close 事件中没有 return，继续关闭菜单
                 player.closeInventory()
             }
 
             // set-data: 设置玩家数据
             finalCmd.startsWith("set-data:") -> {
-                val args = finalCmd.removePrefix("set-data:").trim().split(" ", limit = 2)
-                if (args.size >= 2) {
-                    val key = args[0]
-                    val value = args[1]
+                val args = finalCmd.removePrefix("set-data:").trim()
+                parseDataAction(args, player.uniqueId.toString(), "data") { uuid, key, value ->
+                    databaseManager?.setPlayerData(java.util.UUID.fromString(uuid), key, value)
+                }
+            }
+
+            // data: 玩家数据操作
+            finalCmd.startsWith("data:") -> {
+                val args = finalCmd.removePrefix("data:").trim()
+                parseAndExecuteDataAction(args, player, "data") { key, value ->
                     databaseManager?.setPlayerData(player.uniqueId, key, value)
+                } { key, delta ->
+                    databaseManager?.modifyPlayerData(player.uniqueId, key, delta)
+                } { key ->
+                    databaseManager?.deletePlayerData(player.uniqueId, key)
+                }
+            }
+
+            // set-gdata: 设置全局数据
+            finalCmd.startsWith("set-gdata:") -> {
+                val args = finalCmd.removePrefix("set-gdata:").trim()
+                parseDataAction(args, "", "gdata") { _, key, value ->
+                    databaseManager?.setGlobalData(key, value)
+                }
+            }
+
+            // gdata: 全局数据操作
+            finalCmd.startsWith("gdata:") -> {
+                val args = finalCmd.removePrefix("gdata:").trim()
+                parseAndExecuteDataAction(args, player, "gdata") { key, value ->
+                    databaseManager?.setGlobalData(key, value)
+                } { key, delta ->
+                    databaseManager?.modifyGlobalData(key, delta)
+                } { key ->
+                    databaseManager?.deleteGlobalData(key)
+                }
+            }
+
+            // set-meta: 设置玩家元数据（内存缓存）
+            finalCmd.startsWith("set-meta:") -> {
+                val args = finalCmd.removePrefix("set-meta:").trim()
+                parseDataAction(args, player.uniqueId.toString(), "meta") { uuid, key, value ->
+                    metaDataManager?.setPlayerMeta(java.util.UUID.fromString(uuid), key, value)
+                }
+            }
+
+            // meta: 玩家元数据操作
+            finalCmd.startsWith("meta:") -> {
+                val args = finalCmd.removePrefix("meta:").trim()
+                parseAndExecuteDataAction(args, player, "meta") { key, value ->
+                    metaDataManager?.setPlayerMeta(player.uniqueId, key, value)
+                } { key, delta ->
+                    val uuid = player.uniqueId
+                    val currentValue = metaDataManager?.getPlayerMeta(uuid, key)
+                    if (currentValue != null) {
+                        val currentNum = currentValue.toDoubleOrNull()
+                        if (currentNum != null) {
+                            val numDelta = delta.toDoubleOrNull()
+                            if (numDelta != null) {
+                                val newValue = (currentNum + numDelta).toString()
+                                metaDataManager?.setPlayerMeta(uuid, key, newValue)
+                            } else {
+                                plugin?.logger?.warning("meta 操作失败: 变化量 '$delta' 不是数字，无法执行 add/take 操作")
+                            }
+                        } else {
+                            plugin?.logger?.warning("meta 操作失败: 键 '$key' 的当前值 '$currentValue' 不是数字，无法执行 add/take 操作")
+                        }
+                    }
+                } { key ->
+                    metaDataManager?.removePlayerMeta(player.uniqueId, key)
                 }
             }
 
@@ -823,6 +899,100 @@ object MenuActions {
             }
             else -> {
                 plugin?.logger?.warning("无效的金币操作类型: $type。玩家: ${player.name}")
+            }
+        }
+    }
+
+    /**
+     * 解析旧的 set-data/set-gdata/set-meta 格式（向后兼容）
+     * @param args 参数字符串
+     * @param uuid 玩家 UUID（对于 gdata 不需要）
+     * @param dataType 数据类型
+     * @param action 执行动作的回调
+     */
+    private fun parseDataAction(
+        args: String,
+        uuid: String,
+        dataType: String,
+        action: (String, String, String) -> Unit
+    ) {
+        val parts = args.split(" ", limit = 2)
+        if (parts.size >= 2) {
+            val key = parts[0]
+            val value = parts[1]
+            action(uuid, key, value)
+        }
+    }
+
+    /**
+     * 解析并执行新的 data/gdata/meta 动作
+     * @param args 参数字符串（格式: type=set;key=test;var=value 或 type=add;key=num;var=10 或 type=delete;key=num）
+     * @param player 玩家对象
+     * @param dataType 数据类型（data/gdata/meta）
+     * @param setAction set 动作的回调
+     * @param modifyAction modify（add/take）动作的回调（参数为 String，方法内部会转换为 Double）
+     * @param deleteAction delete 动作的回调
+     */
+    private fun parseAndExecuteDataAction(
+        args: String,
+        player: Player,
+        dataType: String,
+        setAction: (String, String) -> Unit,
+        modifyAction: (String, String) -> Unit,
+        deleteAction: (String) -> Unit = {}
+    ) {
+        var type = ""
+        var key = ""
+        var value = ""
+
+        // 解析参数
+        args.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val paramKey = parts[0].trim().lowercase()
+                val paramValue = parts[1].trim().removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                when (paramKey) {
+                    "type" -> type = paramValue.lowercase()
+                    "key" -> key = paramValue
+                    "var" -> value = paramValue
+                }
+            }
+        }
+
+        if (key.isEmpty()) {
+            plugin?.logger?.warning("$dataType 操作失败: 缺少 key 参数。玩家: ${player.name}")
+            return
+        }
+
+        when (type) {
+            "set" -> {
+                // set 动作：直接设置值
+                setAction(key, value)
+            }
+            "add" -> {
+                // add 动作：增加数值
+                val numValue = value.toDoubleOrNull()
+                if (numValue != null) {
+                    modifyAction(key, numValue.toString())
+                } else {
+                    plugin?.logger?.warning("$dataType 操作失败: add/take 操作的值 '$value' 不是纯数字。玩家: ${player.name}")
+                }
+            }
+            "take" -> {
+                // take 动作：减少数值
+                val numValue = value.toDoubleOrNull()
+                if (numValue != null) {
+                    modifyAction(key, (-numValue).toString())
+                } else {
+                    plugin?.logger?.warning("$dataType 操作失败: add/take 操作的值 '$value' 不是纯数字。玩家: ${player.name}")
+                }
+            }
+            "delete" -> {
+                // delete 动作：删除数据
+                deleteAction(key)
+            }
+            else -> {
+                plugin?.logger?.warning("$dataType 操作失败: 无效的 type 参数 '$type'，支持的类型: set, add, take, delete。玩家: ${player.name}")
             }
         }
     }

@@ -1,0 +1,203 @@
+Title: '&8服务器主菜单'
+
+Settings:
+  can_escape: true
+  after_action: 'CLOSE'
+
+Events:
+  Open:
+    - condition: '%player_level% >= 10' # 打开菜单时执行的动作(有条件)
+      allow:
+        - 'tell: &a你打开了条件判断演示菜单'
+      deny:
+        - 'tell: &c你的等级需要大于10级才能演示菜单'
+        - 'return'
+        - 'tell: 理论上你永远都无法看到这行提示'
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7此菜单展示了各种条件判断的用法，包括权限、PAPI变量、内置变量等。'
+
+  player_info:
+    type:
+      - condition: '%player_is_op% == true'
+        allow: 'item'
+        deny: 'none'
+    material: 'DIAMOND'
+    name: '&a&l管理员信息'
+    description: '&f你是OP，可以看到此物品'
+
+  normal_info:
+    type:
+      - condition: '%player_is_op% == false'
+        allow: 'item'
+        deny: 'none'
+    material: 'IRON_INGOT'
+    name: '&7&l普通玩家信息'
+    description: '&f你是普通玩家，可以看到此物品'
+
+Inputs:
+  test_input:
+    type: 'input'
+    text: '&a测试输入'
+    default: 'Hello World'
+    max_length: 50
+
+  admin_input:
+    type:
+      - condition: 'hasPerm.admin.test'
+        allow: 'input'
+        deny: 'none'
+    text: '&c管理员输入'
+    default: '管理员可见该输入框'
+    max_length: 50
+
+Bottom:
+  type: 'multi'
+  columns: 2
+
+  buttons:
+    # 1. 权限判断演示
+
+    perm_deny:
+      text: '&7[ 权限 ]'
+      actions:
+        - condition: 'hasPerm.kamenu.admin'
+          allow:
+            - 'tell: &a你有 kamenu.admin 权限'
+          deny:
+            - 'tell: &c你没有 kamenu.admin 权限'
+
+    # 2. PAPI 变量判断演示
+    papi_health:
+      text: '&c[ 判断血量 ]'
+      actions:
+        - condition: '%player_health% > 10'
+          allow:
+            - 'tell: &a你的血量 >= 10: %player_health%'
+          deny:
+            - 'tell: &c你的血量 < 10: %player_health%'
+
+
+    # 3. 内置变量判断演示
+    input_check:
+      text: '&a[ 输入检查 ]'
+      actions:
+        - condition: '$(test_input) == "Hello World"'
+          allow:
+            - 'tell: &a你输入的内容是 Hello World'
+          deny:
+            - 'tell: &f你输入的内容不是 &aHello World &f,而是: &c$(test_input)'
+
+
+    # 4. 数据存在判断
+    data_exists:
+      text: '&b[ 数据存在 ]'
+      actions:
+        - condition: '{data:test_key} != null'
+          allow:
+            - 'tell: &b个人数据 test_key 存在，值为: {data:test_key}'
+          deny:
+            - 'tell: &7个人数据 test_key 不存在，值为: {data:test_key}'
+
+    # 5. 复合条件判断
+    and_condition:
+      text: '&6[ AND条件 ]'
+      actions:
+        - condition: 'hasPerm.kamenu.admin && %player_health% >= 10'
+          allow:
+            - 'tell: &a你有管理员权限 且 血量>=10'
+          deny:
+            - 'tell: &c你不是管理员权限 或 血量<10'
+    or_condition:
+      text: '&5[ OR条件 ]'
+      actions:
+        - condition: 'hasPerm.kamenu.admin || %player_world% == world'
+          allow:
+            - 'tell: &a你是管理员 或 在主世界'
+          deny:
+            - 'tell: &c你不是管理员 且 不在主世界'
+    not_condition:
+      text: '&7[ NOT条件 ]'
+      actions:
+        - condition: '%player_level% != 5'
+          allow:
+            - 'tell: &c你的等级不是5级'
+          deny:
+            - 'tell: &a你的等级是5级'
+
+    # 6. 数据/复杂逻辑操作演示
+    set_data:
+      text: '&e[ 设置data数据 ]'
+      actions:
+        - condition: '%kamenu_data_counter% == null'
+          allow:
+            - 'tell: &e数据不存在，已设置初始值: 1'
+            - 'set-data: counter 1'
+          deny:
+            - 'tell: &e数据已存在，值为: {data:counter}'
+            - 'tell: &e1秒后判断是否为10并重新设置'
+            - 'wait: 20'
+            - condition: '%kamenu_data_counter% == 10'
+              allow:
+                - 'tell: &e数据为10，现已设置为1'
+                - 'set-data: counter 1'
+              deny:
+                - 'tell: &e数据不为10，现已设置为10'
+                - 'set-data: counter 10'
+
+    show_data:
+      text: '&f[ 查看data数据 ]'
+      actions:
+        - 'tell: &a当前 : %kamenu_data_counter%'
+
+
+    # 7. 全局数据演示
+    set_global:
+      text: '&8[ 设置全局gdata数据 ]'
+      actions:
+        - condition: '{gdata:server_status} == running'
+          allow:
+            - 'tell: &a你已经设置服务器状态为running过了'
+          deny:
+            - 'tell: &c你还没有设置服务器状态，即将设置'
+            - 'set-gdata: server_status running'
+            - 'tell: &a已设置服务器状态为running'
+
+    global_data:
+      text: '&5[ 查看全局gdata数据 ]'
+      actions:
+        - condition: '{gdata:server_status} != null'
+          allow:
+            - 'tell: &d服务器状态: {gdata:server_status}'
+          deny:
+            - 'tell: &d服务器状态数据不存在 ({gdata:server_status})'
+    # 8. papi变量判断
+    papi_check:
+      text: '&5[ 你是Katacr ]'
+      actions:
+        - condition: '%player_name% == Katacr'
+          allow:
+            - 'tell: &d你是Katacr'
+          deny:
+            - 'tell: &d你不是Katacr, 你是%player_name%'
+
+    # 9. 显示条件
+    show_condition_panel:
+      show-condition: '%player_level% >= 10' # 只有当玩家等级大于等于10时，才会显示这个按钮
+      text:
+        - condition: "%player_is_op% == true"
+          allow: '&4[ 管理 ]'
+          deny: '&8[ 玩家 ]'
+      actions:
+        - condition: "%player_is_op% != true"
+          allow:
+            - 'tell: &c你是玩家'
+          deny:
+            - 'tell: &c你是管理员'
+  exit:
+    text: '&4[ 退出 ]'
+    actions:
+      - 'tell: &c再见！'
+      - 'close'

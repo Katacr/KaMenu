@@ -38,6 +38,14 @@ class MetaDataManager {
     }
 
     /**
+     * 删除玩家元数据
+     */
+    fun removePlayerMeta(playerUuid: UUID, key: String) {
+        val playerData = playerMetaData[playerUuid]
+        playerData?.remove(key)
+    }
+
+    /**
      * 清理指定玩家的元数据
      */
     fun clearPlayerMeta(playerUuid: UUID) {
