@@ -327,13 +327,14 @@ object ConditionUtils {
     }
 
     /**
-     * 评估单个条件（如 "5 >= 3" 或 "value @ method"）
+     * 评估单个条件（如 "5 >= 3" 或 "method.value"）
      */
     private fun evaluateSingleCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
 
-        // 处理内置条件方法 @ symbol
-        if (trimmed.contains("@") && !trimmed.matches(Regex("\".*\".*@.*"))) {
+        // 处理内置条件方法 method.value 格式
+        // 检查是否包含 . 且不在引号内
+        if (trimmed.contains(".") && !trimmed.matches(Regex("\".*\".*\\..*"))) {
             return evaluateBuiltinCondition(player, trimmed)
         }
 
@@ -388,25 +389,63 @@ object ConditionUtils {
 
     /**
      * 解析并执行内置条件方法
-     * 格式: "value @ method"
+     * 格式: "method.value" 或 "!method.value" 或 "method.\"value\"" 或 "!method.\"value\""
+     * 支持 ! 前缀进行反向判断
+     * 支持使用双引号包裹值以避免特殊字符被误解析
      * 支持的方法:
-     *   - isNum: 判断是否为数字
-     *   - isPosNum: 判断是否为正数
+     *   - isNum: 判断是否为数字（整数或小数）
+     *   - isPosNum: 判断是否为正数（大于0）
+     *   - isInt: 判断是否为整数
+     *   - isPosInt: 判断是否为正整数（大于0）
      *   - hasPerm: 判断玩家是否拥有权限 (value应为权限节点)
      *   - hasMoney: 判断玩家是否有足够的金币 (value应为金额)
      */
     private fun evaluateBuiltinCondition(player: Player, condition: String): Boolean {
-        val parts = condition.split("@", limit = 2)
-        if (parts.size != 2) {
+        val trimmed = condition.trim()
+
+        // 检查是否为反向判断
+        val isNegative = trimmed.startsWith("!")
+        val conditionWithoutNegation = if (isNegative) trimmed.substring(1).trim() else trimmed
+
+        // 查找第一个点号，但要考虑引号
+        var dotIndex = -1
+        var inQuote = false
+        var i = 0
+        while (i < conditionWithoutNegation.length) {
+            val char = conditionWithoutNegation[i]
+            when {
+                char == '\\' -> {
+                    // 跳过转义字符的下一个字符
+                    i++
+                }
+                char == '"' -> {
+                    inQuote = !inQuote
+                }
+                char == '.' && !inQuote -> {
+                    dotIndex = i
+                    break
+                }
+            }
+            i++
+        }
+
+        if (dotIndex == -1) {
             return false
         }
 
-        val value = parts[0].trim()
-        val method = parts[1].trim()
+        val method = conditionWithoutNegation.substring(0, dotIndex).trim()
+        var value = conditionWithoutNegation.substring(dotIndex + 1).trim()
 
-        return when (method) {
+        // 如果值被双引号包裹，则去掉引号
+        if (value.startsWith("\"") && value.endsWith("\"") && value.length >= 2) {
+            value = value.substring(1, value.length - 1)
+        }
+
+        val result = when (method) {
             "isNum" -> value.toDoubleOrNull() != null
             "isPosNum" -> value.toDoubleOrNull()?.let { it > 0 } ?: false
+            "isInt" -> value.toIntOrNull() != null
+            "isPosInt" -> value.toIntOrNull()?.let { it > 0 } ?: false
             "hasPerm" -> player.hasPermission(value)
             "hasMoney" -> {
                 val amount = value.toDoubleOrNull()
@@ -417,6 +456,9 @@ object ConditionUtils {
                 false
             }
         }
+
+        // 返回判断结果（如果为反向判断则取反）
+        return if (isNegative) !result else result
     }
 
     /**

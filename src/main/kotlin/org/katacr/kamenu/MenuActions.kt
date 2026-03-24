@@ -80,15 +80,21 @@ object MenuActions {
         if (text == null) Component.empty() else serializer.deserialize(text)
 
     /**
-     * 解析变量（内置变量 + PAPI）
+     * 解析变量（完整顺序：$(var) -> {data:var} -> %papi_var%）
      * @param player 玩家对象
      * @param text 原始文本
+     * @param variables 输入变量映射（$(var)）
      * @return 解析后的文本
      */
-    private fun resolveVariables(player: Player, text: String): String {
+    fun resolveVariablesWithInput(player: Player, text: String, variables: Map<String, String> = emptyMap()): String {
         var result = text
 
-        // 1. 解析内置变量 {data:key} 和 {gdata:key}
+        // 1. 解析输入变量 $(key)
+        variables.forEach { (key, value) ->
+            result = result.replace("$($key)", value)
+        }
+
+        // 2. 解析内置变量 {data:key}、{gdata:key}、{meta:key}
         result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
             val key = matchResult.groupValues[1]
             databaseManager?.getPlayerData(player.uniqueId, key)
@@ -104,7 +110,7 @@ object MenuActions {
             metaDataManager?.getPlayerMeta(player.uniqueId, key) ?: "null"
         }
 
-        // 2. 解析 PAPI 变量
+        // 3. 解析 PAPI 变量
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
                 result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
@@ -114,6 +120,16 @@ object MenuActions {
         }
 
         return result
+    }
+
+    /**
+     * 解析变量（内置变量 + PAPI）
+     * @param player 玩家对象
+     * @param text 原始文本
+     * @return 解析后的文本
+     */
+    private fun resolveVariables(player: Player, text: String): String {
+        return resolveVariablesWithInput(player, text, emptyMap())
     }
 
     /**
@@ -400,7 +416,7 @@ object MenuActions {
             // money: 操作玩家金币
             finalCmd.startsWith("money:") -> {
                 val args = finalCmd.removePrefix("money:").trim()
-                parseAndHandleMoney(player, args)
+                parseAndHandleMoney(player, args, variables)
             }
         }
     }
@@ -451,7 +467,7 @@ object MenuActions {
         }
 
         if (soundName.isNotEmpty()) {
-            val soundKey = org.bukkit.NamespacedKey.minecraft(soundName.lowercase())
+            val soundKey = NamespacedKey.minecraft(soundName.lowercase())
             val sound = org.bukkit.Registry.SOUND_EVENT.get(soundKey)
             if (sound != null) {
                 player.playSound(player.location, sound, category, volume, pitch)
@@ -714,14 +730,14 @@ object MenuActions {
      * 解析并处理金币操作
      * 格式: type=add;num=100 | type=take;num=100 | type=reset;num=100
      */
-    private fun parseAndHandleMoney(player: Player, args: String) {
+    private fun parseAndHandleMoney(player: Player, args: String, variables: Map<String, String> = emptyMap()) {
         if (economy == null) {
             plugin?.logger?.warning("经济系统未启用，无法执行 money 动作。玩家: ${player.name}")
             return
         }
 
         var type = ""
-        var amount = 0.0
+        var amountStr = "0"
 
         val params = args.split(";")
         for (param in params) {
@@ -731,10 +747,14 @@ object MenuActions {
                 val value = parts[1].trim()
                 when (key) {
                     "type" -> type = value.lowercase()
-                    "num" -> amount = value.toDoubleOrNull() ?: 0.0
+                    "num" -> amountStr = value
                 }
             }
         }
+
+        // 使用通用的变量解析方法
+        val finalAmountStr = resolveVariablesWithInput(player, amountStr, variables)
+        val amount = finalAmountStr.toDoubleOrNull() ?: 0.0
 
         val balance = economy!!.getBalance(player)
 

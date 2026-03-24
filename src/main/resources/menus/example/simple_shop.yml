@@ -1,0 +1,48 @@
+Title: '&8» &d&l购买苹果演示 &8«'
+
+Settings:
+  can_escape: false
+  after_action: 'NONE'
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7此菜单展示了如何使用拖动框和条件判断来实现购买苹果的功能。'
+  apple_item:
+    type: 'item'
+    material: 'apple'
+    name: '&a&l苹果'
+    description: '&f单价: 10金币/个'
+
+Inputs:
+  amount:
+    type: 'slider'
+    text: '&6购买数量: '
+    min: 1
+    max: 64
+    step: 1
+    default: 1
+    format: '%s%s个'
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&a[ 确认购买 ]'
+    actions:
+      - condition: 'hasMoney.%math_2_$(amount)*10%'
+        allow:
+          - 'tell: &a你购买了 &6$(amount) &a个苹果，消费了 &6%math_2_$(amount)*10% &a金币。'
+          - 'money: type=take;num=%math_2_$(amount)*10%'
+          - 'console: give %player_name% apple $(amount)'
+          - 'close'
+
+        deny:
+          - condition: 'hasMoney.%math_2_$(amount)*10%'
+            deny:
+              - 'tell: &c你没有足够的金钱'
+              - 'open: example/simple_shop'
+
+  deny:
+    text: '&c[ 取消 ]'
+    actions:
+      - 'close'

@@ -129,14 +129,14 @@ actions:
 
 ### 逻辑运算符
 
-| 运算符 | 说明 | 优先级 |
+| 运算符    | 说明 | 优先级 |
 |--------|------|--------|
-| `&&` | 逻辑与（AND）| 高 |
+| `&&`   | 逻辑与（AND）| 高 |
 | `\|\|` | 逻辑或（OR）| 低 |
-| `()` | 括号（改变优先级）| 最高 |
+| `()`   | 括号（改变优先级）| 最高 |
 
 **支持短路求值：**
-- `\|\|`：第一个条件为 `true` 时，不再计算后续条件
+- `||`：第一个条件为 `true` 时，不再计算后续条件
 - `&&`：第一个条件为 `false` 时，不再计算后续条件
 
 ### 表达式示例
@@ -157,6 +157,92 @@ condition: "(%player_level% >= 5 && %player_level% <= 10) || %player_is_op% == t
 
 ---
 
+## 内置条件方法
+
+KaMenu 提供了一些内置的条件判断方法，使用 `.` 符号调用。
+
+### 语法
+
+```
+method.value    # 正向判断
+!method.value   # 反向判断
+```
+
+### 支持的方法
+
+| 方法 | 说明 | 正向示例 | 反向示例 |
+|------|------|----------|----------|
+| `isNum` | 判断是否为数字（整数或小数）| `isNum.$(amount)` | `!isNum.$(amount)` |
+| `isPosNum` | 判断是否为正数（大于0）| `isPosNum.{data:price}` | `!isPosNum.{data:price}` |
+| `isInt` | 判断是否为整数 | `isInt.$(count)` | `!isInt.$(count)` |
+| `isPosInt` | 判断是否为正整数（大于0）| `isPosInt.$(amount)` | `!isPosInt.$(amount)` |
+| `hasPerm` | 判断玩家是否拥有权限 | `hasPerm.kamenu.admin` | `!hasPerm.kamenu.admin` |
+| `hasMoney` | 判断玩家是否有足够的金币 | `hasMoney.100` | `!hasMoney.100` |
+
+### 使用示例
+
+**判断输入值是否为整数：**
+
+```yaml
+actions:
+  - condition: "isInt.$(amount)"
+    allow:
+      - 'tell: &a输入的值是整数: $(amount)'
+    deny:
+      - 'tell: &c请输入一个有效的整数！'
+```
+
+**判断是否为正整数：**
+
+```yaml
+actions:
+  - condition: "isPosInt.$(amount)"
+    allow:
+      - 'tell: &a有效的正整数: $(amount)'
+    deny:
+      - 'tell: &c请输入大于0的整数！'
+```
+
+**判断玩家是否有足够金币：**
+
+```yaml
+actions:
+  - condition: "hasMoney.100"
+    allow:
+      - 'console: eco take %player_name% 100'
+      - 'tell: &a购买成功！'
+    deny:
+      - 'tell: &c余额不足，需要 100 金币'
+```
+
+**权限检查（正向）：**
+
+```yaml
+Bottom:
+  confirm:
+    text: '管理员操作'
+    actions:
+      - condition: "hasPerm.kamenu.admin"
+        allow:
+          - 'open: admin_panel'
+        deny:
+          - 'tell: &c你没有权限执行此操作！'
+```
+
+**权限检查（反向 - 没有权限时执行）：**
+
+```yaml
+Bottom:
+  confirm:
+    text: '管理员操作'
+    actions:
+      - condition: "!hasPerm.kamenu.admin"
+        allow:
+          - 'tell: &c你没有权限！'
+```
+
+---
+
 ## 变量支持
 
 条件表达式中支持以下变量格式：
@@ -167,6 +253,7 @@ condition: "(%player_level% >= 5 && %player_level% <= 10) || %player_is_op% == t
 | `{data:key}` | 玩家个人数据（持久化）| `{data:vip_level}` |
 | `{gdata:key}` | 全局共享数据（持久化）| `{gdata:server_status}` |
 | `{meta:key}` | 玩家元数据（内存缓存）| `{meta:last_visit}` |
+| `$(key)` | 对话框输入变量 | `$(amount)` |
 
 **元数据说明：**
 - 元数据仅存储在内存中，不持久化到数据库
@@ -271,6 +358,44 @@ actions:
       - 'tell: &c未标记为临时用户'
 ```
 
+### 示例 7：使用内置方法验证输入
+
+```yaml
+Inputs:
+  amount:
+    type: 'text_input'
+    text: '请输入数量（正整数）'
+
+actions:
+  - condition: "isPosInt.$(amount)"
+    allow:
+      - 'tell: &a有效输入: $(amount)'
+      - 'set-meta: purchase_amount $(amount)'
+    deny:
+      - 'tell: &c请输入大于0的整数！'
+      - 'close'
+```
+
+### 示例 8：反向权限检查（没有权限时提示）
+
+```yaml
+Bottom:
+  confirm:
+    text: '购买 VIP'
+    actions:
+      # 没有权限时提示（反向判断）
+      - condition: "!hasPerm.vip.purchase"
+        allow:
+          - 'tell: &c你需要购买 VIP 权限才能执行此操作！'
+        deny: []
+
+      # 有权限时执行购买逻辑
+      - condition: "hasPerm.vip.purchase"
+        allow:
+          - 'console: economy give %player_name% 1000'
+          - 'tell: &a已发放 1000 金币作为 VIP 奖励！'
+```
+
 ---
 
 ## 注意事项
@@ -284,6 +409,10 @@ actions:
    - `{data:key}` 和 `{gdata:key}` 存储在数据库中，持久化保存
    - `{meta:key}` 仅存储在内存中，玩家退出或插件重载后自动清空
    - 使用 `{meta:key} != null` 判断元数据是否存在
+7. **内置方法格式**：
+   - 使用 `method.value` 格式，如 `isInt.$(amount)`
+   - 支持反向判断，使用 `!` 前缀，如 `!hasPerm.kamenu.admin`
+   - 反向判断适用于需要在条件不满足时执行操作的场景
 
 ---
 
