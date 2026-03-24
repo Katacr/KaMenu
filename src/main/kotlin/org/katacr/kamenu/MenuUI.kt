@@ -17,6 +17,12 @@ import org.bukkit.Material
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.katacr.kamenu.ConditionUtils.getConditionalBooleanFromSection
+import org.katacr.kamenu.ConditionUtils.getConditionalDoubleFromSection
+import org.katacr.kamenu.ConditionUtils.getConditionalIntFromSection
+import org.katacr.kamenu.ConditionUtils.getConditionalListFromSection
+import org.katacr.kamenu.ConditionUtils.getConditionalTypeFromSection
+import org.katacr.kamenu.ConditionUtils.getConditionalValueFromSection
 
 object MenuUI {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
@@ -32,41 +38,8 @@ object MenuUI {
     /**
      * 将颜色代码转换为 Adventure Component
      */
-    internal fun color(text: String?): Component =
+    fun color(text: String?): Component =
         if (text == null) Component.empty() else serializer.deserialize(text)
-
-    /**
-     * 解析变量（PAPI + 内置变量）
-     * @param player 玩家对象
-     * @param text 原始文本
-     * @return 解析后的文本
-     */
-    private fun resolveVariables(player: Player, text: String): String {
-        var result = text
-
-        // 1. 解析内置变量 {data:key} 和 {gdata:key}
-        result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            plugin.databaseManager.getPlayerData(player.uniqueId, key)
-                ?: plugin.languageManager.getMessage("papi.data_not_found", key)
-        }
-        result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            plugin.databaseManager.getGlobalData(key)
-                ?: plugin.languageManager.getMessage("papi.data_not_found", key)
-        }
-
-        // 2. 解析 PAPI 变量
-        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            try {
-                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
-            } catch (_: Exception) {
-                // PAPI 解析失败，忽略
-            }
-        }
-
-        return result
-    }
 
     /**
      * 获取配置路径下适合当前玩家的值（支持条件判断）
@@ -87,153 +60,22 @@ object MenuUI {
         }
     }
 
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 字符串值
-     */
-    private fun getConditionalValueFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: String = ""): String {
-        // 检查该路径下是否为列表格式（条件判断）
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val value = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
-            return resolveVariables(player, value)
-        } else {
-            // 简单字符串值
-            val value = section.getString(path, defaultValue) ?: defaultValue
-            return resolveVariables(player, value)
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的整数值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 整数值
-     */
-    private fun getConditionalIntFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: Int = 0): Int {
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
-            val resolved = resolveVariables(player, stringValue)
-            return resolved.toIntOrNull() ?: defaultValue
-        } else {
-            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
-            val resolved = resolveVariables(player, value)
-            return resolved.toIntOrNull() ?: defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的双精度浮点数值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 双精度浮点数值
-     */
-    private fun getConditionalDoubleFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: Double = 0.0): Double {
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
-            val resolved = resolveVariables(player, stringValue)
-            return resolved.toDoubleOrNull() ?: defaultValue
-        } else {
-            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
-            val resolved = resolveVariables(player, value)
-            return resolved.toDoubleOrNull() ?: defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的布尔值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 布尔值
-     */
-    private fun getConditionalBooleanFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: Boolean = false): Boolean {
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val stringValue = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue.toString())
-            val resolved = resolveVariables(player, stringValue)
-            return resolved.toBooleanStrictOrNull() ?: defaultValue
-        } else {
-            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
-            val resolved = resolveVariables(player, value)
-            return resolved.toBooleanStrictOrNull() ?: defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的列表值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认列表
-     * @return 列表值
-     */
-    private fun getConditionalListFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: List<String> = emptyList()): List<String> {
-        if (section.isList(path)) {
-            val firstItem = section.getList(path)?.firstOrNull()
-            // 检查是否为条件判断格式（第一个元素是 Map）
-            if (firstItem is Map<*, *>) {
-                val conditions = section.getList(path) ?: return defaultValue
-                val list = ConditionUtils.getConditionalListFromList(player, conditions, defaultValue)
-                return list.map { resolveVariables(player, it) }
-            } else {
-                // 普通字符串列表
-                val list = section.getStringList(path)
-                return list.map { resolveVariables(player, it) }
-            }
-        } else {
-            return defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的类型值（支持条件判断和 'none'）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 类型值，如果类型为 'none' 或为空则返回 'none'
-     */
-    private fun getConditionalTypeFromSection(player: Player, section: org.bukkit.configuration.ConfigurationSection, path: String, defaultValue: String = ""): String {
-        val rawValue = getConditionalValueFromSection(player, section, path, defaultValue)
-        if (rawValue.isEmpty()) {
-            return "none"
-        }
-
-        // 检查是否为列表格式（条件判断）
-        if (section.isList(path)) {
-            val firstItem = section.getList(path)?.firstOrNull()
-            // 检查是否为条件判断格式（第一个元素是 Map）
-            if (firstItem is Map<*, *>) {
-                val conditions = section.getList(path) ?: return "none"
-                val result = ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
-                return if (result.isEmpty()) "none" else result
-            }
-        }
-
-        // 返回解析后的值
-        return rawValue
-    }
-
     fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
             player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
             return
         }
+
+        // 0. 执行 Open 事件（在菜单打开前执行）
+        val shouldStop = MenuActions.executeEvent(player, config, "Open")
+        if (shouldStop) {
+            // 如果Open事件中遇到return，停止打开菜单
+            return
+        }
+
         val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
-        val title = color(resolveVariables(player, rawTitle))
+        val title = color(ConditionUtils.resolveVariables(player, rawTitle))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()

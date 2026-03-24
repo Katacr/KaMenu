@@ -213,6 +213,7 @@ object MenuActions {
 
     /**
      * 执行动作列表（支持简单动作、列表动作和条件判断动作）
+     * @return 是否应该中断后续动作的执行（true表示中断）
      */
     private fun executeActionList(
         player: Player,
@@ -220,9 +221,10 @@ object MenuActions {
         variables: Map<String, String>,
         menuOpener: (Player, String) -> Unit,
         baseDelay: Long = 0L
-    ) {
+    ): Boolean {
         val actionsToExecute = mutableListOf<DeferredAction>()
         var currentDelay = baseDelay
+        var shouldReturn = false
 
         for (action in actionList) {
             when (action) {
@@ -247,7 +249,11 @@ object MenuActions {
                     }
 
                     // 递归执行子动作列表（支持嵌套的条件判断），传入当前延迟作为基准
-                    executeActionList(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, currentDelay)
+                    val subResult = executeActionList(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, currentDelay)
+                    if (subResult) {
+                        shouldReturn = true
+                        break
+                    }
                 }
                 is List<*> -> {
                     // 普通动作列表 - 遍历并执行每个动作
@@ -262,6 +268,10 @@ object MenuActions {
                         if (finalAction.startsWith("wait:", ignoreCase = true)) {
                             val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
                             currentDelay += waitTime
+                        } else if (finalAction.trim() == "return") {
+                            // return 动作，中断后续动作
+                            shouldReturn = true
+                            return@forEach
                         } else {
                             actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
                         }
@@ -277,6 +287,10 @@ object MenuActions {
                     if (finalAction.startsWith("wait:", ignoreCase = true)) {
                         val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
                         currentDelay += waitTime
+                    } else if (finalAction.trim() == "return") {
+                        // return 动作，中断后续动作
+                        shouldReturn = true
+                        break
                     } else {
                         actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
                     }
@@ -291,6 +305,36 @@ object MenuActions {
         actionsToExecute.forEach { deferred ->
             executeDeferredAction(player, deferred, menuOpener)
         }
+
+        return shouldReturn
+    }
+
+    /**
+     * 执行事件动作（如 Open、Close 等）
+     * 事件动作不支持 $(input) 变量，因为菜单还未打开
+     * @param player 玩家对象
+     * @param config 菜单配置
+     * @param eventName 事件名称（如 "Open"、"Close" 等）
+     * @return 是否应该中断后续操作（true表示中断，例如Open事件中遇到return）
+     */
+    fun executeEvent(player: Player, config: YamlConfiguration, eventName: String): Boolean {
+        val eventPath = "Events.$eventName"
+        val eventActions = config.getList(eventPath) ?: return false
+
+        plugin?.logger?.info("[DEBUG] executeEvent - Player: ${player.name}, Event: $eventName, Actions: ${eventActions.size}")
+
+        // 定义菜单打开器（事件中可能需要打开其他菜单）
+        val menuOpener: (Player, String) -> Unit = { p, menuName ->
+            val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
+            if (kaMenu != null) {
+                Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                    MenuUI.openMenu(p, menuName, kaMenu.menuManager, kaMenu)
+                })
+            }
+        }
+
+        // 执行事件动作（没有输入变量，也不支持 $(input) 变量）
+        return executeActionList(player, eventActions.map { it ?: Any() }, emptyMap(), menuOpener)
     }
 
     /**

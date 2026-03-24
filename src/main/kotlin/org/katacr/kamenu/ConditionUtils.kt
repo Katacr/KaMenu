@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import org.bukkit.Bukkit
+import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Player
 
 /**
@@ -10,6 +11,11 @@ import org.bukkit.entity.Player
 object ConditionUtils {
     private var languageManager: LanguageManager? = null
     private var plugin: KaMenu? = null
+
+    /**
+     * 自定义异常：表示这不是一个内置条件，应该继续按普通比较处理
+     */
+    private class NotBuiltinConditionException : Exception()
 
     /**
      * 设置语言管理器引用
@@ -26,11 +32,55 @@ object ConditionUtils {
     }
 
     /**
-     * 动作执行器接口
-     * 用于在条件判断后执行相应的动作
+     * 解析变量（PAPI + 内置变量）
+     * @param player 玩家对象
+     * @param text 原始文本
+     * @return 解析后的文本
      */
-    fun interface ActionExecutor {
-        fun execute(action: String)
+    fun resolveVariables(player: Player, text: String): String {
+        plugin?.logger?.info("[DEBUG] resolveVariables - Player: ${player.name}, Original: $text")
+        var result = text
+
+        // 1. 解析内置变量 {data:key}、{gdata:key} 和 {meta:key}
+        if (plugin != null) {
+            result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
+                val key = matchResult.groupValues[1]
+                val value = plugin!!.databaseManager.getPlayerData(player.uniqueId, key)
+                    ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
+                plugin?.logger?.info("[DEBUG] resolveVariables - {data:$key} = $value")
+                value
+            }
+            result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
+                val key = matchResult.groupValues[1]
+                val value = plugin!!.databaseManager.getGlobalData(key)
+                    ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
+                plugin?.logger?.info("[DEBUG] resolveVariables - {gdata:$key} = $value")
+                value
+            }
+            result = result.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
+                val key = matchResult.groupValues[1]
+                val value = plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
+                plugin?.logger?.info("[DEBUG] resolveVariables - {meta:$key} = $value")
+                value
+            }
+        }
+
+        // 2. 解析 PAPI 变量
+        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            try {
+                val beforePapi = result
+                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
+                if (beforePapi != result) {
+                    plugin?.logger?.info("[DEBUG] resolveVariables - PAPI replaced: '$beforePapi' -> '$result'")
+                }
+            } catch (_: Exception) {
+                // PAPI 解析失败，忽略
+                plugin?.logger?.warning("[DEBUG] resolveVariables - PAPI parse failed")
+            }
+        }
+
+        plugin?.logger?.info("[DEBUG] resolveVariables - Result: $result")
+        return result
     }
 
     /**
@@ -38,79 +88,56 @@ object ConditionUtils {
      * 例如: "%player_is_op% == true && %player_level% >= 10"
      */
     fun checkCondition(player: Player, condition: String?): Boolean {
-        if (condition == null || condition.isBlank()) return true
+        if (condition == null || condition.isBlank()) {
+            plugin?.logger?.info("[DEBUG] checkCondition - Condition is null or blank, returning true")
+            return true
+        }
 
+        plugin?.logger?.info("[DEBUG] checkCondition - Player: ${player.name}, Condition: $condition")
         var processed = condition
 
-        // 1. 先解析内置变量 {data:key} 和 {gdata:key}
+        // 1. 先解析内置变量 {data:key}、{gdata:key} 和 {meta:key}
         if (plugin != null) {
             processed = processed.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                plugin!!.databaseManager.getPlayerData(player.uniqueId, key) ?: "null"
+                val value = plugin!!.databaseManager.getPlayerData(player.uniqueId, key) ?: "null"
+                plugin?.logger?.info("[DEBUG] checkCondition - {data:$key} = $value")
+                value
             }
             processed = processed.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                plugin!!.databaseManager.getGlobalData(key) ?: "null"
+                val value = plugin!!.databaseManager.getGlobalData(key) ?: "null"
+                plugin?.logger?.info("[DEBUG] checkCondition - {gdata:$key} = $value")
+                value
+            }
+            processed = processed.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
+                val key = matchResult.groupValues[1]
+                val value = plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
+                plugin?.logger?.info("[DEBUG] checkCondition - {meta:$key} = $value")
+                value
             }
         }
 
         // 2. 进行 PAPI 变量替换
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
+                val beforePapi = processed
                 processed = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, processed)
-            } catch (e: Exception) {
+                if (beforePapi != processed) {
+                    plugin?.logger?.info("[DEBUG] checkCondition - PAPI replaced: '$beforePapi' -> '$processed'")
+                }
+            } catch (_: Exception) {
                 // PAPI 解析失败，忽略
+                plugin?.logger?.warning("[DEBUG] checkCondition - PAPI parse failed")
             }
         }
+
+        plugin?.logger?.info("[DEBUG] checkCondition - Processed condition: $processed")
 
         // 解析逻辑表达式（支持 && 和 ||）
-        return parseLogicalExpression(player, processed)
-    }
-
-    /**
-     * 执行条件判断动作
-     * 格式:
-     *   - condition: "%player_is_op% == true"
-     *     allow:
-     *       - 'open: manage'
-     *       - 'tell: 管理员专属'
-     *     deny:
-     *       - 'tell: 没有权限'
-     *
-     * @param player 玩家对象
-     * @param conditionMap 条件映射，包含 condition、allow、deny 键
-     * @param variables 变量映射，用于替换 $(variable) 格式的变量
-     * @param executor 动作执行器，用于执行具体的动作
-     */
-    fun executeConditionalAction(
-        player: Player,
-        conditionMap: Map<*, *>,
-        variables: Map<String, String>,
-        executor: ActionExecutor
-    ) {
-        var condition = conditionMap["condition"] as? String ?: return
-        val allowActions = conditionMap["allow"] as? List<*> ?: emptyList<Any>()
-        val denyActions = conditionMap["deny"] as? List<*> ?: emptyList<Any>()
-
-        // 先替换变量 $(variable) - 使用精确匹配避免误替换
-        variables.forEach { (key, value) ->
-            // 构造 $(key) 字面量，避免字符串插值
-            val pattern = "$(" + key + ")"
-            condition = condition.replace(pattern, value)
-        }
-
-        // 检查条件
-        val conditionMet = checkCondition(player, condition)
-
-        // 根据条件结果执行相应的动作列表
-        val actionsToExecute = if (conditionMet) allowActions else denyActions
-
-        // 执行动作列表
-        for (action in actionsToExecute) {
-            if (action is String) {
-                executor.execute(action)
-            }
-        }
+        val result = parseLogicalExpression(player, processed)
+        plugin?.logger?.info("[DEBUG] checkCondition - Result: $result")
+        return result
     }
 
     /**
@@ -229,13 +256,16 @@ object ConditionUtils {
      */
     private fun parseLogicalExpression(player: Player, expression: String): Boolean {
         val trimmed = expression.trim()
+        plugin?.logger?.info("[DEBUG] parseLogicalExpression - Expression: '$trimmed'")
 
         // 1. 先检查是否包含 ||（优先级最低）
         val orParts = splitByOperator(trimmed, "||")
         if (orParts.size > 1) {
+            plugin?.logger?.info("[DEBUG] parseLogicalExpression - Found OR operator with ${orParts.size} parts")
             // 如果有 ||，先解析第一部分，如果为 true 则直接返回 true（短路求值）
             val firstPart = orParts[0]
             val firstResult = parseLogicalExpression(player, firstPart)
+            plugin?.logger?.info("[DEBUG] parseLogicalExpression - OR first part: '$firstPart' = $firstResult")
             if (firstResult) return true // || 短路求值
 
             // 否则继续解析剩余部分
@@ -246,9 +276,11 @@ object ConditionUtils {
         // 2. 再检查是否包含 &&（优先级高于 ||）
         val andParts = splitByOperator(trimmed, "&&")
         if (andParts.size > 1) {
+            plugin?.logger?.info("[DEBUG] parseLogicalExpression - Found AND operator with ${andParts.size} parts")
             // 如果有 &&，先解析第一部分，如果为 false 则直接返回 false（短路求值）
             val firstPart = andParts[0]
             val firstResult = parseLogicalExpression(player, firstPart)
+            plugin?.logger?.info("[DEBUG] parseLogicalExpression - AND first part: '$firstPart' = $firstResult")
             if (!firstResult) return false // && 短路求值
 
             // 否则继续解析剩余部分
@@ -257,7 +289,9 @@ object ConditionUtils {
         }
 
         // 3. 如果没有逻辑运算符，则为基本条件
-        return evaluateSingleCondition(player, trimmed)
+        val result = evaluateSingleCondition(player, trimmed)
+        plugin?.logger?.info("[DEBUG] parseLogicalExpression - No operators found, evaluating single condition: $result")
+        return result
     }
 
     /**
@@ -331,28 +365,37 @@ object ConditionUtils {
      */
     private fun evaluateSingleCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
+        plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Condition: '$trimmed'")
 
         // 处理内置条件方法 method.value 格式
         // 检查是否包含 . 且不在引号内
         if (trimmed.contains(".") && !trimmed.matches(Regex("\".*\".*\\..*"))) {
-            return evaluateBuiltinCondition(player, trimmed)
+            plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Detected builtin condition format")
+            try {
+                val result = evaluateBuiltinCondition(player, trimmed)
+                plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Builtin condition result: $result")
+                return result
+            } catch (e: NotBuiltinConditionException) {
+                plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Not a builtin condition, continuing with comparison")
+            }
         }
 
         // 如果是括号包裹的表达式，去掉括号后递归解析
         if (trimmed.startsWith("(") && trimmed.endsWith(")") && !trimmed.matches(Regex("\".*\".*\\(.*\\)"))) {
             val inner = trimmed.substring(1, trimmed.length - 1).trim()
+            plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Found parentheses, inner: '$inner'")
             // 确保括号是成对的（考虑引号）
             var parenCount = 0
             var inSingleQuote = false
             var inDoubleQuote = false
             var isCompletePair = true
             for (char in inner) {
-                when {
-                    char == '\\' -> continue // 跳过转义字符的下一个字符
-                    char == '\'' && !inDoubleQuote -> inSingleQuote = !inSingleQuote
-                    char == '"' && !inSingleQuote -> inDoubleQuote = !inDoubleQuote
-                    char == '(' && !inSingleQuote && !inDoubleQuote -> parenCount++
-                    char == ')' && !inSingleQuote && !inDoubleQuote -> parenCount--
+                when (char) {
+                    '\\' -> continue // 跳过转义字符的下一个字符
+                    '\'' if !inDoubleQuote -> inSingleQuote = !inSingleQuote
+                    '"' if !inSingleQuote -> inDoubleQuote = !inDoubleQuote
+                    '(' if !inSingleQuote && !inDoubleQuote -> parenCount++
+                    ')' if !inSingleQuote && !inDoubleQuote -> parenCount--
                 }
                 if (parenCount < 0) {
                     isCompletePair = false
@@ -360,14 +403,16 @@ object ConditionUtils {
                 }
             }
             if (isCompletePair && parenCount == 0 && !inSingleQuote && !inDoubleQuote) {
-                return parseLogicalExpression(player, inner)
+                val result = parseLogicalExpression(player, inner)
+                plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Parentheses evaluation result: $result")
+                return result
             }
         }
 
         // 匹配比较运算符
         val regex = "(>=|<=|==|!=|>|<)".toRegex()
-        val match = regex.find(trimmed)
-        if (match == null) {
+        val match = regex.find(trimmed) ?: run {
+            plugin?.logger?.warning("[DEBUG] evaluateSingleCondition - No operator found in condition: '$trimmed'")
             return false
         }
 
@@ -376,7 +421,9 @@ object ConditionUtils {
         val left = parseQuotedString(parts[0].trim())
         val right = parseQuotedString(parts[1].trim())
 
-        return when (op) {
+        plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Operator: $op, Left: '$left', Right: '$right'")
+
+        val result = when (op) {
             "==" -> compareEquals(left, right)
             "!=" -> !compareEquals(left, right)
             ">"  -> left.toDoubleDefault(0.0) > right.toDoubleDefault(0.0)
@@ -385,6 +432,8 @@ object ConditionUtils {
             "<=" -> left.toDoubleDefault(0.0) <= right.toDoubleDefault(0.0)
             else -> false
         }
+        plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Comparison result: $result")
+        return result
     }
 
     /**
@@ -399,13 +448,16 @@ object ConditionUtils {
      *   - isPosInt: 判断是否为正整数（大于0）
      *   - hasPerm: 判断玩家是否拥有权限 (value应为权限节点)
      *   - hasMoney: 判断玩家是否有足够的金币 (value应为金额)
+     * @throws NotBuiltinConditionException 如果这不是一个有效的内置条件格式
      */
     private fun evaluateBuiltinCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
+        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Condition: '$trimmed'")
 
         // 检查是否为反向判断
         val isNegative = trimmed.startsWith("!")
         val conditionWithoutNegation = if (isNegative) trimmed.substring(1).trim() else trimmed
+        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Is negative: $isNegative")
 
         // 查找第一个点号，但要考虑引号
         var dotIndex = -1
@@ -413,15 +465,15 @@ object ConditionUtils {
         var i = 0
         while (i < conditionWithoutNegation.length) {
             val char = conditionWithoutNegation[i]
-            when {
-                char == '\\' -> {
+            when (char) {
+                '\\' -> {
                     // 跳过转义字符的下一个字符
                     i++
                 }
-                char == '"' -> {
+                '"' -> {
                     inQuote = !inQuote
                 }
-                char == '.' && !inQuote -> {
+                '.' if !inQuote -> {
                     dotIndex = i
                     break
                 }
@@ -430,10 +482,11 @@ object ConditionUtils {
         }
 
         if (dotIndex == -1) {
-            return false
+            plugin?.logger?.warning("[DEBUG] evaluateBuiltinCondition - No dot found in condition")
+            throw NotBuiltinConditionException()
         }
 
-        val method = conditionWithoutNegation.substring(0, dotIndex).trim()
+        val method = conditionWithoutNegation.take(dotIndex).trim()
         var value = conditionWithoutNegation.substring(dotIndex + 1).trim()
 
         // 如果值被双引号包裹，则去掉引号
@@ -441,24 +494,56 @@ object ConditionUtils {
             value = value.substring(1, value.length - 1)
         }
 
+        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Method: '$method', Value: '$value'")
+
         val result = when (method) {
-            "isNum" -> value.toDoubleOrNull() != null
-            "isPosNum" -> value.toDoubleOrNull()?.let { it > 0 } ?: false
-            "isInt" -> value.toIntOrNull() != null
-            "isPosInt" -> value.toIntOrNull()?.let { it > 0 } ?: false
-            "hasPerm" -> player.hasPermission(value)
+            "isNum" -> {
+                val numResult = value.toDoubleOrNull() != null
+                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isNum('$value') = $numResult")
+                numResult
+            }
+            "isPosNum" -> {
+                val numResult = value.toDoubleOrNull()?.let { it > 0 } ?: false
+                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isPosNum('$value') = $numResult")
+                numResult
+            }
+            "isInt" -> {
+                val intResult = value.toIntOrNull() != null
+                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isInt('$value') = $intResult")
+                intResult
+            }
+            "isPosInt" -> {
+                val intResult = value.toIntOrNull()?.let { it > 0 } ?: false
+                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isPosInt('$value') = $intResult")
+                intResult
+            }
+            "hasPerm" -> {
+                val permResult = player.hasPermission(value)
+                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - hasPerm('$value') = $permResult")
+                permResult
+            }
             "hasMoney" -> {
                 val amount = value.toDoubleOrNull()
-                if (amount == null) false else checkPlayerMoney(player, amount)
+                if (amount == null) {
+                    plugin?.logger?.warning("[DEBUG] evaluateBuiltinCondition - hasMoney - invalid amount: '$value'")
+                    false
+                } else {
+                    val moneyResult = checkPlayerMoney(player, amount)
+                    plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - hasMoney($amount) = $moneyResult")
+                    moneyResult
+                }
             }
             else -> {
-                languageManager?.getMessage("condition.unknown_method", method) ?: "[KaMenu] 未知内置条件方法: $method"
-                false
+                // 未知方法，说明这不是内置条件，应该按普通比较处理
+                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Unknown method '$method', treating as normal comparison")
+                throw NotBuiltinConditionException()
             }
         }
 
         // 返回判断结果（如果为反向判断则取反）
-        return if (isNegative) !result else result
+        val finalResult = if (isNegative) !result else result
+        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Final result: $finalResult")
+        return finalResult
     }
 
     /**
@@ -557,5 +642,176 @@ object ConditionUtils {
             "false", "no", "0", "f", "n" -> false
             else -> null
         }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 字符串值
+     */
+    fun getConditionalValueFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
+        plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
+        // 检查该路径下是否为列表格式（条件判断）
+        if (section.isList(path)) {
+            plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Path is list format")
+            val conditions = section.getList(path) ?: return defaultValue
+            val value = getConditionalValueFromList(player, conditions, defaultValue)
+            val resolved = resolveVariables(player, value)
+            plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Result (list): $resolved")
+            return resolved
+        } else {
+            // 简单字符串值
+            val value = section.getString(path, defaultValue) ?: defaultValue
+            val resolved = resolveVariables(player, value)
+            plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Result (string): $resolved")
+            return resolved
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的整数值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 整数值
+     */
+    fun getConditionalIntFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Int = 0): Int {
+        plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
+        if (section.isList(path)) {
+            plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Path is list format")
+            val conditions = section.getList(path) ?: return defaultValue
+            val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
+            val resolved = resolveVariables(player, stringValue)
+            val result = resolved.toIntOrNull() ?: defaultValue
+            plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Result (list): $result")
+            return result
+        } else {
+            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
+            val resolved = resolveVariables(player, value)
+            val result = resolved.toIntOrNull() ?: defaultValue
+            plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Result (string): $result")
+            return result
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的双精度浮点数值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 双精度浮点数值
+     */
+    fun getConditionalDoubleFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Double = 0.0): Double {
+        plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
+        if (section.isList(path)) {
+            plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Path is list format")
+            val conditions = section.getList(path) ?: return defaultValue
+            val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
+            val resolved = resolveVariables(player, stringValue)
+            val result = resolved.toDoubleOrNull() ?: defaultValue
+            plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Result (list): $result")
+            return result
+        } else {
+            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
+            val resolved = resolveVariables(player, value)
+            val result = resolved.toDoubleOrNull() ?: defaultValue
+            plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Result (string): $result")
+            return result
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的布尔值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 布尔值
+     */
+    fun getConditionalBooleanFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Boolean = false): Boolean {
+        plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
+        if (section.isList(path)) {
+            plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Path is list format")
+            val conditions = section.getList(path) ?: return defaultValue
+            val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
+            val resolved = resolveVariables(player, stringValue)
+            val result = resolved.toBooleanStrictOrNull() ?: defaultValue
+            plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Result (list): $result")
+            return result
+        } else {
+            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
+            val resolved = resolveVariables(player, value)
+            val result = resolved.toBooleanStrictOrNull() ?: defaultValue
+            plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Result (string): $result")
+            return result
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的列表值（支持条件判断）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认列表
+     * @return 列表值
+     */
+    fun getConditionalListFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: List<String> = emptyList()): List<String> {
+        plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Player: ${player.name}, Path: $path")
+        if (section.isList(path)) {
+            val firstItem = section.getList(path)?.firstOrNull()
+            // 检查是否为条件判断格式（第一个元素是 Map）
+            if (firstItem is Map<*, *>) {
+                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Path is conditional list format")
+                val conditions = section.getList(path) ?: return defaultValue
+                val list = getConditionalListFromList(player, conditions, defaultValue)
+                val result = list.map { resolveVariables(player, it) }
+                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Result (conditional): $result")
+                return result
+            } else {
+                // 普通字符串列表
+                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Path is normal list format")
+                val list = section.getStringList(path)
+                val result = list.map { resolveVariables(player, it) }
+                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Result (normal): $result")
+                return result
+            }
+        } else {
+            plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Path is not a list, returning default")
+            return defaultValue
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的类型值（支持条件判断和 'none'）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 类型值，如果类型为 'none' 或为空则返回 'none'
+     */
+    fun getConditionalTypeFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
+        val rawValue = getConditionalValueFromSection(player, section, path, defaultValue)
+        if (rawValue.isEmpty()) {
+            return "none"
+        }
+
+        // 检查是否为列表格式（条件判断）
+        if (section.isList(path)) {
+            val firstItem = section.getList(path)?.firstOrNull()
+            // 检查是否为条件判断格式（第一个元素是 Map）
+            if (firstItem is Map<*, *>) {
+                val conditions = section.getList(path) ?: return "none"
+                val result = getConditionalValueFromList(player, conditions, defaultValue)
+                return result.ifEmpty { "none" }
+            }
+        }
+
+        // 返回解析后的值
+        return rawValue
     }
 }
