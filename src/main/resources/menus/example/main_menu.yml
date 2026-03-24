@@ -19,6 +19,15 @@ Body:
     type: 'message'
     text: '&7此菜单展示了各种条件判断的用法，包括权限、PAPI变量、内置变量等。'
 
+  width_demo:
+    type: 'message'
+    text: '&e宽度演示 - 这是一条宽度为 500 的消息'
+    width: 500
+
+  normal_message:
+    type: 'message'
+    text: '&7这是一条使用默认宽度的消息'
+
   player_info:
     type:
       - condition: '%player_is_op% == true'
@@ -196,6 +205,25 @@ Bottom:
             - 'tell: &c你是玩家'
           deny:
             - 'tell: &c你是管理员'
+    # 10. 自定义宽度演示
+    wide_button:
+      text: '&a[ 宽按钮 ]'
+      width: 200  # 设置按钮宽度为 200
+      actions:
+        - 'tell: &a这是一个宽度为 200 的按钮'
+
+    narrow_button:
+      text: '&b[ 窄按钮 ]'
+      width: 50   # 设置按钮宽度为 50
+      actions:
+        - 'tell: &b这是一个宽度为 50 的按钮'
+
+    default_width:
+      text: '&c[ 默认宽度 ]'
+      # 不设置 width，使用默认宽度
+      actions:
+        - 'tell: &c这是一个使用默认宽度的按钮'
+
   exit:
     text: '&4[ 退出 ]'
     actions:

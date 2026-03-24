@@ -30,6 +30,7 @@ Body:
 |------|------|------|
 | `type` | `String` | 固定值 `message` |
 | `text` | `String` | 消息文字，支持颜色代码、PAPI 变量和条件判断 |
+| `width` | `Int` | 可选，消息宽度（1-1024），不设置则使用默认宽度 |
 
 **示例：**
 
@@ -54,6 +55,33 @@ Body:
       - condition: "%player_is_op% == true"
         allow: '&a✔ 当前身份：管理员'
         deny: '&7当前身份：普通玩家'
+```
+
+**宽度自定义示例：**
+
+```yaml
+Body:
+  wide_message:
+    type: 'message'
+    text: '&7这是一条宽度为 300 的消息'
+    width: 300
+
+  normal_message:
+    type: 'message'
+    text: '&7这是一条使用默认宽度的消息'
+```
+
+**条件宽度示例：**
+
+```yaml
+Body:
+  dynamic_width:
+    type: 'message'
+    text: '&7消息内容'
+    width:
+      - condition: "%player_is_op% == true"
+        allow: 400
+        deny: 200
 ```
 
 ---

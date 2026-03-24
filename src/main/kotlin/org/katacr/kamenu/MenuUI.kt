@@ -104,7 +104,12 @@ object MenuUI {
                 when (type) {
                     "message" -> {
                         val text = getConditionalValueFromSection(player, section, "$key.text", "")
-                        bodyList.add(DialogBody.plainMessage(color(text)))
+                        val width = getConditionalIntFromSection(player, section, "$key.width", 0)
+                        if (width > 0) {
+                            bodyList.add(DialogBody.plainMessage(color(text), width))
+                        } else {
+                            bodyList.add(DialogBody.plainMessage(color(text)))
+                        }
                     }
                     "item" -> {
                         val materialStr = getConditionalValueFromSection(player, section, "$key.material", "PAPER")
@@ -220,11 +225,17 @@ object MenuUI {
                         }
 
                         val btnText = getConditionalValueFromSection(player, btnSection, "$btnKey.text", "按钮")
-                        actionButtons.add(
-                            ActionButton.builder(color(btnText))
-                                .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
-                                .build()
-                        )
+                        val btnWidth = getConditionalIntFromSection(player, btnSection, "$btnKey.width", 0)
+
+                        val builder = ActionButton.builder(color(btnText))
+                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
+
+                        // 如果设置了宽度（width > 0），则应用宽度设置
+                        if (btnWidth > 0) {
+                            builder.width(btnWidth)
+                        }
+
+                        actionButtons.add(builder.build())
                     }
                 }
 
@@ -232,9 +243,16 @@ object MenuUI {
                 val exitBtn = bottomSection?.let { section ->
                     val exitText = getConditionalValueFromSection(player, section, "exit.text", "")
                     if (exitText.isNotEmpty()) {
-                        ActionButton.builder(color(exitText))
+                        val exitWidth = getConditionalIntFromSection(player, section, "exit.width", 0)
+                        val builder = ActionButton.builder(color(exitText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
-                            .build()
+
+                        // 如果设置了宽度（width > 0），则应用宽度设置
+                        if (exitWidth > 0) {
+                            builder.width(exitWidth)
+                        }
+
+                        builder.build()
                     } else null
                 }
 
@@ -248,12 +266,23 @@ object MenuUI {
                 val confirmBtnText = bottomSection?.let { getConditionalValueFromSection(player, it, "confirm.text", "确认") } ?: "确认"
                 val denyBtnText = bottomSection?.let { getConditionalValueFromSection(player, it, "deny.text", "取消") } ?: "取消"
 
-                val confirmBtn = ActionButton.builder(color(confirmBtnText))
+                val confirmWidth = bottomSection?.let { getConditionalIntFromSection(player, it, "confirm.width", 0) } ?: 0
+                val denyWidth = bottomSection?.let { getConditionalIntFromSection(player, it, "deny.width", 0) } ?: 0
+
+                val confirmBuilder = ActionButton.builder(color(confirmBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
-                    .build()
-                val denyBtn = ActionButton.builder(color(denyBtnText))
+                if (confirmWidth > 0) {
+                    confirmBuilder.width(confirmWidth)
+                }
+                val confirmBtn = confirmBuilder.build()
+
+                val denyBuilder = ActionButton.builder(color(denyBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
-                    .build()
+                if (denyWidth > 0) {
+                    denyBuilder.width(denyWidth)
+                }
+                val denyBtn = denyBuilder.build()
+
                 DialogType.confirmation(confirmBtn, denyBtn)
             }
 
@@ -262,9 +291,18 @@ object MenuUI {
                 val btnText = bottomSection?.let { getConditionalValueFromSection(player, it, "confirm.text", "") }?.takeIf { it.isNotEmpty() }
                     ?: bottomSection?.let { getConditionalValueFromSection(player, it, "button1.text", "") }?.takeIf { it.isNotEmpty() }
                     ?: "确认"
-                val confirmBtn = ActionButton.builder(color(btnText))
+
+                val widthPath = if (config.contains("Bottom.confirm.width")) "Bottom.confirm.width" else "Bottom.button1.width"
+                val confirmWidth = getConditionalIntFromSection(player, config, widthPath, 0)
+
+                val builder = ActionButton.builder(color(btnText))
                     .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener))
-                    .build()
+
+                if (confirmWidth > 0) {
+                    builder.width(confirmWidth)
+                }
+
+                val confirmBtn = builder.build()
                 DialogType.notice(confirmBtn)
             }
         }

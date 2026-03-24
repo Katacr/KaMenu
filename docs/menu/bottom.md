@@ -25,6 +25,7 @@ Bottom:
 | 字段 | 说明 |
 |------|------|
 | `confirm.text` | 按钮文字，支持颜色代码和条件判断 |
+| `confirm.width` | 可选，按钮宽度（1-1024）|
 | `confirm.actions` | 点击时执行的动作列表 |
 
 **示例：**
@@ -51,8 +52,10 @@ Bottom:
 | 字段 | 说明 |
 |------|------|
 | `confirm.text` | 确认按钮文字，支持条件判断 |
+| `confirm.width` | 可选，确认按钮宽度（1-1024）|
 | `confirm.actions` | 点击确认时执行的动作列表 |
 | `deny.text` | 取消按钮文字，支持条件判断 |
+| `deny.width` | 可选，取消按钮宽度（1-1024）|
 | `deny.actions` | 点击取消时执行的动作列表 |
 
 **示例：**
@@ -94,6 +97,24 @@ Bottom:
 |------|------|
 | `show-condition` | 可选，按钮显示条件；条件不满足时该按钮不显示 |
 | `text` | 按钮文字，支持颜色代码和条件判断 |
+| `width` | 可选，按钮宽度（1-1024），不设置则使用默认宽度 |
+| `actions` | 点击时执行的动作列表 |
+
+**退出按钮配置项：**
+
+| 字段 | 说明 |
+|------|------|
+| `text` | 退出按钮文字，支持颜色代码和条件判断 |
+| `width` | 可选，退出按钮宽度（1-1024）|
+| `actions` | 点击时执行的动作列表 |
+
+**按钮配置项：**
+
+| 字段 | 说明 |
+|------|------|
+| `show-condition` | 可选，按钮显示条件；条件不满足时该按钮不显示 |
+| `text` | 按钮文字，支持颜色代码和条件判断 |
+| `width` | 可选，按钮宽度（1-1024），不设置则使用默认宽度 |
 | `actions` | 点击时执行的动作列表 |
 
 **示例：**
@@ -175,3 +196,84 @@ Bottom:
 ```
 
 关于条件判断的完整语法，请参阅 [🔍 条件判断](conditions.md)。
+
+---
+
+## 按钮宽度 (width)
+
+所有按钮都支持自定义宽度配置，通过 `width` 字段可以控制按钮的显示宽度。
+
+**适用范围：**
+- `notice` 模式的确认按钮（`confirm.width`）
+- `confirmation` 模式的确认和取消按钮（`confirm.width` 和 `deny.width`）
+- `multi` 模式的所有按钮（`buttons` 中的每个按钮和 `exit` 按钮）
+
+**宽度值：**
+- 范围：1 - 1024
+- 不设置则使用默认宽度（由 Paper Dialog API 决定）
+- 支持条件判断
+
+**示例：**
+
+```yaml
+# notice 模式
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a[ 确认 ]'
+    width: 200
+    actions:
+      - 'tell: &a确认操作'
+
+# confirmation 模式
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&a[ 确认 ]'
+    width: 200
+    actions:
+      - 'tell: &a确认操作'
+  deny:
+    text: '&c[ 取消 ]'
+    width: 100
+    actions:
+      - 'tell: &c取消操作'
+
+# multi 模式
+Bottom:
+  type: 'multi'
+  columns: 2
+
+  buttons:
+    wide_button:
+      text: '&a[ 宽按钮 ]'
+      width: 200
+      actions:
+        - 'tell: &a这是一个宽按钮'
+
+    narrow_button:
+      text: '&b[ 窄按钮 ]'
+      width: 50
+      actions:
+        - 'tell: &b这是一个窄按钮'
+
+    conditional_width:
+      text: '&c[ 条件宽度 ]'
+      width:
+        - condition: '%player_is_op% == true'
+          allow: 200
+          deny: 100
+      actions:
+        - 'tell: &c按钮宽度根据权限变化'
+
+  exit:
+    text: '&8[ 退出 ]'
+    width: 80
+    actions:
+      - 'close'
+```
+
+**注意：**
+- 宽度值会影响按钮在界面上的实际显示尺寸
+- 过大的宽度可能导致按钮超出屏幕
+- 建议根据实际显示需求调整宽度值
