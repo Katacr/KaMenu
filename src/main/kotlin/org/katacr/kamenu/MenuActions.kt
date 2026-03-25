@@ -660,7 +660,7 @@ object MenuActions {
      * 解析可点击文本 (使用 Adventure API)
      * 格式: <text='显示文字';hover='悬停文字';command='指令';url='链接';newline='false'>
      */
-    private fun parseClickableText(rawText: String): Component {
+    fun parseClickableText(rawText: String): Component {
         val mainBuilder = Component.text()
         var currentPos = 0
 
@@ -754,7 +754,7 @@ object MenuActions {
     /**
      * 创建可点击文本组件 (使用 Adventure API)
      */
-    private fun createAdventureClickableText(
+    fun createAdventureClickableText(
         text: String,
         hoverText: String = "",
         command: String = "",
@@ -786,7 +786,7 @@ object MenuActions {
     /**
      * 创建普通文本组件 (使用 Adventure API)
      */
-    private fun createAdventureText(text: String): Component {
+    fun createAdventureText(text: String): Component {
         return color(text)
     }
 

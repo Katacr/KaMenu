@@ -5,6 +5,14 @@ Body:
     type: 'message'
     text: '&7This menu demonstrates all extended Action features, including PAPI, titles, clickable text, etc.'
 
+  hovertext_demo:
+    type: 'message'
+    text: '&7Try clickable text: Visit<text=&b[ website ];hover=&7Open official site;url=https://example.com> Claim<text=&e[ reward ];hover=&6Click to claim;command=daily> View<text=&a[ help ];hover=&cOpen help docs;command=help>'
+
+  mixed_text:
+    type: 'message'
+    text: '&7Normal text mixed with clickable text:<text=&b[ Link1 ];hover=&cHover tip 1;command=/help> Middle text <text=&a[ Link2 ];hover=&cHover tip 2;url=https://example.com>'
+
   display_item:
     type: 'item'
     material: 'ENCHANTED_BOOK'

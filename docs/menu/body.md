@@ -29,7 +29,7 @@ Body:
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `type` | `String` | 固定值 `message` |
-| `text` | `String` | 消息文字，支持颜色代码、PAPI 变量和条件判断 |
+| `text` | `String` | 消息文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法 |
 | `width` | `Int` | 可选，消息宽度（1-1024），不设置则使用默认宽度 |
 
 **示例：**
@@ -83,6 +83,64 @@ Body:
         allow: 400
         deny: 200
 ```
+
+**交互式文本示例（使用 hovertext 语法）：**
+
+```yaml
+Body:
+  # 单个可点击链接
+  simple_link:
+    type: 'message'
+    text: '<text=&b[ 点击访问服务器网站 ];hover=&a点击打开我们的官方网站;url=https://example.com>'
+
+  # 带命令的点击文本
+  command_link:
+    type: 'message'
+    text: '<text=&e[ 点击领取每日奖励 ];hover=&6点击立即领取今日奖励;command=dailyreward claim>'
+
+  # 普通文本和可点击文本混合
+  mixed_text:
+    type: 'message'
+    text: '&7欢迎来到服务器！<text=&a[ 领取奖励 ];hover=&6点击领取每日奖励;command=daily> 访问<text=&b[ 官网 ];hover=&7打开官网;url=https://example.com>了解更多信息。'
+
+  # 多个可点击区域
+  multi_link:
+    type: 'message'
+    text: '&7功能导航：<text=&a[ 商店 ];hover=&c打开商店;command=shop> <text=&b[ 背包 ];hover=&c打开背包;command=bag> <text=&e[ 帮助 ];hover=&c查看帮助;command=help>'
+
+  # 条件判断 + 可点击文本
+  conditional_click:
+    type: 'message'
+    text:
+      - condition: '%player_is_op% == true'
+        allow: '<text=&4[ 管理面板 ];hover=&a打开管理面板;command=admin>'
+        deny: '<text=&7[ 玩家面板 ];hover=&a打开玩家面板;command=player>'
+```
+
+**hovertext 语法格式：**
+
+```
+<text=显示文字;hover=悬停文字;command=指令;url=链接;newline=false>
+```
+
+**参数说明：**
+
+| 参数 | 说明 | 必需 |
+|------|------|------|
+| `text` | 可点击的显示文字 | ✅ |
+| `hover` | 鼠标悬停时显示的提示文字 | ❌ |
+| `command` | 点击时玩家执行的指令 | ❌ |
+| `url` | 点击时打开的网址链接 | ❌ |
+| `newline` | 是否在文字后换行（`true`/`false`）| ❌ |
+
+**注意事项：**
+- `command` 中的命令会以玩家身份执行（不需要 `/` 前缀）
+- `url` 用于打开网页链接
+- 可点击区域用 `< >` 包裹
+- 参数值可以用反引号 `` ` ``、单引号 `'` 或双引号 `"` 包裹
+- 普通文本和可点击文本可以混合使用
+- 支持颜色代码和 PAPI 变量
+- 所有字段都支持条件判断
 
 ---
 

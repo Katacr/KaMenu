@@ -5,6 +5,14 @@ Body:
     type: 'message'
     text: '&7此菜单展示了所有扩展的 Action 功能，包括 PAPI、标题、可点击文本等。'
 
+  hovertext_demo:
+    type: 'message'
+    text: '&7体验可点击文本：访问<text=&b[ 官网 ];hover=&7打开官网;url=https://example.com> 领取<text=&e[ 奖励 ];hover=&6点击领取;command=daily> 查看<text=&a[ 帮助 ];hover=&c打开帮助文档;command=help>'
+
+  mixed_text:
+    type: 'message'
+    text: '&7普通文字和可点击文字混合：<text=&b[ 链接1 ];hover=&c这是悬停提示1;command=/help> 中间文字 <text=&a[ 链接2 ];hover=&c这是悬停提示2;url=https://example.com>'
+
   display_item:
     type: 'item'
     material: 'ENCHANTED_BOOK'

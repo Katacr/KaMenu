@@ -9,11 +9,14 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.input.DialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.ClickEvent
+import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
@@ -40,6 +43,33 @@ object MenuUI {
      */
     fun color(text: String?): Component =
         if (text == null) Component.empty() else serializer.deserialize(text)
+
+    /**
+     * 创建带有点击和悬停事件的消息组件
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径
+     * @param defaultText 默认文本
+     * @return 带有事件的组件
+     */
+    private fun createMessageComponent(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultText: String
+    ): Component {
+        // 获取文本内容：支持 hovertext 语法和普通的 text 字段
+        val rawText = if (section.isList(path)) {
+            val conditions = section.getList(path)
+            ConditionUtils.getConditionalValueFromList(player, conditions ?: emptyList<Any>(), defaultText)
+        } else {
+            // 直接获取原始值，避免配置系统将 text 误认为是配置节
+            section.getString(path, defaultText) ?: defaultText
+        }
+
+        // 使用 MenuActions 的 parseClickableText 解析文本，支持 <text=...;hover=...;command=...;url=...> 语法
+        return MenuActions.parseClickableText(rawText)
+    }
 
     /**
      * 获取配置路径下适合当前玩家的值（支持条件判断）
@@ -103,12 +133,12 @@ object MenuUI {
 
                 when (type) {
                     "message" -> {
-                        val text = getConditionalValueFromSection(player, section, "$key.text", "")
+                        val component = createMessageComponent(player, section, "$key.text", "")
                         val width = getConditionalIntFromSection(player, section, "$key.width", 0)
                         if (width > 0) {
-                            bodyList.add(DialogBody.plainMessage(color(text), width))
+                            bodyList.add(DialogBody.plainMessage(component, width))
                         } else {
-                            bodyList.add(DialogBody.plainMessage(color(text)))
+                            bodyList.add(DialogBody.plainMessage(component))
                         }
                     }
                     "item" -> {
