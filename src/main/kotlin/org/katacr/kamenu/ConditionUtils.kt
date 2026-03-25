@@ -38,48 +38,35 @@ object ConditionUtils {
      * @return 解析后的文本
      */
     fun resolveVariables(player: Player, text: String): String {
-        plugin?.logger?.info("[DEBUG] resolveVariables - Player: ${player.name}, Original: $text")
         var result = text
 
         // 1. 解析内置变量 {data:key}、{gdata:key} 和 {meta:key}
         if (plugin != null) {
             result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                val value = plugin!!.databaseManager.getPlayerData(player.uniqueId, key)
+                plugin!!.databaseManager.getPlayerData(player.uniqueId, key)
                     ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
-                plugin?.logger?.info("[DEBUG] resolveVariables - {data:$key} = $value")
-                value
             }
             result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                val value = plugin!!.databaseManager.getGlobalData(key)
+                plugin!!.databaseManager.getGlobalData(key)
                     ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
-                plugin?.logger?.info("[DEBUG] resolveVariables - {gdata:$key} = $value")
-                value
             }
             result = result.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                val value = plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
-                plugin?.logger?.info("[DEBUG] resolveVariables - {meta:$key} = $value")
-                value
+                plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
             }
         }
 
         // 2. 解析 PAPI 变量
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
-                val beforePapi = result
                 result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
-                if (beforePapi != result) {
-                    plugin?.logger?.info("[DEBUG] resolveVariables - PAPI replaced: '$beforePapi' -> '$result'")
-                }
             } catch (_: Exception) {
                 // PAPI 解析失败，忽略
-                plugin?.logger?.warning("[DEBUG] resolveVariables - PAPI parse failed")
             }
         }
 
-        plugin?.logger?.info("[DEBUG] resolveVariables - Result: $result")
         return result
     }
 
@@ -89,55 +76,38 @@ object ConditionUtils {
      */
     fun checkCondition(player: Player, condition: String?): Boolean {
         if (condition == null || condition.isBlank()) {
-            plugin?.logger?.info("[DEBUG] checkCondition - Condition is null or blank, returning true")
             return true
         }
 
-        plugin?.logger?.info("[DEBUG] checkCondition - Player: ${player.name}, Condition: $condition")
         var processed = condition
 
         // 1. 先解析内置变量 {data:key}、{gdata:key} 和 {meta:key}
         if (plugin != null) {
             processed = processed.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                val value = plugin!!.databaseManager.getPlayerData(player.uniqueId, key) ?: "null"
-                plugin?.logger?.info("[DEBUG] checkCondition - {data:$key} = $value")
-                value
+                plugin!!.databaseManager.getPlayerData(player.uniqueId, key) ?: "null"
             }
             processed = processed.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                val value = plugin!!.databaseManager.getGlobalData(key) ?: "null"
-                plugin?.logger?.info("[DEBUG] checkCondition - {gdata:$key} = $value")
-                value
+                plugin!!.databaseManager.getGlobalData(key) ?: "null"
             }
             processed = processed.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
                 val key = matchResult.groupValues[1]
-                val value = plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
-                plugin?.logger?.info("[DEBUG] checkCondition - {meta:$key} = $value")
-                value
+                plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
             }
         }
 
         // 2. 进行 PAPI 变量替换
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             try {
-                val beforePapi = processed
                 processed = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, processed)
-                if (beforePapi != processed) {
-                    plugin?.logger?.info("[DEBUG] checkCondition - PAPI replaced: '$beforePapi' -> '$processed'")
-                }
             } catch (_: Exception) {
                 // PAPI 解析失败，忽略
-                plugin?.logger?.warning("[DEBUG] checkCondition - PAPI parse failed")
             }
         }
 
-        plugin?.logger?.info("[DEBUG] checkCondition - Processed condition: $processed")
-
         // 解析逻辑表达式（支持 && 和 ||）
-        val result = parseLogicalExpression(player, processed)
-        plugin?.logger?.info("[DEBUG] checkCondition - Result: $result")
-        return result
+        return parseLogicalExpression(player, processed)
     }
 
     /**

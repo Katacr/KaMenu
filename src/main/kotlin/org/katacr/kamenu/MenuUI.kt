@@ -9,8 +9,6 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.input.DialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.event.ClickEvent
-import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput
@@ -152,7 +150,10 @@ object MenuUI {
                             meta.lore(lore.map { color(it) })
                         }
                         val descriptionText = getConditionalValueFromSection(player, section, "$key.description", "")
-                        val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let { DialogBody.plainMessage(color(it)) }
+                        val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
+                            // 使用 parseClickableText 支持 hovertext 语法
+                            DialogBody.plainMessage(MenuActions.parseClickableText(it))
+                        }
 
                         val width = getConditionalIntFromSection(player, section, "$key.width", 16)
                         val height = getConditionalIntFromSection(player, section, "$key.height", 16)

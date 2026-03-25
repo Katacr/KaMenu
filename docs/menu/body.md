@@ -156,7 +156,7 @@ Body:
 | `material` | `String` | ✅ | `PAPER` | 物品材质名（Minecraft 英文 ID）|
 | `name` | `String` | ✅ | — | 物品显示名称，支持颜色代码 |
 | `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）|
-| `description` | `String` | ❌ | — | 物品下方显示的额外说明文字 |
+| `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法 |
 | `width` | `Int` | ❌ | `16` | 物品图标宽度（像素）|
 | `height` | `Int` | ❌ | `16` | 物品图标高度（像素）|
 | `decorations` | `Boolean` | ❌ | `true` | 是否显示物品装饰效果（附魔光效等）|
@@ -198,6 +198,23 @@ Body:
         deny:
           - '&7解锁状态: &c未解锁'
           - '&7需要达到 &e10 级&7 才能购买'
+```
+
+**description 支持可点击文本示例：**
+
+```yaml
+Body:
+  interactive_item:
+    type: 'item'
+    material: 'BOOK'
+    name: '&a&l操作指南'
+    description: '&7点击<text=&b[ 购买 ];hover=&c购买此物品;command=buy item> 或 <text=&e[ 预览 ];hover=&c查看详情;command=preview item>'
+
+  multi_click_description:
+    type: 'item'
+    material: 'ENCHANTED_BOOK'
+    name: '&6&l魔法书'
+    description: '&7功能：<text=&a[ 传送 ];hover=&c传送到主城;command=/spawn> <text=&b[ 商店 ];hover=&c打开商店;command=/shop> <text=&e[ 帮助 ];hover=&c查看帮助;command=/help>'
 ```
 
 ---
