@@ -66,17 +66,12 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 
 ***
 
-## 💰 支持与购买
+## 💰 支持
 
-KaMenu 是一款付费开源插件，您可以在 GitHub 下载源代码并自行构建使用。
+KaMenu 是一款免费开源插件，您可以在 GitHub 下载源代码并自行构建最新实验功能使用。
 
 {% embed url="https://github.com/Katacr/KaMenu/" %}
 
-如果您想支持开发者，也可以在各大插件平台购买和下载该插件。
-
-{% hint style="info" %}
-只有购买插件的用户才会收到技术支持。
-{% endhint %}
 
 ***
 
