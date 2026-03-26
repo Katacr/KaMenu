@@ -322,8 +322,6 @@ object MenuActions {
         val eventPath = "Events.$eventName"
         val eventActions = config.getList(eventPath) ?: return false
 
-        plugin?.logger?.info("[DEBUG] executeEvent - Player: ${player.name}, Event: $eventName, Actions: ${eventActions.size}")
-
         // 定义菜单打开器（事件中可能需要打开其他菜单）
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
             val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
@@ -559,6 +557,35 @@ object MenuActions {
                 val args = finalCmd.removePrefix("money:").trim()
                 parseAndHandleMoney(player, args, variables)
             }
+        }
+    }
+
+    /**
+     * 执行测试动作（用于 /kamenu action 指令）
+     * @param player 玩家对象
+     * @param actionString 动作字符串
+     * @return 是否成功执行
+     */
+    fun executeTestAction(player: Player, actionString: String): Boolean {
+        if (plugin == null) {
+            player.sendMessage(color(languageManager?.getMessage("actions.test_failed", "插件未初始化") ?: "§c插件未初始化，无法执行动作"))
+            return false
+        }
+
+        try {
+            val menuOpener: (Player, String) -> Unit = { p, menuName ->
+                Bukkit.getScheduler().runTask(plugin!!, Runnable {
+                    MenuUI.openMenu(p, menuName, plugin!!.menuManager, plugin!!)
+                })
+            }
+
+            executeSingleAction(player, actionString, emptyMap(), menuOpener, null)
+            return true
+        } catch (e: Exception) {
+            player.sendMessage(color(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))
+            plugin?.logger?.severe("测试动作执行失败: ${e.message}")
+            e.printStackTrace()
+            return false
         }
     }
 

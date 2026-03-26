@@ -1,12 +1,17 @@
 name: KaMenu
-version: '1.2.1'
+version: '1.2.2'
 main: org.katacr.kamenu.KaMenu
 api-version: '1.21'
 softdepend:
   - PlaceholderAPI
   - Vault
 commands:
-  km:
+  kamenu:
     description: KaMenu 主指令
-    usage: /km open <menuId>
-    permission: kamenu.use
+    usage: /kamenu open <menuId>
+    permission: kamenu.admin
+    aliases: [km, menu]
+permissions:
+  kamenu.admin:
+    description: 允许玩家使用菜单全部功能
+    default: op

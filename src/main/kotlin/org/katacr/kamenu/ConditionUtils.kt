@@ -226,16 +226,13 @@ object ConditionUtils {
      */
     private fun parseLogicalExpression(player: Player, expression: String): Boolean {
         val trimmed = expression.trim()
-        plugin?.logger?.info("[DEBUG] parseLogicalExpression - Expression: '$trimmed'")
 
         // 1. 先检查是否包含 ||（优先级最低）
         val orParts = splitByOperator(trimmed, "||")
         if (orParts.size > 1) {
-            plugin?.logger?.info("[DEBUG] parseLogicalExpression - Found OR operator with ${orParts.size} parts")
             // 如果有 ||，先解析第一部分，如果为 true 则直接返回 true（短路求值）
             val firstPart = orParts[0]
             val firstResult = parseLogicalExpression(player, firstPart)
-            plugin?.logger?.info("[DEBUG] parseLogicalExpression - OR first part: '$firstPart' = $firstResult")
             if (firstResult) return true // || 短路求值
 
             // 否则继续解析剩余部分
@@ -246,11 +243,9 @@ object ConditionUtils {
         // 2. 再检查是否包含 &&（优先级高于 ||）
         val andParts = splitByOperator(trimmed, "&&")
         if (andParts.size > 1) {
-            plugin?.logger?.info("[DEBUG] parseLogicalExpression - Found AND operator with ${andParts.size} parts")
             // 如果有 &&，先解析第一部分，如果为 false 则直接返回 false（短路求值）
             val firstPart = andParts[0]
             val firstResult = parseLogicalExpression(player, firstPart)
-            plugin?.logger?.info("[DEBUG] parseLogicalExpression - AND first part: '$firstPart' = $firstResult")
             if (!firstResult) return false // && 短路求值
 
             // 否则继续解析剩余部分
@@ -259,9 +254,7 @@ object ConditionUtils {
         }
 
         // 3. 如果没有逻辑运算符，则为基本条件
-        val result = evaluateSingleCondition(player, trimmed)
-        plugin?.logger?.info("[DEBUG] parseLogicalExpression - No operators found, evaluating single condition: $result")
-        return result
+        return evaluateSingleCondition(player, trimmed)
     }
 
     /**
@@ -335,25 +328,20 @@ object ConditionUtils {
      */
     private fun evaluateSingleCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
-        plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Condition: '$trimmed'")
 
         // 处理内置条件方法 method.value 格式
         // 检查是否包含 . 且不在引号内
         if (trimmed.contains(".") && !trimmed.matches(Regex("\".*\".*\\..*"))) {
-            plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Detected builtin condition format")
             try {
-                val result = evaluateBuiltinCondition(player, trimmed)
-                plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Builtin condition result: $result")
-                return result
+                return evaluateBuiltinCondition(player, trimmed)
             } catch (e: NotBuiltinConditionException) {
-                plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Not a builtin condition, continuing with comparison")
+                // 不是内置条件，继续普通比较
             }
         }
 
         // 如果是括号包裹的表达式，去掉括号后递归解析
         if (trimmed.startsWith("(") && trimmed.endsWith(")") && !trimmed.matches(Regex("\".*\".*\\(.*\\)"))) {
             val inner = trimmed.substring(1, trimmed.length - 1).trim()
-            plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Found parentheses, inner: '$inner'")
             // 确保括号是成对的（考虑引号）
             var parenCount = 0
             var inSingleQuote = false
@@ -373,16 +361,13 @@ object ConditionUtils {
                 }
             }
             if (isCompletePair && parenCount == 0 && !inSingleQuote && !inDoubleQuote) {
-                val result = parseLogicalExpression(player, inner)
-                plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Parentheses evaluation result: $result")
-                return result
+                return parseLogicalExpression(player, inner)
             }
         }
 
         // 匹配比较运算符
         val regex = "(>=|<=|==|!=|>|<)".toRegex()
         val match = regex.find(trimmed) ?: run {
-            plugin?.logger?.warning("[DEBUG] evaluateSingleCondition - No operator found in condition: '$trimmed'")
             return false
         }
 
@@ -391,9 +376,7 @@ object ConditionUtils {
         val left = parseQuotedString(parts[0].trim())
         val right = parseQuotedString(parts[1].trim())
 
-        plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Operator: $op, Left: '$left', Right: '$right'")
-
-        val result = when (op) {
+        return when (op) {
             "==" -> compareEquals(left, right)
             "!=" -> !compareEquals(left, right)
             ">"  -> left.toDoubleDefault(0.0) > right.toDoubleDefault(0.0)
@@ -402,8 +385,6 @@ object ConditionUtils {
             "<=" -> left.toDoubleDefault(0.0) <= right.toDoubleDefault(0.0)
             else -> false
         }
-        plugin?.logger?.info("[DEBUG] evaluateSingleCondition - Comparison result: $result")
-        return result
     }
 
     /**
@@ -422,12 +403,10 @@ object ConditionUtils {
      */
     private fun evaluateBuiltinCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
-        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Condition: '$trimmed'")
 
         // 检查是否为反向判断
         val isNegative = trimmed.startsWith("!")
         val conditionWithoutNegation = if (isNegative) trimmed.substring(1).trim() else trimmed
-        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Is negative: $isNegative")
 
         // 查找第一个点号，但要考虑引号
         var dotIndex = -1
@@ -452,7 +431,6 @@ object ConditionUtils {
         }
 
         if (dotIndex == -1) {
-            plugin?.logger?.warning("[DEBUG] evaluateBuiltinCondition - No dot found in condition")
             throw NotBuiltinConditionException()
         }
 
@@ -464,56 +442,28 @@ object ConditionUtils {
             value = value.substring(1, value.length - 1)
         }
 
-        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Method: '$method', Value: '$value'")
-
         val result = when (method) {
-            "isNum" -> {
-                val numResult = value.toDoubleOrNull() != null
-                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isNum('$value') = $numResult")
-                numResult
-            }
-            "isPosNum" -> {
-                val numResult = value.toDoubleOrNull()?.let { it > 0 } ?: false
-                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isPosNum('$value') = $numResult")
-                numResult
-            }
-            "isInt" -> {
-                val intResult = value.toIntOrNull() != null
-                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isInt('$value') = $intResult")
-                intResult
-            }
-            "isPosInt" -> {
-                val intResult = value.toIntOrNull()?.let { it > 0 } ?: false
-                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - isPosInt('$value') = $intResult")
-                intResult
-            }
-            "hasPerm" -> {
-                val permResult = player.hasPermission(value)
-                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - hasPerm('$value') = $permResult")
-                permResult
-            }
+            "isNum" -> value.toDoubleOrNull() != null
+            "isPosNum" -> value.toDoubleOrNull()?.let { it > 0 } ?: false
+            "isInt" -> value.toIntOrNull() != null
+            "isPosInt" -> value.toIntOrNull()?.let { it > 0 } ?: false
+            "hasPerm" -> player.hasPermission(value)
             "hasMoney" -> {
                 val amount = value.toDoubleOrNull()
                 if (amount == null) {
-                    plugin?.logger?.warning("[DEBUG] evaluateBuiltinCondition - hasMoney - invalid amount: '$value'")
                     false
                 } else {
-                    val moneyResult = checkPlayerMoney(player, amount)
-                    plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - hasMoney($amount) = $moneyResult")
-                    moneyResult
+                    checkPlayerMoney(player, amount)
                 }
             }
             else -> {
                 // 未知方法，说明这不是内置条件，应该按普通比较处理
-                plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Unknown method '$method', treating as normal comparison")
                 throw NotBuiltinConditionException()
             }
         }
 
         // 返回判断结果（如果为反向判断则取反）
-        val finalResult = if (isNegative) !result else result
-        plugin?.logger?.info("[DEBUG] evaluateBuiltinCondition - Final result: $finalResult")
-        return finalResult
+        return if (isNegative) !result else result
     }
 
     /**
@@ -623,21 +573,15 @@ object ConditionUtils {
      * @return 字符串值
      */
     fun getConditionalValueFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
-        plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
         // 检查该路径下是否为列表格式（条件判断）
         if (section.isList(path)) {
-            plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Path is list format")
             val conditions = section.getList(path) ?: return defaultValue
             val value = getConditionalValueFromList(player, conditions, defaultValue)
-            val resolved = resolveVariables(player, value)
-            plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Result (list): $resolved")
-            return resolved
+            return resolveVariables(player, value)
         } else {
             // 简单字符串值
             val value = section.getString(path, defaultValue) ?: defaultValue
-            val resolved = resolveVariables(player, value)
-            plugin?.logger?.info("[DEBUG] getConditionalValueFromSection - Result (string): $resolved")
-            return resolved
+            return resolveVariables(player, value)
         }
     }
 
@@ -650,21 +594,15 @@ object ConditionUtils {
      * @return 整数值
      */
     fun getConditionalIntFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Int = 0): Int {
-        plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
         if (section.isList(path)) {
-            plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Path is list format")
             val conditions = section.getList(path) ?: return defaultValue
             val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
             val resolved = resolveVariables(player, stringValue)
-            val result = resolved.toIntOrNull() ?: defaultValue
-            plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Result (list): $result")
-            return result
+            return resolved.toIntOrNull() ?: defaultValue
         } else {
             val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
             val resolved = resolveVariables(player, value)
-            val result = resolved.toIntOrNull() ?: defaultValue
-            plugin?.logger?.info("[DEBUG] getConditionalIntFromSection - Result (string): $result")
-            return result
+            return resolved.toIntOrNull() ?: defaultValue
         }
     }
 
@@ -677,21 +615,15 @@ object ConditionUtils {
      * @return 双精度浮点数值
      */
     fun getConditionalDoubleFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Double = 0.0): Double {
-        plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
         if (section.isList(path)) {
-            plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Path is list format")
             val conditions = section.getList(path) ?: return defaultValue
             val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
             val resolved = resolveVariables(player, stringValue)
-            val result = resolved.toDoubleOrNull() ?: defaultValue
-            plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Result (list): $result")
-            return result
+            return resolved.toDoubleOrNull() ?: defaultValue
         } else {
             val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
             val resolved = resolveVariables(player, value)
-            val result = resolved.toDoubleOrNull() ?: defaultValue
-            plugin?.logger?.info("[DEBUG] getConditionalDoubleFromSection - Result (string): $result")
-            return result
+            return resolved.toDoubleOrNull() ?: defaultValue
         }
     }
 
@@ -704,21 +636,15 @@ object ConditionUtils {
      * @return 布尔值
      */
     fun getConditionalBooleanFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Boolean = false): Boolean {
-        plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Player: ${player.name}, Path: $path, Default: $defaultValue")
         if (section.isList(path)) {
-            plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Path is list format")
             val conditions = section.getList(path) ?: return defaultValue
             val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
             val resolved = resolveVariables(player, stringValue)
-            val result = resolved.toBooleanStrictOrNull() ?: defaultValue
-            plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Result (list): $result")
-            return result
+            return resolved.toBooleanStrictOrNull() ?: defaultValue
         } else {
             val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
             val resolved = resolveVariables(player, value)
-            val result = resolved.toBooleanStrictOrNull() ?: defaultValue
-            plugin?.logger?.info("[DEBUG] getConditionalBooleanFromSection - Result (string): $result")
-            return result
+            return resolved.toBooleanStrictOrNull() ?: defaultValue
         }
     }
 
@@ -731,27 +657,19 @@ object ConditionUtils {
      * @return 列表值
      */
     fun getConditionalListFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: List<String> = emptyList()): List<String> {
-        plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Player: ${player.name}, Path: $path")
         if (section.isList(path)) {
             val firstItem = section.getList(path)?.firstOrNull()
             // 检查是否为条件判断格式（第一个元素是 Map）
             if (firstItem is Map<*, *>) {
-                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Path is conditional list format")
                 val conditions = section.getList(path) ?: return defaultValue
                 val list = getConditionalListFromList(player, conditions, defaultValue)
-                val result = list.map { resolveVariables(player, it) }
-                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Result (conditional): $result")
-                return result
+                return list.map { resolveVariables(player, it) }
             } else {
                 // 普通字符串列表
-                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Path is normal list format")
                 val list = section.getStringList(path)
-                val result = list.map { resolveVariables(player, it) }
-                plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Result (normal): $result")
-                return result
+                return list.map { resolveVariables(player, it) }
             }
         } else {
-            plugin?.logger?.info("[DEBUG] getConditionalListFromSection - Path is not a list, returning default")
             return defaultValue
         }
     }

@@ -18,20 +18,33 @@ logo:
   hook_true: "§a已挂钩"
   hook_false: "§c未挂钩"
   menu_count: "§b已加载菜单: §a{0}个"
+  command_count: "§b已注册指令: §a{0}个"
 
 # 命令消息
 command:
   player_only: "§c只有玩家可以执行此指令！"
+  player_not_found: "§c玩家 '{0}' 不在线"
+  player_required: "§c控制台必须指定玩家！"
   usage: "§e用法: /km open <菜单名> 或 /km reload"
   no_permission: "§c你没有权限执行此指令！"
   reloaded: "§a[KaMenu] 配置与菜单已重载成功！"
   no_menu_name: "§c请输入菜单名！"
+  help_title: "§6§lKaMenu 指令帮助"
+  help_description: "§7插件版本: §a{0}"
+  help_open: "§a/km open <菜单名> [玩家] §7- 打开指定菜单"
+  help_list: "§a/km list [页码] §7- 查看菜单列表"
+  help_reload: "§a/km reload §7- 重载配置和菜单"
+  help_action: "§a/km action <玩家> <动作> §7- 测试执行动作"
+  help_help: "§a/km help §7- 显示帮助信息"
+  help_footer: "§7更多功能和帮助"
+  help_footer_click_text: "[点击此处]"
+  help_footer_hover: "查看文档"
 
 # 菜单管理
 menu:
   not_found: "§c[KaMenu] 菜单 '{0}' 不存在！"
   loaded: "已加载菜单: {0}"
-  reloaded: "§a[KaMenu] 菜单已重载，共加载 {0} 个菜单。"
+  reloaded: "§a[KaMenu] 菜单已重载，共加载 {0} 个菜单和 {1} 个自定义指令。"
 
 # 菜单管理器
 manager:
@@ -56,3 +69,20 @@ condition:
 # 动作处理
 actions:
   unknown_sound_category: "§c未知的声音类别: {0}"
+  test_usage: "§c用法: /kamenu action <玩家> <动作>"
+  test_example: "§a示例: /kamenu action Player1 tell:Hello World"
+  test_player_offline: "§c玩家 '{0}' 不在线"
+  test_success: "§a动作执行成功！目标玩家: {0}"
+  test_failed: "§c动作执行失败: {0}"
+
+# 菜单列表
+menu_list:
+  title: "§6§l菜单列表"
+  header: "§e===== {0} ====="
+  page_info: "§7第 {0}/{1} 页"
+  menu_item: "§f{0} §e<text='[点击打开]';hover='点击打开 {0} 菜单';command='/km open {0}'>"
+  prev_page: "[上一页]"
+  next_page: "[下一页]"
+  prev_page_click: "§e<text='[上一页]';command='/km list {0}'>"
+  next_page_click: "§e<text='[下一页]';command='/km list {0}'>"
+  no_menus: "§c服务器没有加载任何菜单"

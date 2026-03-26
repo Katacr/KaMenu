@@ -18,20 +18,33 @@ logo:
   hook_true: "§aHooked"
   hook_false: "§cNot Hooked"
   menu_count: "§bLoaded Menus: §a{0}"
+  command_count: "§bRegistered Commands: §a{0}"
 
 # Command Messages
 command:
   player_only: "§cOnly players can execute this command!"
+  player_not_found: "§cPlayer '{0}' is not online"
+  player_required: "§cConsole must specify a player!"
   usage: "§eUsage: /km open <menu_name> or /km reload"
   no_permission: "§cYou don't have permission to execute this command!"
   reloaded: "§a[KaMenu] Configuration and menus have been reloaded successfully!"
   no_menu_name: "§cPlease enter a menu name!"
+  help_title: "§6§lKaMenu Command Help"
+  help_description: "§7Plugin Version: §a{0}"
+  help_open: "§a/km open <menu_name> [player] §7- Open a menu"
+  help_list: "§a/km list [page] §7- View menu list"
+  help_reload: "§a/km reload §7- Reload configuration and menus"
+  help_action: "§a/km action <player> <action> §7- Test execute action"
+  help_help: "§a/km help §7- Show help information"
+  help_footer: "§7For more features and help"
+  help_footer_click_text: "[Click Here]"
+  help_footer_hover: "View Documentation"
 
 # Menu Management
 menu:
   not_found: "§c[KaMenu] Menu '{0}' does not exist!"
   loaded: "Menu loaded: {0}"
-  reloaded: "§a[KaMenu] Menus reloaded, loaded {0} menus total."
+  reloaded: "§a[KaMenu] Menus reloaded, loaded {0} menus and {1} custom commands."
 
 # Menu Manager
 manager:
@@ -58,3 +71,20 @@ condition:
 # Actions
 actions:
   unknown_sound_category: "§cUnknown sound category: {0}"
+  test_usage: "§cUsage: /kamenu action <player> <action>"
+  test_example: "§aExample: /kamenu action Player1 tell:Hello World"
+  test_player_offline: "§cPlayer '{0}' is offline"
+  test_success: "§aAction executed successfully! Target player: {0}"
+  test_failed: "§cAction execution failed: {0}"
+
+# Menu List
+menu_list:
+  title: "§6§lMenu List"
+  header: "§e===== {0} ====="
+  page_info: "§7Page {0}/{1}"
+  menu_item: "§f{0} §e<text='[Click to open]';hover='Open {0} menu';command='/km open {0}'>"
+  prev_page: "[Previous]"
+  next_page: "[Next]"
+  prev_page_click: "§e<text='[Previous]';command='/km list {0}'>"
+  next_page_click: "§e<text='[Next]';command='/km list {0}'>"
+  no_menus: "§cNo menus loaded on the server"

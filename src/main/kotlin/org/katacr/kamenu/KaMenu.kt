@@ -17,6 +17,7 @@ class KaMenu : JavaPlugin() {
     lateinit var languageManager: LanguageManager
     lateinit var databaseManager: DatabaseManager
     lateinit var metaDataManager: MetaDataManager
+    lateinit var customCommandManager: CustomCommandManager
     var economy: Economy? = null
 
     /**
@@ -94,6 +95,10 @@ class KaMenu : JavaPlugin() {
         menuManager = MenuManager(this)
         menuManager.loadMenus()
 
+        // 3.5 初始化自定义指令管理器
+        customCommandManager = CustomCommandManager(this)
+        customCommandManager.registerCustomCommands()
+
         // 4. 注册主指令
         getCommand("km")?.let { cmd ->
             val menuCommand = MenuCommand(this)
@@ -148,6 +153,9 @@ class KaMenu : JavaPlugin() {
         if (::metaDataManager.isInitialized) {
             metaDataManager.clearAll()
         }
+        if (::customCommandManager.isInitialized) {
+            customCommandManager.clear()
+        }
         server.scheduler.cancelTasks(this)
 
         logger.info(languageManager.getMessage("plugin.disabled"))
@@ -165,6 +173,7 @@ class KaMenu : JavaPlugin() {
         val papiStatus = server.pluginManager.getPlugin("PlaceholderAPI") != null
         val vaultStatus = economy != null
         val menuCount = menuManager.getAllMenuIds().size
+        val commandCount = customCommandManager.getRegisteredCommandCount()
         val currentLang = languageManager.getCurrentLanguage()
         val dbType = config.getString("storage.type", "SQLite") ?: "SQLite"
 
@@ -191,6 +200,7 @@ class KaMenu : JavaPlugin() {
             §7${languageManager.getMessage("logo.vault", vaultText)}
             §7${languageManager.getMessage("logo.placeholderapi", papiText)}
             §7${languageManager.getMessage("logo.menu_count", menuCount.toString())}
+            §7${languageManager.getMessage("logo.command_count", commandCount.toString())}
             §e________________________________________________________
         """.trimIndent()
 
