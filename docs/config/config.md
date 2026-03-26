@@ -135,7 +135,7 @@ listeners:
 
 ### custom-commands - 自定义指令
 
-将简短的自定义指令注册为打开指定菜单的快捷方式，无需额外权限配置（玩家需要 `kamenu.use` 权限）。
+将简短的自定义指令注册为打开指定菜单的快捷方式，无需额外权限配置。
 
 **格式：** `指令名: 菜单ID`
 
@@ -147,7 +147,4 @@ custom-commands:
   menu: 'main_menu'         # /menu -> 打开 main_menu 菜单
   hub: 'hub/main'           # /hub  -> 打开 hub/main 菜单（子文件夹）
 ```
-
-{% hint style="warning" %}
-自定义指令注册后需要重启服务器（或使用 `/km reload`）才能生效。请避免与其他插件的指令冲突。
-{% endhint %}
+想要了解自定义指令的用法和优势，点击此处 [⌨️ 自定义指令](customCommands.md)

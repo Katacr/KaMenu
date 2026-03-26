@@ -2,9 +2,9 @@
 
 * [🏠 首页](README.md)
   * [🚀 开始](home/start.md)
-  * [⌨️ 自定义指令](home/commands.md)
 * [⚙️ 配置插件](config/README.md)
   * [⛳ 配置文件: config.yml](config/config.md)
+  * [⌨️ 自定义指令](config/customCommands.md)
 * [🤵 指令和权限](perm/README.md)
   * [🔐 权限列表](perm/permissions.md)
   * [⌨️ 指令列表](perm/commands.md)
