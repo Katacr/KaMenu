@@ -142,7 +142,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         val footerText = plugin.languageManager.getMessage("command.help_footer")
         val clickText = plugin.languageManager.getMessage("command.help_footer_click_text")
         val hoverText = plugin.languageManager.getMessage("command.help_footer_hover")
-        val clickableFooter = "$footerText <text='$clickText';hover='$hoverText';open_url='$docUrl'>"
+        val clickableFooter = "$footerText <text='$clickText';hover='$hoverText';url='$docUrl'>"
         val parsedFooter = MenuActions.parseClickableText(clickableFooter)
         sender.sendMessage(parsedFooter)
 
