@@ -157,6 +157,7 @@ Body:
 | `name` | `String` | ✅ | — | 物品显示名称，支持颜色代码 |
 | `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）|
 | `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法 |
+| `item_model` | `String` | ❌ | — | 物品模型标识（格式：`namespace:key`），用于显示特殊材质物品（如 1.21.7+ 的命名空间物品模型）|
 | `width` | `Int` | ❌ | `16` | 物品图标宽度（像素）|
 | `height` | `Int` | ❌ | `16` | 物品图标高度（像素）|
 | `decorations` | `Boolean` | ❌ | `true` | 是否显示物品装饰效果（附魔光效等）|
@@ -177,6 +178,22 @@ Body:
     description: '&f点击下方按钮购买此武器'
     width: 32
     height: 32
+```
+
+**使用自定义物品模型示例（1.21.7+）：**
+
+```yaml
+Body:
+  custom_model_item:
+    type: 'item'
+    material: 'DIAMOND_SWORD'
+    name: '&b&l光之圣剑'
+    lore:
+      - '&7拥有独特外观的神器'
+      - '&a攻击力: &f+50'
+      - '&e稀有度: &6传说'
+    item_model: 'minecraft:custom_sword'  # 使用命名空间物品模型
+    description: '&f这是使用自定义模型的特殊物品'
 ```
 
 **所有字段均支持条件判断：**
@@ -216,6 +233,17 @@ Body:
     name: '&6&l魔法书'
     description: '&7功能：<text=&a[ 传送 ];hover=&c传送到主城;command=/spawn> <text=&b[ 商店 ];hover=&c打开商店;command=/shop> <text=&e[ 帮助 ];hover=&c查看帮助;command=/help>'
 ```
+
+**item_model 说明：**
+
+`item_model` 属性用于指定物品使用的自定义模型，格式为 `namespace:key`。
+
+- **适用版本**：1.21.7 及以上版本
+- **格式要求**：`命名空间:键名`，例如 `minecraft:custom_sword` 或 `your_plugin:special_item`
+- **工作原理**：将模型数据存储在物品的 PersistentDataContainer 中，由 Minecraft 客户端根据模型定义渲染特殊外观
+- **用途**：用于显示具有独特外观的物品，如特殊材质的武器、道具等
+
+---
 
 ---
 
