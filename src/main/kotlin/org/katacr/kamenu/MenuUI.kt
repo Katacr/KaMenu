@@ -148,6 +148,26 @@ object MenuUI {
                             meta.displayName(color(name))
                             val lore = getConditionalListFromSection(player, section, "$key.lore")
                             meta.lore(lore.map { color(it) })
+                            
+                            // 支持设置 item_model
+                            val itemModel = getConditionalValueFromSection(player, section, "$key.item_model", "")
+                            if (itemModel.isNotEmpty()) {
+                                val parts = itemModel.split(":", limit = 2)
+                                if (parts.size == 2) {
+                                    val namespace = parts[0]
+                                    val key = parts[1]
+                                    // 使用 PersistentDataContainer 存储 model 数据
+                                    val namespacedKey = org.bukkit.NamespacedKey.minecraft("item_model")
+                                    val pdc = meta.persistentDataContainer
+                                    pdc.set(namespacedKey, org.bukkit.persistence.PersistentDataType.STRING, itemModel)
+                                }
+                            }
+                            
+                            // 支持设置 model_data（自定义模型数据）
+                            val modelData = getConditionalIntFromSection(player, section, "$key.model_data", 0)
+                            if (modelData > 0) {
+                                meta.setCustomModelData(modelData)
+                            }
                         }
                         val descriptionText = getConditionalValueFromSection(player, section, "$key.description", "")
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
