@@ -1,0 +1,168 @@
+Title: '&8» &e&l操作物品演示 &8«'
+
+Settings:
+  can_escape: false
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7此菜单展示了物品相关的 condition 和 Action 功能。&f包含：hasItem、hasStockItem 条件，item、stock-item 动作'
+
+Bottom:
+  type: 'multi'
+  columns: 3
+  buttons:
+    # ==================== 条件判断部分 ====================
+    has_item:
+      text: '&9[ hasItem ]'
+      tooltip:
+        - '&7判断是否有10个钻石'
+        - '&f点击测试'
+      actions:
+        - condition: "hasItem.[mats=DIAMOND;amount=10]"
+          allow:
+            - 'tell: &a✓ 你有 10 个钻石！'
+          deny:
+            - 'tell: &c✗ 你没有 10 个钻石！'
+
+    has_item_lore:
+      text: '&9[ hasItem+Lore ]'
+      tooltip:
+        - '&7判断是否有特殊lore的物品'
+        - '&f点击测试'
+      actions:
+        - condition: "hasItem.[mats=DIAMOND;amount=10;lore=测试物品]"
+          allow:
+            - 'tell: &a✓ 你有10个带"测试物品"lore的钻石！'
+          deny:
+            - 'tell: &c✗ 你没有10个带"测试物品"lore的钻石！'
+
+    has_stock_item:
+      text: '&9[ hasStockItem ]'
+      tooltip:
+        - '&7判断是否有16个保存物品'
+        - '&7需要先保存物品'
+        - '&f点击测试'
+      actions:
+        - condition: "hasStockItem.测试物品;16"
+          allow:
+            - 'tell: &a✓ 你有 16 个物品库的"测试物品"！'
+          deny:
+            - 'tell: &c✗ 你没有 16 个物品库的"测试物品"！'
+
+    # ==================== item 动作部分 - 给予 ====================
+    item_give_diamond:
+      text: '&a[ item:give ]'
+      tooltip:
+        - '&7给予10个钻石'
+        - '&f点击测试'
+      actions:
+        - 'item: type=give;mats=DIAMOND;amount=10'
+        - 'tell: &a已给予你 10 个钻石！'
+        - 'sound: BLOCK_NOTE_BLOCK_PLING;1;2'
+
+    item_give_lore:
+      text: '&a[ item:give+Lore ]'
+      tooltip:
+        - '&7给予带lore的钻石'
+        - '&f点击测试'
+      actions:
+        - 'item: type=give;mats=DIAMOND;amount=10'
+        - 'tell: &a已给予你 10 个钻石！'
+        - 'tell: &7注意：item:give 操作忽略 lore 参数'
+
+    item_give_full:
+      text: '&a[ item:give测试背包满 ]'
+      tooltip:
+        - '&7给予3000个钻石'
+        - '&7背包满时会掉落在地上'
+        - '&f点击测试'
+      actions:
+        - 'item: type=give;mats=DIAMOND;amount=64'
+        - 'tell: &a已给予你 3000 个钻石！'
+        - 'tell: &7如果背包已满，会掉落在地上'
+
+    # ==================== item 动作部分 - 扣除 ====================
+    item_take_diamond:
+      text: '&c[ item:take ]'
+      tooltip:
+        - '&7扣除10个钻石'
+        - '&f点击测试'
+      actions:
+        - 'item: type=take;mats=DIAMOND;amount=10'
+        - 'tell: &a已扣除你 10 个钻石！'
+
+    item_take_lore:
+      text: '&c[ item:take+Lore ]'
+      tooltip:
+        - '&7扣除带特定lore的钻石'
+        - '&f点击测试'
+      actions:
+        - 'item: type=take;mats=DIAMOND;amount=10;lore=测试物品'
+        - 'tell: &a已扣除10个带"测试物品"lore的钻石！'
+
+    item_take_model:
+      text: '&c[ item:take+Model ]'
+      tooltip:
+        - '&7扣除指定模型的物品'
+        - '&7格式: PAPER: oraxen:amethyst'
+        - '&f点击测试'
+      actions:
+        - 'item: type=take;mats=PAPER;amount=10;model=oraxen:amethyst'
+        - 'tell: &a已扣除匹配模型的oraxen:amethyst！'
+
+    # ==================== stock-item 动作部分 ====================
+    stock_give:
+      text: '&a[ stock-item:give ]'
+      tooltip:
+        - '&7给予保存的物品'
+        - '&7需要先保存"测试物品"'
+        - '&f点击测试'
+      actions:
+        - condition: "hasStockItem.测试物品;0"
+          allow:
+            - 'stock-item: type=give;name=测试物品;amount=16'
+            - 'tell: &a已给予你 16 个"测试物品"！'
+          deny:
+            - 'tell: &c✗ 物品"测试物品"不存在！'
+            - 'tell: &7请先使用 /km item save 保存物品'
+
+    stock_take:
+      text: '&c[ stock-item:take ]'
+      tooltip:
+        - '&7扣除保存的物品'
+        - '&7需要先保存"测试物品"'
+        - '&f点击测试'
+      actions:
+        - 'stock-item: type=take;name=测试物品;amount=16'
+        - 'tell: &a已扣除 16 个"测试物品"！'
+
+    # ==================== 综合示例 ====================
+    buy_with_item:
+      text: '&e[ 购买示例 ]'
+      tooltip:
+        - '&7使用10个钻石购买物品'
+        - '&f点击测试'
+      actions:
+        - condition: "hasItem.[mats=DIAMOND;amount=10]"
+          allow:
+            - 'item: type=take;mats=DIAMOND;amount=10'
+            - 'item: type=give;mats=IRON_INGOT;amount=64'
+            - 'tell: &a购买成功！用 10 个钻石换取了 64 个铁锭'
+          deny:
+            - 'tell: &c购买失败！你需要 10 个钻石'
+
+    buy_with_stock:
+      text: '&e[ 购买示例2 ]'
+      tooltip:
+        - '&7使用16个保存物品购买钻石'
+        - '&7需要先保存"测试物品"'
+        - '&f点击测试'
+      actions:
+        - condition: "hasStockItem.测试物品;16"
+          allow:
+            - 'stock-item: type=take;name=测试物品;amount=16'
+            - 'item: type=give;mats=DIAMOND;amount=10'
+            - 'tell: &a购买成功！用 16 个"测试物品"换取了 10 个钻石'
+          deny:
+            - 'tell: &c购买失败！你需要 16 个"测试物品"'

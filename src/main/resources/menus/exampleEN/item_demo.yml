@@ -1,0 +1,169 @@
+Title: '&8» &e&lItem Operations Demo &8«'
+
+Settings:
+  can_escape: false
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7This menu demonstrates item-related condition and Action features. &fIncludes: hasItem, hasStockItem conditions, item, stock-item actions'
+
+Bottom:
+  type: 'multi'
+  columns: 3
+  buttons:
+    # ==================== Condition Section ====================
+    has_item:
+      text: '&9[ hasItem ]'
+      tooltip:
+        - '&7Check if player has 10 diamonds'
+        - '&fClick to test'
+      actions:
+        - condition: "hasItem.[mats=DIAMOND;amount=10]"
+          allow:
+            - 'tell: &a✓ You have 10 diamonds!'
+          deny:
+            - 'tell: &c✗ You don''t have 10 diamonds!'
+
+    has_item_lore:
+      text: '&9[ hasItem+Lore ]'
+      tooltip:
+        - '&7Check if player has item with specific lore'
+        - '&fClick to test'
+      actions:
+        - condition: "hasItem.[mats=DIAMOND;amount=10;lore=Test Item]"
+          allow:
+            - 'tell: &a✓ You have 10 diamonds with "Test Item" lore!'
+          deny:
+            - 'tell: &c✗ You don''t have 10 diamonds with "Test Item" lore!'
+
+    has_stock_item:
+      text: '&9[ hasStockItem ]'
+      tooltip:
+        - '&7Check if player has 16 saved items'
+        - '&7Item must be saved first'
+        - '&fClick to test'
+      actions:
+        - condition: "hasStockItem.Test Item;16"
+          allow:
+            - 'tell: &a✓ You have 16 "Test Items" in storage!'
+          deny:
+            - 'tell: &c✗ You don''t have 16 "Test Items" in storage!'
+
+    # ==================== item Actions - Give ====================
+    item_give_diamond:
+      text: '&a[ item:give ]'
+      tooltip:
+        - '&7Give 10 diamonds'
+        - '&fClick to test'
+      actions:
+        - 'item: type=give;mats=DIAMOND;amount=10'
+        - 'tell: &aGiven you 10 diamonds!'
+        - 'sound: BLOCK_NOTE_BLOCK_PLING;1;2'
+
+    item_give_lore:
+      text: '&a[ item:give+Lore ]'
+      tooltip:
+        - '&7Give diamonds with lore'
+        - '&fClick to test'
+      actions:
+        - 'item: type=give;mats=DIAMOND;amount=10'
+        - 'tell: &aGiven you 10 diamonds!'
+        - 'tell: &7Note: item:give ignores the lore parameter'
+
+    item_give_full:
+      text: '&a[ item:give Inventory Full ]'
+      tooltip:
+        - '&7Give 3000 diamonds'
+        - '&7Items drop on ground when full'
+        - '&fClick to test'
+      actions:
+        - 'item: type=give;mats=DIAMOND;amount=3000'
+        - 'tell: &aGiven you 3000 diamonds!'
+        - 'tell: &7If inventory is full, items will drop on ground'
+
+    # ==================== item Actions - Take ====================
+    item_take_diamond:
+      text: '&c[ item:take ]'
+      tooltip:
+        - '&7Take 10 diamonds'
+        - '&fClick to test'
+      actions:
+        - 'item: type=take;mats=DIAMOND;amount=10'
+        - 'tell: &aTaken 10 diamonds from you!'
+
+    item_take_lore:
+      text: '&c[ item:take+Lore ]'
+      tooltip:
+        - '&7Take diamonds with specific lore'
+        - '&fClick to test'
+      actions:
+        - 'item: type=take;mats=DIAMOND;amount=10;lore=Test Item'
+        - 'tell: &aTaken 10 diamonds with "Test Item" lore!'
+
+    item_take_model:
+      text: '&c[ item:take+Model ]'
+      tooltip:
+        - '&7Take items with specific model'
+        - '&7Format: namespace:key'
+        - '&7Example: oraxen:amethyst'
+        - '&fClick to test'
+      actions:
+        - 'item: type=take;mats=PAPER;amount=10;model=oraxen:amethyst'
+        - 'tell: &aTaken oraxen:amethyst items with matching model!'
+
+    # ==================== stock-item Actions ====================
+    stock_give:
+      text: '&a[ stock-item:give ]'
+      tooltip:
+        - '&7Give saved item'
+        - '&7"Test Item" must be saved first'
+        - '&fClick to test'
+      actions:
+        - condition: "hasStockItem.Test Item;0"
+          allow:
+            - 'stock-item: type=give;name=Test Item;amount=16'
+            - 'tell: &aGiven you 16 "Test Items"!'
+          deny:
+            - 'tell: &c✗ Item "Test Item" does not exist!'
+            - 'tell: &7Please save an item first using /km item save'
+
+    stock_take:
+      text: '&c[ stock-item:take ]'
+      tooltip:
+        - '&7Take saved item'
+        - '&7"Test Item" must be saved first'
+        - '&fClick to test'
+      actions:
+        - 'stock-item: type=take;name=Test Item;amount=16'
+        - 'tell: &aTaken 16 "Test Items"!'
+
+    # ==================== Combined Examples ====================
+    buy_with_item:
+      text: '&e[ Purchase Example ]'
+      tooltip:
+        - '&7Buy items using 10 diamonds'
+        - '&fClick to test'
+      actions:
+        - condition: "hasItem.[mats=DIAMOND;amount=10]"
+          allow:
+            - 'item: type=take;mats=DIAMOND;amount=10'
+            - 'item: type=give;mats=IRON_INGOT;amount=64'
+            - 'tell: &aPurchase successful! Traded 10 diamonds for 64 iron ingots'
+          deny:
+            - 'tell: &cPurchase failed! You need 10 diamonds'
+
+    buy_with_stock:
+      text: '&e[ Purchase Example 2 ]'
+      tooltip:
+        - '&7Buy diamonds using 16 saved items'
+        - '&7"Test Item" must be saved first'
+        - '&fClick to test'
+      actions:
+        - condition: "hasStockItem.Test Item;16"
+          allow:
+            - 'stock-item: type=take;name=Test Item;amount=16'
+            - 'item: type=give;mats=DIAMOND;amount=10'
+            - 'tell: &aPurchase successful! Traded 16 "Test Items" for 10 diamonds'
+          deny:
+            - 'tell: &cPurchase failed! You need 16 "Test Items"'

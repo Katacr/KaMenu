@@ -18,6 +18,7 @@
   * [🔘 底部按钮 (Bottom)](menu/bottom.md)
   * [🤖 动作 (Actions)](menu/actions.md)
   * [🔍 条件判断](menu/conditions.md)
+    * [🔍 物品判断](menu/conditions_item.md)
 * [💾 数据存储](data/README.md)
   * [📊 玩家数据与全局数据](data/storage.md)
 * [🔖 PlaceholderAPI](PlaceholderAPI.md)

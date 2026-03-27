@@ -34,6 +34,7 @@ Bottom:
 | `console`   | 以控制台权限执行一条指令       |
 | `sound`     | 在玩家位置播放声音          |
 | `money`     | 操作玩家金币（需要 Vault）   |
+| `stock-item`| 物品给予/扣除           |
 | `open`      | 为玩家打开另一个菜单         |
 | `close`     | 关闭当前菜单             |
 | `url`       | 打开指定链接（仅单动作时生效）    |
@@ -574,6 +575,114 @@ actions:
 - `take` 操作会检查余额，余额不足时不会执行扣除，仅会在控制台打印警告
 - 金额支持小数，如 1.5、0.99 等
 - 金额可以使用变量，如 `%player_level%` 或 `{data:price}`
+
+---
+
+### stock-item - 物品给予/扣除
+
+给予玩家或从玩家背包中扣除指定数量的物品。
+
+**格式：** `stock-item: type=操作类型;name=物品名称;amount=数量`
+
+**参数说明：**
+
+|| 参数 | 说明 | 必需 |
+|------|------|------|
+| `type` | 操作类型 | ✅ |
+| `name` | 物品名称（已保存的物品）| ✅ |
+| `amount` | 数量 | ❌（默认: 1）|
+
+**type 可选值：**
+- `give`：给予玩家物品
+- `take`：从玩家背包中扣除物品
+
+**示例：**
+
+```yaml
+# 给予玩家 16 个神秘果
+- 'stock-item: type=give;name=神秘果;amount=16'
+
+# 从玩家背包扣除 16 个神秘果
+- 'stock-item: type=take;name=神秘果;amount=16'
+
+# 结合条件判断使用
+- condition: "hasStockItem.神秘果;16"
+  allow:
+    - 'stock-item: type=take;name=神秘果;amount=16'
+    - 'tell: &a购买成功！'
+  deny:
+    - 'tell: &c物品不足！需要 16 个神秘果'
+```
+
+**注意：**
+- 物品必须通过 `/km item save` 指令保存后才能使用
+- `give` 操作如果玩家背包已满，剩余物品会自动掉落在玩家位置，不会丢失
+- `take` 操作会遍历玩家所有背包槽位（包括主背包、盔甲槽、副手槽和主手槽）
+- 物品比较使用 `ItemStack.isSimilar()` 方法，忽略物品数量差异
+- 支持变量替换，如 `name=$(item_name)` 或 `amount={data:price}`
+
+---
+
+### item - 普通物品给予/扣除
+
+给予玩家或从玩家背包中扣除指定材质的普通物品。
+
+**格式：**
+- `item: type=give;mats=材质;amount=数量`
+- `item: type=take;mats=材质;amount=数量;lore=描述;model=模型`
+
+**参数说明：**
+
+| 参数 | 说明 | 必需 |
+|------|------|------|
+| `type` | 操作类型（give/take）| ✅ |
+| `mats` | 物品材质（Material ID）| ✅ |
+| `amount` | 数量 | ❌（默认: 1）|
+| `lore` | 描述（仅用于take操作，可选）| ❌ |
+| `model` | 物品模型（仅用于take操作，可选）| ❌ |
+
+**type 可选值：**
+- `give`：给予玩家物品（忽略lore和model参数）
+- `take`：从玩家背包中扣除物品（支持lore和model判断）
+
+**示例：**
+
+```yaml
+# 给予玩家 10 个钻石
+- 'item: type=give;mats=DIAMOND;amount=10'
+
+# 从玩家背包扣除 10 个钻石
+- 'item: type=take;mats=DIAMOND;amount=10'
+
+# 扣除指定 lore 的物品
+- 'item: type=take;mats=DIAMOND;amount=10;lore=锻造材料'
+
+# 扣除指定模型的物品（如 Oraxen 物品）
+- 'item: type=take;mats=DIAMOND;amount=10;model=oraxen:mana_crystal'
+
+# 同时指定 lore 和 model
+- 'item: type=take;mats=DIAMOND;amount=10;lore=锻造材料;model=oraxen:mana_crystal'
+
+# 结合条件判断使用
+- condition: "hasItem.mats=DIAMOND;amount=10"
+  allow:
+    - 'item: type=take;mats=DIAMOND;amount=10'
+    - 'tell: &a购买成功！'
+  deny:
+    - 'tell: &c物品不足！需要 10 个钻石'
+```
+
+**注意：**
+- `mats` 参数使用 Minecraft 原生材质 ID（如 `DIAMOND`、`IRON_INGOT` 等）
+- `give` 操作时，`lore` 和 `model` 参数会被忽略，因为这两个参数仅用于判断
+- `give` 操作如果玩家背包已满，剩余物品会自动掉落在玩家位置，不会丢失
+- `take` 操作时：
+  - 如果指定了 `lore`，会只扣除 lore 中包含指定字符串的物品（忽略大小写）
+  - 如果指定了 `model`，会只扣除匹配指定物品模型的物品
+  - 如果同时指定了 `lore` 和 `model`，物品需要同时满足两个条件才会被扣除
+  - `model` 格式为 `namespace:key`（如 `oraxen:mana_crystal`、`minecraft:diamond`）
+- `take` 操作会遍历玩家所有背包槽位（包括主背包、盔甲槽、副手槽和主手槽）
+- 支持变量替换，如 `mats=$(material)`、`amount={data:price}`、`lore={data:item_desc}`
 
 ---
 

@@ -261,6 +261,14 @@ object MenuUI {
                         val builder = ActionButton.builder(color(btnText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
 
+                        // 读取 tooltip 配置
+                        val tooltipList = getConditionalListFromSection(player, btnSection, "$btnKey.tooltip")
+                        if (tooltipList.isNotEmpty()) {
+                            // 将 tooltip 列表转换为 Component，每个元素作为一行
+                            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { color(it) }.toTypedArray())
+                            builder.tooltip(tooltipComponent)
+                        }
+
                         // 如果设置了宽度（width > 0），则应用宽度设置
                         if (btnWidth > 0) {
                             builder.width(btnWidth)
@@ -302,6 +310,16 @@ object MenuUI {
 
                 val confirmBuilder = ActionButton.builder(color(confirmBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
+                
+                // 读取 confirm 按钮的 tooltip
+                val confirmTooltipList = bottomSection?.let { getConditionalListFromSection(player, it, "confirm.tooltip") }
+                confirmTooltipList?.let {
+                    if (it.isNotEmpty()) {
+                        val confirmTooltipComponent = Component.join(Component.newline(), *confirmTooltipList.map { color(it) }.toTypedArray())
+                        confirmBuilder.tooltip(confirmTooltipComponent)
+                    }
+                }
+                
                 if (confirmWidth > 0) {
                     confirmBuilder.width(confirmWidth)
                 }
@@ -309,6 +327,16 @@ object MenuUI {
 
                 val denyBuilder = ActionButton.builder(color(denyBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
+                
+                // 读取 deny 按钮的 tooltip
+                val denyTooltipList = bottomSection?.let { getConditionalListFromSection(player, it, "deny.tooltip") }
+                denyTooltipList?.let {
+                    if (it.isNotEmpty()) {
+                        val denyTooltipComponent = Component.join(Component.newline(), *denyTooltipList.map { color(it) }.toTypedArray())
+                        denyBuilder.tooltip(denyTooltipComponent)
+                    }
+                }
+                
                 if (denyWidth > 0) {
                     denyBuilder.width(denyWidth)
                 }
@@ -324,13 +352,21 @@ object MenuUI {
                     ?: "确认"
 
                 val widthPath = if (config.contains("Bottom.confirm.width")) "Bottom.confirm.width" else "Bottom.button1.width"
-                val confirmWidth = getConditionalIntFromSection(player, config, widthPath, 0)
+                val btnWidth = getConditionalIntFromSection(player, config, widthPath, 0)
 
                 val builder = ActionButton.builder(color(btnText))
                     .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener))
 
-                if (confirmWidth > 0) {
-                    builder.width(confirmWidth)
+                // 读取 tooltip 配置
+                val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"
+                val tooltipList = getConditionalListFromSection(player, config, tooltipPath)
+                if (tooltipList.isNotEmpty()) {
+                    val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { color(it) }.toTypedArray())
+                    builder.tooltip(tooltipComponent)
+                }
+
+                if (btnWidth > 0) {
+                    builder.width(btnWidth)
                 }
 
                 val confirmBtn = builder.build()

@@ -102,6 +102,151 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             return true
         }
 
+        if (args[0].equals("item", ignoreCase = true)) {
+            if (!sender.hasPermission("kamenu.admin")) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
+                return true
+            }
+            if (args.size < 2) {
+                sender.sendMessage(plugin.languageManager.getMessage("item.item_usage"))
+                return true
+            }
+
+            val itemAction = args[1]
+            when (itemAction.lowercase()) {
+                "save" -> {
+                    // /km item save <物品名称>
+                    if (args.size < 3) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_save_usage"))
+                        return true
+                    }
+                    if (sender !is Player) {
+                        sender.sendMessage(plugin.languageManager.getMessage("command.player_only"))
+                        return true
+                    }
+                    val itemName = args[2]
+                    val itemInHand = sender.inventory.itemInMainHand
+                    if (itemInHand.type.isAir) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_empty_hand"))
+                        return true
+                    }
+                    val success = plugin.itemManager.saveItem(itemName, itemInHand.clone(), sender.uniqueId.toString())
+                    if (success) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_saved", itemName))
+                    } else {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_save_failed"))
+                    }
+                }
+                "give" -> {
+                    // /km item give <物品> [玩家] [数量]
+                    if (args.size < 3) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_give_usage"))
+                        return true
+                    }
+                    val itemName = args[2]
+                    if (!plugin.itemManager.itemExists(itemName)) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_not_exist", itemName))
+                        return true
+                    }
+
+                    // 解析玩家和数量参数
+                    val targetPlayer: Player?
+                    var amount = 1
+
+                    when {
+                        args.size >= 5 -> {
+                            // /km item give <物品> <玩家> <数量>
+                            targetPlayer = Bukkit.getPlayer(args[3])
+                            if (targetPlayer == null) {
+                                sender.sendMessage(plugin.languageManager.getMessage("command.player_not_found", args[3]))
+                                return true
+                            }
+                            amount = args[4].toIntOrNull() ?: 1
+                        }
+                        args.size == 4 -> {
+                            // 判断args[3]是玩家还是数量
+                            if (args[3].toIntOrNull() != null) {
+                                // args[3]是数量，没有指定玩家
+                                if (sender !is Player) {
+                                    sender.sendMessage(plugin.languageManager.getMessage("command.player_required"))
+                                    return true
+                                }
+                                targetPlayer = sender
+                                amount = args[3].toIntOrNull() ?: 1
+                            } else {
+                                // args[3]是玩家，数量默认为1
+                                targetPlayer = Bukkit.getPlayer(args[3])
+                                if (targetPlayer == null) {
+                                    sender.sendMessage(plugin.languageManager.getMessage("command.player_not_found", args[3]))
+                                    return true
+                                }
+                            }
+                        }
+                        else -> {
+                            // 没有指定玩家和数量
+                            if (sender !is Player) {
+                                sender.sendMessage(plugin.languageManager.getMessage("command.player_required"))
+                                return true
+                            }
+                            targetPlayer = sender
+                        }
+                    }
+
+                    val item = plugin.itemManager.getItem(itemName)
+                    if (item != null) {
+                        // 克隆物品并设置数量
+                        val itemToGive = item.clone() as org.bukkit.inventory.ItemStack
+                        itemToGive.amount = amount.coerceAtLeast(1)
+                        val leftover = targetPlayer.inventory.addItem(itemToGive)
+                        if (leftover.isEmpty()) {
+                            sender.sendMessage(plugin.languageManager.getMessage("item.item_given", itemName, targetPlayer.name, amount.toString()))
+                        } else {
+                            // 物品栏已满，将剩余物品掉落在地上
+                            var droppedAmount = 0
+                            leftover.values.forEach { item ->
+                                targetPlayer.world.dropItem(targetPlayer.location, item)
+                                droppedAmount += item.amount
+                            }
+
+                            // 给予者发送消息
+                            sender.sendMessage(plugin.languageManager.getMessage("item.item_inventory_full", itemName, targetPlayer.name, droppedAmount.toString()))
+
+                            // 目标玩家收到 actionbar 提示和拾取音效
+                            val actionbarMessage = plugin.languageManager.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
+                            targetPlayer.sendActionBar(org.bukkit.ChatColor.translateAlternateColorCodes('&', actionbarMessage))
+                            targetPlayer.playSound(targetPlayer.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
+                        }
+                    } else {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_get_failed", itemName))
+                    }
+                }
+                "delete" -> {
+                    // /km item delete <物品名称>
+                    if (args.size < 3) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_delete_usage"))
+                        return true
+                    }
+                    val itemName = args[2]
+                    if (!plugin.itemManager.itemExists(itemName)) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_not_exist", itemName))
+                        return true
+                    }
+
+                    val deleted = plugin.itemManager.deleteItem(itemName)
+                    if (deleted) {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_deleted", itemName))
+                    } else {
+                        sender.sendMessage(plugin.languageManager.getMessage("item.item_delete_failed", itemName))
+                    }
+                }
+                else -> {
+                    sender.sendMessage(plugin.languageManager.getMessage("item.item_unknown_action", itemAction))
+                    sender.sendMessage(plugin.languageManager.getMessage("item.item_usage"))
+                }
+            }
+            return true
+        }
+
         return true
     }
 
@@ -128,6 +273,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         sender.sendMessage(plugin.languageManager.getMessage("command.help_list"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_reload"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_action"))
+        sender.sendMessage(plugin.languageManager.getMessage("command.help_item"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_help"))
 
         // 空行
@@ -210,7 +356,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
      * 实现 Tab 补全功能
      */
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): List<String>? {
-        if (args.size == 1) return listOf("help", "open", "reload", "action", "list")
+        if (args.size == 1) return listOf("help", "open", "reload", "action", "list", "item")
         if (args.size == 2 && args[0].equals("open", ignoreCase = true)) {
             // 这里动态获取所有已加载的菜单 ID
             return plugin.menuManager.getAllMenuIds()
@@ -229,6 +375,22 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 "set-data:", "set-gdata:", "set-meta:",
                 "toast:", "money:"
             )
+        }
+        if (args.size == 2 && args[0].equals("item", ignoreCase = true)) {
+            // 返回物品子指令
+            return listOf("save", "give", "delete")
+        }
+        if (args.size == 3 && args[0].equals("item", ignoreCase = true) && args[1].equals("give", ignoreCase = true)) {
+            // 返回所有保存的物品名称
+            return plugin.itemManager.getAllItemNames()
+        }
+        if (args.size == 3 && args[0].equals("item", ignoreCase = true) && args[1].equals("delete", ignoreCase = true)) {
+            // 返回所有保存的物品名称
+            return plugin.itemManager.getAllItemNames()
+        }
+        if (args.size == 4 && args[0].equals("item", ignoreCase = true) && args[1].equals("give", ignoreCase = true)) {
+            // 返回在线玩家列表
+            return Bukkit.getOnlinePlayers().map { it.name }
         }
         return emptyList()
     }

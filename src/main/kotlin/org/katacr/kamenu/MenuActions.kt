@@ -28,6 +28,7 @@ object MenuActions {
     private var metaDataManager: MetaDataManager? = null
     private var economy: Economy? = null
     private var plugin: KaMenu? = null
+    private var itemManager: ItemManager? = null
 
     /**
      * 延迟动作数据类
@@ -71,6 +72,13 @@ object MenuActions {
      */
     fun setPlugin(kamenu: KaMenu) {
         plugin = kamenu
+    }
+
+    /**
+     * 设置物品管理器引用
+     */
+    fun setItemManager(manager: ItemManager) {
+        itemManager = manager
     }
 
     /**
@@ -557,6 +565,18 @@ object MenuActions {
                 val args = finalCmd.removePrefix("money:").trim()
                 parseAndHandleMoney(player, args, variables)
             }
+
+            // stock-item: 物品给予/扣除
+            finalCmd.startsWith("stock-item:") -> {
+                val args = finalCmd.removePrefix("stock-item:").trim()
+                parseAndHandleStockItem(player, args, variables)
+            }
+
+            // item: 普通物品给予/扣除
+            finalCmd.startsWith("item:") -> {
+                val args = finalCmd.removePrefix("item:").trim()
+                parseAndHandleItem(player, args, variables)
+            }
         }
     }
 
@@ -1041,6 +1061,273 @@ object MenuActions {
             }
             else -> {
                 plugin?.logger?.warning("$dataType 操作失败: 无效的 type 参数 '$type'，支持的类型: set, add, take, delete。玩家: ${player.name}")
+            }
+        }
+    }
+
+    /**
+     * 解析并处理物品给予/扣除动作
+     * 格式: type=give;name=物品名称;amount=数量 或 type=take;name=物品名称;amount=数量
+     */
+    private fun parseAndHandleStockItem(player: Player, args: String, variables: Map<String, String> = emptyMap()) {
+        if (itemManager == null) {
+            languageManager?.getMessage("actions.stock_item_manager_not_init", player.name)?.let {
+                plugin?.logger?.warning(it)
+            }
+            return
+        }
+
+        var type = ""
+        var itemName = ""
+        var amountStr = "1"
+
+        // 解析参数
+        args.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val key = parts[0].trim().lowercase()
+                val value = parts[1].trim()
+                when (key) {
+                    "type" -> type = value.lowercase()
+                    "name" -> itemName = value
+                    "amount" -> amountStr = value
+                }
+            }
+        }
+
+        // 解析变量替换
+        val finalItemName = resolveVariablesWithInput(player, itemName, variables)
+        val finalAmountStr = resolveVariablesWithInput(player, amountStr, variables)
+        val amount = (finalAmountStr.toIntOrNull() ?: 1).coerceAtLeast(1)
+
+        if (finalItemName.isEmpty()) {
+            languageManager?.getMessage("actions.stock_item_missing_name", player.name)?.let {
+                plugin?.logger?.warning(it)
+            }
+            return
+        }
+
+        // 从数据库获取物品
+        val item = itemManager!!.getItem(finalItemName)
+        if (item == null) {
+            languageManager?.getMessage("condition.stock_item_not_exist", finalItemName)?.let {
+                player.sendMessage(color(it))
+            }
+            return
+        }
+
+        when (type) {
+            "give" -> {
+                // 给予物品
+                val itemToGive = item.clone() as org.bukkit.inventory.ItemStack
+                itemToGive.amount = amount
+                val leftover = player.inventory.addItem(itemToGive)
+
+                if (leftover.isNotEmpty()) {
+                    // 物品栏已满，将剩余物品掉落在地上
+                    var droppedAmount = 0
+                    leftover.values.forEach { item ->
+                        player.world.dropItem(player.location, item)
+                        droppedAmount += item.amount
+                    }
+
+                    // 发送 actionbar 提示和拾取音效
+                    val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
+                    if (actionbarMessage != null) {
+                        player.sendActionBar(color(actionbarMessage))
+                    }
+                    player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
+                }
+            }
+            "take" -> {
+                // 扣除物品
+                val inventory = player.inventory
+                var remaining = amount
+
+                // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
+                val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
+                allItems.addAll(inventory.storageContents.filterNotNull())
+                allItems.addAll(inventory.armorContents.filterNotNull())
+                allItems.add(inventory.itemInOffHand)
+                allItems.add(inventory.itemInMainHand)
+
+                for (stack in allItems) {
+                    if (remaining <= 0) break
+                    if (!stack.isEmpty && stack.isSimilar(item)) {
+                        val stackAmount = stack.amount
+                        if (stackAmount <= remaining) {
+                            // 整个堆叠都扣除
+                            stack.amount = 0
+                            remaining -= stackAmount
+                        } else {
+                            // 部分扣除
+                            stack.amount -= remaining
+                            remaining = 0
+                        }
+                    }
+                }
+
+                // 更新玩家背包
+                player.updateInventory()
+            }
+            else -> {
+                languageManager?.getMessage("actions.stock_item_unknown_type", type, player.name)?.let {
+                    plugin?.logger?.warning(it)
+                }
+            }
+        }
+    }
+
+    /**
+     * 解析并处理普通物品给予/扣除动作
+     * 格式: type=give;mats=材质;amount=数量 或 type=take;mats=材质;amount=数量;lore=描述;model=模型
+     * lore和model是可选的，仅用于take操作
+     */
+    private fun parseAndHandleItem(player: Player, args: String, variables: Map<String, String> = emptyMap()) {
+        var type = ""
+        var materialName = ""
+        var amountStr = "1"
+        var loreText: String? = null
+        var itemModel: String? = null
+
+        // 解析参数
+        args.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val key = parts[0].trim().lowercase()
+                val value = parts[1].trim()
+                when (key) {
+                    "type" -> type = value.lowercase()
+                    "mats" -> materialName = value
+                    "amount" -> amountStr = value
+                    "lore" -> loreText = value
+                    "model" -> itemModel = value
+                }
+            }
+        }
+
+        // 解析变量替换
+        val finalMaterialName = resolveVariablesWithInput(player, materialName, variables)
+        val finalAmountStr = resolveVariablesWithInput(player, amountStr, variables)
+        val finalLoreText = loreText?.let { resolveVariablesWithInput(player, it, variables) }
+        val finalItemModel = itemModel?.let { resolveVariablesWithInput(player, it, variables) }
+        val amount = (finalAmountStr.toIntOrNull() ?: 1).coerceAtLeast(1)
+
+        // 材质是必需的
+        if (finalMaterialName.isEmpty()) {
+            languageManager?.getMessage("actions.item_missing_material", player.name)?.let {
+                plugin?.logger?.warning(it)
+            }
+            return
+        }
+
+        // 获取材质
+        val material = org.bukkit.Material.matchMaterial(finalMaterialName)
+        if (material == null) {
+            languageManager?.getMessage("actions.item_invalid_material", finalMaterialName, player.name)?.let {
+                plugin?.logger?.warning(it)
+            }
+            return
+        }
+
+        when (type) {
+            "give" -> {
+                // 给予物品（只需要材质和数量，忽略lore和model）
+                val itemToGive = org.bukkit.inventory.ItemStack(material, amount)
+                val leftover = player.inventory.addItem(itemToGive)
+
+                if (leftover.isNotEmpty()) {
+                    // 物品栏已满，将剩余物品掉落在地上
+                    var droppedAmount = 0
+                    leftover.values.forEach { item ->
+                        player.world.dropItem(player.location, item)
+                        droppedAmount += item.amount
+                    }
+
+                    // 发送 actionbar 提示和拾取音效
+                    val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
+                    if (actionbarMessage != null) {
+                        player.sendActionBar(color(actionbarMessage))
+                    }
+                    player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
+                }
+            }
+            "take" -> {
+                // 扣除物品（支持lore和model判断）
+                val inventory = player.inventory
+                var remaining = amount
+
+                // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
+                val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
+                allItems.addAll(inventory.storageContents.filterNotNull())
+                allItems.addAll(inventory.armorContents.filterNotNull())
+                allItems.add(inventory.itemInOffHand)
+                allItems.add(inventory.itemInMainHand)
+
+                for (stack in allItems) {
+                    if (remaining <= 0) break
+                    if (!stack.isEmpty && stack.type == material) {
+                        // 检查 lore 是否匹配（如果指定了 lore）
+                        if (finalLoreText != null) {
+                            val itemMeta = stack.itemMeta
+                            if (itemMeta != null && itemMeta.hasLore()) {
+                                val lore = itemMeta.lore()
+                                // 检查 lore 中是否包含指定字符串（忽略大小写）
+                                val loreMatched = lore?.any { line ->
+                                    val plainText = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(line)
+                                    plainText.contains(finalLoreText, ignoreCase = true)
+                                } ?: false
+                                if (!loreMatched) {
+                                    continue
+                                }
+                            } else {
+                                // 没有 lore，跳过
+                                continue
+                            }
+                        }
+
+                        // 检查 item_model 是否匹配（如果指定了 model）
+                        if (finalItemModel != null) {
+                            val itemMeta = stack.itemMeta
+                            if (itemMeta != null && itemMeta.hasItemModel()) {
+                                val modelKey = itemMeta.getItemModel()
+                                if (modelKey != null) {
+                                    // 格式化为 namespace:key
+                                    val modelStr = "${modelKey.namespace()}:${modelKey.value()}"
+                                    if (!modelStr.equals(finalItemModel, ignoreCase = true)) {
+                                        continue
+                                    }
+                                } else {
+                                    // 没有模型，跳过
+                                    continue
+                                }
+                            } else {
+                                // 没有模型，跳过
+                                continue
+                            }
+                        }
+
+                        // 符合所有条件，执行扣除
+                        val stackAmount = stack.amount
+                        if (stackAmount <= remaining) {
+                            // 整个堆叠都扣除
+                            stack.amount = 0
+                            remaining -= stackAmount
+                        } else {
+                            // 部分扣除
+                            stack.amount -= remaining
+                            remaining = 0
+                        }
+                    }
+                }
+
+                // 更新玩家背包
+                player.updateInventory()
+            }
+            else -> {
+                languageManager?.getMessage("actions.item_unknown_type", type, player.name)?.let {
+                    plugin?.logger?.warning(it)
+                }
             }
         }
     }

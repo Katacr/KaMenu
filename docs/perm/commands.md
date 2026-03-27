@@ -147,6 +147,74 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 ---
 
+### /km item
+
+管理保存的物品，包括保存手持物品、发送保存的物品和删除保存的物品。
+
+**格式：**
+- `/km item save <物品名称>` - 保存手持物品到数据库（仅限玩家）
+- `/km item give <物品名称>` - 为自己发送1个物品（仅限玩家）
+- `/km item give <物品名称> <数量>` - 为自己发送指定数量的物品（仅限玩家）
+- `/km item give <物品名称> <玩家>` - 为指定玩家发送1个物品（支持控制台）
+- `/km item give <物品名称> <玩家> <数量>` - 为指定玩家发送指定数量的物品（支持控制台）
+- `/km item delete <物品名称>` - 删除保存的物品
+
+**权限：** `kamenu.admin`
+
+**功能说明：**
+- 物品以Base64格式序列化存储在数据库中
+- 支持所有类型的物品（包括带有NBT标签的物品）
+- 可以保存复杂物品，如附魔物品、特殊材质物品等
+- 保存物品时会自动将数量设置为1，避免保存数量信息
+- 发送物品时可以指定数量，范围1-64
+- 删除物品将永久从数据库中移除
+
+**示例：**
+
+```bash
+# 保存手持物品
+/km item save diamond_sword
+/km item save vip_reward
+
+# 为自己发送1个物品
+/km item give diamond_sword
+
+# 为自己发送10个物品
+/km item give diamond_sword 10
+
+# 为指定玩家发送1个物品
+/km item give vip_reward Player1
+
+# 为指定玩家发送10个物品
+/km item give vip_reward Player1 10
+
+# 控制台为指定玩家发送物品（必须指定玩家）
+/km item give diamond_sword Player1
+
+# 控制台为指定玩家发送多个物品
+/km item give diamond_sword Player1 5
+
+# 删除保存的物品
+/km item delete diamond_sword
+/km item delete vip_reward
+```
+
+**Tab 补全：**
+- 输入 `/km item ` 后按 Tab 键，会显示子指令（save、give、delete）
+- 输入 `/km item give ` 后按 Tab 键，会显示所有保存的物品名称
+- 输入 `/km item delete ` 后按 Tab 键，会显示所有保存的物品名称
+- 输入物品名称后按 Tab 键，会显示所有在线玩家（仅 give 指令）
+
+{% hint style="warning" %}
+- save 指令只能由玩家使用，控制台无法使用
+- give 指令中，玩家参数可选，未指定则为自己，控制台必须指定玩家
+- 数量参数可选，默认为1，范围1-64
+- 手持物品为空时无法保存
+- 若玩家物品栏已满，剩余物品将无法发放
+{% endhint %}
+
+---
+
 ### /km action
 
 测试执行指定的动作，方便调试和验证动作配置。

@@ -76,6 +76,17 @@ class DatabaseManager(val plugin: KaMenu) {
                     update_time BIGINT
                 )
             """)
+
+            // 保存的物品表
+            statement.execute("""
+                CREATE TABLE IF NOT EXISTS saved_items (
+                    id INTEGER PRIMARY KEY $autoIncrement,
+                    item_name VARCHAR(64) NOT NULL UNIQUE,
+                    item_data TEXT NOT NULL,
+                    saved_by VARCHAR(36),
+                    update_time BIGINT
+                )
+            """)
         }
     }
 

@@ -387,7 +387,7 @@ object ConditionUtils {
         }
     }
 
-    /**
+        /**
      * 解析并执行内置条件方法
      * 格式: "method.value" 或 "!method.value" 或 "method.\"value\"" 或 "!method.\"value\""
      * 支持 ! 前缀进行反向判断
@@ -399,6 +399,8 @@ object ConditionUtils {
      *   - isPosInt: 判断是否为正整数（大于0）
      *   - hasPerm: 判断玩家是否拥有权限 (value应为权限节点)
      *   - hasMoney: 判断玩家是否有足够的金币 (value应为金额)
+     *   - hasStockItem: 判断玩家背包中是否有足够数量的指定物品 (格式: 物品名称;数量)
+     *   - hasItem: 判断玩家背包中是否有足够的普通物品 (格式: [mats=材质;amount=数量;lore=描述;model=模型])
      * @throws NotBuiltinConditionException 如果这不是一个有效的内置条件格式
      */
     private fun evaluateBuiltinCondition(player: Player, condition: String): Boolean {
@@ -456,6 +458,26 @@ object ConditionUtils {
                     checkPlayerMoney(player, amount)
                 }
             }
+            "hasStockItem" -> {
+                // 解析参数：物品名称;数量
+                val params = value.split(";", limit = 2)
+                if (params.size != 2) {
+                    false
+                } else {
+                    val itemName = params[0].trim()
+                    val requiredAmount = params[1].trim().toIntOrNull() ?: 1
+                    checkPlayerStockItem(player, itemName, requiredAmount)
+                }
+            }
+            "hasItem" -> {
+                // 解析参数：[mats=材质;amount=数量;lore=描述;model=模型]
+                if (!value.startsWith("[") || !value.endsWith("]")) {
+                    false
+                } else {
+                    val paramsStr = value.substring(1, value.length - 1).trim()
+                    checkPlayerHasItem(player, paramsStr)
+                }
+            }
             else -> {
                 // 未知方法，说明这不是内置条件，应该按普通比较处理
                 throw NotBuiltinConditionException()
@@ -488,6 +510,152 @@ object ConditionUtils {
         }
 
         return false
+    }
+
+    /**
+     * 检查玩家背包中是否有足够数量的指定物品
+     * @param player 玩家对象
+     * @param itemName 物品名称
+     * @param requiredAmount 需要的数量
+     * @return 是否有足够数量的物品
+     */
+    private fun checkPlayerStockItem(player: Player, itemName: String, requiredAmount: Int): Boolean {
+        if (plugin == null) {
+            return false
+        }
+
+        // 从数据库获取保存的物品模板
+        val savedItem = plugin!!.itemManager.getItem(itemName)
+        if (savedItem == null) {
+            languageManager?.let {
+                player.sendMessage(it.getMessage("condition.stock_item_not_exist", itemName))
+            }
+            return false
+        }
+
+        // 统计玩家背包中与物品模板相似的数量
+        val inventory = player.inventory
+        var totalCount = 0
+
+        // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
+        val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
+        allItems.addAll(inventory.storageContents.filterNotNull())
+        allItems.addAll(inventory.armorContents.filterNotNull())
+        allItems.add(inventory.itemInOffHand)
+        allItems.add(inventory.itemInMainHand)
+
+        for (item in allItems) {
+            if (!item.isEmpty && item.isSimilar(savedItem)) {
+                totalCount += item.amount
+            }
+        }
+
+        return totalCount >= requiredAmount
+    }
+
+    /**
+     * 检查玩家背包中是否有足够的普通物品
+     * @param player 玩家对象
+     * @param paramsStr 参数字符串（格式: mats=材质;amount=数量;lore=描述;model=模型）
+     * @return 是否有足够数量的物品
+     */
+    private fun checkPlayerHasItem(player: Player, paramsStr: String): Boolean {
+        var materialName = ""
+        var requiredAmount = 1
+        var loreText: String? = null
+        var itemModel: String? = null
+
+        // 解析参数
+        paramsStr.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val key = parts[0].trim().lowercase()
+                val value = parts[1].trim()
+                when (key) {
+                    "mats" -> materialName = value
+                    "amount" -> requiredAmount = value.toIntOrNull() ?: 1
+                    "lore" -> loreText = value
+                    "model" -> itemModel = value
+                }
+            }
+        }
+
+        // 材质是必需的
+        if (materialName.isEmpty()) {
+            languageManager?.getMessage("condition.has_item_missing_mats", player.name)?.let {
+                plugin?.logger?.warning(it)
+            }
+            return false
+        }
+
+        // 获取材质
+        val material = org.bukkit.Material.matchMaterial(materialName)
+        if (material == null) {
+            languageManager?.getMessage("condition.has_item_invalid_material", materialName, player.name)?.let {
+                plugin?.logger?.warning(it)
+            }
+            return false
+        }
+
+        // 统计玩家背包中符合条件的物品数量
+        val inventory = player.inventory
+        var totalCount = 0
+
+        // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
+        val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
+        allItems.addAll(inventory.storageContents.filterNotNull())
+        allItems.addAll(inventory.armorContents.filterNotNull())
+        allItems.add(inventory.itemInOffHand)
+        allItems.add(inventory.itemInMainHand)
+
+        for (item in allItems) {
+            if (!item.isEmpty && item.type == material) {
+                // 检查 lore 是否匹配（如果指定了 lore）
+                if (loreText != null) {
+                    val itemMeta = item.itemMeta
+                    if (itemMeta != null && itemMeta.hasLore()) {
+                        val lore = itemMeta.lore()
+                        // 检查 lore 中是否包含指定字符串（忽略大小写）
+                        val loreMatched = lore?.any { line ->
+                            val plainText = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(line)
+                            plainText.contains(loreText, ignoreCase = true)
+                        } ?: false
+                        if (!loreMatched) {
+                            continue
+                        }
+                    } else {
+                        // 没有 lore，跳过
+                        continue
+                    }
+                }
+
+                // 检查 item_model 是否匹配（如果指定了 model）
+                if (itemModel != null) {
+                    val itemMeta = item.itemMeta
+                    if (itemMeta != null && itemMeta.hasItemModel()) {
+                        val modelKey = itemMeta.getItemModel()
+                        if (modelKey != null) {
+                            // 格式化为 namespace:key
+                            val modelStr = "${modelKey.namespace()}:${modelKey.value()}"
+                            if (!modelStr.equals(itemModel, ignoreCase = true)) {
+                                continue
+                            }
+                        } else {
+                            // 没有模型，跳过
+                            continue
+                        }
+                    } else {
+                        // 没有模型，跳过
+                        continue
+                    }
+                }
+
+                // 符合所有条件，累加数量
+                totalCount += item.amount
+            }
+        }
+
+        return totalCount >= requiredAmount
     }
 
     private fun String.toDoubleDefault(default: Double): Double = this.toDoubleOrNull() ?: default

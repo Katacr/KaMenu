@@ -18,6 +18,7 @@ class KaMenu : JavaPlugin() {
     lateinit var databaseManager: DatabaseManager
     lateinit var metaDataManager: MetaDataManager
     lateinit var customCommandManager: CustomCommandManager
+    lateinit var itemManager: ItemManager
     var economy: Economy? = null
 
     /**
@@ -117,6 +118,10 @@ class KaMenu : JavaPlugin() {
         // 6.5 初始化元数据管理器
         metaDataManager = MetaDataManager()
         MenuActions.setMetaDataManager(metaDataManager)
+
+        // 6.6 初始化物品管理器
+        itemManager = ItemManager(this)
+        MenuActions.setItemManager(itemManager)
 
         // 设置 ConditionUtils 插件引用
         ConditionUtils.setPlugin(this)

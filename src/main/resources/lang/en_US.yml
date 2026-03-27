@@ -36,9 +36,26 @@ command:
   help_reload: "§a/km reload §7- Reload configuration and menus"
   help_action: "§a/km action <player> <action> §7- Test execute action"
   help_help: "§a/km help §7- Show help information"
+  help_item: "§a/km item <subcommand> §7- Manage saved items"
   help_footer: "§7For more features and help"
   help_footer_click_text: "[Click Here]"
   help_footer_hover: "View Documentation"
+
+# Item Management
+item:
+  item_usage: "§cUsage: /km item <save|give|delete> [arguments]"
+  item_save_usage: "§cUsage: /km item save <item_name>"
+  item_give_usage: "§cUsage: /km item give <item_name> [player] [amount]"
+  item_delete_usage: "§cUsage: /km item delete <item_name>"
+  item_empty_hand: "§cYou are not holding any item!"
+  item_saved: "§aItem '{0}' has been saved successfully!"
+  item_save_failed: "§cFailed to save item!"
+  item_not_exist: "§cItem '{0}' does not exist!"
+  item_given: "§aItem '{0}' (x{2}) has been given to player {1}"
+  item_get_failed: "§cFailed to get item '{0}'!"
+  item_deleted: "§aItem '{0}' has been deleted!"
+  item_delete_failed: "§cFailed to delete item '{0}'!"
+  item_unknown_action: "§cUnknown subcommand: {0}"
 
 # Menu Management
 menu:
@@ -67,6 +84,10 @@ papi:
 condition:
   unknown_method: "[KaMenu] Unknown built-in condition method: {0}"
   vault_error: "[KaMenu] Vault economy plugin check failed: {0}"
+  stock_item_not_exist: "[KaMenu] Item '{0}' does not exist"
+  stock_item_invalid_params: "[KaMenu] hasStockItem invalid parameter format, should be: item_name;amount"
+  has_item_missing_mats: "[KaMenu] hasItem condition missing mats parameter. Player: {0}"
+  has_item_invalid_material: "[KaMenu] hasItem condition invalid material: {0}. Player: {1}"
 
 # Actions
 actions:
@@ -76,6 +97,13 @@ actions:
   test_player_offline: "§cPlayer '{0}' is offline"
   test_success: "§aAction executed successfully! Target player: {0}"
   test_failed: "§cAction execution failed: {0}"
+  stock_item_unknown_type: "[KaMenu] stock-item unknown operation type: {0}, supported types: give, take. Player: {1}"
+  stock_item_missing_name: "[KaMenu] stock-item operation failed: missing name parameter. Player: {0}"
+  stock_item_manager_not_init: "[KaMenu] Item manager not initialized, cannot execute stock-item action. Player: {0}"
+  item_unknown_type: "[KaMenu] item unknown operation type: {0}, supported types: give, take. Player: {1}"
+  item_missing_material: "[KaMenu] item operation failed: missing mats parameter. Player: {0}"
+  item_invalid_material: "[KaMenu] item invalid material: {0}. Player: {1}"
+  inventory_full_actionbar: "§cInventory full, {0} items dropped on the ground"
 
 # Menu List
 menu_list:
