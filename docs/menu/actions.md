@@ -586,7 +586,7 @@ actions:
 
 **参数说明：**
 
-|| 参数 | 说明 | 必需 |
+| 参数 | 说明 | 必需 |
 |------|------|------|
 | `type` | 操作类型 | ✅ |
 | `name` | 物品名称（已保存的物品）| ✅ |
@@ -664,10 +664,10 @@ actions:
 - 'item: type=take;mats=DIAMOND;amount=10;lore=锻造材料;model=oraxen:mana_crystal'
 
 # 结合条件判断使用
-- condition: "hasItem.mats=DIAMOND;amount=10"
+- condition: "hasItem.[mats=DIAMOND;amount=10]"
   allow:
     - 'item: type=take;mats=DIAMOND;amount=10'
-    - 'tell: &a购买成功！'
+    - 'tell: &a扣除成功！'
   deny:
     - 'tell: &c物品不足！需要 10 个钻石'
 ```
