@@ -62,6 +62,8 @@ menu:
   not_found: "§c[KaMenu] Menu '{0}' does not exist!"
   loaded: "Menu loaded: {0}"
   reloaded: "§a[KaMenu] Menus reloaded, loaded {0} menus and {1} custom commands."
+  missing_dependencies: "§cThis menu is missing required dependencies, please contact an administrator."
+  missing_papi_extensions_prefix: "§cThis menu requires the following PlaceholderAPI extensions:"
 
 # Menu Manager
 manager:

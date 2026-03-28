@@ -2,6 +2,10 @@ Title: '&8» &d&l购买苹果演示 &8«'
 
 Settings:
   can_escape: true
+  need_placeholder:
+    - 'math'
+    - 'player'
+    - 'server'
 
 Body:
   intro:

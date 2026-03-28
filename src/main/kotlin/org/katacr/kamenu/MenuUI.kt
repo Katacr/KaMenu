@@ -102,6 +102,57 @@ object MenuUI {
             return
         }
 
+        // 检查 PlaceholderAPI 扩展依赖
+        val needPlaceholderExtensions = config.getList("Settings.need_placeholder")
+        if (needPlaceholderExtensions != null && needPlaceholderExtensions.isNotEmpty()) {
+            val papiPlugin = Bukkit.getPluginManager().getPlugin("PlaceholderAPI")
+            
+            if (papiPlugin == null || !papiPlugin.isEnabled) {
+                // PlaceholderAPI 未加载，阻止打开菜单
+                if (player.hasPermission("kamenu.admin")) {
+                    val prefix = plugin.languageManager.getMessage("menu.missing_papi_extensions_prefix")
+                    val extensionsClickable = needPlaceholderExtensions.filterIsInstance<String>()
+                        .joinToString(", ") { ext ->
+                            val command = "/papi ecloud download $ext"
+                            "<text=&e[$ext];hover=&7$command;command=$command>"
+                        }
+                    player.sendMessage(MenuActions.parseClickableText("$prefix $extensionsClickable"))
+                } else {
+                    player.sendMessage(plugin.languageManager.getMessage("menu.missing_dependencies"))
+                }
+                return
+            } else {
+                // 检查所需的扩展是否已加载
+                val missingExtensions = mutableListOf<String>()
+                for (extension in needPlaceholderExtensions) {
+                    if (extension is String) {
+                        try {
+                            if (!me.clip.placeholderapi.PlaceholderAPI.isRegistered(extension)) {
+                                missingExtensions.add(extension)
+                            }
+                        } catch (e: Exception) {
+                            missingExtensions.add(extension)
+                        }
+                    }
+                }
+                
+                if (missingExtensions.isNotEmpty()) {
+                    // 扩展未全部加载，阻止打开菜单
+                    if (player.hasPermission("kamenu.admin")) {
+                        val prefix = plugin.languageManager.getMessage("menu.missing_papi_extensions_prefix")
+                        val extensionsClickable = missingExtensions.joinToString(", ") { ext ->
+                            val command = "/papi ecloud download $ext"
+                            "<text=&e[$ext];hover=&7$command;command=$command>"
+                        }
+                        player.sendMessage(MenuActions.parseClickableText("$prefix $extensionsClickable"))
+                    } else {
+                        player.sendMessage(plugin.languageManager.getMessage("menu.missing_dependencies"))
+                    }
+                    return
+                }
+            }
+        }
+
         val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
         val title = color(ConditionUtils.resolveVariables(player, rawTitle))
 

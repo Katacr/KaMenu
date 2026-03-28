@@ -23,9 +23,45 @@ listeners:
     # 是否需要潜行时才触发
     require-sneaking: true
 
+  # 物品lore检测 (右键物品触发)
+  item-lore:
+    # 主菜单配置
+    main-menu:
+      enabled: true
+      # 判断是否为该物品
+      material: 'CLOCK'
+      # 判断该物品是否包含lore字符
+      target-lore: '菜单'
+      # 打开的菜单文件名
+      menu: 'main_menu'
+      # 是否需要潜行时才触发 (可选)
+      require-sneaking: false
+    # 商店菜单配置
+    shop-menu:
+      enabled: true
+      # 判断是否为该物品
+      material: 'BUNDLE'
+      # 判断该物品是否包含lore字符
+      target-lore: '商店'
+      # 打开的菜单文件名
+      menu: 'shop_menu'
+      # 是否需要潜行时才触发 (可选)
+      require-sneaking: false
+    # 传送菜单配置
+    warp-menu:
+      enabled: false
+      # 判断是否为该物品
+      material: 'COMPASS'
+      # 判断该物品是否包含lore字符
+      target-lore: '传送'
+      # 打开的菜单文件名
+      menu: 'warp_menu'
+      # 是否需要潜行时才触发 (可选)
+      require-sneaking: false
+
 # 自定义指令注册
 # 格式: 指令名: 菜单文件名
 custom-commands:
-  zcd: 'main_menu'
-  shop: 'server_shop'
-  menu: 'main_menu'
+  zcd: 'example/main_menu'
+  actions: 'example/actions_demo'
+  menu: 'example/main_menu'

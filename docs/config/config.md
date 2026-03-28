@@ -32,6 +32,26 @@ listeners:
     # 是否需要潜行时才触发
     require-sneaking: true
 
+  # 右键物品 Lore 触发（支持多个配置）
+  item-lore:
+    main-menu:  # 配置名称（自定义）
+      enabled: true
+      # 物品材质（必须匹配）
+      material: 'CLOCK'
+      # 目标 Lore 文本（包含该文本即匹配）
+      target-lore: '菜单'
+      # 触发时打开的菜单文件名
+      menu: 'main_menu'
+      # 是否需要潜行时才触发
+      require-sneaking: false
+    # 可以添加更多配置...
+    # shop-menu:
+    #   enabled: true
+    #   material: 'COMPASS'
+    #   target-lore: '商店'
+    #   menu: 'server_shop'
+    #   require-sneaking: false
+
 # 自定义指令注册
 # 格式: 指令名: 菜单文件名
 custom-commands:
@@ -129,6 +149,94 @@ listeners:
 
 {% hint style="info" %}
 启用 `require-sneaking` 可以防止玩家在普通游戏过程中意外触发菜单，推荐保持开启。
+{% endhint %}
+
+#### item-lore - 右键物品 Lore 触发
+
+玩家右键持有指定材质且包含特定 Lore 文本的物品时触发打开菜单。
+
+**配置格式：**
+
+```yaml
+listeners:
+  item-lore:
+    配置名称:        # 自定义名称，用于区分不同配置
+      enabled: true  # 是否启用此配置
+      material: 'CLOCK'              # 物品材质（必须匹配）
+      target-lore: '菜单'            # 目标 Lore 文本
+      menu: 'main_menu'              # 触发时打开的菜单 ID
+      require-sneaking: false        # 是否需要潜行才触发
+```
+
+**字段说明：**
+
+| 字段 | 说明 | 类型 | 默认值 |
+|------|------|------|--------|
+| `enabled` | 是否启用此监听配置 | `Boolean` | `true` |
+| `material` | 物品材质（Material 枚举值，必须匹配） | `String` | 无 |
+| `target-lore` | 物品 Lore 中包含的文本（包含即匹配） | `String` | 无 |
+| `menu` | 触发时打开的菜单 ID | `String` | 无 |
+| `require-sneaking` | 是否需要同时按住潜行键（Shift）才触发 | `Boolean` | `false` |
+
+**基础示例：**
+
+```yaml
+listeners:
+  item-lore:
+    server-menu:
+      enabled: true
+      material: 'CLOCK'
+      target-lore: '服务器菜单'
+      menu: 'server_menu'
+      require-sneaking: false
+```
+
+**多配置示例：**
+
+```yaml
+listeners:
+  item-lore:
+    # 主菜单：时钟物品，包含"菜单"文本
+    main-menu:
+      enabled: true
+      material: 'CLOCK'
+      target-lore: '菜单'
+      menu: 'main_menu'
+      require-sneaking: false
+
+    # 商店菜单：指南针物品，包含"商店"文本
+    shop:
+      enabled: true
+      material: 'COMPASS'
+      target-lore: '商店'
+      menu: 'server_shop'
+      require-sneaking: false
+
+    # 传送菜单：玩家头部物品，需要潜行
+    teleport:
+      enabled: true
+      material: 'PLAYER_HEAD'
+      target-lore: '传送'
+      menu: 'teleport_menu'
+      require-sneaking: true
+```
+
+**使用场景：**
+
+1. **主菜单物品** - 新玩家登录时给予一个特殊物品，右键打开主菜单
+2. **功能菜单** - 时钟/指南针等物品，右键打开对应功能菜单
+3. **特殊工具** - 特定功能的物品，右键打开相关菜单
+
+{% hint style="info" %}
+- 支持配置多个 item-lore 监听器，每个监听器可以设置不同的物品和菜单
+- `target-lore` 是模糊匹配，只要物品 Lore 中包含该文本就会触发
+- 推荐为功能物品设置独特的 Lore 文本，避免与其他物品冲突
+{% endhint %}
+
+{% hint style="warning" %}
+**注意事项：**
+- 物品 Lore 的颜色代码会被忽略进行匹配（原始文本匹配）
+- 确保物品 Lore 文本足够独特，避免误触发
 {% endhint %}
 
 ---

@@ -10,6 +10,7 @@
 |--------|------|--------|------|
 | `can_escape` | `Boolean` | `true` | 是否允许玩家通过 ESC 键关闭菜单 |
 | `after_action` | `String` | `CLOSE` | 点击按钮执行动作后的客户端行为 |
+| `need_placeholder` | `List<String>` | `null` | 菜单所需的 PlaceholderAPI 扩展列表 |
 
 ---
 
@@ -242,8 +243,90 @@ Bottom:
     actions:
       - 'close'  # 必须：关闭菜单，移除遮罩
 ```
+## need_placeholder 参数
+
+### 功能说明
+
+配置菜单所需的 PlaceholderAPI 扩展列表。在打开菜单前，插件会检查所需的扩展是否已加载。如果扩展未加载：
+
+- **管理员玩家（有 kamenu.admin 权限）**：会显示详细提示，包含缺失的扩展列表和点击下载按钮
+- **普通玩家**：会显示简化的提示信息
+
+此功能确保菜单中的占位符变量能正常工作，避免因扩展缺失导致的显示错误。
+
+### 配置格式
+
+```yaml
+Settings:
+  need_placeholder:
+    - 'player'     # Player 扩展
+    - 'server'     # Server 扩展
+    - 'vault'      # Vault 扩展
+```
+
+### 可选值
+
+`need_placeholder` 是一个字符串列表，每个元素表示一个 PlaceholderAPI 扩展的标识符。
+
+### 配置示例
+
+**基础示例：**
+
+```yaml
+Title: '&8» &6&l玩家信息 &8«'
+
+Settings:
+  need_placeholder:
+    - 'player'
+    - 'vault'
+
+Body:
+  message:
+    type: 'message'
+    text: |
+      &a玩家名称: %player_name%
+      &a玩家余额: %vault_eco_balance%
+      &a在线时间: %player_time_played%
+
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a[ 确定 ]'
+    actions:
+      - 'close'
+```
+
+### 管理员提示
+
+当管理员（有 kamenu.admin 权限）尝试打开缺少依赖的菜单时，会显示类似以下信息：
+
+```
+§c该菜单需要以下PlaceholderAPI扩展：§e[player]，§e[server]
+```
+
+每个扩展名称（如 `[player]`）都是可点击的：
+- **点击扩展**：自动执行 `/papi ecloud download <扩展名>` 命令
+- **悬停显示**：显示将要执行的具体下载命令
+
+### 普通玩家提示
+
+普通玩家会看到简化提示：
+
+```
+§c该菜单缺少必要的依赖文件，请联系管理员。
+```
+
+（可在语言文件中自定义）
+
+{% hint style="info" %}
+**如何获取扩展标识：**
+1. 使用 `/papi list` 命令查看已安装的扩展
+2. 访问 [PlaceholderAPI Expansion](https://wiki.placeholderapi.com/users/placeholder-list/minecraft/) 搜索扩展
+3. 查看扩展的官方文档或源码
+   {% endhint %}
 
 ---
+
 
 ## 完整示例
 
@@ -367,7 +450,6 @@ Bottom:
 Settings:
   can_escape: true
   after_action: NONE
-  pause: false
 ```
 
 ### 2. 重要操作配置
@@ -378,7 +460,6 @@ Settings:
 Settings:
   can_escape: false
   after_action: WAIT_FOR_RESPONSE
-  pause: false
 ```
 
 **重要提示：** 使用 `WAIT_FOR_RESPONSE` 时，确保所有按钮的动作列表中都包含 `close` 动作（除非有二级菜单）。
@@ -444,3 +525,4 @@ Bottom:
 - [🔘 底部按钮 (Bottom)](bottom.md) - 了解按钮动作配置
 - [🤖 动作 (Actions)](actions.md) - 了解所有可用的动作类型
 - [⚙️ 事件 (Events)](events.md) - 了解事件系统
+- [📊 PlaceholderAPI](../PlaceholderAPI.md) - 了解 PlaceholderAPI 集成

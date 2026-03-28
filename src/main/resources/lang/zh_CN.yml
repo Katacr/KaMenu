@@ -62,6 +62,8 @@ menu:
   not_found: "§c[KaMenu] 菜单 '{0}' 不存在！"
   loaded: "已加载菜单: {0}"
   reloaded: "§a[KaMenu] 菜单已重载，共加载 {0} 个菜单和 {1} 个自定义指令。"
+  missing_dependencies: "§c该菜单缺少必要的依赖文件，请联系管理员。"
+  missing_papi_extensions_prefix: "§c该菜单需要以下PlaceholderAPI扩展才可使用："
 
 # 菜单管理器
 manager:

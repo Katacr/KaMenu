@@ -1119,7 +1119,7 @@ object MenuActions {
         when (type) {
             "give" -> {
                 // 给予物品
-                val itemToGive = item.clone() as org.bukkit.inventory.ItemStack
+                val itemToGive = item.clone()
                 itemToGive.amount = amount
                 val leftover = player.inventory.addItem(itemToGive)
 

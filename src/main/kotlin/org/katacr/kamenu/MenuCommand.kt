@@ -195,7 +195,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                     val item = plugin.itemManager.getItem(itemName)
                     if (item != null) {
                         // 克隆物品并设置数量
-                        val itemToGive = item.clone() as org.bukkit.inventory.ItemStack
+                        val itemToGive = item.clone()
                         itemToGive.amount = amount.coerceAtLeast(1)
                         val leftover = targetPlayer.inventory.addItem(itemToGive)
                         if (leftover.isEmpty()) {
