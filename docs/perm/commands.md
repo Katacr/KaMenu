@@ -76,7 +76,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 - 若指定的玩家不存在，将收到错误消息
 
 {% hint style="warning" %}
-由于该指令可以打开任意菜单，需要 `kamenu.admin` 权限。建议使用 [自定义指令](../home/commands.md) 来为玩家提供更安全的菜单访问方式。
+由于该指令可以打开任意菜单，需要 `kamenu.admin` 权限。建议使用 [自定义指令](../config/customCommands.md) 来为玩家提供更安全的菜单访问方式。
 {% endhint %}
 
 ---
