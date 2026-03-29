@@ -23,9 +23,16 @@ KaMenu 依赖 Paper 1.21.6+ 原生 **Dialog API**，**不支持** Spigot、Craft
 
 ### 1. 下载插件
 
-从 GitHub Releases 下载最新版本的 KaMenu 插件：
+从 GitHub 下载源码构建插件：
 
 {% embed url="https://github.com/Katacr/KaMenu/releases" %}
+
+在以下插件发布平台下载插件：
+
+{% embed url="https://www.spigotmc.org/resources/133736/" %}
+
+{% embed url="https://www.minebbs.com/resources/15814/" %}
+
 
 ### 2. 安装可选依赖
 
