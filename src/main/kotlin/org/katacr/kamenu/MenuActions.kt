@@ -227,13 +227,17 @@ object MenuActions {
                         val f = response.getFloat(key)!!
                         if (f == f.toInt().toFloat()) {
                             val intVal = f.toInt()
-                            // 检查是否为 checkbox，且用户未配置自定义映射
+                            // 检查是否为 checkbox
                             val mapping = checkboxMappings[key]
-                            if (inputTypes[key] == "checkbox" && mapping != null && mapping.first == "true" && mapping.second == "false") {
-                                // 默认映射，转换为布尔字符串
-                                (intVal == 1).toString()
+                            if (inputTypes[key] == "checkbox" && mapping != null) {
+                                // checkbox：根据选中状态返回对应的映射值
+                                if (intVal == 1) {
+                                    mapping.first  // 选中状态返回 onTrue
+                                } else {
+                                    mapping.second  // 未选中状态返回 onFalse
+                                }
                             } else {
-                                // 用户有自定义映射或非 checkbox，保持原值
+                                // 非 checkbox，保持原值
                                 intVal.toString()
                             }
                         } else {

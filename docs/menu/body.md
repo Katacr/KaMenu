@@ -34,6 +34,41 @@ Body:
 
 ---
 
+### 文本格式支持
+
+KaMenu 支持 **MiniMessage API** 和 **Legacy 颜色代码** 两种文本格式，可以自由选择或混合使用。
+
+**支持的格式：**
+
+1. **Legacy 颜色代码**：`&a绿色文本`、`&c红色文本`、`&6金色文本`
+2. **MiniMessage 格式**：`<green>绿色文本</green>`、`<red>红色文本</red>`、`<gold>金色文本</gold>`
+
+**自动检测机制：**
+- 系统会自动检测文本中是否包含 MiniMessage 标签（`<...>`）
+- 如果检测到 MiniMessage 标签，会使用 MiniMessage 解析
+- 如果没有 MiniMessage 标签，会使用 Legacy 颜色代码解析
+- 两种格式可以混合使用，系统会自动处理
+
+**示例：**
+
+```yaml
+# 使用 Legacy 颜色代码
+text: '&a欢迎来到服务器'
+
+# 使用 MiniMessage 格式
+text: '<green>欢迎来到服务器</green>'
+
+# 混合使用
+text: '&a绿色文本 <gold>金色文本</gold>'
+```
+
+**MiniMessage 优势：**
+- 更现代的文本格式，支持更多样式（加粗、斜体、下划线等）
+- 更清晰的标签结构，易于维护
+- 与 Adventure API 完全兼容
+
+---
+
 ### text 字段的多种格式
 
 `text` 字段支持三种格式，分别适用于不同场景：
@@ -327,7 +362,7 @@ Body:
 | 字段 | 类型 | 必须 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | `type` | `String` | ✅ | — | 固定值 `item` |
-| `material` | `String` | ✅ | `PAPER` | 物品材质名（Minecraft 英文 ID）|
+| `material` | `String` | ✅ | `PAPER` | 物品材质名（支持多种格式，见下方说明）|
 | `name` | `String` | ✅ | — | 物品显示名称，支持颜色代码 |
 | `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）|
 | `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法 |
@@ -353,6 +388,34 @@ Body:
     width: 32
     height: 32
 ```
+
+**物品材质名格式支持：**
+
+KaMenu 支持多种材质名称格式，系统会自动规范化并匹配对应的 Material 枚举：
+
+- 标准格式：`DIAMOND_SWORD`
+- 小写：`diamond_sword`
+- 混合大小写：`DiAMond swORd`
+- 短杠：`Diamond-Sword`
+- 空格：`diamond sword`
+- 下划线：`diamond_sword`
+
+**示例：**
+
+```yaml
+# 以下格式均可匹配到 DIAMOND_SWORD
+material: 'diamond_sword'
+material: 'Diamond_Sword'
+material: 'Diamond-Sword'
+material: 'diamond sword'
+material: 'diAMond swORd'
+```
+
+{% hint style="info" %}
+系统会自动忽略大小写、将短杠和空格替换为下划线，并合并多余的下划线，因此所有上述格式都会正确匹配到 `DIAMOND_SWORD`。
+{% endhint %}
+
+---
 
 **使用自定义物品模型示例（1.21.7+）：**
 

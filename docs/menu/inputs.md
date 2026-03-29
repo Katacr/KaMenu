@@ -24,14 +24,32 @@ Inputs:
 在 `Bottom` 的 `actions` 中，可以通过 `$(键名)` 引用对应输入框的当前值：
 
 ```yaml
+Inputs:
+  player_name:  # 输入内容将对应下方$(player_name)
+    type: 'input'
+    text: '请输入玩家名称'
+    default: '请在此输入...'
+  volume:  # 输入内容将对应下方$(volume)
+    type: 'slider'
+    text: '音量'
+    min: 0
+    max: 100
+    step: 1
+    default: 50
+    format: '音量: %s%s'
+  amount:  # 输入内容将对应下方$(amount)
+    type: 'input'
+    text: '请输入数量'
+    default: '请在此输入...'
+    
 Bottom:
   type: 'notice'
   confirm:
     text: '&a确认'
     actions:
-      - 'tell: &f你输入的名字是: &e$(player_name)'
-      - 'tell: &f你选择的音量是: &e$(volume)'
-      - 'console: eco give %player_name% $(amount)'
+      - 'tell: &f你输入的名字是: &e $(player_name)'
+      - 'tell: &f你选择的音量是: &e $(volume)'
+      - 'tell: &f你输入的数量是: &e $(amount)'
 ```
 
 ---
@@ -169,12 +187,12 @@ Inputs:
 
 **配置项：**
 
-| 字段 | 类型 | 必须 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| `type` | `String` | ✅ | — | 固定值 `checkbox` |
-| `text` | `String` | ✅ | — | 复选框标签文字，支持条件判断 |
-| `default` | `Boolean` | ❌ | `false` | 默认是否勾选 |
-| `on_true` | `String` | ❌ | `true` | 勾选时传递给动作的值 |
+| 字段 | 类型 | 必须 | 默认值 | 说明                     |
+|------|------|------|--------|------------------------|
+| `type` | `String` | ✅ | — | 固定值 `checkbox`         |
+| `text` | `String` | ✅ | — | 复选框标签文字，支持条件判断         |
+| `default` | `Boolean` | ❌ | `false` | 默认是否勾选                 |
+| `on_true` | `String` | ❌ | `true` | 勾选时传递给动作的值  |
 | `on_false` | `String` | ❌ | `false` | 未勾选时传递给动作的值 |
 
 **示例：**

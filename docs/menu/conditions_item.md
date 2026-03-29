@@ -14,7 +14,7 @@ hasItem.[mats=材质;amount=数量;lore=描述;model=模型]
 
 | 参数 | 说明 | 必需 |
 |------|------|------|
-| `mats` | Minecraft 材质名称（如 `DIAMOND`、`DIAMOND_SWORD`）| ✅ |
+| `mats` | Minecraft 材质名称（支持多种格式）| ✅ |
 | `amount` | 需要的数量 | ✅ |
 | `lore` | 物品描述中需要包含的文本（忽略大小写）| ❌ |
 | `model` | 物品的 item_model（格式：namespace:key）| ❌ |
@@ -25,6 +25,30 @@ hasItem.[mats=材质;amount=数量;lore=描述;model=模型]
 - 所有匹配物品的数量总和必须大于等于指定数量
 - 如果指定了 `lore`，物品描述中必须包含该字符串（忽略大小写）
 - 如果指定了 `model`，物品的 item_model 必须匹配（格式为 `namespace:key`）
+
+### 物品材质名格式支持
+
+KaMenu 支持多种材质名称格式，系统会自动规范化并匹配对应的 Material 枚举：
+
+- 标准格式：`DIAMOND_SWORD`
+- 小写：`diamond_sword`
+- 混合大小写：`DiAMond swORd`
+- 短杠：`Diamond-Sword`
+- 空格：`diamond sword`
+
+**示例：**
+
+```yaml
+# 以下格式均可匹配到 DIAMOND_SWORD
+- condition: "hasItem.[mats=DIAMOND_SWORD;amount=1]"
+- condition: "hasItem.[mats=diamond_sword;amount=1]"
+- condition: "hasItem.[mats=Diamond-Sword;amount=1]"
+- condition: "hasItem.[mats=diamond sword;amount=1]"
+```
+
+{% hint style="info" %}
+系统会自动忽略大小写、将短杠和空格替换为下划线，并合并多余的下划线，因此所有上述格式都会正确匹配。
+{% endhint %}
 
 ### 示例
 
@@ -83,7 +107,7 @@ actions:
 
 ### 注意事项
 
-- 材质名称区分大小写（如 `DIAMOND`、`diamond_sword`）
+- 材质名称**不区分大小写**，支持多种格式（见上方说明）
 - `lore` 判断是包含关系，只要描述中包含指定字符串即可
 - `model` 格式为 `namespace:key`，如：
   - `minecraft:book`（原版物品模型）

@@ -10,6 +10,7 @@
   * [⌨️ 指令列表](perm/commands.md)
 * [🏞️ 菜单系统](menu/README.md)
   * [📁 菜单文件结构](menu/structure.md)
+  * [📝 创建菜单教程](menu/creating_menu.md)
   * [🎬 菜单标题 (Title)](menu/layout.md)
   * [⚙️ 全局设置 (Setting)](menu/setting.md)
   * [🚥 事件 (Events)](menu/events.md)
