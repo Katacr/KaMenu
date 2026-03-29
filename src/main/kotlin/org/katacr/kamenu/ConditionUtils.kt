@@ -164,6 +164,56 @@ object ConditionUtils {
     }
 
     /**
+     * 获取条件值（支持条件判断，返回字符串或字符串列表）
+     * allow 和 deny 支持：
+     *   - 字符串：支持 \n 换行符
+     *   - 列表：多个字符串会被 \n 连接
+     *
+     * @param player 玩家对象
+     * @param conditionMap 条件映射，包含 condition、allow、deny 键
+     * @return 条件满足时的 allow 值，否则返回 deny 值
+     */
+    fun getConditionalValueOrList(
+        player: Player,
+        conditionMap: Map<*, *>,
+        defaultValue: String = ""
+    ): String {
+        // 优先尝试使用 getConditionalList（支持列表模式）
+        val list = getConditionalList(player, conditionMap, emptyList())
+        if (list.isNotEmpty()) {
+            return list.joinToString("\n")
+        }
+
+        // 回退到 getConditionalValue（支持字符串模式）
+        return getConditionalValue(player, conditionMap, defaultValue)
+    }
+
+    /**
+     * 从列表中获取条件值（支持多个条件判断，allow/deny 支持列表）
+     * 遍历条件列表，返回第一个匹配条件的值，否则返回默认值
+     *
+     * @param player 玩家对象
+     * @param conditions 条件列表
+     * @param defaultValue 默认值
+     * @return 第一个匹配条件的值，否则返回默认值
+     */
+    fun getConditionalValueOrListFromList(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: String = ""
+    ): String {
+        for (condition in conditions) {
+            if (condition is Map<*, *>) {
+                val result = getConditionalValueOrList(player, condition)
+                if (result.isNotEmpty()) {
+                    return result
+                }
+            }
+        }
+        return defaultValue
+    }
+
+    /**
      * 获取条件列表值（支持条件判断的列表返回）
      * 格式:
      *   - condition: "%player_is_op% == true"
@@ -588,8 +638,8 @@ object ConditionUtils {
             return false
         }
 
-        // 获取材质
-        val material = org.bukkit.Material.matchMaterial(materialName)
+        // 获取材质（使用规范化的材质匹配）
+        val material = MaterialUtils.matchMaterial(materialName)
         if (material == null) {
             languageManager?.getMessage("condition.has_item_invalid_material", materialName, player.name)?.let {
                 plugin?.logger?.warning(it)
@@ -745,6 +795,27 @@ object ConditionUtils {
         if (section.isList(path)) {
             val conditions = section.getList(path) ?: return defaultValue
             val value = getConditionalValueFromList(player, conditions, defaultValue)
+            return resolveVariables(player, value)
+        } else {
+            // 简单字符串值
+            val value = section.getString(path, defaultValue) ?: defaultValue
+            return resolveVariables(player, value)
+        }
+    }
+
+    /**
+     * 从 ConfigurationSection 获取适合当前玩家的值（支持条件判断，allow/deny 支持列表或字符串）
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径（相对于 section）
+     * @param defaultValue 默认值
+     * @return 字符串值（列表会用 \n 连接）
+     */
+    fun getConditionalValueOrListFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
+        // 检查该路径下是否为列表格式（条件判断）
+        if (section.isList(path)) {
+            val conditions = section.getList(path) ?: return defaultValue
+            val value = getConditionalValueOrListFromList(player, conditions, defaultValue)
             return resolveVariables(player, value)
         } else {
             // 简单字符串值

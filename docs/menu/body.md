@@ -29,10 +29,196 @@ Body:
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `type` | `String` | 固定值 `message` |
-| `text` | `String` | 消息文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法 |
+| `text` | `String`/`List` | 消息文字，支持多种格式（见下方说明） |
 | `width` | `Int` | 可选，消息宽度（1-1024），不设置则使用默认宽度 |
 
-**示例：**
+---
+
+### text 字段的多种格式
+
+`text` 字段支持三种格式，分别适用于不同场景：
+
+#### 1. 单行文本（支持 \n 换行）
+
+最简单的格式，使用 `\n` 字符换行。
+
+```yaml
+Body:
+  welcome_msg:
+    type: 'message'
+    text: '&7欢迎来到服务器商店\n&7点击下方按钮浏览商品'
+```
+
+**特点：**
+- 适合静态多行文本
+- 支持 `\n` 换行符
+- 自动解析变量和颜色代码
+
+#### 2. 列表模式（每行一个元素）
+
+使用 YAML 列表，每行一个字符串。
+
+```yaml
+Body:
+  welcome_msg:
+    type: 'message'
+    text:
+      - '&7欢迎来到服务器商店'
+      - '&7点击下方按钮浏览商品'
+      - '&7祝您购物愉快！'
+```
+
+**特点：**
+- 更清晰的配置格式
+- 每行独立管理
+- 支持长文本编辑
+- 自动解析每行的变量和颜色代码
+
+#### 3. 条件判断模式（支持 allow/deny 分支）
+
+根据条件显示不同的文本内容。allow 和 deny 分支支持两种格式：
+
+**格式 A：列表模式**
+
+```yaml
+Body:
+  status_msg:
+    type: 'message'
+    text:
+      - condition: '%player_is_op% == true'
+        allow:
+          - '&a✔ 当前身份：管理员'
+          - '&7您拥有所有权限'
+        deny:
+          - '&7当前身份：普通玩家'
+          - '&7如需升级请联系管理员'
+```
+
+**格式 B：字符串模式（支持 \n 换行）**
+
+```yaml
+Body:
+  status_msg:
+    type: 'message'
+    text:
+      - condition: '%player_is_op% == true'
+        allow: '&a✔ 当前身份：管理员\n&7您拥有所有权限'
+        deny: '&7当前身份：普通玩家\n&7如需升级请联系管理员'
+```
+
+**格式 A vs 格式 B 对比：**
+
+| 特性 | 列表模式（A） | 字符串模式（B） |
+|------|-------------|----------------|
+| 可读性 | ✅ 更清晰，每行独立 | ⚠️ 需要使用 \n 分隔 |
+| 变量解析 | ✅ 每行独立解析 | ✅ 完整文本一次性解析 |
+| 适用场景 | 多行、格式化文本 | 简短文本或需要逻辑连接 |
+
+**特点：**
+- 根据条件动态显示内容
+- allow/deny 分支都支持列表和字符串两种格式
+- 列表模式中，每一行会独立处理并解析变量
+- 字符串模式支持 `\n` 换行符
+- 支持嵌套条件判断
+- 两种格式可以混合使用（一个用列表，一个用字符串）
+
+---
+
+### 高级示例
+
+**多行 + 变量 + 颜色：**
+
+```yaml
+Body:
+  player_info:
+    type: 'message'
+    text:
+      - '&a玩家名称: &f{player_name}'
+      - '&a玩家余额: &e%vault_eco_balance% &7金币'
+      - '&a在线时间: &e%player_time_played%'
+      - '&a服务器名称: &f{gdata:server_name}'
+```
+
+**多行 + 可点击文本：**
+
+```yaml
+Body:
+  welcome_msg:
+    type: 'message'
+    text:
+      - '&7欢迎来到服务器！'
+      - '&7请点击下方按钮继续'
+      - '&e<text=''查看规则'';hover=''点击查看服务器规则'';command=''/rules''>'
+```
+
+**条件多行文本（列表模式）：**
+
+```yaml
+Body:
+  vip_status:
+    type: 'message'
+    text:
+      - condition: '%vault_rank% == VIP'
+        allow:
+          - '&a✓ 您是尊贵的 VIP 会员'
+          - '&7到期时间: &e%player_vip_expiry%'
+          - '&7享受所有特权服务'
+        deny:
+          - '&7您还不是 VIP 会员'
+          - '&7点击下方按钮升级'
+          - '&7仅需 &e10 &7金币/月'
+```
+
+**条件多行文本（\n 换行模式）：**
+
+```yaml
+Body:
+  vip_status:
+    type: 'message'
+    text:
+      - condition: '%vault_rank% == VIP'
+        allow: '&a✓ 您是尊贵的 VIP 会员\n&7到期时间: &e%player_vip_expiry%\n&7享受所有特权服务'
+        deny: '&7您还不是 VIP 会员\n&7点击下方按钮升级\n&7仅需 &e10 &7金币/月'
+```
+
+**混合模式（allow 用列表，deny 用字符串）：**
+
+```yaml
+Body:
+  mixed_format:
+    type: 'message'
+    text:
+      - condition: '%player_is_op% == true'
+        allow:
+          - '&6[ 管理员面板 ]'
+          - '&7您拥有完全访问权限'
+          - '&7可以查看所有功能'
+        deny: '&7[ 普通用户面板 ]\n&7您只能访问基础功能\n&7如需更多权限请联系管理员'
+```
+
+**嵌套条件：**
+
+```yaml
+Body:
+  player_type:
+    type: 'message'
+    text:
+      - condition: '%player_is_op% == true'
+        allow:
+          - condition: '%player_name% == AdminPlayer'
+            allow: '&6服务器管理员'
+            deny: '&6管理员账号'
+        deny:
+          - condition: '%vault_rank% == VIP'
+            allow: '&aVIP 玩家'
+            deny: '&7普通玩家'
+```
+
+---
+
+### 完整示例
+
+**基础示例：**
 
 ```yaml
 Body:
@@ -43,18 +229,6 @@ Body:
   separator:
     type: 'message'
     text: '&8————————————————'
-```
-
-**条件判断示例：**
-
-```yaml
-Body:
-  status_msg:
-    type: 'message'
-    text:
-      - condition: "%player_is_op% == true"
-        allow: '&a✔ 当前身份：管理员'
-        deny: '&7当前身份：普通玩家'
 ```
 
 **宽度自定义示例：**

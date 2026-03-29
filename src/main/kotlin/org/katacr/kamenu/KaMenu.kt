@@ -76,7 +76,18 @@ class KaMenu : JavaPlugin() {
     override fun onEnable() {
         // 1. 保存并加载配置
         saveDefaultConfig()
-        val config = config
+
+        // 1.5 检查并更新配置文件
+        val configFile = File(dataFolder, "config.yml")
+        val configUpdated = ConfigUpdater.checkAndUpdateConfig(this, configFile)
+
+        // 重新加载配置（如果已更新）
+        if (configUpdated) {
+            reloadConfig()
+            config
+        } else {
+            config
+        }
 
         // 2. 初始化语言管理器
         languageManager = LanguageManager(this)
@@ -85,6 +96,7 @@ class KaMenu : JavaPlugin() {
         // 设置工具类的语言管理器引用
         ConditionUtils.setLanguageManager(languageManager)
         MenuActions.setLanguageManager(languageManager)
+        ConfigUpdater.setLanguageManager(languageManager)
 
         // 初始化 MenuUI
         MenuUI.init(this)

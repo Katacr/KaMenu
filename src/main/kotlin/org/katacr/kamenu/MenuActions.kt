@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.title.Title
 import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
@@ -23,6 +24,7 @@ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
  */
 object MenuActions {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
+    private val miniMessage = MiniMessage.miniMessage()
     private var languageManager: LanguageManager? = null
     private var databaseManager: DatabaseManager? = null
     private var metaDataManager: MetaDataManager? = null
@@ -86,6 +88,38 @@ object MenuActions {
      */
     internal fun color(text: String?): Component =
         if (text == null) Component.empty() else serializer.deserialize(text)
+
+    /**
+     * 将 MiniMessage 格式转换为 Adventure Component
+     * 支持丰富的格式：<red>、<gradient:red:blue>、<bold> 等
+     * 同时也兼容 Legacy 颜色代码（&a, &b 等）
+     */
+    fun miniMessage(text: String?): Component =
+        if (text == null) Component.empty() else miniMessage.deserialize(text)
+
+    /**
+     * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）
+     * 支持 MiniMessage 和 Legacy 颜色代码混合使用
+     * 注意: hovertext 格式 (<text=...>) 应该先在 parseClickableText 中处理
+     * @param text 文本内容
+     * @return Adventure Component
+     */
+    internal fun parseText(text: String?): Component {
+        if (text == null) return Component.empty()
+
+        // 检测是否包含 MiniMessage 标签（<...>）
+        val hasMiniMessageTags = text.contains(Regex("<[^>]+>"))
+
+        return if (hasMiniMessageTags) {
+            // 先用 MiniMessage 解析，然后将结果序列化为 Legacy 格式，再用 color 处理
+            val miniComponent = miniMessage(text)
+            val legacyString = serializer.serialize(miniComponent)
+            color(legacyString)
+        } else {
+            // 使用 Legacy 颜色代码解析
+            color(text)
+        }
+    }
 
     /**
      * 解析变量（完整顺序：$(var) -> {data:var} -> %papi_var%）
@@ -383,12 +417,12 @@ object MenuActions {
         when {
             // tell: 普通消息
             finalCmd.startsWith("tell:") ->
-                player.sendMessage(color(finalCmd.removePrefix("tell:").trim()))
+                player.sendMessage(parseText(finalCmd.removePrefix("tell:").trim()))
 
             // actionbar: ActionBar 消息
             finalCmd.startsWith("actionbar:") -> {
                 val message = finalCmd.removePrefix("actionbar:").trim()
-                player.sendActionBar(color(message))
+                player.sendActionBar(parseText(message))
             }
 
             // title: 发送标题
@@ -407,6 +441,10 @@ object MenuActions {
             // command: 玩家执行指令
             finalCmd.startsWith("command:") ->
                 player.performCommand(finalCmd.removePrefix("command:").trim())
+
+            // chat: 玩家执行指令
+            finalCmd.startsWith("chat:") ->
+                player.chat(finalCmd.removePrefix("chat:").trim())
 
             // console: 控制台执行指令
             finalCmd.startsWith("console:") ->
@@ -588,7 +626,7 @@ object MenuActions {
      */
     fun executeTestAction(player: Player, actionString: String): Boolean {
         if (plugin == null) {
-            player.sendMessage(color(languageManager?.getMessage("actions.test_failed", "插件未初始化") ?: "§c插件未初始化，无法执行动作"))
+            player.sendMessage(parseText(languageManager?.getMessage("actions.test_failed", "插件未初始化") ?: "§c插件未初始化，无法执行动作"))
             return false
         }
 
@@ -602,7 +640,7 @@ object MenuActions {
             executeSingleAction(player, actionString, emptyMap(), menuOpener, null)
             return true
         } catch (e: Exception) {
-            player.sendMessage(color(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))
+            player.sendMessage(parseText(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))
             plugin?.logger?.severe("测试动作执行失败: ${e.message}")
             e.printStackTrace()
             return false
@@ -690,8 +728,8 @@ object MenuActions {
             }
         }
 
-        val titleComponent = if (title.isEmpty()) Component.empty() else color(title)
-        val subtitleComponent = if (subtitle.isEmpty()) Component.empty() else color(subtitle)
+        val titleComponent = if (title.isEmpty()) Component.empty() else parseText(title)
+        val subtitleComponent = if (subtitle.isEmpty()) Component.empty() else parseText(subtitle)
 
         // 使用 Adventure API 的 Title (Paper 推荐方式)
         val titleTimes = Title.Times.times(
@@ -706,36 +744,60 @@ object MenuActions {
     /**
      * 解析可点击文本 (使用 Adventure API)
      * 格式: <text='显示文字';hover='悬停文字';command='指令';url='链接';newline='false'>
+     * 注意: 只有包含 text= 参数的标签才会被解析为可点击文本，其他的 <...> 标签会被保留给 MiniMessage 处理
      */
     fun parseClickableText(rawText: String): Component {
-        val mainBuilder = Component.text()
+        val replacements = mutableListOf<Pair<IntRange, Component>>()
         var currentPos = 0
 
         while (currentPos < rawText.length) {
-            val startIndex = rawText.indexOf('<', currentPos)
+            val startIndex = rawText.indexOf("<text=", currentPos, ignoreCase = true)
 
-            if (startIndex == -1) {
-                mainBuilder.append(createAdventureText(rawText.substring(currentPos)))
-                break
-            }
+            if (startIndex == -1) break
 
-            if (startIndex > currentPos) {
-                mainBuilder.append(createAdventureText(rawText.substring(currentPos, startIndex)))
-            }
-
+            // 找到 hovertext 的结束位置
             val endIndex = findClosingBracket(rawText, startIndex)
-            if (endIndex == -1) {
-                mainBuilder.append(createAdventureText(rawText.substring(startIndex)))
-                break
-            }
+            if (endIndex == -1) break
 
-            val content = rawText.substring(startIndex + 1, endIndex)
+            // 提取完整的 hovertext 标签（包括 < >）
+            val content = rawText.substring(startIndex + 1, endIndex)  // 不包括尖括号
+
+            // 解析 hovertext
             val component = parseClickableComponent(content)
             if (component != null) {
-                mainBuilder.append(component)
+                // 记录替换：原始位置范围 → 组件
+                replacements.add(Pair(IntRange(startIndex, endIndex), component))
+                currentPos = endIndex + 1
+            } else {
+                currentPos = startIndex + 1
             }
+        }
 
-            currentPos = endIndex + 1
+        // 如果没有 hovertext，直接用 parseText 处理 MiniMessage
+        if (replacements.isEmpty()) {
+            return parseText(rawText)
+        }
+
+        // 按位置升序排序，从前往后处理
+        replacements.sortBy { it.first.first }
+
+        // 按顺序拼接：MiniMessage 文本 + hovertext 组件
+        val mainBuilder = Component.text()
+        var lastEnd = 0
+
+        replacements.forEach { (range, component) ->
+            // 添加 hovertext 之前的文本（包含 MiniMessage）
+            if (range.first > lastEnd) {
+                mainBuilder.append(parseText(rawText.substring(lastEnd, range.first)))
+            }
+            // 添加 hovertext 组件
+            mainBuilder.append(component)
+            lastEnd = range.last + 1
+        }
+
+        // 添加最后剩余的文本
+        if (lastEnd < rawText.length) {
+            mainBuilder.append(parseText(rawText.substring(lastEnd)))
         }
 
         return mainBuilder.build()
@@ -764,6 +826,7 @@ object MenuActions {
 
     /**
      * 解析可点击组件内容 (使用 Adventure API)
+     * 只有包含 text= 参数的内容才会被解析为可点击文本，否则返回 null
      */
     private fun parseClickableComponent(content: String): Component? {
         var text = ""
@@ -771,6 +834,7 @@ object MenuActions {
         var command = ""
         var url = ""
         var newline = false
+        var hasTextParam = false
 
         val parts = content.split(';')
         for (part in parts) {
@@ -782,7 +846,10 @@ object MenuActions {
                 val value = trimmed.substring(eqIndex + 1).trim()
 
                 when (key) {
-                    "text" -> text = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                    "text" -> {
+                        text = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                        hasTextParam = true
+                    }
                     "hover" -> hover = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "command" -> command = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "url" -> url = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
@@ -791,7 +858,8 @@ object MenuActions {
             }
         }
 
-        return if (text.isNotEmpty()) {
+        // 只有包含 text= 参数且 text 不为空时才返回组件
+        return if (hasTextParam && text.isNotEmpty()) {
             createAdventureClickableText(text, hover, command, url, newline)
         } else {
             null
@@ -808,7 +876,7 @@ object MenuActions {
         url: String = "",
         newline: Boolean = false
     ): Component {
-        var component = color(text)
+        var component = parseText(text)
 
         // 添加点击事件
         if (url.isNotEmpty()) {
@@ -819,7 +887,7 @@ object MenuActions {
 
         // 添加悬停事件
         if (hoverText.isNotEmpty()) {
-            component = component.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(color(hoverText)))
+            component = component.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(parseText(hoverText)))
         }
 
         // 添加换行
@@ -834,7 +902,7 @@ object MenuActions {
      * 创建普通文本组件 (使用 Adventure API)
      */
     fun createAdventureText(text: String): Component {
-        return color(text)
+        return parseText(text)
     }
 
     /**
@@ -870,8 +938,8 @@ object MenuActions {
         // 生成唯一 Key
         val randomKey = NamespacedKey("kamenu", "toast_${System.currentTimeMillis()}")
 
-        val titleJson = GsonComponentSerializer.gson().serialize(color(title))
-        val descJson = GsonComponentSerializer.gson().serialize(color(description))
+        val titleJson = GsonComponentSerializer.gson().serialize(parseText(title))
+        val descJson = GsonComponentSerializer.gson().serialize(parseText(description))
 
         val advancementJson = """
     {
@@ -1111,7 +1179,7 @@ object MenuActions {
         val item = itemManager!!.getItem(finalItemName)
         if (item == null) {
             languageManager?.getMessage("condition.stock_item_not_exist", finalItemName)?.let {
-                player.sendMessage(color(it))
+                player.sendMessage(parseText(it))
             }
             return
         }
@@ -1134,7 +1202,7 @@ object MenuActions {
                     // 发送 actionbar 提示和拾取音效
                     val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
                     if (actionbarMessage != null) {
-                        player.sendActionBar(color(actionbarMessage))
+                        player.sendActionBar(parseText(actionbarMessage))
                     }
                     player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
                 }
@@ -1221,8 +1289,8 @@ object MenuActions {
             return
         }
 
-        // 获取材质
-        val material = org.bukkit.Material.matchMaterial(finalMaterialName)
+        // 获取材质（使用规范化的材质匹配）
+        val material = MaterialUtils.matchMaterial(finalMaterialName)
         if (material == null) {
             languageManager?.getMessage("actions.item_invalid_material", finalMaterialName, player.name)?.let {
                 plugin?.logger?.warning(it)
@@ -1247,7 +1315,7 @@ object MenuActions {
                     // 发送 actionbar 提示和拾取音效
                     val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
                     if (actionbarMessage != null) {
-                        player.sendActionBar(color(actionbarMessage))
+                        player.sendActionBar(parseText(actionbarMessage))
                     }
                     player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
                 }

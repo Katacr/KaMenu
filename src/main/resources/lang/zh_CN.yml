@@ -116,3 +116,15 @@ menu_list:
   prev_page_click: "§e<text='[上一页]';command='/km list {0}'>"
   next_page_click: "§e<text='[下一页]';command='/km list {0}'>"
   no_menus: "§c服务器没有加载任何菜单"
+
+# 配置文件更新
+config_update:
+  detected_old_version: "检测到旧版本配置文件 (v{0})，开始更新到 v{1}..."
+  default_config_not_exist: "默认配置文件不存在，跳过配置更新"
+  preserved_user_config: "保留用户配置: {0} = {1}"
+  detected_deprecated_config: "检测到用户配置中的废弃项: {0}"
+  update_success: "配置文件更新成功！旧版本: v{0} -> 新版本: v{1}"
+  backup_location: "旧配置已备份到: {0}"
+  save_failed: "配置文件保存失败: {0}"
+  backup_success: "已备份旧配置文件到: {0}"
+  backup_failed: "配置文件备份失败: {0}"

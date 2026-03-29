@@ -118,3 +118,15 @@ menu_list:
   prev_page_click: "§e<text='[Previous]';command='/km list {0}'>"
   next_page_click: "§e<text='[Next]';command='/km list {0}'>"
   no_menus: "§cNo menus loaded on the server"
+
+# Config Update
+config_update:
+  detected_old_version: "Detected old version config file (v{0}), updating to v{1}..."
+  default_config_not_exist: "Default config file not found, skipping config update"
+  preserved_user_config: "Preserved user config: {0} = {1}"
+  detected_deprecated_config: "Detected deprecated config item in user config: {0}"
+  update_success: "Config file updated successfully! Old version: v{0} -> New version: v{1}"
+  backup_location: "Old config backed up to: {0}"
+  save_failed: "Failed to save config file: {0}"
+  backup_success: "Old config backed up to: {0}"
+  backup_failed: "Failed to backup config file: {0}"

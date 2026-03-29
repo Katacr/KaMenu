@@ -10,6 +10,7 @@ import io.papermc.paper.registry.data.dialog.input.DialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+import net.kyori.adventure.text.minimessage.MiniMessage
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput
 import org.bukkit.Bukkit
@@ -24,9 +25,12 @@ import org.katacr.kamenu.ConditionUtils.getConditionalIntFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalListFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalTypeFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalValueFromSection
+import org.katacr.kamenu.ConditionUtils.getConditionalValueOrList
+import org.katacr.kamenu.ConditionUtils.getConditionalValueOrListFromSection
 
 object MenuUI {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
+    private val miniMessage = MiniMessage.miniMessage()
     private lateinit var plugin: KaMenu
 
     /**
@@ -37,36 +41,66 @@ object MenuUI {
     }
 
     /**
-     * 将颜色代码转换为 Adventure Component
+     * 将颜色代码转换为 Adventure Component（Legacy 格式 &a, &b 等）
      */
     fun color(text: String?): Component =
         if (text == null) Component.empty() else serializer.deserialize(text)
 
     /**
+     * 将 MiniMessage 格式转换为 Adventure Component
+     * 支持丰富的格式：<red>、<gradient:red:blue>、<bold> 等
+     * 同时也兼容 Legacy 颜色代码（&a, &b 等）
+     */
+    fun miniMessage(text: String?): Component =
+        if (text == null) Component.empty() else miniMessage.deserialize(text)
+
+    /**
+     * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）
+     * 支持 MiniMessage 和 Legacy 颜色代码混合使用
+     * 注意: hovertext 格式 (<text=...>) 应该先在 parseClickableText 中处理
+     * @param text 文本内容
+     * @return Adventure Component
+     */
+    fun parseText(text: String?): Component {
+        if (text == null) return Component.empty()
+
+        // 检测是否包含 MiniMessage 标签（<...>）
+        val hasMiniMessageTags = text.contains(Regex("<[^>]+>"))
+
+        return if (hasMiniMessageTags) {
+            // 先用 MiniMessage 解析，然后将结果序列化为 Legacy 格式，再用 color 处理
+            val miniComponent = miniMessage(text)
+            val legacyString = serializer.serialize(miniComponent)
+            color(legacyString)
+        } else {
+            // 使用 Legacy 颜色代码解析
+            color(text)
+        }
+    }
+
+    /**
      * 创建带有点击和悬停事件的消息组件
+     * 支持多种模式：
+     * 1. 纯文本列表模式：每行一个字符串
+     * 2. 条件判断模式：支持 allow/deny 分支（字符串或列表）
+     * 3. 单行文本模式：支持 \n 换行符
      * @param player 玩家对象
      * @param section 配置节
      * @param path 配置路径
      * @param defaultText 默认文本
      * @return 带有事件的组件
      */
-    private fun createMessageComponent(
+     fun createMessageComponent(
         player: Player,
         section: ConfigurationSection,
         path: String,
         defaultText: String
     ): Component {
-        // 获取文本内容：支持 hovertext 语法和普通的 text 字段
-        val rawText = if (section.isList(path)) {
-            val conditions = section.getList(path)
-            ConditionUtils.getConditionalValueFromList(player, conditions ?: emptyList<Any>(), defaultText)
-        } else {
-            // 直接获取原始值，避免配置系统将 text 误认为是配置节
-            section.getString(path, defaultText) ?: defaultText
-        }
+        // 获取文本内容（支持列表和字符串）
+        val rawText = getConditionalValueOrListFromSection(player, section, path, defaultText)
 
-        // 使用 MenuActions 的 parseClickableText 解析文本，支持 <text=...;hover=...;command=...;url=...> 语法
-        return MenuActions.parseClickableText(rawText)
+        // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
+        return MenuActions.parseClickableText(ConditionUtils.resolveVariables(player, rawText))
     }
 
     /**
@@ -154,7 +188,7 @@ object MenuUI {
         }
 
         val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
-        val title = color(ConditionUtils.resolveVariables(player, rawTitle))
+        val title = parseText(ConditionUtils.resolveVariables(player, rawTitle))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -192,13 +226,13 @@ object MenuUI {
                     }
                     "item" -> {
                         val materialStr = getConditionalValueFromSection(player, section, "$key.material", "PAPER")
-                        val material = Material.matchMaterial(materialStr) ?: Material.PAPER
+                        val material = MaterialUtils.matchMaterial(materialStr) ?: Material.PAPER
                         val item = ItemStack(material)
                         item.editMeta { meta ->
                             val name = getConditionalValueFromSection(player, section, "$key.name", "")
-                            meta.displayName(color(name))
+                            meta.displayName(parseText(name))
                             val lore = getConditionalListFromSection(player, section, "$key.lore")
-                            meta.lore(lore.map { color(it) })
+                            meta.lore(lore.map { parseText(it) })
                             
                             // 支持设置 item_model（1.21.7+ 命名空间物品模型）
                             val itemModel = getConditionalValueFromSection(player, section, "$key.item_model", "")
@@ -211,8 +245,8 @@ object MenuUI {
                         }
                         val descriptionText = getConditionalValueFromSection(player, section, "$key.description", "")
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
-                            // 使用 parseClickableText 支持 hovertext 语法
-                            DialogBody.plainMessage(MenuActions.parseClickableText(it))
+                            // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
+                            DialogBody.plainMessage(MenuActions.parseClickableText(ConditionUtils.resolveVariables(player, it)))
                         }
 
                         val width = getConditionalIntFromSection(player, section, "$key.width", 16)
@@ -233,7 +267,7 @@ object MenuUI {
                 // 如果类型为 'none'，跳过此组件
                 if (type == "none") continue
 
-                val prompt = color(getConditionalValueFromSection(player, section, "$key.text", ""))
+                val prompt = parseText(getConditionalValueFromSection(player, section, "$key.text", ""))
 
                 when (type) {
                     "checkbox" -> {
@@ -278,7 +312,7 @@ object MenuUI {
                         val defaultId = getConditionalValueFromSection(player, section, "$key.default_id", "")
                         val options = getConditionalListFromSection(player, section, "$key.options")
                         val entries = options.map {
-                            SingleOptionDialogInput.OptionEntry.create(it, color(it), it == defaultId)
+                            SingleOptionDialogInput.OptionEntry.create(it, parseText(it), it == defaultId)
                         }
                         inputList.add(DialogInput.singleOption(key, prompt, entries).width(getConditionalIntFromSection(player, section, "$key.width", 200)).build())
                     }
@@ -318,14 +352,14 @@ object MenuUI {
                         val btnText = getConditionalValueFromSection(player, btnSection, "$btnKey.text", "按钮")
                         val btnWidth = getConditionalIntFromSection(player, btnSection, "$btnKey.width", 0)
 
-                        val builder = ActionButton.builder(color(btnText))
+                        val builder = ActionButton.builder(parseText(btnText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                         // 读取 tooltip 配置
                         val tooltipList = getConditionalListFromSection(player, btnSection, "$btnKey.tooltip")
                         if (tooltipList.isNotEmpty()) {
                             // 将 tooltip 列表转换为 Component，每个元素作为一行
-                            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { color(it) }.toTypedArray())
+                            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { parseText(it) }.toTypedArray())
                             builder.tooltip(tooltipComponent)
                         }
 
@@ -343,7 +377,7 @@ object MenuUI {
                     val exitText = getConditionalValueFromSection(player, section, "exit.text", "")
                     if (exitText.isNotEmpty()) {
                         val exitWidth = getConditionalIntFromSection(player, section, "exit.width", 0)
-                        val builder = ActionButton.builder(color(exitText))
+                        val builder = ActionButton.builder(parseText(exitText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                         // 如果设置了宽度（width > 0），则应用宽度设置
@@ -368,14 +402,14 @@ object MenuUI {
                 val confirmWidth = bottomSection?.let { getConditionalIntFromSection(player, it, "confirm.width", 0) } ?: 0
                 val denyWidth = bottomSection?.let { getConditionalIntFromSection(player, it, "deny.width", 0) } ?: 0
 
-                val confirmBuilder = ActionButton.builder(color(confirmBtnText))
+                val confirmBuilder = ActionButton.builder(parseText(confirmBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                 
                 // 读取 confirm 按钮的 tooltip
                 val confirmTooltipList = bottomSection?.let { getConditionalListFromSection(player, it, "confirm.tooltip") }
                 confirmTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        val confirmTooltipComponent = Component.join(Component.newline(), *confirmTooltipList.map { color(it) }.toTypedArray())
+                        val confirmTooltipComponent = Component.join(Component.newline(), *confirmTooltipList.map { parseText(it) }.toTypedArray())
                         confirmBuilder.tooltip(confirmTooltipComponent)
                     }
                 }
@@ -385,14 +419,14 @@ object MenuUI {
                 }
                 val confirmBtn = confirmBuilder.build()
 
-                val denyBuilder = ActionButton.builder(color(denyBtnText))
+                val denyBuilder = ActionButton.builder(parseText(denyBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                 
                 // 读取 deny 按钮的 tooltip
                 val denyTooltipList = bottomSection?.let { getConditionalListFromSection(player, it, "deny.tooltip") }
                 denyTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        val denyTooltipComponent = Component.join(Component.newline(), *denyTooltipList.map { color(it) }.toTypedArray())
+                        val denyTooltipComponent = Component.join(Component.newline(), *denyTooltipList.map { parseText(it) }.toTypedArray())
                         denyBuilder.tooltip(denyTooltipComponent)
                     }
                 }
@@ -414,14 +448,14 @@ object MenuUI {
                 val widthPath = if (config.contains("Bottom.confirm.width")) "Bottom.confirm.width" else "Bottom.button1.width"
                 val btnWidth = getConditionalIntFromSection(player, config, widthPath, 0)
 
-                val builder = ActionButton.builder(color(btnText))
+                val builder = ActionButton.builder(parseText(btnText))
                     .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                 // 读取 tooltip 配置
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"
                 val tooltipList = getConditionalListFromSection(player, config, tooltipPath)
                 if (tooltipList.isNotEmpty()) {
-                    val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { color(it) }.toTypedArray())
+                    val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { parseText(it) }.toTypedArray())
                     builder.tooltip(tooltipComponent)
                 }
 

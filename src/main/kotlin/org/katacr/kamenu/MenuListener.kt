@@ -67,8 +67,8 @@ class MenuListener(private val plugin: KaMenu) : Listener {
             // 判断潜行条件
             if (requireSneaking && !player.isSneaking) continue
 
-            // 检查 material 是否匹配（忽略大小写）
-            if (!itemMaterial.equals(targetMaterial, ignoreCase = true)) continue
+            // 检查 material 是否匹配（使用规范化的材质匹配）
+            if (!isMaterialMatch(itemMaterial, targetMaterial)) continue
 
             // 检查物品 lore 是否包含目标文本
             val hasTargetLore = lore.any { loreLine ->
@@ -88,5 +88,17 @@ class MenuListener(private val plugin: KaMenu) : Listener {
     fun onPlayerQuit(event: PlayerQuitEvent) {
         // 清理该玩家的元数据缓存
         plugin.metaDataManager.clearPlayerMeta(event.player.uniqueId)
+    }
+
+    /**
+     * 检查两个材质名称是否匹配（使用规范化比较）
+     * @param itemMaterial 物品的材质名称（Material.name）
+     * @param targetMaterial 配置中的材质名称（可能包含短杠、空格、混合大小写）
+     * @return 是否匹配
+     */
+    private fun isMaterialMatch(itemMaterial: String, targetMaterial: String): Boolean {
+        // 尝试规范化目标材质名称并匹配
+        val normalizedTarget = MaterialUtils.normalizeMaterialName(targetMaterial)
+        return itemMaterial.equals(normalizedTarget, ignoreCase = true)
     }
 }
