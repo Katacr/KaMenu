@@ -323,7 +323,6 @@ Bottom:
   columns: 2
   buttons:
     admin_panel:
-      condition: '%player_is_op% == true'
       text:
         - condition: "%player_is_op% == true"
           allow: '&4[ 管理面板 ]'
@@ -340,7 +339,7 @@ Bottom:
 
 ```yaml
 actions:
-  - condition: "%player_balance% >= 1000"
+  - condition: "hasMoney.1000"
     allow:
       - 'console: eco take %player_name% 1000'
       - 'tell: &a购买成功！已扣除 1000 金币'
@@ -394,7 +393,7 @@ actions:
 ```yaml
 Inputs:
   amount:
-    type: 'text_input'
+    type: 'input'
     text: '请输入数量（正整数）'
 
 actions:
@@ -417,13 +416,13 @@ Bottom:
       # 没有权限时提示（反向判断）
       - condition: "!hasPerm.vip.purchase"
         allow:
-          - 'tell: &c你需要购买 VIP 权限才能执行此操作！'
+          - 'tell: &c你需要购买 vip.purchase 权限才能执行此操作！'
         deny: []
 
       # 有权限时执行购买逻辑
       - condition: "hasPerm.vip.purchase"
         allow:
-          - 'console: economy give %player_name% 1000'
+          - 'console: eco give %player_name% 1000'
           - 'tell: &a已发放 1000 金币作为 VIP 奖励！'
 ```
 

@@ -182,15 +182,75 @@ class DatabaseManager(val plugin: KaMenu) {
                         val currentNum = currentValue.toDoubleOrNull()
                         if (currentNum != null) {
                             // 当前值是数字，可以进行加减操作
-                            val newValue = (currentNum + numDelta).toString()
-                            setPlayerData(playerUuid, key, newValue)
+                            val newValueDouble = currentNum + numDelta
+                            // 如果结果是整数，去掉小数点后的 .0
+                            val newValue = if (newValueDouble == newValueDouble.toLong().toDouble()) {
+                                newValueDouble.toLong().toString()
+                            } else {
+                                newValueDouble.toString()
+                            }
+                            // 直接执行更新，而不是调用 setPlayerData
+                            val dbType = plugin.config.getString("storage.type", "sqlite") ?: "sqlite"
+                            val isMySQL = dbType.equals("mysql", ignoreCase = true)
+
+                            val updateSql = if (isMySQL) {
+                                """
+                                UPDATE player_data
+                                SET data_value = ?, update_time = ?
+                                WHERE player_uuid = ? AND data_key = ?
+                            """.trimIndent()
+                            } else {
+                                """
+                                UPDATE player_data
+                                SET data_value = ?, update_time = ?
+                                WHERE player_uuid = ? AND data_key = ?
+                            """.trimIndent()
+                            }
+
+                            conn.prepareStatement(updateSql).use { updateStmt ->
+                                val currentTime = System.currentTimeMillis()
+                                updateStmt.setString(1, newValue)
+                                updateStmt.setLong(2, currentTime)
+                                updateStmt.setString(3, playerUuid.toString())
+                                updateStmt.setString(4, key)
+                                updateStmt.executeUpdate()
+                            }
                         } else {
                             // 当前值不是数字，无法进行加减操作
                             plugin.logger.warning("玩家数据修改失败: 键 '$key' 的当前值 '$currentValue' 不是数字")
                         }
                     } else {
-                        // 键不存在，直接设置为 delta 的值
-                        setPlayerData(playerUuid, key, numDelta.toString())
+                        // 键不存在，直接插入 delta 的值
+                        // 如果 delta 是整数，去掉小数点后的 .0
+                        val insertValue = if (numDelta == numDelta.toLong().toDouble()) {
+                            numDelta.toLong().toString()
+                        } else {
+                            numDelta.toString()
+                        }
+
+                        val dbType = plugin.config.getString("storage.type", "sqlite") ?: "sqlite"
+                        val isMySQL = dbType.equals("mysql", ignoreCase = true)
+
+                        val insertSql = if (isMySQL) {
+                            """
+                            INSERT INTO player_data (player_uuid, data_key, data_value, update_time)
+                            VALUES (?, ?, ?, ?)
+                        """.trimIndent()
+                        } else {
+                            """
+                            INSERT INTO player_data (player_uuid, data_key, data_value, update_time)
+                            VALUES (?, ?, ?, ?)
+                        """.trimIndent()
+                        }
+
+                        conn.prepareStatement(insertSql).use { insertStmt ->
+                            val currentTime = System.currentTimeMillis()
+                            insertStmt.setString(1, playerUuid.toString())
+                            insertStmt.setString(2, key)
+                            insertStmt.setString(3, insertValue)
+                            insertStmt.setLong(4, currentTime)
+                            insertStmt.executeUpdate()
+                        }
                     }
                 }
             }
@@ -284,15 +344,73 @@ class DatabaseManager(val plugin: KaMenu) {
                         val currentNum = currentValue.toDoubleOrNull()
                         if (currentNum != null) {
                             // 当前值是数字，可以进行加减操作
-                            val newValue = (currentNum + numDelta).toString()
-                            setGlobalData(key, newValue)
+                            val newValueDouble = currentNum + numDelta
+                            // 如果结果是整数，去掉小数点后的 .0
+                            val newValue = if (newValueDouble == newValueDouble.toLong().toDouble()) {
+                                newValueDouble.toLong().toString()
+                            } else {
+                                newValueDouble.toString()
+                            }
+                            // 直接执行更新，而不是调用 setGlobalData
+                            val dbType = plugin.config.getString("storage.type", "sqlite") ?: "sqlite"
+                            val isMySQL = dbType.equals("mysql", ignoreCase = true)
+
+                            val updateSql = if (isMySQL) {
+                                """
+                                UPDATE global_data
+                                SET data_value = ?, update_time = ?
+                                WHERE data_key = ?
+                            """.trimIndent()
+                            } else {
+                                """
+                                UPDATE global_data
+                                SET data_value = ?, update_time = ?
+                                WHERE data_key = ?
+                            """.trimIndent()
+                            }
+
+                            conn.prepareStatement(updateSql).use { updateStmt ->
+                                val currentTime = System.currentTimeMillis()
+                                updateStmt.setString(1, newValue)
+                                updateStmt.setLong(2, currentTime)
+                                updateStmt.setString(3, key)
+                                updateStmt.executeUpdate()
+                            }
                         } else {
                             // 当前值不是数字，无法进行加减操作
                             plugin.logger.warning("全局数据修改失败: 键 '$key' 的当前值 '$currentValue' 不是数字")
                         }
                     } else {
-                        // 键不存在，直接设置为 delta 的值
-                        setGlobalData(key, numDelta.toString())
+                        // 键不存在，直接插入 delta 的值
+                        // 如果 delta 是整数，去掉小数点后的 .0
+                        val insertValue = if (numDelta == numDelta.toLong().toDouble()) {
+                            numDelta.toLong().toString()
+                        } else {
+                            numDelta.toString()
+                        }
+
+                        val dbType = plugin.config.getString("storage.type", "sqlite") ?: "sqlite"
+                        val isMySQL = dbType.equals("mysql", ignoreCase = true)
+
+                        val insertSql = if (isMySQL) {
+                            """
+                            INSERT INTO global_data (data_key, data_value, update_time)
+                            VALUES (?, ?, ?)
+                        """.trimIndent()
+                        } else {
+                            """
+                            INSERT INTO global_data (data_key, data_value, update_time)
+                            VALUES (?, ?, ?)
+                        """.trimIndent()
+                        }
+
+                        conn.prepareStatement(insertSql).use { insertStmt ->
+                            val currentTime = System.currentTimeMillis()
+                            insertStmt.setString(1, key)
+                            insertStmt.setString(2, insertValue)
+                            insertStmt.setLong(3, currentTime)
+                            insertStmt.executeUpdate()
+                        }
                     }
                 }
             }

@@ -27,6 +27,7 @@ import org.katacr.kamenu.ConditionUtils.getConditionalTypeFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalValueFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalValueOrList
 import org.katacr.kamenu.ConditionUtils.getConditionalValueOrListFromSection
+import java.util.concurrent.CompletableFuture
 
 object MenuUI {
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
@@ -122,6 +123,7 @@ object MenuUI {
         }
     }
 
+
     fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
@@ -129,12 +131,55 @@ object MenuUI {
             return
         }
 
-        // 0. 执行 Open 事件（在菜单打开前执行）
-        val shouldStop = MenuActions.executeEvent(player, config, "Open")
-        if (shouldStop) {
-            // 如果Open事件中遇到return，停止打开菜单
-            return
+        // 0. 检查 Events.Open 是否包含 wait 动作
+        val openActions = config.getList("Events.Open")
+        val hasWait = MenuActions.hasWaitActionInList(openActions ?: emptyList<Any>())
+
+        if (hasWait) {
+            // 有 wait 动作，整个打开过程异步执行
+            openMenuAsync(player, config, manager, plugin)
+        } else {
+            // 没有 wait 动作，同步执行 Open 事件
+            val shouldStop = MenuActions.executeEventSync(player, config, "Open")
+            if (shouldStop) {
+                // 如果Open事件中遇到return，停止打开菜单
+                return
+            }
+            // 继续打开菜单
+            openMenuInternal(player, config, plugin, menuId)
         }
+    }
+
+    /**
+     * 异步打开菜单（用于包含 wait 动作的 Events.Open）
+     */
+    private fun openMenuAsync(player: Player, config: YamlConfiguration, manager: MenuManager, plugin: KaMenu) {
+        // 异步执行 Open 事件
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
+            val eventFuture: CompletableFuture<Boolean> = MenuActions.executeEvent(player, config, "Open")
+            try {
+                val shouldStop: Boolean = eventFuture.get()
+                if (shouldStop) {
+                    // 如果Open事件中遇到return，停止打开菜单
+                    return@Runnable
+                }
+            } catch (e: Exception) {
+                plugin.logger.severe("Open 事件执行失败: ${e.message}")
+                e.printStackTrace()
+                return@Runnable
+            }
+
+            // Open 事件执行完成，切换到主线程打开菜单
+            Bukkit.getScheduler().runTask(plugin, Runnable {
+                openMenuInternal(player, config, plugin, "")
+            })
+        })
+    }
+
+    /**
+     * 实际打开菜单的内部方法（在主线程执行）
+     */
+    private fun openMenuInternal(player: Player, config: YamlConfiguration, plugin: KaMenu, menuId: String) {
 
         // 检查 PlaceholderAPI 扩展依赖
         val needPlaceholderExtensions = config.getList("Settings.need_placeholder")
@@ -285,10 +330,19 @@ object MenuUI {
                         inputTypes[key] = "number"  // 记录为数值类型
                         val start = getConditionalDoubleFromSection(player, section, "$key.min", 0.0).toFloat()
                         val end = getConditionalDoubleFromSection(player, section, "$key.max", 10.0).toFloat()
+
+                        // 验证 min 必须小于 max
+                        val (effectiveMin, effectiveMax) = if (start >= end) {
+                            plugin.logger.warning(plugin.languageManager.getMessage("ui.slider_invalid_config", menuId, key, start, end))
+                            Pair(0.0f, 10.0f)  // 使用默认值
+                        } else {
+                            Pair(start, end)
+                        }
+
                         inputList.add(DialogInput.numberRange(
                             key, 250, prompt,
                             getConditionalValueFromSection(player, section, "$key.format", "%s: %s"),
-                            start, end, getConditionalDoubleFromSection(player, section, "$key.default", start.toDouble()).toFloat(),
+                            effectiveMin, effectiveMax, getConditionalDoubleFromSection(player, section, "$key.default", effectiveMin.toDouble()).toFloat(),
                             getConditionalDoubleFromSection(player, section, "$key.step", 1.0).toFloat()
                         ))
                     }

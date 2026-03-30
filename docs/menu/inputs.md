@@ -117,6 +117,12 @@ Inputs:
 
 **示例：**
 
+{% hint style="warning" %}
+**重要：** `min` 值**必须小于** `max` 值。如果 `min` ≥ `max`，插件会：
+- 在控制台输出警告日志
+- 自动使用默认值（min=0.0, max=10.0）
+{% endhint %}
+
 ```yaml
 Inputs:
   volume:
@@ -243,7 +249,7 @@ Inputs:
     min: 0
     max: 10
     default: 5
-    format: '聊天音量: %s'
+    format: '%s%s'
 
   language:
     type: 'dropdown'

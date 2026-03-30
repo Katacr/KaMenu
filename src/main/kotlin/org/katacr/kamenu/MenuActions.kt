@@ -17,6 +17,7 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import java.time.Duration
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+import java.util.concurrent.CompletableFuture
 
 /**
  * 菜单动作处理器
@@ -259,7 +260,8 @@ object MenuActions {
 
     /**
      * 执行动作列表（支持简单动作、列表动作和条件判断动作）
-     * @return 是否应该中断后续动作的执行（true表示中断）
+     * @param asyncMode 是否完全异步执行（包括wait动作）。true: 所有动作异步执行，false: 数据操作异步，其他操作同步
+     * @return 包含执行结果的 CompletableFuture，Boolean 表示是否应该中断后续动作的执行（true表示中断）
      */
     private fun executeActionList(
         player: Player,
@@ -267,8 +269,10 @@ object MenuActions {
         variables: Map<String, String>,
         menuOpener: (Player, String) -> Unit,
         baseDelay: Long = 0L,
-        config: YamlConfiguration? = null
-    ): Boolean {
+        config: YamlConfiguration? = null,
+        asyncDataOperations: Boolean = true,
+        asyncMode: Boolean = false
+    ): CompletableFuture<Boolean> {
         val actionsToExecute = mutableListOf<DeferredAction>()
         var currentDelay = baseDelay
         var shouldReturn = false
@@ -296,7 +300,8 @@ object MenuActions {
                     }
 
                     // 递归执行子动作列表（支持嵌套的条件判断），传入当前延迟作为基准
-                    val subResult = executeActionList(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, currentDelay, config)
+                    val subResultFuture = executeActionList(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, currentDelay, config, asyncDataOperations, asyncMode)
+                    val subResult = subResultFuture.get()
                     if (subResult) {
                         shouldReturn = true
                         break
@@ -349,22 +354,66 @@ object MenuActions {
         }
 
         // 按延迟时间执行所有动作
-        actionsToExecute.forEach { deferred ->
-            executeDeferredAction(player, deferred, menuOpener, config)
+        val actionFutures = actionsToExecute.map { deferred ->
+            executeDeferredAction(player, deferred, menuOpener, config, asyncDataOperations, asyncMode)
         }
 
-        return shouldReturn
+        // 等待所有动作完成
+        return if (actionFutures.isEmpty()) {
+            CompletableFuture.completedFuture(shouldReturn)
+        } else {
+            CompletableFuture.allOf(*actionFutures.toTypedArray()).thenApply { shouldReturn }
+        }
     }
 
     /**
-     * 执行事件动作（如 Open、Close 等）
+     * 执行事件动作（如 Open、Close 等）- 异步版本
      * 事件动作不支持 $(input) 变量，因为菜单还未打开
+     * @param player 玩家对象
+     * @param config 菜单配置
+     * @param eventName 事件名称（如 "Open"、"Close" 等）
+     * @return CompletableFuture 包含是否应该中断后续操作（true表示中断，例如Open事件中遇到return）
+     */
+    fun executeEvent(player: Player, config: YamlConfiguration, eventName: String): CompletableFuture<Boolean> {
+        val eventPath = "Events.$eventName"
+        val eventActions = config.getList(eventPath) ?: return CompletableFuture.completedFuture(false)
+
+        // 定义菜单打开器（事件中可能需要打开其他菜单）
+        val menuOpener: (Player, String) -> Unit = { p, menuName ->
+            val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
+            if (kaMenu != null) {
+                Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                    MenuUI.openMenu(p, menuName, kaMenu.menuManager, kaMenu)
+                })
+            }
+        }
+
+        // 检查是否包含 wait 动作
+        val hasWaitAction = hasWaitAction(eventActions)
+
+        // 执行事件动作（没有输入变量，也不支持 $(input) 变量）
+        // 如果有 wait 动作，使用完全异步模式；否则使用半异步模式（数据操作异步，其他操作同步）
+        return executeActionList(
+            player,
+            eventActions.map { it ?: Any() },
+            emptyMap(),
+            menuOpener,
+            0L,
+            config,
+            asyncDataOperations = true,
+            asyncMode = hasWaitAction
+        )
+    }
+
+    /**
+     * 执行事件动作（如 Open、Close 等）- 同步版本
+     * 用于不包含 wait 动作的情况
      * @param player 玩家对象
      * @param config 菜单配置
      * @param eventName 事件名称（如 "Open"、"Close" 等）
      * @return 是否应该中断后续操作（true表示中断，例如Open事件中遇到return）
      */
-    fun executeEvent(player: Player, config: YamlConfiguration, eventName: String): Boolean {
+    fun executeEventSync(player: Player, config: YamlConfiguration, eventName: String): Boolean {
         val eventPath = "Events.$eventName"
         val eventActions = config.getList(eventPath) ?: return false
 
@@ -378,26 +427,96 @@ object MenuActions {
             }
         }
 
-        // 执行事件动作（没有输入变量，也不支持 $(input) 变量）
-        return executeActionList(player, eventActions.map { it ?: Any() }, emptyMap(), menuOpener, 0L, config)
+        // 同步执行事件动作（数据操作也同步）
+        val future = executeActionList(
+            player,
+            eventActions.map { it ?: Any() },
+            emptyMap(),
+            menuOpener,
+            0L,
+            config,
+            asyncDataOperations = false,
+            asyncMode = false
+        )
+        return future.get()
+    }
+
+    /**
+     * 检查动作列表中是否包含 wait 动作（公开方法）
+     */
+    fun hasWaitActionInList(actionList: List<*>): Boolean {
+        return hasWaitAction(actionList)
+    }
+
+    /**
+     * 检查动作列表中是否包含 wait 动作（内部实现）
+     */
+    private fun hasWaitAction(actionList: List<*>): Boolean {
+        for (action in actionList) {
+            when (action) {
+                is Map<*, *> -> {
+                    // 递归检查条件判断中的动作
+                    val successActions = (action["actions"] ?: action["allow"]) as? List<*> ?: emptyList<Any>()
+                    val denyActions = (action["deny"] as? List<*>) ?: emptyList<Any>()
+                    if (hasWaitAction(successActions) || hasWaitAction(denyActions)) {
+                        return true
+                    }
+                }
+                is List<*> -> {
+                    for (subAction in action) {
+                        val actionStr = subAction?.toString() ?: continue
+                        if (actionStr.trim().lowercase().startsWith("wait:")) {
+                            return true
+                        }
+                        // 递归检查嵌套的列表
+                        if (subAction is List<*> && hasWaitAction(subAction)) {
+                            return true
+                        }
+                    }
+                }
+                is String -> {
+                    if (action.trim().lowercase().startsWith("wait:")) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
     }
 
     /**
      * 执行延迟动作
+     * @return CompletableFuture 在动作执行完成后完成
      */
     private fun executeDeferredAction(
         player: Player,
         deferred: DeferredAction,
         menuOpener: (Player, String) -> Unit,
-        config: YamlConfiguration? = null
-    ) {
-        if (deferred.delay > 0) {
-            Bukkit.getScheduler().runTaskLater(plugin ?: return, Runnable {
-                executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config)
+        config: YamlConfiguration? = null,
+        asyncDataOperations: Boolean = true,
+        asyncMode: Boolean = false
+    ): CompletableFuture<Void> {
+        val future = CompletableFuture<Void>()
+
+        if (deferred.delay > 0 && asyncMode) {
+            // 完全异步模式：延迟也是异步的
+            Bukkit.getScheduler().runTaskLaterAsynchronously(plugin ?: return CompletableFuture.completedFuture(null), Runnable {
+                executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations)
+                future.complete(null)
+            }, deferred.delay)
+        } else if (deferred.delay > 0) {
+            // 半异步模式：延迟在主线程执行，但数据操作异步
+            Bukkit.getScheduler().runTaskLater(plugin ?: return CompletableFuture.completedFuture(null), Runnable {
+                executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations)
+                future.complete(null)
             }, deferred.delay)
         } else {
-            executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config)
+            // 无延迟，直接执行
+            executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations)
+            future.complete(null)
         }
+
+        return future
     }
 
     /**
@@ -408,7 +527,8 @@ object MenuActions {
         action: String,
         variables: Map<String, String>,
         menuOpener: (Player, String) -> Unit,
-        config: YamlConfiguration? = null
+        config: YamlConfiguration? = null,
+        asyncDataOperations: Boolean = true
     ) {
         var finalCmd = action
         variables.forEach { (key, value) ->
@@ -470,9 +590,16 @@ object MenuActions {
             finalCmd.startsWith("close") -> {
                 // 先执行 Events.Close 事件
                 if (config != null) {
-                    val shouldInterrupt = executeEvent(player, config, "Close")
-                    if (shouldInterrupt) {
-                        // Close 事件中遇到 return，不关闭菜单
+                    val shouldInterruptFuture = executeEvent(player, config, "Close")
+                    try {
+                        val shouldInterrupt = shouldInterruptFuture.get()
+                        if (shouldInterrupt) {
+                            // Close 事件中遇到 return，不关闭菜单
+                            return
+                        }
+                    } catch (e: Exception) {
+                        plugin?.logger?.severe("Close 事件执行失败: ${e.message}")
+                        e.printStackTrace()
                         return
                     }
                 }
@@ -484,7 +611,15 @@ object MenuActions {
             finalCmd.startsWith("set-data:") -> {
                 val args = finalCmd.removePrefix("set-data:").trim()
                 parseDataAction(args, player.uniqueId.toString(), "data") { uuid, key, value ->
-                    databaseManager?.setPlayerData(java.util.UUID.fromString(uuid), key, value)
+                    if (asyncDataOperations) {
+                        // 异步执行数据库操作，避免阻塞主线程
+                        Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseDataAction, Runnable {
+                            databaseManager?.setPlayerData(java.util.UUID.fromString(uuid), key, value)
+                        })
+                    } else {
+                        // 同步执行数据库操作，确保数据在菜单渲染前完成
+                        databaseManager?.setPlayerData(java.util.UUID.fromString(uuid), key, value)
+                    }
                 }
             }
 
@@ -496,13 +631,37 @@ object MenuActions {
                     player = player,
                     dataType = "data",
                     setAction = { key, value ->
-                        databaseManager?.setPlayerData(player.uniqueId, key, value)
+                        if (asyncDataOperations) {
+                            // 异步执行数据库操作，避免阻塞主线程
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                                databaseManager?.setPlayerData(player.uniqueId, key, value)
+                            })
+                        } else {
+                            // 同步执行数据库操作，确保数据在菜单渲染前完成
+                            databaseManager?.setPlayerData(player.uniqueId, key, value)
+                        }
                     },
                     modifyAction = { key, delta ->
-                        databaseManager?.modifyPlayerData(player.uniqueId, key, delta)
+                        if (asyncDataOperations) {
+                            // 异步执行数据库操作，避免阻塞主线程
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                                databaseManager?.modifyPlayerData(player.uniqueId, key, delta)
+                            })
+                        } else {
+                            // 同步执行数据库操作，确保数据在菜单渲染前完成
+                            databaseManager?.modifyPlayerData(player.uniqueId, key, delta)
+                        }
                     },
                     deleteAction = { key ->
-                        databaseManager?.deletePlayerData(player.uniqueId, key)
+                        if (asyncDataOperations) {
+                            // 异步执行数据库操作，避免阻塞主线程
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                                databaseManager?.deletePlayerData(player.uniqueId, key)
+                            })
+                        } else {
+                            // 同步执行数据库操作，确保数据在菜单渲染前完成
+                            databaseManager?.deletePlayerData(player.uniqueId, key)
+                        }
                     }
                 )
             }
@@ -511,7 +670,15 @@ object MenuActions {
             finalCmd.startsWith("set-gdata:") -> {
                 val args = finalCmd.removePrefix("set-gdata:").trim()
                 parseDataAction(args, "", "gdata") { _, key, value ->
-                    databaseManager?.setGlobalData(key, value)
+                    if (asyncDataOperations) {
+                        // 异步执行数据库操作，避免阻塞主线程
+                        Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseDataAction, Runnable {
+                            databaseManager?.setGlobalData(key, value)
+                        })
+                    } else {
+                        // 同步执行数据库操作，确保数据在菜单渲染前完成
+                        databaseManager?.setGlobalData(key, value)
+                    }
                 }
             }
 
@@ -523,13 +690,37 @@ object MenuActions {
                     player = player,
                     dataType = "gdata",
                     setAction = { key, value ->
-                        databaseManager?.setGlobalData(key, value)
+                        if (asyncDataOperations) {
+                            // 异步执行数据库操作，避免阻塞主线程
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                                databaseManager?.setGlobalData(key, value)
+                            })
+                        } else {
+                            // 同步执行数据库操作，确保数据在菜单渲染前完成
+                            databaseManager?.setGlobalData(key, value)
+                        }
                     },
                     modifyAction = { key, delta ->
-                        databaseManager?.modifyGlobalData(key, delta)
+                        if (asyncDataOperations) {
+                            // 异步执行数据库操作，避免阻塞主线程
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                                databaseManager?.modifyGlobalData(key, delta)
+                            })
+                        } else {
+                            // 同步执行数据库操作，确保数据在菜单渲染前完成
+                            databaseManager?.modifyGlobalData(key, delta)
+                        }
                     },
                     deleteAction = { key ->
-                        databaseManager?.deleteGlobalData(key)
+                        if (asyncDataOperations) {
+                            // 异步执行数据库操作，避免阻塞主线程
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                                databaseManager?.deleteGlobalData(key)
+                            })
+                        } else {
+                            // 同步执行数据库操作，确保数据在菜单渲染前完成
+                            databaseManager?.deleteGlobalData(key)
+                        }
                     }
                 )
             }
@@ -582,7 +773,15 @@ object MenuActions {
                 if (args.size >= 2) {
                     val key = args[0]
                     val value = args[1]
-                    databaseManager?.setGlobalData(key, value)
+                    if (asyncDataOperations) {
+                        // 异步执行数据库操作，避免阻塞主线程
+                        plugin?.let { Bukkit.getScheduler().runTaskAsynchronously(it, Runnable {
+                            databaseManager?.setGlobalData(key, value)
+                        })}
+                    } else {
+                        // 同步执行数据库操作，确保数据在菜单渲染前完成
+                        databaseManager?.setGlobalData(key, value)
+                    }
                 }
             }
 

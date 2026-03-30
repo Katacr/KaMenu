@@ -1,5 +1,5 @@
 name: KaMenu
-version: '1.2.5'
+version: '1.2.6'
 main: org.katacr.kamenu.KaMenu
 api-version: '1.21'
 softdepend:

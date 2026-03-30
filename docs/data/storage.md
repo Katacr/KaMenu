@@ -80,46 +80,134 @@ condition: '{gdata:server_event} == active'
 
 ## 完整使用示例
 
-下面是一个使用数据存储系统制作"每日签到"菜单的示例：
+### 下面是一个使用数据存储系统制作"每日签到"菜单的示例：
+
+原理： 使用`last_sign`数据存储玩家点击签到的日期，对该值与当前日期进行判断。若相同就说明是今天签到了，若不同则说明今日未签到。
 
 ```yaml
 Title: '&6每日签到'
 
-Body:
-  info:
-    type: 'message'
-    text:
-      - condition: "{data:last_sign} == today"
-        allow: '&c今日已签到，明天再来吧！'
-        deny: '&a今日尚未签到，点击下方按钮领取奖励。'
+Settings:
+  need_placeholder:
+    - 'server'
 
+Body:
   reward_item:
     type: 'item'
     material: 'CHEST'
     name: '&6今日签到奖励'
-    lore:
-      - '&7- 100 金币'
-      - '&7- 1 颗钻石'
+  reward_text:
+    type: 'message'
+    text: |
+      &6每日签到可获得奖励：
+      &e100 金币
+      &e1 颗钻石
+  info:
+    type: 'message'
+    text:
+      - condition: "{data:last_sign} == %server_time_YYYYMMdd%"
+        allow: '&c今日已签到，明天再来吧！'
+        deny: '&a今日尚未签到，点击下方按钮领取奖励。'
 
 Bottom:
   type: 'notice'
   confirm:
     text:
-      - condition: "{data:last_sign} == today"
+      - condition: "{data:last_sign} == %server_time_YYYYMMdd%"
         allow: '&8[ 已签到 ]'
         deny: '&a[ 立即签到 ]'
     actions:
-      - condition: "{data:last_sign} == today"
+      - condition: "{data:last_sign} == %server_time_YYYYMMdd%"
         allow:
-          - 'tell: &c今日已签到！请明天再来。'
+          - 'actionbar: &c今日已签到！请明天再来。'
           - 'sound: block.note_block.bass'
         deny:
-          - 'set-data: last_sign today'
+          - 'set-data: last_sign %server_time_YYYYMMdd%'
           - 'console: eco give %player_name% 100'
           - 'console: give %player_name% diamond 1'
           - 'tell: &a签到成功！获得 100 金币和 1 颗钻石。'
-          - 'title: title=&6签到成功;subtitle=&f已累计签到 {data:sign_count} 天'
+          - 'title: title=&6签到成功;subtitle=&f奖励已发放'
           - 'sound: entity.player.levelup'
+```
+
+### 下面是一个使用数据存储系统制作"每日限制购买100个钻石"菜单的示例：
+
+原理： 
+- 使用`last_day`数据存储玩家上次进入菜单的日期，对该值与当前日期进行判断。若不同则说明日期已变更，需要重置购买数量。
+- 使用`diamond_amount`数据存储玩家剩余可购买数量。
+
+
+
+```yaml
+Title: '&6钻石商店'
+
+Settings:
+  need_placeholder:
+    - 'server'
+    - 'math'
+
+Events:
+  Open:
+    - condition: '{data:last_day} != %server_time_YYYYMMdd%'
+      allow:
+        - 'set-data: last_day %server_time_YYYYMMdd%'
+        - 'set-data: diamond_amount 100'
+        - 'tell: &a欢迎进入钻石商店，今日钻石数量已补货。'
+        - 'wait: 1'
+
+Body:
+  item:
+    type: 'item'
+    material: 'DIAMOND'
+    name: '&6钻石'
+  text-info:
+    type: 'message'
+    text: |
+      &6请选择购买钻石的数量：
+      &e50 金币 / 个
+      &e每天最多只能购买 100 个
+  remaining_amount:
+    type: 'message'
+    text: '&9剩余可购买数量： {data:diamond_amount}'
+
+Inputs:
+  amount:
+    type:
+      - condition: '{data:diamond_amount} > 0'
+        allow: 'slider'
+        deny: 'none'
+    text: '&b购买数量：'
+    min: 0
+    max: '{data:diamond_amount}'
+    default: 1
+    format: '%s %s '
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&a[ 立即购买 ]'
+    actions:
+      - condition: '{data:diamond_amount} > 0'
+        allow:
+          - condition: '!isPosInt.$(amount)'
+            allow:
+              - 'tell: &c请输入有效的数字。'
+              - 'return'
+          - condition: 'hasMoney.%math_2_50*$(amount)%'
+            allow:
+              - 'money: type=take;num=%math_2_50*$(amount)%' # 扣除金币
+              - 'item: type=give;mats=DIAMOND;amount=$(amount)' # 给予钻石
+              - 'data: type=take;key=diamond_amount;var=$(amount)' # 扣除数据库中的剩余数量
+              - 'tell: &a购买成功，消耗了 %math_2_50*$(amount)% 金币 购买了 钻石 x$(amount)'
+            deny:
+              - 'tell: &c金币不足！需要 金币 x%math_2_50*$(amount)%'
+        deny:
+          - 'actionbar: &c今日钻石已售罄！请明天再来。'
+  deny:
+    text: '&c[ 取消 ]'
+    actions:
+      - 'tell: &7已取消购买。'
+      - 'sound: block.note_block.bass'
 ```
 
 ---

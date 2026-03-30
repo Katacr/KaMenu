@@ -75,6 +75,7 @@ manager:
 # 菜单UI
 ui:
   default_title: "KaMenu"
+  slider_invalid_config: "[KaMenu] Slider 配置错误: 菜单 '{0}' 的输入组件 '{1}' 的 min ({2}) 必须小于 max ({3})，已使用默认值 min=0.0, max=10.0"
 
 # PAPI变量
 papi:

@@ -209,29 +209,24 @@ actions:
 ---
 
 ## 完整示例：购物菜单
+### 购买普通物品
+
+将演示如何编写一个使用100金币/个的价格购买钻石的菜单。
 
 ```yaml
-Title:
-  - '§6§l商店'
+Title: '§6§l钻石商店'
 
+Settings:
+  need_placeholder:
+    - 'math'
 Body:
-  diamond_sword:
+  diamond:
     type: 'item'
-    text: '&a&l钻石剑'
+    text: '&a&l钻石'
+    material: DIAMOND
     lore:
-      - '&7价格: 10 个钻石'
-      - '&7攻击力: +5'
-    item:
-      material: DIAMOND_SWORD
-
-  mystic_fruit:
-    type: 'item'
-    text: '&e&l神秘果'
-    lore:
-      - '&7价格: 5 个钻石'
-      - '&7特殊物品'
-    item:
-      material: APPLE
+      - '&7价格: 100 金币 / 个'
+    description: '请在下方拖动条选择购买数量。'
 
 Inputs:
   amount:
@@ -240,6 +235,63 @@ Inputs:
     min: 1
     max: 64
     default: 1
+    format: '%s: %s个'
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&a[ 确认购买 ]'
+    actions:
+      # 购买钻石（使用 hasMoney 判断是否有足够的货币）
+      - condition: "isIntNum.$(amount)"
+        deny:
+          - 'tell: &c请输入一个有效的数值。'
+          - 'return'
+      - condition: "hasMoney.%math_0_100*$(amount)%"
+        allow:
+          - 'money: type=take;num=%math_0_100*$(amount)%'
+          - 'item: type=give;mats=DIAMOND;amount=$(amount)'
+          - 'tell: &a购买成功！消耗了金币 x%math_0_100*$(amount)%，获得 钻石 x$(amount)'
+        deny:
+          - 'tell: &c货币不足！需要 金币 x%math_0_100*$(amount)% '
+          - 'sound: block.note_block.bass'
+  deny:
+    text: '&c[ 取消购买 ]'
+    actions:
+      - 'actionbar: &c取消购买'
+      - 'sound: block.note_block.bass'
+      - 'close'
+
+```
+
+
+### 购买存储库的物品
+
+**前提:** 若要使用该示例菜单，应该先使用指令`/km item save 神奇钻石剑`存储一个名为`神奇钻石剑`的物品。
+
+```yaml
+Title: '§6§l神奇钻石剑商店'
+
+Settings:
+  need_placeholder:
+    - 'math'
+Body:
+  diamond_sword:
+    type: 'item'
+    text: '&a&l神奇钻石剑'
+    material: DIAMOND_SWORD
+    lore:
+      - '&7价格: 10 个钻石'
+    description: '请在下方拖动条选择兑换数量。'
+
+Inputs:
+  amount:
+    type: 'slider'
+    text: '&a购买数量'
+    min: 1
+    max: 64
+    default: 1
+    format: '%s: %s个'
 
 Bottom:
   type: 'confirmation'
@@ -247,24 +299,21 @@ Bottom:
     text: '&a[ 确认购买 ]'
     actions:
       # 购买钻石剑（使用 hasItem 判断普通物品）
-      - condition: "hasItem.[mats=DIAMOND;amount=10]"
+      - condition: "hasItem.[mats=DIAMOND;amount=%math_0_10*$(amount)%]"
         allow:
-          - 'item: type=take;mats=DIAMOND;amount=10'
-          - 'stock-item: type=give;name=钻石剑;amount={data:purchase_amount}'
-          - 'tell: &a购买成功！获得钻石剑 x{data:purchase_amount}'
+          - 'item: type=take;mats=DIAMOND;amount=%math_0_10*$(amount)%'
+          - 'stock-item: type=give;name=神奇钻石剑;amount={data:purchase_amount}'
+          - 'tell: &a购买成功！消耗了钻石 x%math_0_10*$(amount)%，获得 神奇钻石剑 x$(amount)'
         deny:
-          - 'tell: &c物品不足！需要 10 个钻石'
+          - 'tell: &c物品不足！需要 钻石 x%math_0_10*$(amount)% '
           - 'sound: block.note_block.bass'
+  deny:
+    text: '&c[ 取消购买 ]'
+    actions:
+      - 'actionbar: &c取消购买'
+      - 'sound: block.note_block.bass'
+      - 'close'
 
-      # 购买神秘果（使用 hasStockItem 判断保存物品）
-      - condition: "hasStockItem.神秘果;5]"
-        allow:
-          - 'item: type=take;mats=DIAMOND;amount=5]'
-          - 'stock-item: type=give;name=神秘果;amount={data:purchase_amount}'
-          - 'tell: &a购买成功！获得神秘果 x{data:purchase_amount}'
-        deny:
-          - 'tell: &c物品不足！需要 5 个钻石'
-          - 'sound: block.note_block.bass'
 ```
 
 ---

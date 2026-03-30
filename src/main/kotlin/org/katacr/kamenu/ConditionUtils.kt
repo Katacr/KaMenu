@@ -776,8 +776,8 @@ object ConditionUtils {
     private fun parseBoolean(value: String): Boolean? {
         val normalized = value.trim().lowercase()
         return when (normalized) {
-            "true", "yes", "1", "t", "y" -> true
-            "false", "no", "0", "f", "n" -> false
+            "true", "yes", "1" -> true
+            "false", "no", "0" -> false
             else -> null
         }
     }
