@@ -200,7 +200,7 @@ Bottom:
 return DialogAction.staticAction(ClickEvent.runCommand("/empty"))
 
 // 修复后
-return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.create())
+return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.builder().build())
 ```
 
 **修复内容：**
@@ -214,7 +214,7 @@ return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.create())
 
 ```yaml
 Bottom:
-  type: multiAction
+  type: multi
   columns: 2
   buttons:
     no_actions:
