@@ -6,10 +6,11 @@ KaMenu 支持在菜单的特定时刻执行预定义的动作列表，通过 `Ev
 
 ## 支持的事件
 
-| 事件名 | 触发时机 | 支持变量 |
-|--------|---------|---------|
-| `Open` | 菜单打开前 | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%` |
-| `Close` | 菜单关闭后 | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%`, `$(input_key)` |
+| 事件名     | 触发时机     | 支持变量 |
+|---------|----------|---------|
+| `Open`  | 菜单打开前    | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%` |
+| `Close` | 菜单关闭后    | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%`, `$(input_key)` |
+| `Click`     | 待触发的动作列表 | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%` |
 
 **重要说明：**
 - `Open` 事件在菜单打开前触发，因此**不支持** `$(input_key)` 输入变量（因为输入框还未显示）
@@ -42,6 +43,48 @@ Events:
         - '条件不满足时执行的动作2'
 ```
 
+---
+
+## 如何调用待触发的动作列表
+
+**先配置动作列表**
+
+```yaml
+Events:
+  Click:
+    hello:
+      - 'tell: &a你好！欢迎来到服务器。'
+      - 'tell: &a祝你在这里玩的愉快！'
+```
+
+**使用 `actions` 动作激活：**
+
+```yaml
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a[ 确定 ]'
+    actions:
+      - 'actions: hello'  # 执行上面配置的`hello`待触发的动作列表
+```
+
+**使用 `可点击文本` 激活：**
+
+```yaml
+Body:
+  text:
+    type: 'message'
+    text: '请 <text="点击问候";actions=hello;hover=点击执行 hello 动作> 可以看到欢迎语'
+```
+
+```yaml
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a[ 确定 ]'
+    actions:
+      - 'hovertext: 请 <text="[点击问候]";actions=hello;hover=点击执行 hello 动作> 可以看到欢迎语'  
+```
 ---
 
 ## 特殊动作
