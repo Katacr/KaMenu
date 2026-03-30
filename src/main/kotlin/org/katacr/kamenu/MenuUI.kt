@@ -56,8 +56,65 @@ object MenuUI {
         if (text == null) Component.empty() else miniMessage.deserialize(text)
 
     /**
+     * Legacy 颜色代码到 MiniMessage 标签的映射
+     */
+    private val legacyToMiniMessageMap = mapOf(
+        // 颜色代码
+        "&0" to "<black>", "§0" to "<black>",
+        "&1" to "<dark_blue>", "§1" to "<dark_blue>",
+        "&2" to "<dark_green>", "§2" to "<dark_green>",
+        "&3" to "<dark_aqua>", "§3" to "<dark_aqua>",
+        "&4" to "<dark_red>", "§4" to "<dark_red>",
+        "&5" to "<dark_purple>", "§5" to "<dark_purple>",
+        "&6" to "<gold>", "§6" to "<gold>",
+        "&7" to "<gray>", "§7" to "<gray>",
+        "&8" to "<dark_gray>", "§8" to "<dark_gray>",
+        "&9" to "<blue>", "§9" to "<blue>",
+        "&a" to "<green>", "§a" to "<green>",
+        "&b" to "<aqua>", "§b" to "<aqua>",
+        "&c" to "<red>", "§c" to "<red>",
+        "&d" to "<light_purple>", "§d" to "<light_purple>",
+        "&e" to "<yellow>", "§e" to "<yellow>",
+        "&f" to "<white>", "§f" to "<white>",
+        // 格式化代码
+        "&k" to "<obfuscated>", "§k" to "<obfuscated>",
+        "&l" to "<bold>", "§l" to "<bold>",
+        "&m" to "<strikethrough>", "§m" to "<strikethrough>",
+        "&n" to "<underline>", "§n" to "<underline>",
+        "&o" to "<italic>", "§o" to "<italic>",
+        "&r" to "<reset>", "§r" to "<reset>",
+        // 大写版本
+        "&A" to "<green>", "§A" to "<green>",
+        "&B" to "<aqua>", "§B" to "<aqua>",
+        "&C" to "<red>", "§C" to "<red>",
+        "&D" to "<light_purple>", "§D" to "<light_purple>",
+        "&E" to "<yellow>", "§E" to "<yellow>",
+        "&F" to "<white>", "§F" to "<white>",
+        "&K" to "<obfuscated>", "§K" to "<obfuscated>",
+        "&L" to "<bold>", "§L" to "<bold>",
+        "&M" to "<strikethrough>", "§M" to "<strikethrough>",
+        "&N" to "<underline>", "§N" to "<underline>",
+        "&O" to "<italic>", "§O" to "<italic>",
+        "&R" to "<reset>", "§R" to "<reset>"
+    )
+
+    /**
+     * 将 Legacy 颜色代码转换为 MiniMessage 标签
+     * @param text 包含 Legacy 颜色代码的文本
+     * @return 转换后的文本
+     */
+    private fun convertLegacyToMiniMessage(text: String): String {
+        var result = text
+        legacyToMiniMessageMap.forEach { (legacy, mini) ->
+            result = result.replace(legacy, mini)
+        }
+        return result
+    }
+
+    /**
      * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）
-     * 支持 MiniMessage 和 Legacy 颜色代码混合使用
+     * 如果文本包含 MiniMessage 标签，则使用 MiniMessage 解析以支持所有高级特性（点击、悬停等）
+     * 否则使用 Legacy 颜色代码解析
      * 注意: hovertext 格式 (<text=...>) 应该先在 parseClickableText 中处理
      * @param text 文本内容
      * @return Adventure Component
@@ -65,14 +122,23 @@ object MenuUI {
     fun parseText(text: String?): Component {
         if (text == null) return Component.empty()
 
-        // 检测是否包含 MiniMessage 标签（<...>）
-        val hasMiniMessageTags = text.contains(Regex("<[^>]+>"))
+        // 检测是否包含 MiniMessage 标签（<...>，排除 <text=...> 自定义格式）
+        // MiniMessage 标签特征：尖括号包裹的字母、冒号、渐变等
+        val hasMiniMessageTags = text.contains(Regex("<[a-z_]+(?:[:][^>]*)?>", RegexOption.IGNORE_CASE))
 
         return if (hasMiniMessageTags) {
-            // 先用 MiniMessage 解析，然后将结果序列化为 Legacy 格式，再用 color 处理
-            val miniComponent = miniMessage(text)
-            val legacyString = serializer.serialize(miniComponent)
-            color(legacyString)
+            // 检测是否包含 Legacy 颜色代码
+            val hasLegacyCodes = text.contains(Regex("[&§][0-9a-fA-FlmnoOrkLKMNO]"))
+            
+            val textToParse = if (hasLegacyCodes) {
+                // 将 Legacy 颜色代码转换为 MiniMessage 标签
+                convertLegacyToMiniMessage(text)
+            } else {
+                text
+            }
+            
+            // 使用 MiniMessage 解析，保留所有高级特性（点击、悬停、渐变等）
+            miniMessage(textToParse)
         } else {
             // 使用 Legacy 颜色代码解析
             color(text)
@@ -89,19 +155,28 @@ object MenuUI {
      * @param section 配置节
      * @param path 配置路径
      * @param defaultText 默认文本
+     * @param config 菜单配置（用于加载 actions）
+     * @param menuOpener 菜单打开函数
      * @return 带有事件的组件
      */
      fun createMessageComponent(
         player: Player,
         section: ConfigurationSection,
         path: String,
-        defaultText: String
+        defaultText: String,
+        config: YamlConfiguration? = null,
+        menuOpener: ((Player, String) -> Unit)? = null
     ): Component {
         // 获取文本内容（支持列表和字符串）
         val rawText = getConditionalValueOrListFromSection(player, section, path, defaultText)
 
         // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
-        return MenuActions.parseClickableText(ConditionUtils.resolveVariables(player, rawText))
+        return MenuActions.parseClickableText(
+            ConditionUtils.resolveVariables(player, rawText),
+            player,
+            config,
+            menuOpener
+        )
     }
 
     /**
@@ -252,6 +327,16 @@ object MenuUI {
             DialogBase.DialogAfterAction.CLOSE
         }
 
+        // 定义菜单打开器（需要在解析 Body 之前定义，因为 message 组件可能需要它）
+        val menuOpener: (Player, String) -> Unit = { p, menuName ->
+            val pluginRef = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
+            if (pluginRef != null) {
+                Bukkit.getScheduler().runTask(pluginRef, Runnable {
+                    openMenu(p, menuName, pluginRef.menuManager, pluginRef)
+                })
+            }
+        }
+
         // 1. 解析 Body
         config.getConfigurationSection("Body")?.let { section ->
             for (key in section.getKeys(false)) {
@@ -261,7 +346,7 @@ object MenuUI {
 
                 when (type) {
                     "message" -> {
-                        val component = createMessageComponent(player, section, "$key.text", "")
+                        val component = createMessageComponent(player, section, "$key.text", "", config, menuOpener)
                         val width = getConditionalIntFromSection(player, section, "$key.width", 0)
                         if (width > 0) {
                             bodyList.add(DialogBody.plainMessage(component, width))
@@ -378,16 +463,6 @@ object MenuUI {
         // 3. 处理底部布局
         val bottomSection = config.getConfigurationSection("Bottom")
         val bottomType = bottomSection?.getString("type") ?: "notice"
-
-        // 定义菜单打开器
-        val menuOpener: (Player, String) -> Unit = { p, menuName ->
-            val plugin = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
-            if (plugin != null) {
-                Bukkit.getScheduler().runTask(plugin, Runnable {
-                    openMenu(p, menuName, plugin.menuManager, plugin)
-                })
-            }
-        }
 
         val dialogType = when (bottomType) {
             "multi" -> {

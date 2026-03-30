@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.katacr"
-version = "1.2.6"
+version = "1.2.7"
 
 repositories {
     mavenCentral()

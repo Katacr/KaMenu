@@ -36,6 +36,7 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 * `sound` — 播放声音（支持音量、音调、分类参数）
 * `open` / `close` — 菜单跳转与关闭
 * `hovertext` — 可悬停和点击的聊天文本
+* `actions` — 执行预定义的动作列表（支持复用和条件判断）
 * `wait` — 延迟执行后续动作
 * `set-data` / `set-gdata` — 读写持久化数据
 * `url` / `copy` — 打开链接或复制到剪贴板

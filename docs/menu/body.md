@@ -329,7 +329,7 @@ Body:
 **hovertext 语法格式：**
 
 ```
-<text=显示文字;hover=悬停文字;command=指令;url=链接;newline=false>
+<text=显示文字;hover=悬停文字;command=指令;url=链接;actions=动作列表名;newline=false>
 ```
 
 **参数说明：**
@@ -340,16 +340,47 @@ Body:
 | `hover` | 鼠标悬停时显示的提示文字 | ❌ |
 | `command` | 点击时玩家执行的指令 | ❌ |
 | `url` | 点击时打开的网址链接 | ❌ |
+| `actions` | 点击时执行的动作列表（Events.Click 下的键名）| ❌ |
 | `newline` | 是否在文字后换行（`true`/`false`）| ❌ |
 
 **注意事项：**
 - `command` 中的命令会以玩家身份执行（不需要 `/` 前缀）
 - `url` 用于打开网页链接
+- `actions` 用于执行 Events.Click 下定义的动作列表
 - 可点击区域用 `< >` 包裹
 - 参数值可以用反引号 `` ` ``、单引号 `'` 或双引号 `"` 包裹
 - 普通文本和可点击文本可以混合使用
 - 支持颜色代码和 PAPI 变量
 - 所有字段都支持条件判断
+
+**点击事件优先级：**
+
+当同时存在多个点击参数时，优先级如下（从高到低）：
+1. `actions` - 执行动作列表
+2. `url` - 打开链接
+3. `command` - 执行指令
+
+**使用 actions 参数示例：**
+
+```yaml
+Events:
+  Click:
+    greet:
+      - 'tell: &a你好！欢迎来到服务器。'
+      - 'sound: ENTITY_PLAYER_LEVELUP'
+
+Body:
+  welcome_msg:
+    type: 'message'
+    text: '<text="点击问候";actions=greet;hover=点击执行 greet 动作> 或查看 <text="网站";url=https://example.com;hover=打开官网>'
+```
+
+**使用场景：**
+
+- **按钮复用动作列表**：多个文本执行相同的动作序列
+- **条件分支**：根据玩家状态执行不同动作
+- **内联动作**：无需单独定义，直接引用 Events.Click 下的动作列表
+- **链接与动作混合**：同时包含链接和动作的文本
 
 ---
 
@@ -468,7 +499,7 @@ Body:
     type: 'item'
     material: 'ENCHANTED_BOOK'
     name: '&6&l魔法书'
-    description: '&7功能：<text=&a[ 传送 ];hover=&c传送到主城;command=/spawn> <text=&b[ 商店 ];hover=&c打开商店;command=/shop> <text=&e[ 帮助 ];hover=&c查看帮助;command=/help>'
+    description: '&7功能：<text=&a[ 传送 ];hover=&c传送到主城;command=spawn> <text=&b[ 商店 ];hover=&c打开商店;command=shop> <text=&e[ 帮助 ];hover=&c查看帮助;command=help>'
 ```
 
 **item_model 说明：**

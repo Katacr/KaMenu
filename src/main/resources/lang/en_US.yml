@@ -107,6 +107,7 @@ actions:
   item_missing_material: "[KaMenu] item operation failed: missing mats parameter. Player: {0}"
   item_invalid_material: "[KaMenu] item invalid material: {0}. Player: {1}"
   inventory_full_actionbar: "§cInventory full, {0} items dropped on the ground"
+  action_list_not_found: "§cError: Action list '{0}' not found"
 
 # Menu List
 menu_list:

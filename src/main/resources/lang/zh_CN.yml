@@ -105,6 +105,7 @@ actions:
   item_missing_material: "[KaMenu] item 操作失败: 缺少 mats 参数。玩家: {0}"
   item_invalid_material: "[KaMenu] item 材质无效: {0}。玩家: {1}"
   inventory_full_actionbar: "§c背包已满，{0}个物品掉在了地上"
+  action_list_not_found: "§c错误: 找不到动作列表 '{0}'"
 
 # 菜单列表
 menu_list:

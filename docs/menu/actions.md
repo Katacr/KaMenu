@@ -46,6 +46,7 @@ Bottom:
 | `set-data`  | 设置玩家数据（旧格式，推荐使用 `data`）    |
 | `set-gdata` | 设置全局数据（旧格式，推荐使用 `gdata`）    |
 | `set-meta`  | 设置玩家元数据（旧格式，推荐使用 `meta`）    |
+| `actions`   | 执行 Events.Click 下定义的动作列表  |
 | `wait`      | 插入延迟执行                  |
 | `return`    | 中断动作执行列表                |
 
@@ -55,11 +56,11 @@ Bottom:
 
 ### tell - 聊天消息
 
-向玩家发送一条聊天消息。
+向玩家发送一条聊天消息。**完整支持 Adventure MiniMessage 所有功能**，包括颜色、渐变、点击事件、悬停事件等。
 
 **格式：** `tell: <消息>`
 
-**示例：**
+**示例（Legacy 颜色代码）：**
 
 ```yaml
 - 'tell: &a操作成功！'
@@ -68,24 +69,84 @@ Bottom:
 - 'tell: &e你输入的内容: $(input_key)'
 ```
 
-**注意：** 支持颜色代码、PAPI 变量（`%var%`）、内置数据变量（`{data:key}`）和输入组件引用（`$(key)`）。
+**示例（MiniMessage 格式）：**
+
+```yaml
+# 基础颜色和格式
+- 'tell: <red>红色文字</red>'
+- 'tell: <bold>粗体</bold> <italic>斜体</italic> <underline>下划线</underline>'
+- 'tell: <gradient:red:blue>蓝红渐变文字</gradient>'
+
+# 点击事件
+- 'tell: 点击这里执行指令: <click:run_command:/say 你点击了这里！><gold>点我！</gold></click>'
+- 'tell: <click:copy_to_clipboard:Hello KaMenu><gold>复制这段文字</gold></click>'
+- 'tell: <click:open_url:https://minecraft.wiki><gold>打开Minecraft Wiki</gold></click>'
+- 'tell: <click:suggest_command:/gamemode creative><gold>切换创造模式</gold></click>'
+
+# 悬停事件
+- 'tell: <hover:show_text:"<red>这是悬停文字<reset>\n<blue>支持多行显示"><gold>把鼠标放上来！</gold></hover>'
+- 'tell: <hover:show_item:diamond_sword>显示钻石剑</hover>'
+- 'tell: <hover:show_item:diamond><gold>显示钻石</gold></hover>'
+
+# 组合使用（点击+悬停）
+- 'tell: <click:run_command:/say 联合事件><hover:show_text:"<green>点击执行指令\n<gray>悬停显示提示"><gold>点击并悬停</gold></hover></click>'
+
+# 物品图标和玩家头像（1.21.9+）
+- 'tell: 看看这个 <sprite:block/stone> 石头'
+- 'tell: 这是 <sprite:items:item/porkchop> 猪排'
+- 'tell: 这是 <head:Notch> Notch的头'
+- 'tell: <head:entity/player/wide/steve> Steve的头'
+
+# 其他 MiniMessage 标签
+- 'tell: <blue>按键: </blue><key:key.keyboard.b><red>B键</red>'
+- 'tell: <blue>换行测试: <newline><red>这是新的一行</red></blue>'
+- 'tell: <blue>NBT数据: </blue><nbt:display.Name></blue>'
+```
+
+**MiniMessage 常用标签：**
+
+| 标签 | 说明 | 示例 |
+|------|------|------|
+| `<color>` | 颜色标签 | `<red>红色</red>` |
+| `<gradient>` | 渐变色 | `<gradient:red:blue>渐变</gradient>` |
+| `<bold>` | 粗体 | `<bold>粗体</bold>` |
+| `<italic>` | 斜体 | `<italic>斜体</italic>` |
+| `<underline>` | 下划线 | `<underline>下划线</underline>` |
+| `<click:action:value>` | 点击事件 | `<click:run_command:/say hi>点击</click>` |
+| `<hover:action:value>` | 悬停事件 | `<hover:show_text:提示>悬停</hover>` |
+| `<newline>` | 换行 | `第一行<newline>第二行` |
+| `<key:keyname>` | 按键显示 | `<key:key.keyboard.b>B键</key>` |
+
+**注意：**
+- 支持 Legacy 颜色代码（`&a`、`&c` 等）和 MiniMessage 标签混合使用
+- 当检测到 MiniMessage 标签时，会自动将 Legacy 颜色代码转换为对应的 MiniMessage 标签
+  - 例如：`&a` → `<green>`，`&c` → `<red>`，`&l` → `<bold>`
+  - 示例：`'<gold>&a这是 &c红色 &l粗体文字</l>'` 会自动转换为 `'<gold><green>这是 <red>红色 <bold>粗体文字</bold>'`
+- 支持 PAPI 变量（`%var%`）、内置数据变量（`{data:key}`）和输入组件引用（`$(key)`）
+- 建议使用纯 MiniMessage 格式以获得最佳效果和功能完整性
 
 ---
 
 ### actionbar - 动作栏消息
 
-向玩家发送一条动作栏消息（显示在屏幕底部准星上方）。
+向玩家发送一条动作栏消息（显示在屏幕底部准星上方）。**完整支持 Adventure MiniMessage 所有功能**。
 
 **格式：** `actionbar: <消息>`
 
 **示例：**
 
 ```yaml
+# Legacy 颜色代码
 - 'actionbar: &a操作成功！'
 - 'actionbar: &7余额: &f%player_balance%'
+
+# MiniMessage 格式
+- 'actionbar: <green>操作成功！</green>'
+- 'actionbar: <gradient:gold:red>余额: 1000</gradient>'
+- 'actionbar: <hover:show_text:查看详细><gold>点击查看详情</gold></hover>'
 ```
 
-**注意：** 消息持续显示约 3 秒后消失。
+**注意：** 消息持续显示约 3 秒后消失。支持与 `tell` 相同的 MiniMessage 功能。
 
 ---
 
@@ -120,7 +181,7 @@ Bottom:
 
 发送带有悬停提示和点击功能的聊天消息。
 
-**格式：** `hovertext: 普通文字 <text=显示文字;hover=悬停文字;command=指令;url=链接;newline=false> 继续文字`
+**格式：** `hovertext: 普通文字 <text=显示文字;hover=悬停文字;command=指令;url=链接;actions=动作列表名;newline=false> 继续文字`
 
 **参数说明：**
 
@@ -130,6 +191,7 @@ Bottom:
 | `hover` | 鼠标悬停时显示的提示文字 | ❌ |
 | `command` | 点击时玩家执行的指令 | ❌ |
 | `url` | 点击时打开的链接 | ❌ |
+| `actions` | 点击时执行的动作列表（Events.Click 下的键名）| ❌ |
 | `newline` | 是否在文字后换行（`true`/`false`）| ❌ |
 
 **示例：**
@@ -137,9 +199,36 @@ Bottom:
 ```yaml
 - 'hovertext: &7点击这里 <text=&a[领取奖励];hover=&e点击领取今日奖励;command=/daily> 或稍后再来。'
 - 'hovertext: 访问 <text=&b[官网];hover=&7打开浏览器访问官网;url=https://example.com> 了解更多。'
+- 'hovertext: <text=&a[问候];actions=greet;hover=点击发送问候> 问候玩家'
 ```
 
-**注意：** 参数值用反引号 `` ` ``、单引号 `'` 或双引号 `"` 包裹；可点击区域用 `< >` 包裹。
+**使用 actions 参数：**
+
+```yaml
+Events:
+  Click:
+    greet:
+      - 'tell: &a你好！欢迎来到服务器。'
+      - 'sound: ENTITY_PLAYER_LEVELUP'
+
+Body:
+  text:
+    type: 'message'
+    text: '<text="点击问候";actions=greet;hover=点击执行 greet 动作>'
+```
+
+**点击事件优先级：**
+
+当同时存在多个点击参数时，优先级如下（从高到低）：
+1. `actions` - 执行动作列表
+2. `url` - 打开链接
+3. `command` - 执行指令
+
+**注意：**
+- 参数值用反引号 `` ` ``、单引号 `'` 或双引号 `"` 包裹
+- 可点击区域用 `< >` 包裹
+- `actions` 参数仅在 Body.message 文本组件中有效
+- 当使用 `actions` 参数时，文本的点击事件会注册一个 ClickCallback，有效期 5 分钟
 
 ---
 
@@ -774,6 +863,106 @@ actions:
 ```
 
 **注意：** `wait` 只影响其**之后**的动作；不会阻塞其他正在执行的任务。
+
+---
+
+### actions - 执行动作列表
+
+执行 `Events.Click` 下定义的动作列表。这允许你在动作中复用已定义的动作列表，避免重复代码。
+
+**格式：** `actions: <动作列表名称>`
+
+**参数说明：**
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| 动作列表名称 | `Events.Click` 下的动作列表键名 | `greet`, `vip_check`, `daily_reward` |
+
+**示例：**
+
+```yaml
+Events:
+  Click:
+    greet:
+      - 'tell: &a你好！欢迎来到服务器。'
+      - 'sound: ENTITY_PLAYER_LEVELUP'
+
+    vip_check:
+      - condition: '{permission:essentials.vip} == true'
+        allow:
+          - 'tell: &aVIP 专属欢迎！'
+          - 'sound: ENTITY_EXPERIENCE_ORB_PICKUP'
+        deny:
+          - 'tell: &c你需要 VIP 权限'
+
+Bottom:
+  type: 'multi'
+  buttons:
+    btn_greet:
+      text: '问候'
+      actions:
+        - 'actions: greet'  # 执行 Events.Click.greet
+
+    btn_vip:
+      text: 'VIP 检查'
+      actions:
+        - 'actions: vip_check'  # 执行 Events.Click.vip_check
+```
+
+**复杂动作链示例：**
+
+```yaml
+Events:
+  Click:
+    daily_login:
+      - 'tell: &6每日签到成功！'
+      - 'sound: ENTITY_PLAYER_LEVELUP'
+      - 'set-data: coins +100'
+      - 'tell: &e获得 100 金币'
+      - 'sound: ENTITY_EXPERIENCE_ORB_PICKUP'
+
+Bottom:
+  type: 'multi'
+  buttons:
+    daily:
+      text: '每日签到'
+      actions:
+        - 'actions: daily_login'
+```
+
+**特性：**
+
+1. **异步执行**：`actions` 动作在异步线程中执行，不会阻塞主线程
+2. **支持条件判断**：引用的动作列表中可以使用 `condition` 进行条件分支
+3. **变量支持**：动作列表中支持所有 KaMenu 变量（`{data:xxx}`, `{permission:xxx}` 等）
+4. **复用代码**：避免在多个按钮中重复定义相同的动作序列
+
+**错误处理：**
+
+如果引用的动作列表不存在，玩家会收到错误消息：
+```
+&c错误: 找不到动作列表 'xxx'
+```
+
+**与其他方式对比：**
+
+| 方式 | 使用位置 | 触发方式 | 示例 |
+|------|---------|---------|------|
+| `actions` 动作 | 按钮动作、命令 | 点击按钮/执行命令 | `actions: greet` |
+| `<text>` 标签的 `actions` 参数 | 文本组件（Body.message） | 点击文本 | `<text='点击';actions=greet>` |
+
+**使用场景：**
+
+- **按钮复用动作列表**：多个按钮执行相同的动作序列
+- **条件分支**：根据玩家状态执行不同动作
+- **命令快捷方式**：通过命令触发预定义的动作列表
+- **动作链复用**：避免重复定义复杂的动作序列
+
+**注意事项：**
+
+1. 动作列表必须在 `Events.Click` 下定义
+2. 避免循环引用（如动作列表 A 引用自己）
+3. `actions` 动作本身也可以在条件判断中使用
 
 ---
 ## 完整示例

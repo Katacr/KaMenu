@@ -100,22 +100,88 @@ object MenuActions {
 
     /**
      * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）
-     * 支持 MiniMessage 和 Legacy 颜色代码混合使用
+     * 如果文本包含 MiniMessage 标签，则使用 MiniMessage 解析以支持所有高级特性（点击、悬停等）
+     * 否则使用 Legacy 颜色代码解析
      * 注意: hovertext 格式 (<text=...>) 应该先在 parseClickableText 中处理
      * @param text 文本内容
      * @return Adventure Component
      */
+    /**
+     * Legacy 颜色代码到 MiniMessage 标签的映射
+     */
+    private val legacyToMiniMessageMap = mapOf(
+        // 颜色代码
+        "&0" to "<black>", "§0" to "<black>",
+        "&1" to "<dark_blue>", "§1" to "<dark_blue>",
+        "&2" to "<dark_green>", "§2" to "<dark_green>",
+        "&3" to "<dark_aqua>", "§3" to "<dark_aqua>",
+        "&4" to "<dark_red>", "§4" to "<dark_red>",
+        "&5" to "<dark_purple>", "§5" to "<dark_purple>",
+        "&6" to "<gold>", "§6" to "<gold>",
+        "&7" to "<gray>", "§7" to "<gray>",
+        "&8" to "<dark_gray>", "§8" to "<dark_gray>",
+        "&9" to "<blue>", "§9" to "<blue>",
+        "&a" to "<green>", "§a" to "<green>",
+        "&b" to "<aqua>", "§b" to "<aqua>",
+        "&c" to "<red>", "§c" to "<red>",
+        "&d" to "<light_purple>", "§d" to "<light_purple>",
+        "&e" to "<yellow>", "§e" to "<yellow>",
+        "&f" to "<white>", "§f" to "<white>",
+        // 格式化代码
+        "&k" to "<obfuscated>", "§k" to "<obfuscated>",
+        "&l" to "<bold>", "§l" to "<bold>",
+        "&m" to "<strikethrough>", "§m" to "<strikethrough>",
+        "&n" to "<underline>", "§n" to "<underline>",
+        "&o" to "<italic>", "§o" to "<italic>",
+        "&r" to "<reset>", "§r" to "<reset>",
+        // 大写版本
+        "&A" to "<green>", "§A" to "<green>",
+        "&B" to "<aqua>", "§B" to "<aqua>",
+        "&C" to "<red>", "§C" to "<red>",
+        "&D" to "<light_purple>", "§D" to "<light_purple>",
+        "&E" to "<yellow>", "§E" to "<yellow>",
+        "&F" to "<white>", "§F" to "<white>",
+        "&K" to "<obfuscated>", "§K" to "<obfuscated>",
+        "&L" to "<bold>", "§L" to "<bold>",
+        "&M" to "<strikethrough>", "§M" to "<strikethrough>",
+        "&N" to "<underline>", "§N" to "<underline>",
+        "&O" to "<italic>", "§O" to "<italic>",
+        "&R" to "<reset>", "§R" to "<reset>"
+    )
+
+    /**
+     * 将 Legacy 颜色代码转换为 MiniMessage 标签
+     * @param text 包含 Legacy 颜色代码的文本
+     * @return 转换后的文本
+     */
+    private fun convertLegacyToMiniMessage(text: String): String {
+        var result = text
+        legacyToMiniMessageMap.forEach { (legacy, mini) ->
+            result = result.replace(legacy, mini)
+        }
+        return result
+    }
+
     internal fun parseText(text: String?): Component {
         if (text == null) return Component.empty()
 
-        // 检测是否包含 MiniMessage 标签（<...>）
-        val hasMiniMessageTags = text.contains(Regex("<[^>]+>"))
+        // 检测是否包含 MiniMessage 标签（<...>，排除 <text=...> 自定义格式）
+        // MiniMessage 标签特征：尖括号包裹的字母、冒号、渐变等
+        val hasMiniMessageTags = text.contains(Regex("<[a-z_]+(?:[:][^>]*)?>", RegexOption.IGNORE_CASE))
 
         return if (hasMiniMessageTags) {
-            // 先用 MiniMessage 解析，然后将结果序列化为 Legacy 格式，再用 color 处理
-            val miniComponent = miniMessage(text)
-            val legacyString = serializer.serialize(miniComponent)
-            color(legacyString)
+            // 检测是否包含 Legacy 颜色代码
+            val hasLegacyCodes = text.contains(Regex("[&§][0-9a-fA-FlmnoOrkLKMNO]"))
+            
+            val textToParse = if (hasLegacyCodes) {
+                // 将 Legacy 颜色代码转换为 MiniMessage 标签
+                convertLegacyToMiniMessage(text)
+            } else {
+                text
+            }
+            
+            // 使用 MiniMessage 解析，保留所有高级特性（点击、悬停、渐变等）
+            miniMessage(textToParse)
         } else {
             // 使用 Legacy 颜色代码解析
             color(text)
@@ -190,7 +256,8 @@ object MenuActions {
         // 只使用 actions（复数）键
         val actionList = config.getList(path)
         if (actionList == null || actionList.isEmpty()) {
-            return DialogAction.staticAction(ClickEvent.runCommand("/empty"))
+            // 如果没有 actions 列表，返回一个无操作的动作
+            return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.builder().build())
         }
 
         // 1. 优先处理不需要服务器参与的静态动作 (url, copy)
@@ -210,11 +277,12 @@ object MenuActions {
                 if (firstAction.containsKey("condition")) {
                     // 条件格式动作，继续执行下面的复杂逻辑
                 } else {
-                    return DialogAction.staticAction(ClickEvent.runCommand("/empty"))
+                    // 未知类型的Map，返回无操作
+                    return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.builder().build())
                 }
             } else if (firstAction !is String) {
-                // 其他非String、非condition的Map类型，返回empty
-                return DialogAction.staticAction(ClickEvent.runCommand("/empty"))
+                // 其他非String、非condition的Map类型，返回无操作
+                return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.builder().build())
             }
         }
 
@@ -607,6 +675,33 @@ object MenuActions {
                 player.closeInventory()
             }
 
+            // actions: 执行 Events.Click 下的动作列表
+            finalCmd.startsWith("actions:") -> {
+                if (config != null) {
+                    val actionKey = finalCmd.removePrefix("actions:").trim()
+                    if (actionKey.isNotEmpty()) {
+                        // 异步执行动作列表
+                        Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return, Runnable {
+                            val actionPath = "Events.Click.$actionKey"
+                            val actionList = config.getList(actionPath)
+
+                            if (actionList != null && actionList.isNotEmpty()) {
+                                executeActionList(
+                                    player,
+                                    actionList.map { it ?: Any() },
+                                    mapOf(),
+                                    menuOpener,
+                                    0L,
+                                    config
+                                )
+                            } else {
+                                player.sendMessage(parseText(plugin!!.languageManager.getMessage("actions.action_list_not_found", actionKey)))
+                            }
+                        })
+                    }
+                }
+            }
+
             // set-data: 设置玩家数据
             finalCmd.startsWith("set-data:") -> {
                 val args = finalCmd.removePrefix("set-data:").trim()
@@ -946,10 +1041,28 @@ object MenuActions {
 
     /**
      * 解析可点击文本 (使用 Adventure API)
-     * 格式: <text='显示文字';hover='悬停文字';command='指令';url='链接';newline='false'>
+     * 格式: <text='显示文字';hover='悬停文字';command='指令';url='链接';newline='false';actions='动作列表路径'>
      * 注意: 只有包含 text= 参数的标签才会被解析为可点击文本，其他的 <...> 标签会被保留给 MiniMessage 处理
      */
     fun parseClickableText(rawText: String): Component {
+        return parseClickableText(rawText, null, null, null)
+    }
+
+    /**
+     * 解析可点击文本 (使用 Adventure API) - 带上下文版本
+     * 格式: <text='显示文字';hover='悬停文字';command='指令';url='链接';newline='false';actions='动作列表路径'>
+     * 注意: 只有包含 text= 参数的标签才会被解析为可点击文本，其他的 <...> 标签会被保留给 MiniMessage 处理
+     * @param rawText 原始文本
+     * @param player 玩家对象（用于 actions 回调）
+     * @param config 菜单配置（用于加载动作列表）
+     * @param menuOpener 菜单打开函数
+     */
+    fun parseClickableText(
+        rawText: String,
+        player: Player?,
+        config: YamlConfiguration?,
+        menuOpener: ((Player, String) -> Unit)?
+    ): Component {
         val replacements = mutableListOf<Pair<IntRange, Component>>()
         var currentPos = 0
 
@@ -965,8 +1078,8 @@ object MenuActions {
             // 提取完整的 hovertext 标签（包括 < >）
             val content = rawText.substring(startIndex + 1, endIndex)  // 不包括尖括号
 
-            // 解析 hovertext
-            val component = parseClickableComponent(content)
+            // 解析 hovertext（传递上下文）
+            val component = parseClickableComponent(content, player, config, menuOpener)
             if (component != null) {
                 // 记录替换：原始位置范围 → 组件
                 replacements.add(Pair(IntRange(startIndex, endIndex), component))
@@ -1030,12 +1143,22 @@ object MenuActions {
     /**
      * 解析可点击组件内容 (使用 Adventure API)
      * 只有包含 text= 参数的内容才会被解析为可点击文本，否则返回 null
+     * @param content 组件内容
+     * @param player 玩家对象（用于 actions 回调）
+     * @param config 菜单配置（用于加载动作列表）
+     * @param menuOpener 菜单打开函数
      */
-    private fun parseClickableComponent(content: String): Component? {
+    private fun parseClickableComponent(
+        content: String,
+        player: Player? = null,
+        config: YamlConfiguration? = null,
+        menuOpener: ((Player, String) -> Unit)? = null
+    ): Component? {
         var text = ""
         var hover = ""
         var command = ""
         var url = ""
+        var actions = ""
         var newline = false
         var hasTextParam = false
 
@@ -1056,6 +1179,7 @@ object MenuActions {
                     "hover" -> hover = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "command" -> command = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "url" -> url = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                    "actions" -> actions = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "newline" -> newline = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"").equals("true", ignoreCase = true)
                 }
             }
@@ -1063,7 +1187,7 @@ object MenuActions {
 
         // 只有包含 text= 参数且 text 不为空时才返回组件
         return if (hasTextParam && text.isNotEmpty()) {
-            createAdventureClickableText(text, hover, command, url, newline)
+            createAdventureClickableText(text, hover, command, url, actions, newline, player, config, menuOpener)
         } else {
             null
         }
@@ -1079,10 +1203,67 @@ object MenuActions {
         url: String = "",
         newline: Boolean = false
     ): Component {
+        return createAdventureClickableText(text, hoverText, command, url, "", newline, null, null, null)
+    }
+
+    /**
+     * 创建可点击文本组件 (使用 Adventure API) - 带上下文版本
+     * @param text 显示文本
+     * @param hoverText 悬停文本
+     * @param command 执行命令
+     * @param url 打开链接
+     * @param actions 动作列表路径（Events.Click 下的键名）
+     * @param newline 是否换行
+     * @param player 玩家对象
+     * @param config 菜单配置
+     * @param menuOpener 菜单打开函数
+     */
+    fun createAdventureClickableText(
+        text: String,
+        hoverText: String = "",
+        command: String = "",
+        url: String = "",
+        actions: String = "",
+        newline: Boolean = false,
+        player: Player? = null,
+        config: YamlConfiguration? = null,
+        menuOpener: ((Player, String) -> Unit)? = null
+    ): Component {
         var component = parseText(text)
 
         // 添加点击事件
-        if (url.isNotEmpty()) {
+        if (actions.isNotEmpty()) {
+            // 使用 ClickCallback 执行动作列表
+            if (player != null && config != null && menuOpener != null) {
+                component = component.clickEvent(ClickEvent.callback({ audience ->
+                    if (audience is Player) {
+                        // 从 Events.Click 加载动作列表
+                        val actionPath = "Events.Click.$actions"
+                        val actionList = config.getList(actionPath)
+
+                        if (actionList != null && actionList.isNotEmpty()) {
+                            // 异步执行动作列表
+                            plugin?.let {
+                                Bukkit.getScheduler().runTaskAsynchronously(it, Runnable {
+                                    executeActionList(
+                                        audience,
+                                        actionList.map { it ?: Any() },
+                                        mapOf(),  // 空 variables map
+                                        menuOpener,
+                                        0L,
+                                        config
+                                    )
+                                })
+                            }
+                        } else {
+                            audience.sendMessage(parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actions)))
+                        }
+                    }
+                }, ClickCallback.Options.builder()
+                    .lifetime(Duration.ofMinutes(5))
+                    .build()))
+            }
+        } else if (url.isNotEmpty()) {
             component = component.clickEvent(ClickEvent.openUrl(url))
         } else if (command.isNotEmpty()) {
             component = component.clickEvent(ClickEvent.runCommand(command))
@@ -1099,13 +1280,6 @@ object MenuActions {
         }
 
         return component
-    }
-
-    /**
-     * 创建普通文本组件 (使用 Adventure API)
-     */
-    fun createAdventureText(text: String): Component {
-        return parseText(text)
     }
 
     /**
