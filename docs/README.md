@@ -6,7 +6,14 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 
 > 基于 Paper Dialog API 的下一代 Minecraft GUI 插件，超越传统箱子菜单的全新交互体验
 
-**KaMenu** 是一款专为现代 Minecraft Paper 服务器打造的 GUI 插件。它抛弃了传统的箱子 (Inventory) 菜单模式，转而采用 **Paper 1.21.6+ 原生 Dialog API**，为玩家提供包含文本输入、滑块、下拉框、复选框等丰富交互组件的现代化菜单界面。配置文件基于 YAML，简洁直观，开箱即用。
+**KaMenu** 是一款专为现代 Minecraft Paper 服务器打造的 GUI 插件。它抛弃了传统的箱子 (Inventory) 菜单模式，转而采用 **Paper 1.21.7+ 原生 Dialog API**，为玩家提供包含文本输入、滑块、下拉框、复选框等丰富交互组件的现代化菜单界面。配置文件基于 YAML，简洁直观，开箱即用。
+
+> **⚠️ 重要提示**：
+> - **最低版本**：Paper 1.21.7
+> - **推荐版本**：Paper 1.21.8+
+> - **完整功能版本**：Paper 1.21.9+ （支持 sprite 物品图标、player head 头像等高级特性）
+>
+> KaMenu **不支持** Paper 1.21.6 及以下版本。请确保服务器版本符合要求！
 
 ***
 

@@ -8,13 +8,24 @@
 
 | 项目 | 支持详情                       |
 |------|----------------------------|
-| Minecraft 版本 | 1.21.6+                    |
+| Minecraft 版本 | 1.21.7+                    |
 | Java 版本 | Java 21+                   |
 | 服务器类型 | **Paper** 及其衍生核心（Purpur 等） |
 | 数据库 | SQLite（默认）、MySQL 5.7+      |
 
+{% hint style="info" %}
+**版本功能支持**：
+- ✅ Paper 1.21.7+：基础功能完整支持
+- ✨ Paper 1.21.8+：推荐版本，API 更加稳定
+- 🎨 Paper 1.21.9+：完整功能（支持 sprite 物品图标、player head 头像等高级特性）
+{% endhint %}
+
 {% hint style="warning" %}
-KaMenu 依赖 Paper 1.21.6+ 原生 **Dialog API**，**不支持** Spigot、CraftBukkit 等非 Paper 服务端。
+KaMenu 依赖 Paper Dialog API，**不支持**：
+- Paper 1.21.6 及以下版本（API 尚未完全实现）
+- Spigot、CraftBukkit 等非 Paper 服务端
+
+请确保服务器版本为 **Paper 1.21.7 或更高版本**！
 {% endhint %}
 
 ---
