@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.katacr"
-version = "1.2.8"
+version = "1.3.0"
 
 repositories {
     mavenCentral()
@@ -42,6 +42,9 @@ dependencies {
         exclude(group = "org.bukkit", module = "bukkit")
     }
     compileOnly("com.zaxxer:HikariCP:5.1.0")
+    compileOnly("org.openjdk.nashorn:nashorn-core:15.3")
+    compileOnly("org.ow2.asm:asm:9.5")
+    compileOnly("org.ow2.asm:asm-util:9.5")
 }
 
 tasks {

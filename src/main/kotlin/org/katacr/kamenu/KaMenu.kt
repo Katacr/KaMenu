@@ -65,12 +65,36 @@ class KaMenu : JavaPlugin() {
             .version("5.1.0")
             .build()
 
+        // ASM 字节码操作库（Nashorn 依赖）
+        val asm = Library.builder()
+            .groupId("org{}ow2{}asm")
+            .artifactId("asm")
+            .version("9.5")
+            .build()
+
+        // ASM 工具库（Nashorn 需要 util.Printer 类）
+        val asmUtil = Library.builder()
+            .groupId("org{}ow2{}asm")
+            .artifactId("asm-util")
+            .version("9.5")
+            .build()
+
+        // Nashorn JavaScript 引擎
+        val nashorn = Library.builder()
+            .groupId("org{}openjdk{}nashorn")
+            .artifactId("nashorn-core")
+            .version("15.3")
+            .build()
+
         logger.info("Checking and downloading necessary dependent libraries, please wait...")
 
         libraryManager.loadLibrary(kotlinStd)
         libraryManager.loadLibrary(sqlite)
         libraryManager.loadLibrary(mysql)
         libraryManager.loadLibrary(hikari)
+        libraryManager.loadLibrary(asm)
+        libraryManager.loadLibrary(asmUtil)
+        libraryManager.loadLibrary(nashorn)
     }
 
     override fun onEnable() {
@@ -103,6 +127,9 @@ class KaMenu : JavaPlugin() {
 
         // 设置 MenuActions 插件引用
         MenuActions.setPlugin(this)
+
+        // 初始化 JavaScript 支持
+        JavaScriptManager.initialize(this)
 
         // 3. 初始化菜单管理器
         menuManager = MenuManager(this)

@@ -1,0 +1,142 @@
+# ============================================
+# KaMenu JavaScript Feature Demo
+# JavaScript Feature Demo Menu
+# ============================================
+Title: '&8» &e&lJavaScript Demo &8«'
+JavaScript:
+  show_health: |
+    var health = player.getHealth();
+    var maxHealth = player.getMaxHealth();
+    player.sendMessage("§eHealth: §f" + health + "/" + maxHealth);
+
+  greet: |
+    player.sendMessage("§aHello, " + name + "!");
+
+  pass_args: |
+    var playerName = args[0];
+    var playerLevel = args[1];
+    var dataValue = args[2];
+    var inputValue = args[3];
+    player.sendMessage("§aHello, " + playerName + "!");
+    player.sendMessage("§aLevel: " + playerLevel + ", Data: " + dataValue + ", Input: " + inputValue);
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7This menu demonstrates how to use JavaScript features.'
+
+
+Inputs:
+  input:
+    type: 'input'
+    text: '&7Input content'
+    default: 'Please enter here...'
+
+Bottom:
+  type: 'multi'
+  columns: 3
+  buttons:
+    basic:
+      text: '&aBasic JavaScript'
+      actions:
+        - 'js: player.sendMessage("Hello from JavaScript!");'
+        - 'js: player.sendMessage("Your name: " + player.getName());'
+        - 'js: player.sendMessage("Your UUID: " + uuid);'
+
+    random:
+      text: '&eRandom Number'
+      tooltip:
+        - '&7Generate random number with JS'
+        - ''
+        - '&eClick to try'
+      actions:
+        - 'js: var random = Math.floor(Math.random() * 100);'
+        - 'js: player.sendMessage("§eRandom Number: §f" + random);'
+
+    math:
+      text: '&bMath Operations'
+      tooltip:
+        - '&7Perform math calculations'
+        - ''
+        - '&eClick to calculate'
+      actions:
+        - 'js: var num1 = 42;'
+        - 'js: var num2 = 17;'
+        - 'js: var sum = num1 + num2;'
+        - 'js: player.sendMessage("§b" + num1 + " + " + num2 + " = §f" + sum);'
+
+    conditional:
+      text: '&cConditional Logic'
+      tooltip:
+        - '&7Use JavaScript conditionals'
+        - ''
+        - '&eClick to test'
+      actions:
+        - 'js: var health = player.getHealth();'
+        - 'js: if (health > 15) { player.sendMessage("§aYou are healthy!"); } else if (health > 5) { player.sendMessage("§eYour health is okay."); } else { player.sendMessage("§cYou need to heal!"); }'
+
+    objects:
+      text: '&dBukkit Objects'
+      tooltip:
+        - '&7Access Bukkit API from JS'
+        - ''
+        - '&eClick to explore'
+      actions:
+        - 'js: var world = player.getWorld();'
+        - 'js: var players = Bukkit.getOnlinePlayers().size();'
+        - 'js: player.sendMessage("§dWorld: §f" + world.getName());'
+        - 'js: player.sendMessage("§dOnline Players: §f" + players);'
+
+    functions:
+      text: '&fCustom Functions'
+      tooltip:
+        - '&7Use built-in JS helper functions'
+        - ''
+        - '&eClick to try'
+      actions:
+        - 'js: tell(player, "§fHello from tell() function!");'
+        - 'js: tell(player, "§fYour location: " + location);'
+        - 'js: log("Player " + name + " clicked this button");'
+
+    variables:
+      text: '&6Variables Test'
+      tooltip:
+        - '&7Test variable binding'
+        - ''
+        - '&eClick to test'
+      actions:
+        - 'js: player.sendMessage("§6Player Name: §f" + name);'
+        - 'js: player.sendMessage("§6Player UUID: §f" + uuid);'
+        - 'js: player.sendMessage("§6Inventory Size: §f" + inventory.getSize());'
+        - 'js: player.sendMessage("§6World Name: §f" + world.getName());'
+
+    advanced:
+      text: '&5Advanced Examples'
+      tooltip:
+        - '&7More complex JavaScript'
+        - ''
+        - '&eClick to explore'
+      actions:
+        - 'js: var items = ["Diamond", "Gold", "Iron"];'
+        - 'js: var randomItem = items[Math.floor(Math.random() * items.length)];'
+        - 'js: player.sendMessage("§5Random Item: §f" + randomItem);'
+        - 'js: player.sendMessage("§5Uppercase: §f" + randomItem.toUpperCase());'
+
+    predefined:
+      text: '&dPredefined Functions'
+      tooltip:
+        - '&7Call predefined functions from JavaScript section'
+        - ''
+        - '&eClick to test [show_health] and [greet]'
+      actions:
+        - 'js: [show_health]'
+        - 'js: [greet]'
+
+    pass_args:
+      text: '&cPass Arguments'
+      tooltip:
+        - '&7Test passing arguments to JS functions'
+        - ''
+        - '&eClick to test parameter passing'
+      actions:
+        - 'js: [pass_args] %player_name% 50 {data:test} $(input)'

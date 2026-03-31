@@ -46,6 +46,7 @@ Bottom:
 | `set-data`  | 设置玩家数据（旧格式，推荐使用 `data`）    |
 | `set-gdata` | 设置全局数据（旧格式，推荐使用 `gdata`）    |
 | `set-meta`  | 设置玩家元数据（旧格式，推荐使用 `meta`）    |
+| `js`        | 执行 JavaScript 代码（支持预定义函数）   |
 | `actions`   | 执行 Events.Click 下定义的动作列表  |
 | `wait`      | 插入延迟执行                  |
 | `return`    | 中断动作执行列表                |
@@ -863,6 +864,93 @@ actions:
 ```
 
 **注意：** `wait` 只影响其**之后**的动作；不会阻塞其他正在执行的任务。
+
+---
+
+### js - 执行 JavaScript 代码
+
+执行 JavaScript 代码，支持直接执行代码或调用预定义函数。
+
+**格式：** `js: <JavaScript代码>`
+
+**使用方式：**
+
+1. **直接执行 JavaScript 代码**
+
+```yaml
+actions:
+  - 'js: player.sendMessage("Hello from JavaScript!");'
+  - 'js: var random = Math.floor(Math.random() * 100);'
+  - 'js: player.sendMessage("随机数: " + random);'
+```
+
+2. **调用预定义函数（无参数）**
+
+```yaml
+JavaScript:
+  show_health: |
+    var health = player.getHealth();
+    var maxHealth = player.getMaxHealth();
+    player.sendMessage("§e生命值: §f" + health + "/" + maxHealth);
+
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a查看生命值'
+    actions:
+      - 'js: [show_health]'
+```
+
+3. **调用预定义函数（带参数）**
+
+```yaml
+JavaScript:
+  process_data: |
+    var playerName = args[0];
+    var playerLevel = args[1];
+    var money = args[2];
+
+    player.sendMessage("§a玩家: §f" + playerName);
+    player.sendMessage("§a等级: §f" + playerLevel);
+    player.sendMessage("§a金币: §f" + money);
+
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&e处理数据'
+    actions:
+      - 'js: [process_data] %player_name% $(level) {data:money}'
+```
+
+**支持的变量：**
+
+- `player` - 当前玩家对象
+- `uuid` - 玩家 UUID 字符串
+- `name` - 玩家名称
+- `location` - 玩家位置
+- `inventory` - 玩家物品栏
+- `world` - 玩家所在世界
+- `server` - 服务器实例
+- `args` - 预定义函数的参数数组（仅在调用预定义函数时可用）
+
+**支持的参数类型（用于预定义函数）：**
+
+- 字符串：直接传递
+- PAPI 变量：`%player_name%`
+- 玩家数据：`{data:money}`
+- 全局数据：`{gdata:config}`
+- 输入框变量：`$(input1)`
+- 数字：`50`, `3.14`
+
+{% hint style="info" %}
+JavaScript 功能非常强大，支持访问 Bukkit API、数学计算、条件判断等。详细了解 JavaScript 功能，请查看 [🔧 JavaScript 功能](javascript.md) 文档。
+{% endhint %}
+
+**注意：**
+- JavaScript 代码在服务器端执行
+- 预定义函数必须在菜单的 `JavaScript` 节点中定义
+- 参数以空格分隔，参数中不能包含空格
+- Nashorn 引擎基于 ECMAScript 5.1 标准，不支持 ES6+ 语法
 
 ---
 

@@ -1,0 +1,142 @@
+# ============================================
+# KaMenu JavaScript Feature Demo
+# JavaScript 功能演示菜单
+# ============================================
+Title: '&8» &e&lJavaScript演示 &8«'
+JavaScript:
+  show_health: |
+    var health = player.getHealth();
+    var maxHealth = player.getMaxHealth();
+    player.sendMessage("§e生命值: §f" + health + "/" + maxHealth);
+
+  greet: |
+    player.sendMessage("§aHello, " + name + "!");
+
+  pass_args: |
+    var playerName = args[0];
+    var playerLevel = args[1];
+    var dataValue = args[2];
+    var inputValue = args[3];
+    player.sendMessage("§aHello, " + playerName + "!");
+    player.sendMessage("§aLevel: " + playerLevel + ", Data: " + dataValue + ", Input: " + inputValue);
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7此菜单展示了如何使用JavaScript功能。'
+
+
+Inputs:
+  input:
+    type: 'input'
+    text: '&7输入内容'
+    default: '请在此输入...'
+
+Bottom:
+  type: 'multi'
+  columns: 3
+  buttons:
+    basic:
+      text: '&a基础 JavaScript'
+      actions:
+        - 'js: player.sendMessage("Hello from JavaScript!");'
+        - 'js: player.sendMessage("Your name: " + player.getName());'
+        - 'js: player.sendMessage("Your UUID: " + uuid);'
+
+    random:
+      text: '&e随机数'
+      tooltip:
+        - '&7使用 JS 生成随机数'
+        - ''
+        - '&e点击尝试'
+      actions:
+        - 'js: var random = Math.floor(Math.random() * 100);'
+        - 'js: player.sendMessage("§e随机数: §f" + random);'
+
+    math:
+      text: '&b数学运算'
+      tooltip:
+        - '&7执行数学计算'
+        - ''
+        - '&e点击计算'
+      actions:
+        - 'js: var num1 = 42;'
+        - 'js: var num2 = 17;'
+        - 'js: var sum = num1 + num2;'
+        - 'js: player.sendMessage("§b" + num1 + " + " + num2 + " = §f" + sum);'
+
+    conditional:
+      text: '&c条件逻辑'
+      tooltip:
+        - '&7使用 JavaScript 条件语句'
+        - ''
+        - '&e点击测试'
+      actions:
+        - 'js: var health = player.getHealth();'
+        - 'js: if (health > 15) { player.sendMessage("§a你很健康！"); } else if (health > 5) { player.sendMessage("§e你的生命值还不错。"); } else { player.sendMessage("§c你需要治疗！"); }'
+
+    objects:
+      text: '&dBukkit 对象'
+      tooltip:
+        - '&7从 JS 访问 Bukkit API'
+        - ''
+        - '&e点击探索'
+      actions:
+        - 'js: var world = player.getWorld();'
+        - 'js: var players = Bukkit.getOnlinePlayers().size();'
+        - 'js: player.sendMessage("§d世界: §f" + world.getName());'
+        - 'js: player.sendMessage("§d在线玩家: §f" + players);'
+
+    functions:
+      text: '&f自定义函数'
+      tooltip:
+        - '&7使用内置 JS 辅助函数'
+        - ''
+        - '&e点击尝试'
+      actions:
+        - 'js: tell(player, "§f来自 tell() 函数的问候！");'
+        - 'js: tell(player, "§f你的位置: " + location);'
+        - 'js: log("Player " + name + " clicked this button");'
+
+    variables:
+      text: '&6变量测试'
+      tooltip:
+        - '&7测试变量绑定'
+        - ''
+        - '&e点击测试'
+      actions:
+        - 'js: player.sendMessage("§6玩家名称: §f" + name);'
+        - 'js: player.sendMessage("§6玩家 UUID: §f" + uuid);'
+        - 'js: player.sendMessage("§6物品栏大小: §f" + inventory.getSize());'
+        - 'js: player.sendMessage("§6世界名称: §f" + world.getName());'
+
+    advanced:
+      text: '&5高级示例'
+      tooltip:
+        - '&7更复杂的 JavaScript'
+        - ''
+        - '&e点击探索'
+      actions:
+        - 'js: var items = ["钻石", "金子", "铁"];'
+        - 'js: var randomItem = items[Math.floor(Math.random() * items.length)];'
+        - 'js: player.sendMessage("§5随机物品: §f" + randomItem);'
+        - 'js: player.sendMessage("§5大写: §f" + randomItem.toUpperCase());'
+
+    predefined:
+      text: '&d预定义函数'
+      tooltip:
+        - '&7从 JavaScript 部分调用预定义函数'
+        - ''
+        - '&e点击测试 [show_health] 和 [greet]'
+      actions:
+        - 'js: [show_health]'
+        - 'js: [greet]'
+
+    pass_args:
+      text: '&c传递参数'
+      tooltip:
+        - '&7测试向 JS 函数传递参数'
+        - ''
+        - '&e点击测试参数传递'
+      actions:
+        - 'js: [pass_args] %player_name% 50 {data:test} $(input)'

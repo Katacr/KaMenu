@@ -78,7 +78,12 @@ Title: '&6菜单标题'
 Settings:
   can_escape: true      # 是否允许按 ESC 关闭
   after_action: CLOSE   # 按钮动作执行后的行为
-
+  
+# 可选：JavaScript预定义函数 
+JavaScript:
+  test: |
+    player.sendMessage("§aHello, " + name + "!");
+    
 # 可选：菜单事件
 Events:
   Open:                # 开启菜单时执行的动作
@@ -137,6 +142,30 @@ Title:
 | `after_action` | `String` | `CLOSE` | 点击按钮执行动作后的客户端行为 |
 
 **详细说明和示例：** 详见 [⚙️ 全局设置 (Settings)](setting.md)
+
+### JavaScript - 预定义函数
+
+预定于JavaScript代码函数，可在动作中调用。
+
+**示例：**
+
+```yaml
+JavaScript:
+  show_health: |
+    var health = player.getHealth();
+    var maxHealth = player.getMaxHealth();
+    player.sendMessage("§eHealth: §f" + health + "/" + maxHealth);
+```
+
+**在动作中调用**
+
+```yaml
+actions:
+  - 'js: [show_health]'
+```
+
+**详细说明和示例：** 详见 [🔧 JavaScript 预定义函数 (JavaScript)](javascript.md)
+
 
 ### Events - 菜单事件
 

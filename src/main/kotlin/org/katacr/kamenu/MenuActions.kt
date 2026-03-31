@@ -905,6 +905,67 @@ object MenuActions {
             finalCmd.startsWith("tell:") ->
                 player.sendMessage(parseText(finalCmd.removePrefix("tell:").trim()))
 
+            // js: 执行 JavaScript 代码或预定义函数
+            finalCmd.startsWith("js:") -> {
+                if (JavaScriptManager.isAvailable()) {
+                    val jsCode = finalCmd.removePrefix("js:").trim()
+
+                    try {
+                        // 检查是否是预定义函数格式 [function_name]
+                        if (jsCode.startsWith("[") && config != null) {
+                            // 预处理：提取函数名和参数
+                            val trimmed = jsCode.trim()
+                            val closeBracketIndex = trimmed.indexOf(']')
+
+                            if (closeBracketIndex > 0) {
+                                // 提取函数名（在 [ 和 ] 之间）
+                                val functionName = trimmed.substring(1, closeBracketIndex)
+
+                                // 提取参数（在 ] 之后）
+                                var firstSpaceIndex = -1
+                                for (i in (closeBracketIndex + 1) until trimmed.length) {
+                                    if (trimmed[i].isWhitespace()) {
+                                        firstSpaceIndex = i
+                                        break
+                                    }
+                                }
+
+                                val argsString = if (firstSpaceIndex > closeBracketIndex) {
+                                    trimmed.substring(firstSpaceIndex).trim()
+                                } else {
+                                    ""
+                                }
+
+                                // 执行预定义函数并传递参数
+                                val result = JavaScriptManager.executePredefinedFunctionWithArgs(player, functionName, argsString, config)
+                                if (result != null && result != "") {
+                                    // 如果有返回值，显示给玩家（可选）
+                                    player.sendMessage(parseText("§aJS Result: $result"))
+                                }
+                            } else {
+                                // 格式错误，直接当作代码执行
+                                val result = JavaScriptManager.evaluateWithContext(player, jsCode)
+                                if (result != null && result != "") {
+                                    player.sendMessage(parseText("§aJS Result: $result"))
+                                }
+                            }
+                        } else {
+                            // 直接执行 JavaScript 代码
+                            val result = JavaScriptManager.evaluateWithContext(player, jsCode)
+                            if (result != null && result != "") {
+                                // 如果有返回值，显示给玩家（可选）
+                                player.sendMessage(parseText("§aJS Result: $result"))
+                            }
+                        }
+                    } catch (e: Exception) {
+                        plugin?.logger?.warning("JavaScript execution error for player ${player.name}: ${e.message}")
+                        player.sendMessage(parseText("§cJavaScript execution failed: ${e.message}"))
+                    }
+                } else {
+                    player.sendMessage(parseText("§cJavaScript feature is not available. Please restart the server to complete the initial setup."))
+                }
+            }
+
             // actionbar: ActionBar 消息
             finalCmd.startsWith("actionbar:") -> {
                 val message = finalCmd.removePrefix("actionbar:").trim()
