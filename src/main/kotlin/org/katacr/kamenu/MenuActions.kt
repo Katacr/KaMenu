@@ -975,7 +975,9 @@ object MenuActions {
             // title: 发送标题
             finalCmd.startsWith("title:") -> {
                 val args = finalCmd.removePrefix("title:").trim()
-                parseAndSendTitle(player, args)
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    parseAndSendTitle(player, args)
+                })
             }
 
             // hovertext: 可点击文本
@@ -986,21 +988,35 @@ object MenuActions {
             }
 
             // command: 玩家执行指令
-            finalCmd.startsWith("command:") ->
-                player.performCommand(finalCmd.removePrefix("command:").trim())
+            finalCmd.startsWith("command:") -> {
+                val cmd = finalCmd.removePrefix("command:").trim()
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    player.performCommand(cmd)
+                })
+            }
 
             // chat: 玩家执行指令
-            finalCmd.startsWith("chat:") ->
-                player.chat(finalCmd.removePrefix("chat:").trim())
+            finalCmd.startsWith("chat:") -> {
+                val cmd = finalCmd.removePrefix("chat:").trim()
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    player.chat(cmd)
+                })
+            }
 
             // console: 控制台执行指令
-            finalCmd.startsWith("console:") ->
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd.removePrefix("console:").trim())
+            finalCmd.startsWith("console:") -> {
+                val cmd = finalCmd.removePrefix("console:").trim()
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd)
+                })
+            }
 
             // sound: 播放声音 (支持音量和音调参数)
             finalCmd.startsWith("sound:") -> {
                 val args = finalCmd.removePrefix("sound:").trim()
-                parseAndPlaySound(player, args)
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    parseAndPlaySound(player, args)
+                })
             }
 
             // open: 打开另一个对话框
@@ -1033,7 +1049,9 @@ object MenuActions {
                     }
                 }
                 // 没有 Close 事件，直接关闭菜单
-                player.closeInventory()
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    player.closeInventory()
+                })
             }
 
             // actions: 执行 Events.Click 下的动作列表
@@ -1254,25 +1272,33 @@ object MenuActions {
             // toast: 显示 Toast 通知
             finalCmd.startsWith("toast:") -> {
                 val args = finalCmd.removePrefix("toast:").trim()
-                parseAndSendToast(player, args)
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    parseAndSendToast(player, args)
+                })
             }
 
             // money: 操作玩家金币
             finalCmd.startsWith("money:") -> {
                 val args = finalCmd.removePrefix("money:").trim()
-                parseAndHandleMoney(player, args, variables)
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    parseAndHandleMoney(player, args, variables)
+                })
             }
 
             // stock-item: 物品给予/扣除
             finalCmd.startsWith("stock-item:") -> {
                 val args = finalCmd.removePrefix("stock-item:").trim()
-                parseAndHandleStockItem(player, args, variables)
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    parseAndHandleStockItem(player, args, variables)
+                })
             }
 
             // item: 普通物品给予/扣除
             finalCmd.startsWith("item:") -> {
                 val args = finalCmd.removePrefix("item:").trim()
-                parseAndHandleItem(player, args, variables)
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    parseAndHandleItem(player, args, variables)
+                })
             }
         }
     }

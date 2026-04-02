@@ -7,12 +7,12 @@ import io.papermc.paper.registry.data.dialog.ActionButton
 import io.papermc.paper.registry.data.dialog.DialogBase
 import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.input.DialogInput
-import io.papermc.paper.registry.data.dialog.type.DialogType
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
-import net.kyori.adventure.text.minimessage.MiniMessage
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput
+import io.papermc.paper.registry.data.dialog.type.DialogType
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
@@ -25,7 +25,6 @@ import org.katacr.kamenu.ConditionUtils.getConditionalIntFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalListFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalTypeFromSection
 import org.katacr.kamenu.ConditionUtils.getConditionalValueFromSection
-import org.katacr.kamenu.ConditionUtils.getConditionalValueOrList
 import org.katacr.kamenu.ConditionUtils.getConditionalValueOrListFromSection
 import java.util.concurrent.CompletableFuture
 
