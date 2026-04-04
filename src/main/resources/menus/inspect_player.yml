@@ -101,13 +101,6 @@ Settings:
   can_escape: true    # Allow closing with ESC / 允许按ESC关闭
   pause: false        # Pause game (single player only) / 暂停游戏（仅单机）
 
-# Menu Events / 菜单事件
-Events:
-  Open:
-    - 'tell: &a正在查看玩家 {meta:player} 的装备...'
-
-  Close:
-    - 'tell: &7已关闭玩家互动菜单'
 
 # ============================================
 # 说明 / Instructions
