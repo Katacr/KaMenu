@@ -44,6 +44,13 @@ listeners:
     menu: 'main_menu'       # Menu file path to open / 要打开的菜单文件路径
     require-sneaking: true  # Require sneaking to trigger / 需要潜行才能触发
 
+  # Right-click player listener (triggered by right-clicking on a player)
+  # 右键玩家监听器（右键玩家触发）
+  player-click:
+    enabled: true          # Enable this listener / 启用此监听器
+    menu: 'inspect_player'  # Menu file path to open / 要打开的菜单文件路径
+    require-sneaking: true # Require sneaking to trigger (Shift+Right-Click) / 需要潜行才能触发（Shift+右键）
+
   # Item lore detection listener (triggered by right-clicking the item)
   # 物品lore检测监听器（右键物品触发）
   item-lore:

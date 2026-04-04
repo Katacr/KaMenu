@@ -5,6 +5,7 @@ package org.katacr.kamenu
 import org.bukkit.event.block.Action
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
@@ -82,6 +83,34 @@ class MenuListener(private val plugin: KaMenu) : Listener {
                 return // 找到匹配后立即返回
             }
         }
+    }
+
+    @EventHandler
+    fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
+        // 只处理右键玩家
+        if (event.rightClicked !is org.bukkit.entity.Player) return
+        val targetPlayer = event.rightClicked as org.bukkit.entity.Player
+        
+        val player = event.player
+        val config = plugin.config
+
+        // 检查右键玩家监听器是否启用
+        val enabled = config.getBoolean("listeners.player-click.enabled", false)
+        if (!enabled) return
+
+        // 读取配置
+        val menuName = config.getString("listeners.player-click.menu") ?: return
+        val requireSneaking = config.getBoolean("listeners.player-click.require-sneaking", false)
+
+        // 判断潜行条件（普通右键不潜行，Shift右键需要潜行）
+        if (requireSneaking && !player.isSneaking) return
+
+        // 设置meta数据：player为被点击的玩家
+        plugin.metaDataManager.setPlayerMeta(player.uniqueId, "player", targetPlayer.name)
+
+        // 取消事件，打开菜单
+        event.isCancelled = true
+        MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
     }
 
     @EventHandler

@@ -1,0 +1,127 @@
+# ============================================
+# Player Interaction Menu / 玩家互动菜单
+# ============================================
+
+# Menu Title / 菜单标题
+Title: '&e玩家互动 - {meta:player}'
+
+# Menu Body / 菜单内容
+Body:
+  # Helmet Display / 头盔显示
+  helmet_display:
+    type: item
+    material: '[HEAD:{meta:player}]'
+    width: 16
+    height: 16
+
+  # Chestplate Display / 胸甲显示
+  chest_display:
+    type: item
+    material: '[CHEST:{meta:player}]'
+    width: 16
+    height: 16
+
+  # Leggings Display / 护腿显示
+  leggings_display:
+    type: item
+    material: '[LEGGINGS:{meta:player}]'
+    width: 16
+    height: 16
+
+  # Boots Display / 靴子显示
+  boots_display:
+    type: item
+    material: '[BOOTS:{meta:player}]'
+    width: 16
+    height: 16
+
+# Menu Bottom / 菜单底部按钮
+Bottom:
+  type: multi
+  columns: 2
+
+  # Buttons Configuration / 按钮配置
+  buttons:
+    # Add Friend / 加为好友
+    add_friend:
+      text: '&a加为好友'
+      width: 120
+      actions:
+        - 'tell: &e正在添加 {meta:player} 为好友...'
+        - 'command: friend add {meta:player}'
+
+    # Teleport to Player / 传送到玩家
+    teleport_to:
+      text: '&b传送到玩家'
+      width: 120
+      actions:
+        - 'tell: &e正在传送到 {meta:player}...'
+        - 'command: tpa {meta:player}'
+
+    # Teleport Player to You / 传送玩家到你
+    teleport_here:
+      text: '&c传送玩家到你'
+      width: 120
+      actions:
+        - 'tell: &e正在将 {meta:player} 传送到你身边...'
+        - 'command: tpahere {meta:player}'
+
+    # Private Message / 私聊
+    private_message:
+      text: '&d私聊'
+      width: 120
+      actions:
+        - 'tell: &e正在打开与 {meta:player} 的私聊窗口...'
+        - 'command: msg {meta:player} '
+
+    # Inventory Inspection / 背包查看
+    inspect_inventory:
+      text: '&6查看背包'
+      width: 120
+      actions:
+        - 'tell: &e正在查看 {meta:player} 的背包...'
+        - 'command: invsee {meta:player}'
+
+    # Kick Player / 踢出玩家
+    kick_player:
+      text: '&4踢出玩家'
+      width: 120
+      actions:
+        - 'tell: &e正在踢出 {meta:player}...'
+        - 'command: kick {meta:player} 被管理员踢出'
+
+  # Exit Button / 退出按钮
+  exit:
+    text: '&c关闭'
+    width: 120
+    actions: []
+
+# Menu Settings / 菜单设置
+Settings:
+  can_escape: true    # Allow closing with ESC / 允许按ESC关闭
+  pause: false        # Pause game (single player only) / 暂停游戏（仅单机）
+
+# Menu Events / 菜单事件
+Events:
+  Open:
+    - 'tell: &a正在查看玩家 {meta:player} 的装备...'
+
+  Close:
+    - 'tell: &7已关闭玩家互动菜单'
+
+# ============================================
+# 说明 / Instructions
+# ============================================
+# 此菜单用于与其他玩家互动，可以：
+# - 查看玩家的装备（头部、胸部、护腿、靴子）
+# - 添加好友（需要好友插件，如 EssentialsX）
+# - 传送（需要权限）
+# - 私聊
+# - 查看背包（需要权限）
+# - 踢出玩家（需要管理员权限）
+#
+# 注意事项：
+# - 某些功能需要相应的插件支持
+# - 某些功能需要玩家具有相应的权限
+# - {meta:player} 会被替换为被点击的玩家名
+# - {player} 会被替换为当前玩家名

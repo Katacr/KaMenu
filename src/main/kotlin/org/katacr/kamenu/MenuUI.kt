@@ -354,27 +354,92 @@ object MenuUI {
                         }
                     }
                     "item" -> {
-                        val materialStr = getConditionalValueFromSection(player, section, "$key.material", "PAPER")
-                        val material = MaterialUtils.matchMaterial(materialStr) ?: Material.PAPER
-                        val item = ItemStack(material)
-                        item.editMeta { meta ->
-                            val name = getConditionalValueFromSection(player, section, "$key.name", "")
-                            meta.displayName(parseText(name))
-                            val lore = getConditionalListFromSection(player, section, "$key.lore")
-                            meta.lore(lore.map { parseText(it) })
+                        val materialStr = ConditionUtils.resolveVariables(player, getConditionalValueFromSection(player, section, "$key.material", "PAPER"))
+                        val item: ItemStack
+                        
+                        // 检查是否为槽位引用格式 [SLOT] 或 [SLOT:Player]
+                        if (materialStr.startsWith("[") && materialStr.endsWith("]")) {
+                            val slotRef = materialStr.substring(1, materialStr.length - 1)
+                            val parts = slotRef.split(":")
+                            val slotName = parts[0].uppercase()
+                            val targetPlayer = if (parts.size > 1) {
+                                Bukkit.getPlayer(parts[1])
+                            } else {
+                                player
+                            }
                             
-                            // 支持设置 item_model（1.21.7+ 命名空间物品模型）
-                            val itemModel = getConditionalValueFromSection(player, section, "$key.item_model", "")
-                            if (itemModel.isNotEmpty()) {
-                                // 使用 PersistentDataContainer 存储 model 数据
-                                val namespacedKey = org.bukkit.NamespacedKey.minecraft("item_model")
-                                val pdc = meta.persistentDataContainer
-                                pdc.set(namespacedKey, org.bukkit.persistence.PersistentDataType.STRING, itemModel)
+                            if (targetPlayer == null || !targetPlayer.isOnline) {
+                                plugin.logger.warning("Item 槽位引用失败: 玩家 ${parts.getOrElse(1) { "null" }} 不在线。菜单: ${config.getString("Title", "")}")
+                                // 使用默认物品
+                                item = ItemStack(Material.PAPER)
+                            } else {
+                                val slotItem = when (slotName) {
+                                    "HEAD" -> targetPlayer.inventory.helmet
+                                    "CHEST" -> targetPlayer.inventory.chestplate
+                                    "LEGGINGS" -> targetPlayer.inventory.leggings
+                                    "BOOTS" -> targetPlayer.inventory.boots
+                                    "MAINHAND" -> targetPlayer.inventory.itemInMainHand
+                                    "OFFHAND" -> targetPlayer.inventory.itemInOffHand
+                                    else -> {
+                                        plugin.logger.warning("未知的槽位名称: $slotName。菜单: ${config.getString("Title", "")}")
+                                        null
+                                    }
+                                }
+                                
+                                item = if (slotItem != null && !slotItem.isEmpty) {
+                                    slotItem
+                                } else if (slotName == "HEAD") {
+                                    // 头部为空，渲染玩家皮肤头颅
+                                    val skull = ItemStack(Material.PLAYER_HEAD)
+                                    skull.editMeta { meta ->
+                                        val skullMeta = meta as org.bukkit.inventory.meta.SkullMeta
+                                        skullMeta.setOwningPlayer(targetPlayer)
+                                    }
+                                    skull
+                                } else {
+                                    // 其他槽位为空，渲染浅灰色玻璃板，name设为"无"
+                                    val glass = ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE)
+                                    glass.editMeta { meta ->
+                                        meta.displayName(parseText("无"))
+                                    }
+                                    glass
+                                }
+                                
+                                // 槽位引用模式下，跳过其他属性设置（lore、item_model等）
+                                val width = getConditionalIntFromSection(player, section, "$key.width", 16)
+                                val height = getConditionalIntFromSection(player, section, "$key.height", 16)
+                                val decorations = getConditionalBooleanFromSection(player, section, "$key.decorations", true)
+                                val tooltip = getConditionalBooleanFromSection(player, section, "$key.tooltip", true)
+                                
+                                bodyList.add(DialogBody.item(item, null, decorations, tooltip, width, height))
+                                continue  // 跳过后续处理
+                            }
+                        } else {
+                            // 正常物品创建流程
+                            val material = MaterialUtils.matchMaterial(materialStr) ?: Material.PAPER
+                            item = ItemStack(material)
+                            
+                            item.editMeta { meta ->
+                                val name = getConditionalValueFromSection(player, section, "$key.name", "")
+                                if (name.isNotEmpty()) {
+                                    meta.displayName(parseText(name))
+                                }
+                                val lore = getConditionalListFromSection(player, section, "$key.lore")
+                                if (lore.isNotEmpty()) {
+                                    meta.lore(lore.map { parseText(it) })
+                                }
+                                
+                                // 支持设置 item_model（1.21.7+ 命名空间物品模型）
+                                val itemModel = getConditionalValueFromSection(player, section, "$key.item_model", "")
+                                if (itemModel.isNotEmpty()) {
+                                    val namespacedKey = org.bukkit.NamespacedKey.minecraft("item_model")
+                                    val pdc = meta.persistentDataContainer
+                                    pdc.set(namespacedKey, org.bukkit.persistence.PersistentDataType.STRING, itemModel)
+                                }
                             }
                         }
                         val descriptionText = getConditionalValueFromSection(player, section, "$key.description", "")
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
-                            // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
                             DialogBody.plainMessage(MenuActions.parseClickableText(ConditionUtils.resolveVariables(player, it)))
                         }
 
