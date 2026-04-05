@@ -23,35 +23,137 @@ Bottom:
 
 ## 动作类型总览
 
-| 动作          | 功能说明               |
-|-------------|--------------------|
-| `tell`      | 向玩家发送聊天消息          |
-| `actionbar` | 向玩家发送动作栏消息（屏幕底部）   |
-| `title`     | 向玩家发送屏幕标题和副标题      |
-| `toast`     | 在屏幕上显示 Toast 通知    |
-| `hovertext` | 发送带有悬停提示和点击功能的聊天消息 |
-| `command`   | 让玩家执行一条指令          |
-| `chat`      | 让玩家在聊天框中发送消息       |
-| `console`   | 以控制台权限执行一条指令       |
-| `sound`     | 在玩家位置播放声音          |
-| `money`     | 操作玩家金币（需要 Vault）   |
-| `stock-item`| 物品给予/扣除           |
-| `open`      | 为玩家打开另一个菜单         |
-| `close`     | 关闭当前菜单             |
-| `url`       | 打开指定链接（仅单动作时生效）    |
-| `copy`      | 复制文字到剪贴板（仅单动作时生效）  |
-| `data`      | 操作玩家数据（支持 set/add/take/delete）|
-| `gdata`     | 操作全局数据（支持 set/add/take/delete）|
-| `meta`      | 操作玩家元数据（支持 set/add/take/delete）|
-| `set-data`  | 设置玩家数据（旧格式，推荐使用 `data`）    |
-| `set-gdata` | 设置全局数据（旧格式，推荐使用 `gdata`）    |
-| `set-meta`  | 设置玩家元数据（旧格式，推荐使用 `meta`）    |
-| `js`        | 执行 JavaScript 代码（支持预定义函数）   |
-| `actions`   | 执行 Events.Click 下定义的动作列表  |
-| `wait`      | 插入延迟执行                  |
-| `return`    | 中断动作执行列表                |
+| 动作          | 功能说明                            |
+|-------------|---------------------------------|
+| `tell`      | 向玩家发送聊天消息                       |
+| `actionbar` | 向玩家发送动作栏消息（屏幕底部）                |
+| `title`     | 向玩家发送屏幕标题和副标题                   |
+| `toast`     | 在屏幕上显示 Toast 通知                 |
+| `hovertext` | 发送带有悬停提示和点击功能的聊天消息              |
+| `command`   | 让玩家执行一条指令                       |
+| `chat`      | 让玩家在聊天框中发送消息                    |
+| `console`   | 以控制台权限执行一条指令                    |
+| `server`    | 传送到指定服务器（BungeeCord/Velocity）   |
+| `sound`     | 在玩家位置播放声音                       |
+| `money`     | 操作玩家金币（需要 Vault）                |
+| `stock-item`| 存储库物品给予/扣除                      |
+| `item`| 物品给予/扣除                         |
+| `open`      | 为玩家打开另一个菜单                      |
+| `close`     | 关闭当前菜单                          |
+| `url`       | 打开指定链接（仅单动作时生效）                 |
+| `copy`      | 复制文字到剪贴板（仅单动作时生效）               |
+| `data`      | 操作玩家数据（支持 set/add/take/delete）  |
+| `gdata`     | 操作全局数据（支持 set/add/take/delete）  |
+| `meta`      | 操作玩家元数据（支持 set/add/take/delete） |
+| `set-data`  | 设置玩家数据（旧格式，推荐使用 `data`）         |
+| `set-gdata` | 设置全局数据（旧格式，推荐使用 `gdata`）        |
+| `set-meta`  | 设置玩家元数据（旧格式，推荐使用 `meta`）        |
+| `js`        | 执行 JavaScript 代码（支持预定义函数）       |
+| `actions`   | 执行 Events.Click 下定义的动作列表        |
+| `wait`      | 插入延迟执行                          |
+| `return`    | 中断动作执行列表                        |
 
 ---
+
+## 目标选择器
+
+所有动作都支持目标选择器，可以指定动作作用的目标玩家。
+
+**语法：** `{player: 选择器}`
+
+**使用示例：**
+
+```yaml
+# 1. 未指定目标，发给当前玩家（默认）
+- 'tell: 你好！'
+
+# 2. 发给所有在线玩家
+- 'tell: 服务器公告：服务器将在5分钟后重启！{player: *}'
+- 'tell: 大家好！{player: *}'
+
+# 3. 使用条件选择（PAPI 变量）
+- 'tell: 欢迎管理员！{player: %player_is_op%}'
+- 'tell: 达到10级的玩家：奖励已发送！{player: %player_level% >= 10}'
+
+# 4. 复杂条件
+- 'tell: VIP玩家专属消息{player: hasPerm.user.vip}'
+- 'tell: 钱包超过10000的玩家{player: %vault_eco_balance% >= 10000}'
+```
+
+**选择器类型：**
+
+| 选择器 | 说明 | 示例 |
+|--------|------|------|
+| `{player: *}` | 所有在线玩家 | `{player: *}` |
+| `{player: all}` | 所有在线玩家（同 *） | `{player: all}` |
+| `{player: 条件}` | 满足条件的在线玩家 | `{player: %player_level% >= 10}` |
+
+**支持的动作类型：**
+
+| 动作类型 | 是否支持目标选择器 | 说明 |
+|----------|------------------|------|
+| `tell` | ✅ | 聊天消息 |
+| `actionbar` | ✅ | 动作栏消息 |
+| `title` | ✅ | 屏幕标题 |
+| `toast` | ✅ | Toast 通知 |
+| `hovertext` | ✅ | 可点击文本 |
+| `command` | ✅ | 执行指令 |
+| `chat` | ✅ | 聊天消息 |
+| `console` | ✅ | 控制台指令（只执行一次） |
+| `sound` | ✅ | 播放声音 |
+| `money` | ✅ | 金币操作 |
+| `stock-item` | ✅ | 物品操作 |
+| `item` | ✅ | 物品操作 |
+| `data` | ✅ | 玩家数据 |
+| `gdata` | ✅ | 全局数据 |
+| `meta` | ✅ | 玩家元数据 |
+| `js` | ✅ | JavaScript 代码 |
+| `open` | ❌ | 打开菜单（只对当前玩家） |
+| `close` | ❌ | 关闭菜单（只对当前玩家） |
+| `server` | ❌ | 服务器传送（只对当前玩家） |
+| `actions` | ❌ | 动作组（只对当前玩家） |
+| `wait` | ❌ | 延迟执行（不直接执行动作） |
+| `return` | ❌ | 中断执行（不直接执行动作） |
+
+**条件表达式：**
+
+目标选择器支持所有 `ConditionUtils` 支持的条件表达式，包括：
+
+- **PAPI 变量**：`%player_level%`, `%vault_eco_balance%`
+- **比较运算**：`>`, `>=`, `<`, `<=`, `==`, `!=`, `contains`, `!contains`
+- **逻辑运算**：`&&`（与）, `||`（或）
+- **括号分组**：用于复杂的逻辑表达式
+
+**条件示例：**
+
+```yaml
+# 单条件
+{player: %player_level% >= 10}
+
+# 多条件（与）
+{player: %player_level% >= 10 && hasPerm.user.vip}
+
+# 多条件（或）
+{player: %player_is_op% || hasPerm.user.vip}
+
+# 复杂条件
+{player: (%player_level% >= 10 && %vault_eco_balance% >= 1000) || %player_is_op% == true}
+```
+
+**性能优化：**
+
+- ✅ 目标玩家列表会根据条件动态计算
+- ✅ 条件表达式会被缓存以提高性能
+- ✅ 不匹配任何玩家时会记录警告日志
+
+**注意事项：**
+
+- ⚠️ `*` 和 `all` 会匹配所有在线玩家，请谨慎使用
+- ⚠️ 条件表达式中的变量会为每个目标玩家单独解析
+- ⚠️ 某些动作（如 `open`、`close`、`server`）不支持目标选择器，会忽略目标参数
+
+---
+
 
 ## 动作类型一览
 
@@ -297,6 +399,69 @@ Body:
 ```
 
 **注意：** 不需要玩家权限；指令前无需加 `/`；支持 PAPI 变量。
+
+---
+
+### server - 传送到指定服务器
+
+将玩家传送到指定的服务器（支持 BungeeCord 或 Velocity 等代理插件）。
+
+**格式：** `server: <服务器名称>`
+
+**示例：**
+
+```yaml
+- 'server: lobby'
+- 'server: survival'
+- 'server: creative'
+```
+
+**工作原理：**
+
+此动作会根据 `config.yml` 中的 `bungeecord` 配置自动选择传输方式：
+
+| 配置 | 传输方式 | 优点 |
+|------|---------|------|
+| `bungeecord: true` | BungeeCord 插件消息系统 | ✅ 无需玩家权限<br>✅ 更加可靠<br>✅ 性能更优 |
+| `bungeecord: false` | 执行 `/server` 命令 | ⚠️ 需要玩家有 `/server` 命令权限 |
+
+**使用场景：**
+- BungeeCord/Velocity 网络服务器
+- 多服务器之间的传送
+- 大厅/主菜单选择不同游戏模式
+
+**注意：**
+- BungeeCord 模式需要配合代理插件使用
+- 服务器名称必须在代理插件配置中定义
+- 玩家会立即断开当前服务器并连接到目标服务器
+- 支持变量和条件判断
+- 建议在 BungeeCord 网络中启用 `bungeecord: true`
+
+**配合变量使用：**
+
+```yaml
+# 根据玩家选择传送到不同服务器
+- 'server: $(server_name)'
+
+# 使用数据存储中的服务器名称
+- 'server: {data:favorite_server}'
+```
+
+**高级示例 - 条件传送：**
+
+```yaml
+Events:
+  Click:
+    # 玩家选择服务器
+    select_server:
+      - condition: '{data:last_server} == survival'
+        allow:
+          - 'server: survival'
+          - 'tell: &a正在连接到生存服务器...'
+        deny:
+          - 'server: lobby'
+          - 'tell: &a正在连接到大厅...'
+```
 
 ---
 

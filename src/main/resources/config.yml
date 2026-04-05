@@ -5,13 +5,23 @@
 
 # Configuration file version (DO NOT MODIFY THIS VALUE)
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
-config-version: 1
+config-version: 2
 
 # Plugin language (must match filename in lang/ folder)
 # Supported values: zh_CN (Chinese), en_US (English)
 # 插件语言（对应 lang/ 文件夹下的文件名）
 # 支持的值: zh_CN (中文), en_US (英文)
 language: 'zh_CN'
+
+# ============================================
+# BungeeCord Configuration
+# 蹦极网配置
+# ============================================
+# Enable BungeeCord support for server: actions
+# Only enable this if your server is running behind a BungeeCord/Velocity proxy
+# 启用蹦极支持用于 server: 动作
+# 仅在您的服务器运行在 BungeeCord/Velocity 代理后面时启用此项
+bungeecord: true
 
 # ============================================
 # Database Configuration

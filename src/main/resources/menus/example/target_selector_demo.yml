@@ -1,0 +1,106 @@
+Title: '&8» &d&l目标选择器演示 &8«'
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7此菜单展示了目标选择器的强大功能！使用 {player: 选择器} 可以让动作作用在指定的目标玩家上。'
+
+  intro2:
+    type: 'message'
+    text: '&7支持的目标选择器：&f*（所有玩家）&7、&fall（所有玩家）&7、&f条件表达式（筛选玩家）'
+
+  display_item:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    name: '&c&l目标选择器功能'
+    description: '&f点击下方按钮测试不同的目标选择器'
+
+Bottom:
+  type: 'multi'
+  columns: 3
+  buttons:
+    test_default:
+      text: '&a[ 默认目标 ]'
+      actions:
+        - 'tell: &a这是只发给你的消息（未指定目标）'
+
+    test_all:
+      text: '&e[ 所有玩家 ]'
+      actions:
+        - 'tell: &6服务器公告：大家注意啦！{player: *}'
+        - 'tell: &e这条消息所有在线玩家都能看到{player: all}'
+
+    test_op:
+      text: '&c[ 管理员 ]'
+      actions:
+        - 'tell: &c管理员专属消息{player: %player_is_op% == true}'
+        - 'sound: block.note_block.pling{player: %player_is_op% == true}'
+
+    test_vip:
+      text: '&d[ VIP 玩家 ]'
+      actions:
+        - 'tell: &dVIP玩家专属消息{player: hasPerm.user.vip}'
+        - 'actionbar: &eVIP专属活动即将开始{player: hasPerm.user.vip}'
+
+    test_level:
+      text: '&b[ 10级+ ]'
+      actions:
+        - 'tell: &b达到10级的玩家：&f恭喜你！{player: %player_level% >= 10}'
+        - 'money: type=add;num=100{player: %player_level% >= 10}'
+
+    test_world:
+      text: '&2[ 生存世界 ]'
+      actions:
+        - 'tell: &2生存世界的玩家请注意！{player: %player_world% == survival}'
+
+    test_complex:
+      text: '&6[ 复杂条件 ]'
+      actions:
+        - 'tell: &6同时满足多个条件的玩家{player: %player_level% >= 10 && hasPerm.user.vip}'
+        - 'actionbar: &e特殊玩家通知{player: (%player_level% >= 10 && %vault_eco_balance% >= 1000) || %player_is_op% == true}'
+
+    test_broadcast:
+      text: '&f[ 全服公告 ]'
+      actions:
+        - 'tell: &6════════════════════════{player: *}'
+        - 'tell: &6     服务器公告{player: *}'
+        - 'tell: &6════════════════════════{player: *}'
+        - 'tell: &f服务器将在 5 分钟后进行维护{player: *}'
+        - 'tell: &f请提前保存进度，感谢配合！{player: *}'
+        - 'tell: &6════════════════════════{player: *}'
+        - 'sound: entity.experience_orb.pickup{player: *}'
+
+    test_reward:
+      text: '&5[ 奖励发放 ]'
+      actions:
+        - 'tell: &a正在给VIP玩家发放奖励...{player: hasPerm.user.vip}'
+        - 'money: type=add;num=1000{player: hasPerm.user.vip}'
+        - 'stock-item: type=give;name=diamond;amount=5{player: hasPerm.user.vip}'
+        - 'sound: entity.player.levelup{player: hasPerm.user.vip}'
+
+    test_money:
+      text: '&e[ 金币发放 ]'
+      actions:
+        - 'money: type=add;num=100{player: %player_level% >= 5}'
+        - 'tell: &a5级以上玩家获得100金币奖励{player: %player_level% >= 5}'
+
+    test_sound:
+      text: '&3[ 声音播放 ]'
+      actions:
+        - 'tell: &f给所有玩家播放提示音{player: *}'
+        - 'sound: entity.player.levelup{player: *}'
+
+    test_multiple:
+      text: '&1[ 多动作组合 ]'
+      actions:
+        - 'tell: &c给所有玩家发送多条消息{player: *}'
+        - 'tell: &6这是第一条消息{player: *}'
+        - 'tell: &6这是第二条消息{player: *}'
+        - 'actionbar: &e请查看聊天栏{player: *}'
+        - 'sound: block.note_block.pling{player: *}'
+
+    test_close:
+      text: '&4[ 关闭菜单 ]'
+      actions:
+        - 'tell: &c再见！'
+        - 'close'

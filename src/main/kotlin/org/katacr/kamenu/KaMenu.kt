@@ -20,6 +20,7 @@ class KaMenu : JavaPlugin() {
     lateinit var customCommandManager: CustomCommandManager
     lateinit var itemManager: ItemManager
     var economy: Economy? = null
+    var bungeeCordEnabled: Boolean = false
 
     /**
      * 在插件加载时优先处理依赖下载
@@ -131,6 +132,16 @@ class KaMenu : JavaPlugin() {
         // 初始化 JavaScript 支持
         JavaScriptManager.initialize(this)
 
+        // 0.5 读取并应用 BungeeCord 配置
+        bungeeCordEnabled = config.getBoolean("bungeecord", false)
+        MenuActions.setBungeeCordEnabled(bungeeCordEnabled)
+        if (bungeeCordEnabled) {
+            server.messenger.registerOutgoingPluginChannel(this, "BungeeCord")
+            logger.info("BungeeCord support enabled")
+        } else {
+            logger.info("BungeeCord support disabled")
+        }
+
         // 3. 初始化菜单管理器
         menuManager = MenuManager(this)
         menuManager.loadMenus()
@@ -188,6 +199,11 @@ class KaMenu : JavaPlugin() {
     }
 
     override fun onDisable() {
+        // 取消注册 BungeeCord 消息通道
+        if (bungeeCordEnabled) {
+            server.messenger.unregisterOutgoingPluginChannel(this, "BungeeCord")
+        }
+
         if (::menuManager.isInitialized) {
             menuManager.clear()
         }

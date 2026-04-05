@@ -1,0 +1,106 @@
+Title: '&8» &d&lTarget Selector Demo &8«'
+
+Body:
+  intro:
+    type: 'message'
+    text: '&7This menu demonstrates the powerful target selector feature! Use {player: selector} to make actions affect specific target players.'
+
+  intro2:
+    type: 'message'
+    text: '&7Supported target selectors: &f* (all players)&7, &fall (all players)&7, &fconditional expressions (filter players)'
+
+  display_item:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    name: '&c&lTarget Selector Feature'
+    description: '&fClick the buttons below to test different target selectors'
+
+Bottom:
+  type: 'multi'
+  columns: 3
+  buttons:
+    test_default:
+      text: '&a[ Default Target ]'
+      actions:
+        - 'tell: &aThis message is only for you (no target specified)'
+
+    test_all:
+      text: '&e[ All Players ]'
+      actions:
+        - 'tell: &6Server Announcement: Attention everyone!{player: *}'
+        - 'tell: &eAll online players can see this message{player: all}'
+
+    test_op:
+      text: '&c[ Admins ]'
+      actions:
+        - 'tell: &cAdmin only message{player: %player_is_op% == true}'
+        - 'sound: block.note_block.pling{player: %player_is_op% == true}'
+
+    test_vip:
+      text: '&d[ VIP Players ]'
+      actions:
+        - 'tell: &dVIP player exclusive message{player: hasPerm.user.vip}'
+        - 'actionbar: &eVIP exclusive event starting soon{player: hasPerm.user.vip}'
+
+    test_level:
+      text: '&b[ Level 10+ ]'
+      actions:
+        - 'tell: &bPlayers at level 10: &fCongratulations!{player: %player_level% >= 10}'
+        - 'money: type=add;num=100{player: %player_level% >= 10}'
+
+    test_world:
+      text: '&2[ Survival World ]'
+      actions:
+        - 'tell: &2Survival world players please note!{player: %player_world% == survival}'
+
+    test_complex:
+      text: '&6[ Complex Conditions ]'
+      actions:
+        - 'tell: &6Players meeting multiple conditions{player: %player_level% >= 10 && hasPerm.user.vip}'
+        - 'actionbar: &eSpecial player notification{player: (%player_level% >= 10 && %vault_eco_balance% >= 1000) || %player_is_op% == true}'
+
+    test_broadcast:
+      text: '&f[ Server Broadcast ]'
+      actions:
+        - 'tell: &6════════════════════════{player: *}'
+        - 'tell: &6     Server Announcement{player: *}'
+        - 'tell: &6════════════════════════{player: *}'
+        - 'tell: &fServer will be under maintenance in 5 minutes{player: *}'
+        - 'tell: &fPlease save your progress, thank you!{player: *}'
+        - 'tell: &6════════════════════════{player: *}'
+        - 'sound: entity.experience_orb.pickup{player: *}'
+
+    test_reward:
+      text: '&5[ Reward Distribution ]'
+      actions:
+        - 'tell: &aDistributing rewards to VIP players...{player: hasPerm.user.vip}'
+        - 'money: type=add;num=1000{player: hasPerm.user.vip}'
+        - 'stock-item: type=give;name=diamond;amount=5{player: hasPerm.user.vip}'
+        - 'sound: entity.player.levelup{player: hasPerm.user.vip}'
+
+    test_money:
+      text: '&e[ Money Distribution ]'
+      actions:
+        - 'money: type=add;num=100{player: %player_level% >= 5}'
+        - 'tell: &aLevel 5+ players receive 100 coins reward{player: %player_level% >= 5}'
+
+    test_sound:
+      text: '&3[ Sound Playback ]'
+      actions:
+        - 'tell: &fPlaying notification sound for all players{player: *}'
+        - 'sound: entity.player.levelup{player: *}'
+
+    test_multiple:
+      text: '&1[ Multi-Action Combo ]'
+      actions:
+        - 'tell: &cSending multiple messages to all players{player: *}'
+        - 'tell: &6This is the first message{player: *}'
+        - 'tell: &6This is the second message{player: *}'
+        - 'actionbar: &ePlease check the chat{player: *}'
+        - 'sound: block.note_block.pling{player: *}'
+
+    test_close:
+      text: '&4[ Close Menu ]'
+      actions:
+        - 'tell: &cGoodbye!'
+        - 'close'

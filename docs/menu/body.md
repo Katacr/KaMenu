@@ -394,7 +394,7 @@ Body:
 |------|------|------|--------|------|
 | `type` | `String` | ✅ | — | 固定值 `item` |
 | `material` | `String` | ✅ | `PAPER` | 物品材质名（支持多种格式，见下方说明）|
-| `name` | `String` | ✅ | — | 物品显示名称，支持颜色代码 |
+| `name` | `String` | ❌ | 物品默认名称 | 物品显示名称，支持颜色代码 |
 | `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）|
 | `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法 |
 | `item_model` | `String` | ❌ | — | 物品模型标识（格式：`namespace:key`），用于显示特殊材质物品（如 1.21.7+ 的命名空间物品模型）|
@@ -416,9 +416,36 @@ Body:
       - '&c攻击力: &f+20'
       - '&e价格: &f500金币'
     description: '&f点击下方按钮购买此武器'
-    width: 32
-    height: 32
+    width: 16
+    height: 16
 ```
+
+**name 属性可选：**
+
+`name` 属性是可选的。如果不提供，将使用物品的默认名称。
+
+```yaml
+Body:
+  # 使用物品默认名称
+  diamond_sword:
+    type: 'item'
+    material: 'DIAMOND_SWORD'
+    # 不设置 name，显示物品默认名称"钻石剑"
+    width: 16
+    height: 16
+
+  # 自定义物品名称
+  custom_sword:
+    type: 'item'
+    material: 'DIAMOND_SWORD'
+    name: '&6&l传奇之剑'  # 覆盖默认名称
+    width: 16
+    height: 16
+```
+
+{% hint style="info" %}
+如果不提供 `name` 属性，系统会使用物品材质对应的默认中文名称。如果需要自定义显示名称，再设置 `name` 属性。
+{% endhint %}
 
 **物品材质名格式支持：**
 
@@ -445,6 +472,214 @@ material: 'diAMond swORd'
 {% hint style="info" %}
 系统会自动忽略大小写、将短杠和空格替换为下划线，并合并多余的下划线，因此所有上述格式都会正确匹配到 `DIAMOND_SWORD`。
 {% endhint %}
+
+---
+
+### 物品槽位引用
+
+`material` 字段支持槽位引用格式，可以直接显示玩家装备槽位的物品。
+
+**格式：**
+
+`[SLOT]` 或 `[SLOT:PlayerName]` 或 `[SLOT:{变量}]`
+
+**支持的槽位：**
+
+| 槽位名 | 说明 | 对应 Bukkit 常量 |
+|--------|------|-----------------|
+| `HEAD` | 头部（头盔） | `EquipmentSlot.HEAD` |
+| `CHEST` | 胸部（胸甲） | `EquipmentSlot.CHEST` |
+| `LEGGINGS` | 护腿 | `EquipmentSlot.LEGS` |
+| `BOOTS` | 靴子 | `EquipmentSlot.FEET` |
+| `MAINHAND` | 主手 | `EquipmentSlot.HAND` |
+| `OFFHAND` | 副手 | `EquipmentSlot.OFF_HAND` |
+
+**基础示例：**
+
+```yaml
+Body:
+  # 显示当前玩家的头盔
+  player_helmet:
+    type: 'item'
+    material: '[HEAD]'
+    width: 16
+    height: 16
+
+  # 显示指定玩家的头盔
+  admin_helmet:
+    type: 'item'
+    material: '[HEAD:AdminPlayer]'
+    width: 16
+    height: 16
+```
+
+**配合变量使用：**
+
+槽位引用支持所有变量类型（PAPI 变量、内置变量、Meta 变量等）：
+
+```yaml
+Body:
+  # 使用 Meta 变量（配合 player-click 监听器）
+  target_helmet:
+    type: 'item'
+    material: '[HEAD:{meta:player}]'
+    width: 16
+    height: 16
+
+  # 使用数据存储变量
+  saved_player_helmet:
+    type: 'item'
+    material: '[CHEST:{data:target_player}]'
+    width: 16
+    height: 16
+
+  # 使用 PAPI 变量
+  random_player_sword:
+    type: 'item'
+    material: '[MAINHAND:%random_online_player%]'
+    width: 16
+    height: 16
+```
+
+**空槽位处理：**
+
+当引用的槽位为空时，系统会自动显示替代物品：
+
+| 槽位 | 空槽位显示 |
+|------|-----------|
+| `HEAD` | 玩家皮肤头颅 |
+| 其他槽位 | 浅灰色玻璃板，名称为"无" |
+
+```yaml
+Body:
+  # 头部为空时显示玩家头颅
+  helmet_display:
+    type: 'item'
+    material: '[HEAD:{meta:player}]'
+    width: 16
+    height: 16
+
+  # 其他槽位为空时显示浅灰色玻璃板
+  chestplate_display:
+    type: 'item'
+    material: '[CHEST:{meta:player}]'
+    width: 16
+    height: 16
+```
+
+**完整示例 - 玩家互动菜单：**
+
+```yaml
+# menus/inspect_player.yml
+Title: '玩家信息'
+Background: '#1a1a1a'
+
+Body:
+  # 显示玩家头盔
+  helmet:
+    type: 'item'
+    material: '[HEAD:{meta:player}]'
+    description: '&7查看头部装备'
+    width: 16
+    height: 16
+
+  # 显示玩家胸甲
+  chestplate:
+    type: 'item'
+    material: '[CHEST:{meta:player}]'
+    description: '&7查看胸部装备'
+    width: 16
+    height: 16
+
+  # 显示玩家护腿
+  leggings:
+    type: 'item'
+    material: '[LEGGINGS:{meta:player}]'
+    description: '&7查看腿部装备'
+    width: 16
+    height: 16
+
+  # 显示玩家靴子
+  boots:
+    type: 'item'
+    material: '[BOOTS:{meta:player}]'
+    description: '&7查看脚部装备'
+    width: 16
+    height: 16
+
+Events:
+  Click:
+    # 使用槽位引用显示目标玩家装备
+```
+
+{% hint style="info" %}
+在槽位引用模式下，使用 `description` 属性来添加说明文字，而不是使用 `name` 属性，因为 `name` 属性在槽位有物品时不会生效。
+{% endhint %}
+
+**配合 player-click 监听器：**
+
+```yaml
+# config.yml
+listeners:
+  player-click:
+    enabled: true
+    menu: 'inspect_player'
+    require-sneaking: false
+```
+
+当玩家右键其他玩家时：
+1. 系统自动设置 `{meta:player}` 为被点击玩家名称
+2. 打开 `inspect_player` 菜单
+3. 菜单中的 `[HEAD:{meta:player}]` 等引用会显示被点击玩家的装备
+
+**注意事项：**
+
+1. **槽位引用模式下，以下属性不生效：**
+   - `name`（空槽位除外）
+   - `lore`
+   - `item_model`
+
+   {% hint style="warning" %}
+   **关于 `name` 属性：**
+   - 当槽位有物品时，使用物品本身的名称，`name` 属性不生效
+   - 当槽位为空时，HEAD 槽位显示玩家头颅（使用玩家名称），其他槽位显示浅灰色玻璃板（名称固定为"无"），`name` 属性不生效
+   - 如果需要自定义名称，可以在 `description` 中添加说明文字
+   {% endhint %}
+
+2. **仍然支持的属性：**
+   - `width` - 图标宽度
+   - `height` - 图标高度
+   - `decorations` - 装饰效果
+   - `tooltip` - 鼠标悬停显示
+   - `description` - 下方说明文字（可以在这里添加自定义说明）
+
+3. **变量解析顺序：**
+   - 先解析变量（如 `{meta:player}`）
+   - 再检查是否为槽位引用格式
+   - 最后获取对应槽位的物品
+
+4. **玩家不存在时：**
+   - 如果引用的玩家不存在或已下线，会显示默认材质（PAPER）
+   - 建议在使用槽位引用前先判断玩家是否在线
+
+**高级示例 - 条件判断 + 槽位引用：**
+
+```yaml
+Body:
+  # 只有当目标玩家在线时才显示装备
+  player_equipment:
+    type: 'item'
+    material:
+      - condition: '{meta:player} != null'
+        allow: '[HEAD:{meta:player}]'
+        deny: 'BARRIER'
+    name:
+      - condition: '{meta:player} != null'
+        allow: '&6{meta:player} 的头盔'
+        deny: '&c玩家离线'
+    width: 16
+    height: 16
+```
 
 ---
 

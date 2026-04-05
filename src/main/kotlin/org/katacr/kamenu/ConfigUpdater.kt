@@ -30,10 +30,8 @@ object ConfigUpdater {
      */
     private fun getMessage(key: String, vararg args: Any): String {
         val lm = languageManager
-        return if (lm != null) {
-            lm.getMessage(key, *args)
-        } else {
-            // 如果语言管理器未初始化，使用硬编码的英文消息
+        return lm?.getMessage(key, *args)
+            ?: // 如果语言管理器未初始化，使用硬编码的英文消息
             when (key) {
                 "config_update.detected_old_version" -> "Detected old version config file (v${args[0]}), updating to v${args[1]}..."
                 "config_update.default_config_not_exist" -> "Default config file not found, skipping config update"
@@ -45,14 +43,13 @@ object ConfigUpdater {
                 "config_update.backup_failed" -> "Failed to backup config file: ${args[0]}"
                 else -> key
             }
-        }
     }
 
     /**
      * 当前配置文件版本
      * 每次配置文件结构变更时需要增加此版本号
      */
-    private const val CURRENT_CONFIG_VERSION = 1
+    private const val CURRENT_CONFIG_VERSION = 2
 
     /**
      * 配置版本键名

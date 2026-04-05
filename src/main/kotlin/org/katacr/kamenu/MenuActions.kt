@@ -2,6 +2,7 @@
 
 package org.katacr.kamenu
 
+import com.google.common.io.ByteStreams
 import io.papermc.paper.registry.data.dialog.action.DialogAction
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickCallback
@@ -15,6 +16,7 @@ import org.bukkit.NamespacedKey
 import org.bukkit.SoundCategory
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
+import com.google.common.io.ByteArrayDataOutput
 import java.time.Duration
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import java.util.concurrent.CompletableFuture
@@ -32,6 +34,7 @@ object MenuActions {
     private var economy: Economy? = null
     private var plugin: KaMenu? = null
     private var itemManager: ItemManager? = null
+    private var bungeeCordEnabled: Boolean = false
 
     /**
      * 延迟动作数据类
@@ -41,6 +44,27 @@ object MenuActions {
         val action: String,
         val variables: Map<String, String>
     )
+
+    /**
+     * 解析后的动作数据类（包含目标选择器）
+     */
+    private data class ParsedAction(
+        val action: String,
+        val targetSelector: String?
+    )
+
+    /**
+     * 动作类型枚举
+     */
+    private enum class ActionType {
+        MULTITARGET,  // 支持多目标的动作
+        SINGLE_TARGET_ONLY  // 只对单个玩家有意义的动作
+    }
+
+    /**
+     * 预编译的目标选择器正则表达式（性能优化）
+     */
+    private val targetSelectorPattern = Regex("\\{player:\\s*([^}]*)\\}", RegexOption.IGNORE_CASE)
 
     /**
      * 设置语言管理器引用
@@ -85,10 +109,94 @@ object MenuActions {
     }
 
     /**
+     * 设置 BungeeCord 启用状态
+     */
+    fun setBungeeCordEnabled(enabled: Boolean) {
+        bungeeCordEnabled = enabled
+    }
+
+    /**
      * 将颜色代码转换为 Adventure Component
      */
     internal fun color(text: String?): Component =
         if (text == null) Component.empty() else serializer.deserialize(text)
+
+    /**
+     * 解析目标选择器
+     * 从动作字符串中提取 {player: ...} 部分
+     * @param action 原始动作字符串
+     * @return ParsedAction 包含动作和目标选择器
+     */
+    private fun parseTargetSelector(action: String): ParsedAction {
+        val match = targetSelectorPattern.find(action)
+
+        return if (match != null) {
+            val selector = match.groupValues[1].trim()
+            val actionWithoutSelector = action.replace(match.value, "")
+            ParsedAction(actionWithoutSelector, selector)
+        } else {
+            ParsedAction(action, null)
+        }
+    }
+
+    /**
+     * 获取动作类型
+     * @param action 动作字符串
+     * @return 动作类型（MULTITARGET 或 SINGLE_TARGET_ONLY）
+     */
+    private fun getActionType(action: String): ActionType {
+        val trimmedAction = action.trim().lowercase()
+
+        return when {
+            // 只对单个玩家有意义的动作
+            trimmedAction.startsWith("close:") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("open:") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("server:") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("actions:") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("wait:") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("return") -> ActionType.SINGLE_TARGET_ONLY
+
+            // 支持多目标的动作
+            else -> ActionType.MULTITARGET
+        }
+    }
+
+    /**
+     * 根据目标选择器获取玩家列表
+     * @param player 当前玩家
+     * @param selector 目标选择器（null、*、all 或条件表达式）
+     * @return 目标玩家列表
+     */
+    private fun getTargetPlayers(player: Player, selector: String?): List<Player> {
+        if (selector == null) {
+            // 没有指定目标，返回当前玩家
+            return listOf(player)
+        }
+
+        val trimmedSelector = selector.trim()
+
+        return when (trimmedSelector.lowercase()) {
+            "*", "all" -> {
+                // 所有在线玩家
+                Bukkit.getOnlinePlayers().toList()
+            }
+            else -> {
+                // 条件选择，遍历所有在线玩家检查条件
+                val targetPlayers = mutableListOf<Player>()
+                for (onlinePlayer in Bukkit.getOnlinePlayers()) {
+                    try {
+                        if (ConditionUtils.checkCondition(onlinePlayer, trimmedSelector)) {
+                            targetPlayers.add(onlinePlayer)
+                        }
+                    } catch (e: Exception) {
+                        // 条件检查失败，跳过此玩家
+                        plugin?.logger?.warning("目标选择器条件检查失败: ${e.message}")
+                    }
+                }
+                targetPlayers
+            }
+        }
+    }
 
     /**
      * 将 MiniMessage 格式转换为 Adventure Component
@@ -882,9 +990,51 @@ object MenuActions {
     }
 
     /**
-     * 执行单个动作
+     * 执行单个动作（支持目标选择器）
      */
     private fun executeSingleAction(
+        player: Player,
+        action: String,
+        variables: Map<String, String>,
+        menuOpener: (Player, String) -> Unit,
+        config: YamlConfiguration? = null,
+        asyncDataOperations: Boolean = true
+    ) {
+        // 解析目标选择器
+        val parsed = parseTargetSelector(action)
+        val actionWithoutSelector = parsed.action
+        val selector = parsed.targetSelector
+
+        // 获取动作类型
+        val actionType = getActionType(actionWithoutSelector)
+
+        // 根据动作类型决定是否支持多目标
+        when {
+            // 不支持多目标的动作，只对当前玩家执行
+            actionType == ActionType.SINGLE_TARGET_ONLY || selector == null -> {
+                executeActionForPlayer(player, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations)
+            }
+
+            // 支持多目标的动作，获取所有目标玩家并执行
+            actionType == ActionType.MULTITARGET -> {
+                val targetPlayers = getTargetPlayers(player, selector)
+
+                if (targetPlayers.isEmpty()) {
+                    return
+                }
+
+                // 对每个目标玩家执行动作
+                targetPlayers.forEach { targetPlayer ->
+                    executeActionForPlayer(targetPlayer, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations)
+                }
+            }
+        }
+    }
+
+    /**
+     * 对单个玩家执行动作
+     */
+    private fun executeActionForPlayer(
         player: Player,
         action: String,
         variables: Map<String, String>,
@@ -1298,6 +1448,14 @@ object MenuActions {
                 val args = finalCmd.removePrefix("item:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
                     parseAndHandleItem(player, args, variables)
+                })
+            }
+
+            // server: 传送到指定服务器（支持 BungeeCord/Velocity）
+            finalCmd.startsWith("server:") -> {
+                val serverName = finalCmd.removePrefix("server:").trim()
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    parseAndHandleServer(player, serverName)
                 })
             }
         }
@@ -2006,6 +2164,32 @@ object MenuActions {
                 languageManager?.getMessage("actions.stock_item_unknown_type", type, player.name)?.let {
                     plugin?.logger?.warning(it)
                 }
+            }
+        }
+    }
+
+    /**
+     * 解析并处理服务器传送
+     * 根据配置选择使用 BungeeCord 插件消息系统或执行 /server 命令
+     * @param player 玩家对象
+     * @param serverName 目标服务器名称
+     */
+    private fun parseAndHandleServer(player: Player, serverName: String) {
+        if (serverName.isEmpty()) {
+            return
+        }
+
+        if (bungeeCordEnabled) {
+            // 使用 BungeeCord 插件消息系统（不需要玩家权限）
+            try {
+                val out: ByteArrayDataOutput = ByteStreams.newDataOutput()
+                out.writeUTF("Connect")
+                out.writeUTF(serverName)
+
+                plugin?.let { player.sendPluginMessage(it, "BungeeCord", out.toByteArray()) }
+            } catch (e: Exception) {
+                plugin?.logger?.severe("Connect ${player.name} server $serverName error: ${e.message}")
+                e.printStackTrace()
             }
         }
     }

@@ -74,6 +74,96 @@ item 组件支持引用玩家装备槽位，支持变量解析。
 2. 右键任意玩家打开互动菜单
 3. 查看对方装备并进行互动
 
+### 4. server 动作改进
+
+**功能说明:**
+优化 server 动作，支持通过配置选择 BungeeCord 插件消息系统或命令模式。
+
+### 5. 目标选择器（全局功能）
+
+**功能说明:**
+所有动作支持目标选择器，可以指定动作作用的目标玩家，支持条件表达式筛选。
+
+**语法:**
+```yaml
+# 格式: {player: 选择器}
+- 'tell: 你好！'  # 未指定，发给执行者本身
+- 'tell: 你好！{player: *}'  # 发给所有在线玩家
+- 'tell: 你好！{player: %player_level% >= 10}'  # 发给满足条件的玩家
+```
+
+**选择器类型:**
+| 选择器 | 说明 | 示例 |
+|--------|------|------|
+| `{player: *}` | 所有在线玩家 | `{player: *}` |
+| `{player: all}` | 所有在线玩家 | `{player: all}` |
+| `{player: 条件}` | 满足条件的玩家 | `{player: %player_level% >= 10}` |
+
+**支持的动作:**
+- ✅ `tell`, `actionbar`, `title`, `toast`, `hovertext`
+- ✅ `command`, `chat`, `console`, `sound`
+- ✅ `money`, `stock-item`, `item`
+- ✅ `data`, `gdata`, `meta`, `js`
+- ❌ `open`, `close`, `server`, `actions`（只对当前玩家）
+
+**条件表达式:**
+```yaml
+# 单条件
+{player: %player_level% >= 10}
+
+# 多条件（与）
+{player: %player_level% >= 10 && %player_has_permission:vip%}
+
+# 多条件（或）
+{player: %player_is_op% || %player_has_permission:admin%}
+
+# 包含检查
+{player: %player_world% contains survival}
+
+# 复杂条件
+{player: (%player_level% >= 10 && %vault_eco_balance% >= 1000) || %player_is_op%}
+```
+
+**功能特性:**
+- ✅ 支持所有 ConditionUtils 条件表达式
+- ✅ 自动过滤目标玩家，不匹配时记录警告
+- ✅ PAPI 变量为每个目标玩家单独解析
+- ✅ 性能优化：正则表达式预编译
+
+**使用场景:**
+- 服务器公告：`- 'tell: 服务器将在5分钟后重启{player: *}'`
+- VIP 玩家专属消息：`- 'tell: VIP专属活动即将开始{player: %player_has_permission:vip%}'`
+- 等级奖励：`- 'money: type=add;num=100{player: %player_level% >= 10}'`
+- 管理员通知：`- 'actionbar: 服务器维护中{player: %player_is_op%}'`
+
+**新增配置:**
+```yaml
+# config.yml
+bungeecord: true  # 启用 BungeeCord 支持
+```
+
+**功能特性:**
+- ✅ **BungeeCord 模式**：使用插件消息系统，无需玩家权限
+- ✅ **命令模式**：使用 `/server` 命令（需要玩家权限）
+- ✅ **自动适配**：根据配置自动选择最合适的传输方式
+- ✅ **兼容性**：与 DeluxeMenus 等主流插件保持一致
+
+**使用建议:**
+- BungeeCord/Velocity 网络设置 `bungeecord: true`
+- 单服务器或其他跨服方案设置 `bungeecord: false`
+
+**工作原理:**
+```kotlin
+// BungeeCord 模式
+val out = ByteStreams.newDataOutput()
+out.writeUTF("Connect")
+out.writeUTF(serverName)
+player.sendPluginMessage(plugin, "BungeeCord", out.toByteArray())
+
+// 命令模式
+player.performCommand("server $serverName")
+```
+
 ---
 
 ## 🔨 改进优化
