@@ -26,11 +26,11 @@ Body:
 
 **配置项：**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `type` | `String` | 固定值 `message` |
-| `text` | `String`/`List` | 消息文字，支持多种格式（见下方说明） |
-| `width` | `Int` | 可选，消息宽度（1-1024），不设置则使用默认宽度 |
+| 字段 | 类型 | 说明                              |
+|------|------|---------------------------------|
+| `type` | `String` | 固定值 `message`                   |
+| `text` | `String`/`List` | 消息文字，支持多种格式（见下方说明）              |
+| `width` | `Int` | 可选，消息宽度（1-1024），不设置则使用默认宽度（200） |
 
 ---
 
@@ -153,7 +153,7 @@ Body:
 - 根据条件动态显示内容
 - allow/deny 分支都支持列表和字符串两种格式
 - 列表模式中，每一行会独立处理并解析变量
-- 字符串模式支持 `\n` 换行符
+- 列表模式和字符串模式都支持 `\n` 换行符
 - 支持嵌套条件判断
 - 两种格式可以混合使用（一个用列表，一个用字符串）
 
@@ -390,18 +390,20 @@ Body:
 
 **配置项：**
 
-| 字段 | 类型 | 必须 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| `type` | `String` | ✅ | — | 固定值 `item` |
-| `material` | `String` | ✅ | `PAPER` | 物品材质名（支持多种格式，见下方说明）|
-| `name` | `String` | ❌ | 物品默认名称 | 物品显示名称，支持颜色代码 |
-| `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）|
-| `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法 |
-| `item_model` | `String` | ❌ | — | 物品模型标识（格式：`namespace:key`），用于显示特殊材质物品（如 1.21.7+ 的命名空间物品模型）|
-| `width` | `Int` | ❌ | `16` | 物品图标宽度（像素）|
-| `height` | `Int` | ❌ | `16` | 物品图标高度（像素）|
-| `decorations` | `Boolean` | ❌ | `true` | 是否显示物品装饰效果（附魔光效等）|
-| `tooltip` | `Boolean` | ❌ | `true` | 鼠标悬停时是否显示物品 Tooltip |
+| 字段 | 类型 | 必须 | 默认值 | 说明                                                         |
+|------|------|------|--------|------------------------------------------------------------|
+| `type` | `String` | ✅ | — | 固定值 `item`                                                 |
+| `material` | `String` | ✅ | `PAPER` | 物品材质名（支持多种格式，见下方说明）                                        |
+| `amount` | `Int` | ❌ | `1` | 物品堆叠数量（1-64），不设置则默认为 1                                       |
+| `name` | `String` | ❌ | 物品默认名称 | 物品显示名称，支持颜色代码                                              |
+| `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）                                            |
+| `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法                  |
+| `description_width` | `Int` | ❌ | `0` | description 文字框的宽度（1-1024，像素），不设置或设置为 0 则使用默认值 200                                  |
+| `item_model` | `String` | ❌ | — | 物品模型标识（格式：`namespace:key`），用于显示特殊材质物品（如 1.21.7+ 的命名空间物品模型） |
+| `width` | `Int` | ❌ | `16` | 物品图标宽度（像素）                                                 |
+| `height` | `Int` | ❌ | `16` | 物品图标高度（像素）                                                 |
+| `show_overlays` | `Boolean` | ❌ | `true` | 是否显示物品叠加层（耐久条、冷却、数量等）                               |
+| `tooltip` | `Boolean` | ❌ | `true` | 鼠标悬停时是否显示物品 Tooltip                                        |
 
 **示例：**
 
@@ -418,11 +420,114 @@ Body:
     description: '&f点击下方按钮购买此武器'
     width: 16
     height: 16
+
+  # 带自定义 description 宽度的物品
+  custom_width_item:
+    type: 'item'
+    material: 'DIAMOND'
+    name: '&b&l钻石'
+    description: '&7这是一颗稀有的钻石\n&7价值1000金币'
+    description_width: 200  # 自定义 description 宽度
+    width: 16
+    height: 16
+
+  # 隐藏叠加层（耐久条、数量、冷却等）
+  no_overlays_item:
+    type: 'item'
+    material: 'DIAMOND_SWORD'
+    name: '&6&l传奇之剑'
+    show_overlays: false  # 不显示耐久条、数量等叠加层
+    width: 16
+    height: 16
+
+  # 带自定义数量的物品
+  custom_item:
+    type: 'item'
+    material: 'DIAMOND'
+    name: '&b&l钻石'
+    amount: 16  # 设置堆叠数量为 16
+    width: 16
+    height: 16
+```
+
+**amount 属性说明：**
+
+`amount` 属性用于设置物品的堆叠数量，默认值为 `1`。
+
+- **数值范围**：1-64（根据物品的最大堆叠数而定）
+- **适用场景**：
+  - 商店中显示商品堆叠数
+  - 背包预览中显示物品数量
+  - 装备展示中显示多个物品
+
+- **使用示例：**
+
+  **示例 1：单个物品**
+  ```yaml
+  single_item:
+    type: 'item'
+    material: 'DIAMOND_SWORD'
+    name: '&6钻石剑'
+    amount: 1  # 单个物品（默认值）
+    width: 16
+    height: 16
+  ```
+
+  **示例 2：堆叠物品**
+  ```yaml
+  stack_item:
+    type: 'item'
+    material: 'DIAMOND'
+    name: '&b钻石'
+    amount: 64  # 最大堆叠数
+    width: 16
+    height: 16
+  ```
+
+  **示例 3：条件控制数量**
+  ```yaml
+  vip_item:
+    type: 'item'
+    material: 'GOLD_INGOT'
+    name: '&e金锭'
+    amount:
+      - condition: '%vault_rank% == VIP'
+        allow: 32  # VIP 玩家显示 32 个
+        deny: 16  # 普通玩家显示 16 个
+    width: 16
+    height: 16
+  ```
+
+  **示例 4：show_overlays: false 时显示数量**
+  ```yaml
+  # 当 show_overlays: false 时，堆叠数量会被隐藏
+  # 可以将数量写在 name 属性中以便在界面上显示
+  item_with_amount:
+    type: 'item'
+    material: 'DIAMOND'
+    name: '&b钻石 x64'  # 在名称中显示数量
+    amount: 64  # 设置实际数量（但不显示在图标上）
+    show_overlays: false  # 禁用叠加层，数量会隐藏
+    width: 16
+    height: 16
+  ```
+
+
+- **注意事项**：
+  - 如果设置的数值超过物品的最大堆叠数，会自动限制为最大值
+  - 对于工具和武器等不可堆叠的物品，数量会被限制为 1
+  - 槽位引用模式下，`amount` 属性不生效（显示实际槽位的物品数量）
+  - **重要**：当 `show_overlays: false` 时，物品的堆叠数量（如 "64"）会被隐藏，不会显示在物品图标上。如果需要在界面上显示数量，建议将数量写在 `name` 属性中，例如 `name: '&b钻石 x64'`
+
 ```
 
 **name 属性可选：**
 
 `name` 属性是可选的。如果不提供，将使用物品的默认名称。
+
+**description_width 可选：**
+
+`description_width` 属性是可选的，用于设置 description 文字的宽度（像素）。如果不设置或设置为 0，则使用默认宽度 200。
 
 ```yaml
 Body:
@@ -439,6 +544,32 @@ Body:
     type: 'item'
     material: 'DIAMOND_SWORD'
     name: '&6&l传奇之剑'  # 覆盖默认名称
+    width: 16
+    height: 16
+
+  # 使用 description_width 设置宽度
+  wide_description_item:
+    type: 'item'
+    material: 'ENCHANTED_BOOK'
+    name: '&6魔法书'
+    description: '&7这是一本神奇的魔法书\n&7可以施放强大的法术'
+    description_width: 300  # 设置 description 宽度为 300 像素
+    width: 16
+    height: 16
+
+  # description 和 description_width 都支持条件判断
+  conditional_description_item:
+    type: 'item'
+    material: 'DIAMOND'
+    name: '&b钻石'
+    description:
+      - condition: '%player_level% >= 10'
+        allow: '&a高级物品\n&7您已解锁购买权限'
+        deny: '&7需要达到 &e10 &7级才能购买'
+    description_width:
+      - condition: '%player_level% >= 10'
+        allow: 300
+        deny: 200
     width: 16
     height: 16
 ```
@@ -636,6 +767,7 @@ listeners:
 
 1. **槽位引用模式下，以下属性不生效：**
    - `name`（空槽位除外）
+   - `amount`
    - `lore`
    - `item_model`
 
@@ -649,7 +781,7 @@ listeners:
 2. **仍然支持的属性：**
    - `width` - 图标宽度
    - `height` - 图标高度
-   - `decorations` - 装饰效果
+   - `show_overlays` - 叠加层
    - `tooltip` - 鼠标悬停显示
    - `description` - 下方说明文字（可以在这里添加自定义说明）
 
@@ -745,6 +877,78 @@ Body:
 - **格式要求**：`命名空间:键名`，例如 `minecraft:custom_sword` 或 `your_plugin:special_item`
 - **工作原理**：将模型数据存储在物品的 PersistentDataContainer 中，由 Minecraft 客户端根据模型定义渲染特殊外观
 - **用途**：用于显示具有独特外观的物品，如特殊材质的武器、道具等
+
+---
+
+**show_overlays 说明：**
+
+`show_overlays` 属性用于控制是否显示物品的叠加层，默认值为 `true`。
+
+- **包含的叠加层元素**：
+  - **耐久条**（Durability Bar）：工具和武器的耐久度显示
+  - **物品数量**（Stack Count）：堆叠数量（如 64、32 等）
+  - **冷却时间**（Cooldown）：物品冷却倒计时显示
+
+- **使用场景**：
+
+  **场景 1：纯净展示物品图标**
+  ```yaml
+  Body:
+    pure_icon:
+      type: 'item'
+      material: 'DIAMOND_SWORD'
+      name: '&6&l传说之剑'
+      show_overlays: false  # 不显示耐久条，只显示纯净图标
+      width: 16
+      height: 16
+  ```
+
+  **场景 2：显示完整物品信息**
+  ```yaml
+  Body:
+    full_item:
+      type: 'item'
+      material: 'DIAMOND_PICKAXE'
+      name: '&b钻石镐'
+      lore:
+        - '&7耐久度: &e1561/1561'
+      show_overlays: true  # 显示耐久条（默认值）
+      width: 16
+      height: 16
+  ```
+
+  **场景 3：堆叠物品显示数量**
+  ```yaml
+  Body:
+    stack_item:
+      type: 'item'
+      material: 'DIAMOND'
+      name: '&b钻石 x64'
+      show_overlays: true  # 显示数量 64
+      width: 16
+      height: 16
+  ```
+
+  **场景 4：条件控制叠加层显示**
+  ```yaml
+  Body:
+    conditional_overlays:
+      type: 'item'
+      material: 'DIAMOND_SWORD'
+      name: '&6钻石剑'
+      show_overlays:
+        - condition: '%player_is_op% == true'
+          allow: false  # OP 玩家不显示叠加层
+          deny: true    # 普通玩家显示叠加层
+      width: 16
+      height: 16
+  ```
+
+- **注意事项**：
+  - 槽位引用模式下仍然支持 `show_overlays` 属性
+  - 设置为 `false` 时，物品图标会更加简洁
+  - 适合需要纯净展示物品外观的场景
+  - **重要**：当 `show_overlays: false` 时，堆叠数量会被隐藏（叠加层包括耐久条、冷却时间和数量）
 
 ---
 

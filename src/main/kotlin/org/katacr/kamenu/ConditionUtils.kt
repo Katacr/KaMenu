@@ -131,11 +131,14 @@ object ConditionUtils {
         val deny = conditionMap["deny"] as? String ?: defaultValue
 
         // 检查条件并返回相应的值
-        return if (checkCondition(player, condition)) {
+        val result = if (checkCondition(player, condition)) {
             allow
         } else {
             deny
         }
+
+        // 处理 \n 换行符
+        return result.replace("\\n", "\n")
     }
 
     /**
@@ -181,7 +184,9 @@ object ConditionUtils {
         // 优先尝试使用 getConditionalList（支持列表模式）
         val list = getConditionalList(player, conditionMap, emptyList())
         if (list.isNotEmpty()) {
-            return list.joinToString("\n")
+            // 处理每个字符串中的 \n 换行符
+            val processedList = list.map { it.replace("\\n", "\n") }
+            return processedList.joinToString("\n")
         }
 
         // 回退到 getConditionalValue（支持字符串模式）
@@ -799,7 +804,9 @@ object ConditionUtils {
         } else {
             // 简单字符串值
             val value = section.getString(path, defaultValue) ?: defaultValue
-            return resolveVariables(player, value)
+            // 支持 \n 换行符（YAML 已经处理了字面量换行，这里处理显式的 \n）
+            val withNewlines = value.replace("\\n", "\n")
+            return resolveVariables(player, withNewlines)
         }
     }
 
@@ -812,15 +819,32 @@ object ConditionUtils {
      * @return 字符串值（列表会用 \n 连接）
      */
     fun getConditionalValueOrListFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
-        // 检查该路径下是否为列表格式（条件判断）
+        // 检查该路径下是否为列表格式
         if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val value = getConditionalValueOrListFromList(player, conditions, defaultValue)
-            return resolveVariables(player, value)
+            val list = section.getList(path) ?: return defaultValue
+            val firstItem = list.firstOrNull()
+
+            // 检查是否为条件判断格式（第一个元素是 Map）
+            if (firstItem is Map<*, *>) {
+                // 条件判断格式
+                val value = getConditionalValueOrListFromList(player, list, defaultValue)
+                return resolveVariables(player, value)
+            } else {
+                // 直接的字符串列表，用换行符连接
+                val stringList = list.filterIsInstance<String>()
+                val joinedValue = if (stringList.isNotEmpty()) {
+                    stringList.joinToString("\n")
+                } else {
+                    defaultValue
+                }
+                return resolveVariables(player, joinedValue)
+            }
         } else {
             // 简单字符串值
             val value = section.getString(path, defaultValue) ?: defaultValue
-            return resolveVariables(player, value)
+            // 支持 \n 换行符（YAML 已经处理了字面量换行，这里处理显式的 \n）
+            val withNewlines = value.replace("\\n", "\n")
+            return resolveVariables(player, withNewlines)
         }
     }
 

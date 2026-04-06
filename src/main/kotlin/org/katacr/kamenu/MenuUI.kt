@@ -408,17 +408,18 @@ object MenuUI {
                                 // 槽位引用模式下，跳过其他属性设置（lore、item_model等）
                                 val width = getConditionalIntFromSection(player, section, "$key.width", 16)
                                 val height = getConditionalIntFromSection(player, section, "$key.height", 16)
-                                val decorations = getConditionalBooleanFromSection(player, section, "$key.decorations", true)
+                                val showOverlays = getConditionalBooleanFromSection(player, section, "$key.show_overlays", true)
                                 val tooltip = getConditionalBooleanFromSection(player, section, "$key.tooltip", true)
                                 
-                                bodyList.add(DialogBody.item(item, null, decorations, tooltip, width, height))
+                                bodyList.add(DialogBody.item(item, null, showOverlays, tooltip, width, height))
                                 continue  // 跳过后续处理
                             }
                         } else {
                             // 正常物品创建流程
                             val material = MaterialUtils.matchMaterial(materialStr) ?: Material.PAPER
-                            item = ItemStack(material)
-                            
+                            val amount = getConditionalIntFromSection(player, section, "$key.amount", 1)
+                            item = ItemStack(material, amount)
+
                             item.editMeta { meta ->
                                 val name = getConditionalValueFromSection(player, section, "$key.name", "")
                                 if (name.isNotEmpty()) {
@@ -438,17 +439,22 @@ object MenuUI {
                                 }
                             }
                         }
-                        val descriptionText = getConditionalValueFromSection(player, section, "$key.description", "")
+                        val descriptionText = getConditionalValueOrListFromSection(player, section, "$key.description", "")
+                        val descriptionWidth = getConditionalIntFromSection(player, section, "$key.description_width", 0)
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
-                            DialogBody.plainMessage(MenuActions.parseClickableText(ConditionUtils.resolveVariables(player, it)))
+                            if (descriptionWidth > 0) {
+                                DialogBody.plainMessage(MenuActions.parseClickableText(it), descriptionWidth)
+                            } else {
+                                DialogBody.plainMessage(MenuActions.parseClickableText(it))
+                            }
                         }
 
                         val width = getConditionalIntFromSection(player, section, "$key.width", 16)
                         val height = getConditionalIntFromSection(player, section, "$key.height", 16)
-                        val decorations = getConditionalBooleanFromSection(player, section, "$key.decorations", true)
+                        val showOverlays = getConditionalBooleanFromSection(player, section, "$key.show_overlays", true)
                         val tooltip = getConditionalBooleanFromSection(player, section, "$key.tooltip", true)
 
-                        bodyList.add(DialogBody.item(item, descriptionBody, decorations, tooltip, width, height))
+                        bodyList.add(DialogBody.item(item, descriptionBody, showOverlays, tooltip, width, height))
                     }
                 }
             }
