@@ -389,7 +389,7 @@ object ConditionUtils {
         if (trimmed.contains(".") && !trimmed.matches(Regex("\".*\".*\\..*"))) {
             try {
                 return evaluateBuiltinCondition(player, trimmed)
-            } catch (e: NotBuiltinConditionException) {
+            } catch (_: NotBuiltinConditionException) {
                 // 不是内置条件，继续普通比较
             }
         }
@@ -571,22 +571,26 @@ object ConditionUtils {
      * 检查玩家背包中是否有足够数量的指定物品
      * @param player 玩家对象
      * @param itemName 物品名称
-     * @param requiredAmount 需要的数量
-     * @return 是否有足够数量的物品
+     * @param requiredAmount 需要的数量（用于条件判断）
+     * @return 是否有足够数量的物品（用于条件判断）
      */
     private fun checkPlayerStockItem(player: Player, itemName: String, requiredAmount: Int): Boolean {
+        return getPlayerStockItemCount(player, itemName) >= requiredAmount
+    }
+
+    /**
+     * 获取玩家背包中指定存储库物品的数量
+     * @param player 玩家对象
+     * @param itemName 物品名称
+     * @return 背包中该物品的数量
+     */
+    fun getPlayerStockItemCount(player: Player, itemName: String): Int {
         if (plugin == null) {
-            return false
+            return 0
         }
 
         // 从数据库获取保存的物品模板
-        val savedItem = plugin!!.itemManager.getItem(itemName)
-        if (savedItem == null) {
-            languageManager?.let {
-                player.sendMessage(it.getMessage("condition.stock_item_not_exist", itemName))
-            }
-            return false
-        }
+        val savedItem = plugin!!.itemManager.getItem(itemName) ?: return 0
 
         // 统计玩家背包中与物品模板相似的数量
         val inventory = player.inventory
@@ -605,18 +609,41 @@ object ConditionUtils {
             }
         }
 
-        return totalCount >= requiredAmount
+        return totalCount
     }
 
     /**
      * 检查玩家背包中是否有足够的普通物品
      * @param player 玩家对象
      * @param paramsStr 参数字符串（格式: mats=材质;amount=数量;lore=描述;model=模型）
-     * @return 是否有足够数量的物品
+     * @return 是否有足够数量的物品（用于条件判断）
      */
     private fun checkPlayerHasItem(player: Player, paramsStr: String): Boolean {
-        var materialName = ""
         var requiredAmount = 1
+
+        // 解析参数以获取需要的数量
+        paramsStr.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val key = parts[0].trim().lowercase()
+                val value = parts[1].trim()
+                if (key == "amount") {
+                    requiredAmount = value.toIntOrNull() ?: 1
+                }
+            }
+        }
+
+        return getPlayerItemCount(player, paramsStr) >= requiredAmount
+    }
+
+    /**
+     * 获取玩家背包中符合条件的物品数量
+     * @param player 玩家对象
+     * @param paramsStr 参数字符串（格式: mats=材质;lore=描述;model=模型）
+     * @return 背包中符合条件的物品数量
+     */
+    fun getPlayerItemCount(player: Player, paramsStr: String): Int {
+        var materialName = ""
         var loreText: String? = null
         var itemModel: String? = null
 
@@ -628,7 +655,6 @@ object ConditionUtils {
                 val value = parts[1].trim()
                 when (key) {
                     "mats" -> materialName = value
-                    "amount" -> requiredAmount = value.toIntOrNull() ?: 1
                     "lore" -> loreText = value
                     "model" -> itemModel = value
                 }
@@ -637,19 +663,13 @@ object ConditionUtils {
 
         // 材质是必需的
         if (materialName.isEmpty()) {
-            languageManager?.getMessage("condition.has_item_missing_mats", player.name)?.let {
-                plugin?.logger?.warning(it)
-            }
-            return false
+            return 0
         }
 
         // 获取材质（使用规范化的材质匹配）
         val material = MaterialUtils.matchMaterial(materialName)
         if (material == null) {
-            languageManager?.getMessage("condition.has_item_invalid_material", materialName, player.name)?.let {
-                plugin?.logger?.warning(it)
-            }
-            return false
+            return 0
         }
 
         // 统计玩家背包中符合条件的物品数量
@@ -710,7 +730,7 @@ object ConditionUtils {
             }
         }
 
-        return totalCount >= requiredAmount
+        return totalCount
     }
 
     private fun String.toDoubleDefault(default: Double): Double = this.toDoubleOrNull() ?: default

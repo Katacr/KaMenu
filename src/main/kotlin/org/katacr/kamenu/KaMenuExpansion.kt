@@ -8,6 +8,8 @@ import org.bukkit.OfflinePlayer
  * - %kamenu_data_key% - 获取玩家数据
  * - %kamenu_gdata_key% - 获取全局数据
  * - %kamenu_meta_key% - 获取玩家元数据（内存缓存）
+ * - %kamenu_hasstockitem_物品名% - 获取玩家背包中指定存储库物品的数量
+ * - %kamenu_hasitem_[mats=材质;lore=描述;model=模型]% - 获取玩家背包中符合条件的物品数量
  */
 class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
 
@@ -46,6 +48,28 @@ class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
                 if (player == null) return null
                 val key = params.substring(5)
                 plugin.metaDataManager.getPlayerMeta(player.uniqueId, key)
+            }
+
+            // 存储库物品数量: %kamenu_hasstockitem_物品名%
+            paramsLower.startsWith("hasstockitem_") -> {
+                if (player == null) return "0"
+                val itemName = params.substring(14)
+                val count = player.player?.let { ConditionUtils.getPlayerStockItemCount(it, itemName) }
+                count.toString()
+            }
+
+            // 背包物品数量: %kamenu_hasitem_[mats=材质;lore=描述;model=模型]%
+            paramsLower.startsWith("hasitem_") -> {
+                if (player == null) return "0"
+                val paramsStr = params.substring(8)
+                // 去除方括号
+                val cleanParams = if (paramsStr.startsWith("[") && paramsStr.endsWith("]")) {
+                    paramsStr.substring(1, paramsStr.length - 1)
+                } else {
+                    paramsStr
+                }
+                val count = player.player?.let { ConditionUtils.getPlayerItemCount(it, cleanParams) }
+                count.toString()
             }
 
             else -> null
