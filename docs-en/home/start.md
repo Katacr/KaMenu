@@ -14,14 +14,16 @@ This guide will help you quickly install and configure the KaMenu plugin.
 | Database | SQLite (default), MySQL 5.7+ |
 
 {% hint style="info" %}
-**Version Feature Support**:
+**Version Feature Support**: 
+
 - ✅ Paper 1.21.7+: Full basic functionality
 - ✨ Paper 1.21.8+: Recommended — more stable API
 - 🎨 Paper 1.21.9+: Full features (sprite item icons, player head avatars, and more)
 {% endhint %}
 
 {% hint style="warning" %}
-KaMenu depends on the Paper Dialog API and does **not support**:
+KaMenu depends on the Paper Dialog API and does **not support**: 
+
 - Paper 1.21.6 or below (API not fully implemented)
 - Spigot, CraftBukkit, or other non-Paper server software
 
