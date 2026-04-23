@@ -111,6 +111,38 @@ object MenuUI {
     }
 
     /**
+     * 将简化的十六进制颜色代码转换为 MiniMessage 标签
+     * &#FF4444你好 → <color:#FF4444>你好
+     * @param text 包含简化十六进制颜色代码的文本
+     * @return 转换后的文本
+     */
+    private fun convertHexToMiniMessage(text: String): String {
+        // 匹配 &#RRGGBB 或 &#RRGGBBAA 格式（可选的透明度）
+        val hexPattern = Regex("&#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?")
+        return text.replace(hexPattern) { matchResult ->
+            val color = matchResult.groupValues[1].uppercase()
+            "<color:#$color>"
+        }
+    }
+
+    /**
+     * 将简化的物品图标语法转换为 MiniMessage sprite 标签
+     * &item:[diamond] → <sprite:items:item/diamond>
+     * &item:[stone] → <sprite:blocks:block/stone>
+     * &item:[DiamOnd] → <sprite:items:item/diamond>
+     * @param text 包含简化物品图标语法的文本
+     * @return 转换后的文本
+     */
+    private fun convertItemSpriteToMiniMessage(text: String): String {
+        // 匹配 &item:[材质名称] 格式，使用 [] 包裹以支持任意长度的枚举名
+        val itemPattern = Regex("&item:\\[([^\\]]+)\\]")
+        return text.replace(itemPattern) { matchResult ->
+            val materialName = matchResult.groupValues[1]
+            MaterialUtils.getSpriteTag(materialName) ?: matchResult.value
+        }
+    }
+
+    /**
      * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）
      * 如果文本包含 MiniMessage 标签，则使用 MiniMessage 解析以支持所有高级特性（点击、悬停等）
      * 否则使用 Legacy 颜色代码解析
@@ -121,26 +153,35 @@ object MenuUI {
     fun parseText(text: String?): Component {
         if (text == null) return Component.empty()
 
+        // 1. 先将简化的十六进制颜色代码转换为 MiniMessage 标签
+        // &#FF4444你好 → <color:FF4444>你好
+        var convertedText = convertHexToMiniMessage(text)
+
+        // 2. 将简化的物品图标语法转换为 MiniMessage sprite 标签
+        // &item:diamond → <sprite:items:item/diamond>
+        // &item:stone → <sprite:blocks:block/stone>
+        convertedText = convertItemSpriteToMiniMessage(convertedText)
+
         // 检测是否包含 MiniMessage 标签（<...>，排除 <text=...> 自定义格式）
         // MiniMessage 标签特征：尖括号包裹的字母、冒号、渐变等
-        val hasMiniMessageTags = text.contains(Regex("<[a-z_]+(?:[:][^>]*)?>", RegexOption.IGNORE_CASE))
+        val hasMiniMessageTags = convertedText.contains(Regex("<[a-z_]+(?:[:][^>]*)?>", RegexOption.IGNORE_CASE))
 
         return if (hasMiniMessageTags) {
             // 检测是否包含 Legacy 颜色代码
-            val hasLegacyCodes = text.contains(Regex("[&§][0-9a-fA-FlmnoOrkLKMNO]"))
+            val hasLegacyCodes = convertedText.contains(Regex("[&§][0-9a-fA-FlmnoOrkLKMNO]"))
             
             val textToParse = if (hasLegacyCodes) {
                 // 将 Legacy 颜色代码转换为 MiniMessage 标签
-                convertLegacyToMiniMessage(text)
+                convertLegacyToMiniMessage(convertedText)
             } else {
-                text
+                convertedText
             }
             
             // 使用 MiniMessage 解析，保留所有高级特性（点击、悬停、渐变等）
             miniMessage(textToParse)
         } else {
             // 使用 Legacy 颜色代码解析
-            color(text)
+            color(convertedText)
         }
     }
 

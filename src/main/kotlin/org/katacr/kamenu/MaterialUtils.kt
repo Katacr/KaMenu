@@ -52,4 +52,52 @@ object MaterialUtils {
             .replace(Regex("_+"), "_")            // 合并多个下划线
             .trim()                               // 去除首尾空白
     }
+
+    /**
+     * 获取材质对应的 MiniMessage sprite 标签
+     * 自动判断材质是方块还是物品
+     *
+     * 示例：
+     * - "stone" -> <sprite:blocks:block/stone>
+     * - "diamond" -> <sprite:items:item/diamond>
+     * - "diamond_sword" -> <sprite:items:item/diamond_sword>
+     *
+     * @param materialName 材质名称
+     * @return MiniMessage sprite 标签，如果材质不存在则返回 null
+     */
+    fun getSpriteTag(materialName: String): String? {
+        val material = matchMaterial(materialName) ?: return null
+
+        // MiniMessage sprite 标签需要小写
+        val key = material.key.value().lowercase()
+        return if (material.isBlock) {
+            "<sprite:blocks:block/$key>"
+        } else {
+            "<sprite:items:item/$key>"
+        }
+    }
+
+    /**
+     * 规范化材质名称为小写格式
+     * 用于 MiniMessage 标签等需要小写的场景
+     * 支持以下格式：
+     * - 标准格式: DIAMOND_SWORD
+     * - 小写: diamond_sword
+     * - 混合大小写: DiAMond swORd
+     * - 短杠: Diamond-Sword
+     * - 空格: diamond sword
+     * - 下划线: diamond_sword
+     *
+     * 示例：
+     * - "diamond_sword" -> diamond_sword
+     * - "Diamond_Sword" -> diamond_sword
+     * - "Diamond-Sword" -> diamond_sword
+     * - "DIAMOND SWORD" -> diamond_sword
+     *
+     * @param materialName 材质名称（各种格式）
+     * @return 规范化后的小写材质名称
+     */
+    fun normalizeToLowerCase(materialName: String): String {
+        return normalizeMaterialName(materialName).lowercase()
+    }
 }
