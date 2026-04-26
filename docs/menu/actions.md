@@ -72,7 +72,7 @@ Bottom:
 - 'tell: 大家好！{player: *}'
 
 # 3. 使用条件选择（PAPI 变量）
-- 'tell: 欢迎管理员！{player: %player_is_op%}'
+- 'tell: 欢迎管理员！{player: %player_is_op% == true}'
 - 'tell: 达到10级的玩家：奖励已发送！{player: %player_level% >= 10}'
 
 # 4. 复杂条件
@@ -1141,7 +1141,7 @@ Events:
       - 'sound: ENTITY_PLAYER_LEVELUP'
 
     vip_check:
-      - condition: '{permission:essentials.vip} == true'
+      - condition: 'hasPerm.essentials.vip'
         allow:
           - 'tell: &aVIP 专属欢迎！'
           - 'sound: ENTITY_EXPERIENCE_ORB_PICKUP'
@@ -1187,7 +1187,7 @@ Bottom:
 
 1. **异步执行**：`actions` 动作在异步线程中执行，不会阻塞主线程
 2. **支持条件判断**：引用的动作列表中可以使用 `condition` 进行条件分支
-3. **变量支持**：动作列表中支持所有 KaMenu 变量（`{data:xxx}`, `{permission:xxx}` 等）
+3. **变量支持**：动作列表中支持所有 KaMenu 变量（`{data:xxx}`, `{gdata:xxx}` 等）
 4. **复用代码**：避免在多个按钮中重复定义相同的动作序列
 
 **错误处理：**

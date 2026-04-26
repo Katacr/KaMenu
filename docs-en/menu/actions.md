@@ -72,7 +72,7 @@ All actions support a target selector to specify which player(s) the action affe
 - 'tell: Hello everyone! {player: *}'
 
 # 3. Use conditional selection (PAPI variables)
-- 'tell: Welcome admin! {player: %player_is_op%}'
+- 'tell: Welcome admin! {player: %player_is_op% == true}'
 - 'tell: Players at level 10+: Rewards have been sent! {player: %player_level% >= 10}'
 
 # 4. Complex conditions
@@ -1140,7 +1140,7 @@ Events:
       - 'sound: ENTITY_PLAYER_LEVELUP'
 
     vip_check:
-      - condition: '{permission:essentials.vip} == true'
+      - condition: 'hasPerm.essentials.vip'
         allow:
           - 'tell: &aVIP exclusive welcome!'
           - 'sound: ENTITY_EXPERIENCE_ORB_PICKUP'
@@ -1186,7 +1186,7 @@ Bottom:
 
 1. **Async execution**: `actions` action executes in an async thread, won't block main thread
 2. **Condition support**: The referenced action list can use `condition` for conditional branching
-3. **Variable support**: All KaMenu variables are supported in action lists (`{data:xxx}`, `{permission:xxx}`, etc.)
+3. **Variable support**: All KaMenu variables are supported in action lists (`{data:xxx}`, `{gdata:xxx}`, etc.)
 4. **Code reuse**: Avoid redefining the same action sequence in multiple buttons
 
 **Error Handling:**
