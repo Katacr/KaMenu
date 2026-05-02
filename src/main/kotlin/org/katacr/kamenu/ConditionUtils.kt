@@ -7,6 +7,26 @@ import org.bukkit.entity.Player
 /**
  * 条件判断工具类
  * 支持复杂的逻辑表达式、PAPI 变量和多种比较运算符
+ *
+ * 核心功能：
+ * 1. 变量解析 - resolveVariables() 解析 {data:}, {gdata:}, {meta:}, PAPI 变量
+ * 2. 条件检查 - checkCondition() 检查条件是否满足
+ * 3. 条件值获取 - getConditionString/OrList/List 系列方法从条件Map中获取值，支持多层嵌套
+ * 4. 配置读取 - get() 系列方法从 ConfigurationSection 读取并解析变量
+ *
+ * 嵌套条件支持示例：
+ * ```
+ * tooltip:
+ *   - condition: '{data:sign_day} >= 1'
+ *     allow: '&7已领取'
+ *     deny:
+ *       - condition: "{data:last_date} == %server_time%"
+         allow:
+           - condition: 'hasPerm.admin'
+             allow: '&c管理员今日已签到'
+             deny: '&c玩家今日已签到'
+         deny: '&a可领取奖励'
+ * ```
  */
 object ConditionUtils {
     private var languageManager: LanguageManager? = null
@@ -31,8 +51,11 @@ object ConditionUtils {
         plugin = kamenu
     }
 
+    // ==================== 核心：变量解析 ====================
+
     /**
-     * 解析变量（PAPI + 内置变量）
+     * 解析所有变量（PAPI + 内置变量）
+     * 支持：{data:key}, {gdata:key}, {meta:key}, %papi_variable%
      * @param player 玩家对象
      * @param text 原始文本
      * @return 解析后的文本
@@ -40,20 +63,20 @@ object ConditionUtils {
     fun resolveVariables(player: Player, text: String): String {
         var result = text
 
-        // 1. 解析内置变量 {data:key}、{gdata:key} 和 {meta:key}
+        // 1. 解析内置变量
         if (plugin != null) {
-            result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
-                val key = matchResult.groupValues[1]
+            result = result.replace(Regex("\\{data:([^}]+)}")) { match ->
+                val key = match.groupValues[1]
                 plugin!!.databaseManager.getPlayerData(player.uniqueId, key)
                     ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
             }
-            result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
-                val key = matchResult.groupValues[1]
+            result = result.replace(Regex("\\{gdata:([^}]+)}")) { match ->
+                val key = match.groupValues[1]
                 plugin!!.databaseManager.getGlobalData(key)
                     ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
             }
-            result = result.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
-                val key = matchResult.groupValues[1]
+            result = result.replace(Regex("\\{meta:([^}]+)}")) { match ->
+                val key = match.groupValues[1]
                 plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
             }
         }
@@ -71,6 +94,41 @@ object ConditionUtils {
     }
 
     /**
+     * 解析条件中的变量（供内部使用）
+     */
+    private fun resolveConditionVariables(player: Player, condition: String): String {
+        var result = condition
+
+        if (plugin != null) {
+            result = result.replace(Regex("\\{data:([^}]+)}")) { match ->
+                val key = match.groupValues[1]
+                plugin!!.databaseManager.getPlayerData(player.uniqueId, key) ?: "null"
+            }
+            result = result.replace(Regex("\\{gdata:([^}]+)}")) { match ->
+                val key = match.groupValues[1]
+                plugin!!.databaseManager.getGlobalData(key) ?: "null"
+            }
+            result = result.replace(Regex("\\{meta:([^}]+)}")) { match ->
+                val key = match.groupValues[1]
+                plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
+            }
+        }
+
+        // 解析 PAPI 变量
+        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            try {
+                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
+            } catch (_: Exception) {
+                // PAPI 解析失败，忽略
+            }
+        }
+
+        return result
+    }
+
+    // ==================== 核心：条件检查 ====================
+
+    /**
      * 解析并检查条件字符串 (支持 &&, || 复合条件)
      * 例如: "%player_is_op% == true && %player_level% >= 10"
      */
@@ -79,147 +137,68 @@ object ConditionUtils {
             return true
         }
 
-        var processed = condition
-
-        // 1. 先解析内置变量 {data:key}、{gdata:key} 和 {meta:key}
-        if (plugin != null) {
-            processed = processed.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
-                val key = matchResult.groupValues[1]
-                plugin!!.databaseManager.getPlayerData(player.uniqueId, key) ?: "null"
-            }
-            processed = processed.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
-                val key = matchResult.groupValues[1]
-                plugin!!.databaseManager.getGlobalData(key) ?: "null"
-            }
-            processed = processed.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
-                val key = matchResult.groupValues[1]
-                plugin!!.metaDataManager.getPlayerMeta(player.uniqueId, key)
-            }
-        }
-
-        // 2. 进行 PAPI 变量替换
-        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            try {
-                processed = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, processed)
-            } catch (_: Exception) {
-                // PAPI 解析失败，忽略
-            }
-        }
-
-        // 解析逻辑表达式（支持 && 和 ||）
+        val processed = resolveConditionVariables(player, condition)
         return parseLogicalExpression(player, processed)
     }
 
+    // ==================== 核心：条件值获取 ====================
+
     /**
-     * 获取条件值（支持条件判断的单值返回）
+     * 从条件 Map 中获取值
+     * @param conditionMap 条件 Map，包含 condition、allow、deny 键
+     * @param player 玩家对象
+     * @param allowType allow 值的类型：STRING（字符串）、LIST（列表）、AUTO（自动检测）
+     * @param denyType deny 值的类型：同上
+     * @param defaultValue 默认值
+     * @return 条件满足时的值，否则返回默认值
+     */
+    enum class ValueType { STRING, LIST, AUTO }
+
+    @Suppress("UNUSED_PARAMETER")
+    private fun <T> getConditionValue(
+        conditionMap: Map<*, *>,
+        player: Player,
+        allowType: ValueType,
+        denyType: ValueType,
+        defaultValue: T,
+        converter: (Any, Player) -> T
+    ): T {
+        val condition = conditionMap["condition"] as? String ?: return defaultValue
+        val allow = conditionMap["allow"]
+        val deny = conditionMap["deny"]
+
+        val result = if (checkCondition(player, condition)) {
+            if (allow != null) converter(allow, player) else defaultValue
+        } else {
+            if (deny != null) converter(deny, player) else defaultValue
+        }
+
+        return result ?: defaultValue
+    }
+
+    /**
+     * 获取条件值（allow/deny 只支持字符串）
      * 格式:
      *   - condition: "%player_is_op% == true"
      *     allow: "管理员专属文本"
      *     deny: "普通玩家文本"
-     *
-     * @param player 玩家对象
-     * @param conditionMap 条件映射，包含 condition、allow、deny 键
-     * @return 条件满足时的 allow 值，否则返回 deny 值
      */
-    fun getConditionalValue(
+    fun getConditionString(
         player: Player,
         conditionMap: Map<*, *>,
         defaultValue: String = ""
     ): String {
-        val condition = conditionMap["condition"] as? String ?: return defaultValue
-        val allow = conditionMap["allow"] as? String ?: defaultValue
-        val deny = conditionMap["deny"] as? String ?: defaultValue
-
-        // 检查条件并返回相应的值
-        val result = if (checkCondition(player, condition)) {
-            allow
-        } else {
-            deny
+        return getConditionValue(
+            conditionMap, player,
+            ValueType.STRING, ValueType.STRING,
+            defaultValue
+        ) { value, _ ->
+            (value as? String)?.replace("\\n", "\n") ?: defaultValue
         }
-
-        // 处理 \n 换行符
-        return result.replace("\\n", "\n")
     }
 
     /**
-     * 从列表中获取条件值（支持多个条件判断）
-     * 遍历条件列表，返回第一个匹配条件的 meet 值，否则返回默认值
-     *
-     * @param player 玩家对象
-     * @param conditions 条件列表
-     * @param defaultValue 默认值
-     * @return 第一个匹配条件的 meet 值，否则返回默认值
-     */
-    fun getConditionalValueFromList(
-        player: Player,
-        conditions: List<*>,
-        defaultValue: String = ""
-    ): String {
-        for (condition in conditions) {
-            if (condition is Map<*, *>) {
-                val result = getConditionalValue(player, condition)
-                if (result.isNotEmpty()) {
-                    return result
-                }
-            }
-        }
-        return defaultValue
-    }
-
-    /**
-     * 获取条件值（支持条件判断，返回字符串或字符串列表）
-     * allow 和 deny 支持：
-     *   - 字符串：支持 \n 换行符
-     *   - 列表：多个字符串会被 \n 连接
-     *
-     * @param player 玩家对象
-     * @param conditionMap 条件映射，包含 condition、allow、deny 键
-     * @return 条件满足时的 allow 值，否则返回 deny 值
-     */
-    fun getConditionalValueOrList(
-        player: Player,
-        conditionMap: Map<*, *>,
-        defaultValue: String = ""
-    ): String {
-        // 优先尝试使用 getConditionalList（支持列表模式）
-        val list = getConditionalList(player, conditionMap, emptyList())
-        if (list.isNotEmpty()) {
-            // 处理每个字符串中的 \n 换行符
-            val processedList = list.map { it.replace("\\n", "\n") }
-            return processedList.joinToString("\n")
-        }
-
-        // 回退到 getConditionalValue（支持字符串模式）
-        return getConditionalValue(player, conditionMap, defaultValue)
-    }
-
-    /**
-     * 从列表中获取条件值（支持多个条件判断，allow/deny 支持列表）
-     * 遍历条件列表，返回第一个匹配条件的值，否则返回默认值
-     *
-     * @param player 玩家对象
-     * @param conditions 条件列表
-     * @param defaultValue 默认值
-     * @return 第一个匹配条件的值，否则返回默认值
-     */
-    fun getConditionalValueOrListFromList(
-        player: Player,
-        conditions: List<*>,
-        defaultValue: String = ""
-    ): String {
-        for (condition in conditions) {
-            if (condition is Map<*, *>) {
-                val result = getConditionalValueOrList(player, condition)
-                if (result.isNotEmpty()) {
-                    return result
-                }
-            }
-        }
-        return defaultValue
-    }
-
-    /**
-     * 获取条件列表值（支持条件判断的列表返回）
+     * 获取条件列表值（allow/deny 支持列表或嵌套条件判断）
      * 格式:
      *   - condition: "%player_is_op% == true"
      *     allow:
@@ -228,52 +207,406 @@ object ConditionUtils {
      *     deny:
      *       - '普通玩家行1'
      *       - '普通玩家行2'
-     *
-     * @param player 玩家对象
-     * @param conditionMap 条件映射，包含 condition、allow、deny 键
-     * @return 条件满足时的 allow 列表，否则返回 deny 列表
      */
-    fun getConditionalList(
+    fun getConditionList(
         player: Player,
         conditionMap: Map<*, *>,
         defaultValue: List<String> = emptyList()
     ): List<String> {
-        val condition = conditionMap["condition"] as? String ?: return defaultValue
-        val allow = (conditionMap["allow"] as? List<*>)?.filterIsInstance<String>() ?: defaultValue
-        val deny = (conditionMap["deny"] as? List<*>)?.filterIsInstance<String>() ?: defaultValue
-
-        // 检查条件并返回相应的列表
-        return if (checkCondition(player, condition)) {
-            allow
-        } else {
-            deny
+        return getConditionValue(
+            conditionMap, player,
+            ValueType.LIST, ValueType.LIST,
+            defaultValue
+        ) { value, p ->
+            resolveConditionValueToList(p, value, defaultValue)
         }
     }
 
     /**
-     * 从列表中获取条件列表值（支持多个条件判断）
-     * 遍历条件列表，返回第一个匹配条件的 allow 列表，否则返回默认列表
-     *
-     * @param player 玩家对象
-     * @param conditions 条件列表
-     * @param defaultValue 默认列表
-     * @return 第一个匹配条件的 allow 列表，否则返回默认列表
+     * 递归解析条件值为列表
+     * 支持：字符串、条件判断（Map）、条件判断列表（List）
+     * 字符串会被包装为单元素列表
      */
-    fun getConditionalListFromList(
+    private fun resolveConditionValueToList(player: Player, value: Any?, defaultValue: List<String>): List<String> {
+        return when (value) {
+            is String -> listOf(value)
+            is Map<*, *> -> {
+                // 检查是否为条件判断
+                if (value.containsKey("condition")) {
+                    // 递归处理嵌套条件判断
+                    getConditionList(player, value, defaultValue)
+                } else {
+                    defaultValue
+                }
+            }
+            is List<*> -> {
+                // 检查是否为条件判断列表（包含 Map 元素）
+                if (value.any { it is Map<*, *> }) {
+                    getFirstConditionList(player, value, defaultValue)
+                } else {
+                    // 普通字符串列表
+                    value.filterIsInstance<String>()
+                }
+            }
+            else -> defaultValue
+        }
+    }
+
+    /**
+     * 获取条件值（allow/deny 支持字符串、列表或嵌套条件判断，自动检测）
+     * 列表会被 \n 连接成字符串
+     * 支持多层嵌套的条件判断
+     */
+    fun getConditionStringOrList(
         player: Player,
+        conditionMap: Map<*, *>,
+        defaultValue: String = ""
+    ): String {
+        return getConditionValue(
+            conditionMap, player,
+            ValueType.AUTO, ValueType.AUTO,
+            defaultValue
+        ) { value, p ->
+            resolveConditionValueToString(p, value, defaultValue)
+        }
+    }
+
+    /**
+     * 递归解析条件值为字符串
+     * 支持：字符串、条件判断（Map）、条件判断列表（List）
+     */
+    private fun resolveConditionValueToString(player: Player, value: Any?, defaultValue: String): String {
+        return when (value) {
+            is String -> value.replace("\\n", "\n")
+            is Map<*, *> -> {
+                // 检查是否为条件判断
+                if (value.containsKey("condition")) {
+                    // 递归处理嵌套条件判断
+                    getConditionStringOrList(player, value, defaultValue)
+                } else {
+                    defaultValue
+                }
+            }
+            is List<*> -> {
+                // 检查是否为条件判断列表（包含 Map 元素）
+                if (value.any { it is Map<*, *> }) {
+                    getFirstConditionStringOrList(player, value, defaultValue)
+                } else {
+                    // 普通字符串列表
+                    val list = value.filterIsInstance<String>()
+                    if (list.isNotEmpty()) {
+                        list.joinToString("\n") { it.replace("\\n", "\n") }
+                    } else defaultValue
+                }
+            }
+            else -> defaultValue
+        }
+    }
+
+    /**
+     * 从条件列表中获取第一个匹配条件的值
+     * 遍历条件列表，返回第一个非空结果
+     */
+    private fun <T> getFirstMatch(
         conditions: List<*>,
-        defaultValue: List<String> = emptyList()
-    ): List<String> {
+        player: Player,
+        defaultValue: T,
+        getter: (Player, Map<*, *>, T) -> T
+    ): T {
         for (condition in conditions) {
             if (condition is Map<*, *>) {
-                val result = getConditionalList(player, condition)
-                if (result.isNotEmpty()) {
+                val result = getter(player, condition, defaultValue)
+                val isNonEmpty = when {
+                    result === defaultValue -> false
+                    result is String -> result.isNotEmpty()
+                    result is Collection<*> -> result.isNotEmpty()
+                    result != null -> true
+                    else -> false
+                }
+                if (isNonEmpty) {
+                    @Suppress("UNCHECKED_CAST")
                     return result
                 }
             }
         }
         return defaultValue
     }
+
+    /**
+     * 从条件列表中获取字符串值
+     */
+    fun getFirstConditionString(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: String = ""
+    ): String = getFirstMatch(conditions, player, defaultValue) { p, map, default ->
+        getConditionString(p, map, default)
+    }
+
+    /**
+     * 从条件列表中获取列表值
+     */
+    fun getFirstConditionList(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: List<String> = emptyList()
+    ): List<String> = getFirstMatch(conditions, player, defaultValue) { p, map, default ->
+        getConditionList(p, map, default)
+    }
+
+    /**
+     * 从条件列表中获取字符串或列表值
+     */
+    fun getFirstConditionStringOrList(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: String = ""
+    ): String = getFirstMatch(conditions, player, defaultValue) { p, map, default ->
+        getConditionStringOrList(p, map, default)
+    }
+
+    // ==================== 核心：从 ConfigurationSection 读取 ====================
+
+    /**
+     * 从 ConfigurationSection 获取值（统一入口）
+     * 支持：
+     * 1. 简单值：直接返回并解析变量
+     * 2. 列表值：如果是条件判断格式（第一个元素是 Map），则遍历条件
+     * 3. 列表值：如果是普通字符串列表，则连接后返回
+     *
+     * @param player 玩家对象
+     * @param section 配置节
+     * @param path 配置路径
+     * @param defaultValue 默认值
+     * @param typeConverter 类型转换器
+     * @return 解析后的值
+     */
+    private fun <T> getValue(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: T,
+        typeConverter: (String, Player) -> T
+    ): T {
+        if (section.isList(path)) {
+            val list = section.getList(path) ?: return defaultValue
+            val firstItem = list.firstOrNull()
+
+            // 检查是否为条件判断格式
+            if (firstItem is Map<*, *>) {
+                val result = getFirstConditionStringOrList(player, list, "")
+                return typeConverter(result.ifEmpty { defaultValue.toString() }, player)
+            } else {
+                // 普通字符串列表，连接后返回
+                val stringList = list.filterIsInstance<String>()
+                if (stringList.isNotEmpty()) {
+                    return typeConverter(stringList.joinToString("\n"), player)
+                }
+                return defaultValue
+            }
+        } else {
+            // 简单字符串值
+            val value = section.getString(path) ?: return defaultValue
+            return typeConverter(value, player)
+        }
+    }
+
+    /**
+     * 获取字符串值
+     */
+    fun getString(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: String = ""
+    ): String = getValue(player, section, path, defaultValue) { value, _ ->
+        value.replace("\\n", "\n")
+    }
+
+    /**
+     * 获取整数
+     */
+    fun getInt(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: Int = 0
+    ): Int = getValue(player, section, path, defaultValue) { value, _ ->
+        resolveVariables(player, value).toIntOrNull() ?: defaultValue
+    }
+
+    /**
+     * 获取双精度浮点数
+     */
+    fun getDouble(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: Double = 0.0
+    ): Double = getValue(player, section, path, defaultValue) { value, _ ->
+        resolveVariables(player, value).toDoubleOrNull() ?: defaultValue
+    }
+
+    /**
+     * 获取布尔值
+     */
+    fun getBoolean(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: Boolean = false
+    ): Boolean = getValue(player, section, path, defaultValue) { value, _ ->
+        resolveVariables(player, value).toBooleanStrictOrNull() ?: defaultValue
+    }
+
+    /**
+     * 获取字符串列表
+     * 支持：
+     * 1. 字符串类型：将单个字符串包装为列表
+     * 2. 列表类型：条件判断格式或普通字符串列表
+     */
+    fun getStringList(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: List<String> = emptyList()
+    ): List<String> {
+        if (section.isList(path)) {
+            val list = section.getList(path) ?: return defaultValue
+            val firstItem = list.firstOrNull()
+
+            if (firstItem is Map<*, *>) {
+                // 条件判断格式，支持嵌套条件
+                val conditions = list.filterIsInstance<Map<*, *>>()
+                return getFirstConditionList(player, conditions, defaultValue).map { resolveVariables(player, it) }
+            } else {
+                // 普通字符串列表
+                return list.filterIsInstance<String>().map { resolveVariables(player, it) }
+            }
+        } else {
+            // 非列表类型，尝试获取字符串值并转换为列表
+            val value = section.getString(path)
+            if (value != null && value.isNotEmpty()) {
+                return listOf(resolveVariables(player, value))
+            }
+            return defaultValue
+        }
+    }
+
+    /**
+     * 获取类型值（处理 'none'）
+     */
+    fun getType(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: String = ""
+    ): String {
+        val value = getString(player, section, path, defaultValue)
+        return value.ifEmpty { "none" }
+    }
+
+    // ==================== 向后兼容别名 ====================
+
+    @Deprecated("使用 getConditionString 代替", ReplaceWith("getConditionString(player, conditionMap, defaultValue)"))
+    fun getConditionalValue(
+        player: Player,
+        conditionMap: Map<*, *>,
+        defaultValue: String = ""
+    ): String = getConditionString(player, conditionMap, defaultValue)
+
+    @Deprecated("使用 getFirstConditionString 代替", ReplaceWith("getFirstConditionString(player, conditions, defaultValue)"))
+    fun getConditionalValueFromList(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: String = ""
+    ): String = getFirstConditionString(player, conditions, defaultValue)
+
+    @Deprecated("使用 getConditionStringOrList 代替", ReplaceWith("getConditionStringOrList(player, conditionMap, defaultValue)"))
+    fun getConditionalValueOrList(
+        player: Player,
+        conditionMap: Map<*, *>,
+        defaultValue: String = ""
+    ): String = getConditionStringOrList(player, conditionMap, defaultValue)
+
+    @Deprecated("使用 getFirstConditionStringOrList 代替", ReplaceWith("getFirstConditionStringOrList(player, conditions, defaultValue)"))
+    fun getConditionalValueOrListFromList(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: String = ""
+    ): String = getFirstConditionStringOrList(player, conditions, defaultValue)
+
+    @Deprecated("使用 getConditionList 代替", ReplaceWith("getConditionList(player, conditionMap, defaultValue)"))
+    fun getConditionalList(
+        player: Player,
+        conditionMap: Map<*, *>,
+        defaultValue: List<String> = emptyList()
+    ): List<String> = getConditionList(player, conditionMap, defaultValue)
+
+    @Deprecated("使用 getFirstConditionList 代替", ReplaceWith("getFirstConditionList(player, conditions, defaultValue)"))
+    fun getConditionalListFromList(
+        player: Player,
+        conditions: List<*>,
+        defaultValue: List<String> = emptyList()
+    ): List<String> = getFirstConditionList(player, conditions, defaultValue)
+
+    @Deprecated("使用 getString 代替", ReplaceWith("getString(player, section, path, defaultValue)"))
+    fun getConditionalValueFromSection(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: String = ""
+    ): String = getString(player, section, path, defaultValue)
+
+    @Deprecated("使用 getString 代替", ReplaceWith("getString(player, section, path, defaultValue)"))
+    fun getConditionalValueOrListFromSection(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: String = ""
+    ): String = getString(player, section, path, defaultValue)
+
+    @Deprecated("使用 getInt 代替", ReplaceWith("getInt(player, section, path, defaultValue)"))
+    fun getConditionalIntFromSection(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: Int = 0
+    ): Int = getInt(player, section, path, defaultValue)
+
+    @Deprecated("使用 getDouble 代替", ReplaceWith("getDouble(player, section, path, defaultValue)"))
+    fun getConditionalDoubleFromSection(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: Double = 0.0
+    ): Double = getDouble(player, section, path, defaultValue)
+
+    @Deprecated("使用 getBoolean 代替", ReplaceWith("getBoolean(player, section, path, defaultValue)"))
+    fun getConditionalBooleanFromSection(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: Boolean = false
+    ): Boolean = getBoolean(player, section, path, defaultValue)
+
+    @Deprecated("使用 getStringList 代替", ReplaceWith("getStringList(player, section, path, defaultValue)"))
+    fun getConditionalListFromSection(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: List<String> = emptyList()
+    ): List<String> = getStringList(player, section, path, defaultValue)
+
+    @Deprecated("使用 getType 代替", ReplaceWith("getType(player, section, path, defaultValue)"))
+    fun getConditionalTypeFromSection(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        defaultValue: String = ""
+    ): String = getType(player, section, path, defaultValue)
+
+    // ==================== 条件表达式解析（内部使用） ====================
 
     /**
      * 递归解析逻辑表达式（支持 && 和 ||）
@@ -285,12 +618,10 @@ object ConditionUtils {
         // 1. 先检查是否包含 ||（优先级最低）
         val orParts = splitByOperator(trimmed, "||")
         if (orParts.size > 1) {
-            // 如果有 ||，先解析第一部分，如果为 true 则直接返回 true（短路求值）
             val firstPart = orParts[0]
             val firstResult = parseLogicalExpression(player, firstPart)
             if (firstResult) return true // || 短路求值
 
-            // 否则继续解析剩余部分
             val remaining = trimmed.substring(firstPart.length).trim().removePrefix("||").trim()
             return parseLogicalExpression(player, remaining)
         }
@@ -298,12 +629,10 @@ object ConditionUtils {
         // 2. 再检查是否包含 &&（优先级高于 ||）
         val andParts = splitByOperator(trimmed, "&&")
         if (andParts.size > 1) {
-            // 如果有 &&，先解析第一部分，如果为 false 则直接返回 false（短路求值）
             val firstPart = andParts[0]
             val firstResult = parseLogicalExpression(player, firstPart)
             if (!firstResult) return false // && 短路求值
 
-            // 否则继续解析剩余部分
             val remaining = trimmed.substring(firstPart.length).trim().removePrefix("&&").trim()
             return parseLogicalExpression(player, remaining)
         }
@@ -328,12 +657,9 @@ object ConditionUtils {
 
             when {
                 char == '\\' -> {
-                    // 转义字符，跳过下一个字符
                     current.append(char)
                     i++
-                    if (i < expression.length) {
-                        current.append(expression[i])
-                    }
+                    if (i < expression.length) current.append(expression[i])
                 }
                 char == '\'' && !inDoubleQuote -> {
                     inSingleQuote = !inSingleQuote
@@ -352,17 +678,14 @@ object ConditionUtils {
                     current.append(char)
                 }
                 parenDepth > 0 || inSingleQuote || inDoubleQuote -> {
-                    // 括号内、引号内不分割
                     current.append(char)
                 }
                 else -> {
-                    // 检查是否匹配运算符
                     if (i + operator.length <= expression.length &&
                         expression.substring(i, i + operator.length) == operator) {
-                        // 匹配到运算符
                         result.add(current.toString().trim())
                         current = StringBuilder()
-                        i += operator.length - 1 // 跳过运算符
+                        i += operator.length - 1
                     } else {
                         current.append(char)
                     }
@@ -371,21 +694,17 @@ object ConditionUtils {
             i++
         }
 
-        if (current.isNotEmpty()) {
-            result.add(current.toString().trim())
-        }
-
+        if (current.isNotEmpty()) result.add(current.toString().trim())
         return result
     }
 
     /**
-     * 评估单个条件（如 "5 >= 3" 或 "method.value"）
+     * 评估单个条件
      */
     private fun evaluateSingleCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
 
         // 处理内置条件方法 method.value 格式
-        // 检查是否包含 . 且不在引号内
         if (trimmed.contains(".") && !trimmed.matches(Regex("\".*\".*\\..*"))) {
             try {
                 return evaluateBuiltinCondition(player, trimmed)
@@ -394,37 +713,17 @@ object ConditionUtils {
             }
         }
 
-        // 如果是括号包裹的表达式，去掉括号后递归解析
+        // 处理括号包裹的表达式
         if (trimmed.startsWith("(") && trimmed.endsWith(")") && !trimmed.matches(Regex("\".*\".*\\(.*\\)"))) {
             val inner = trimmed.substring(1, trimmed.length - 1).trim()
-            // 确保括号是成对的（考虑引号）
-            var parenCount = 0
-            var inSingleQuote = false
-            var inDoubleQuote = false
-            var isCompletePair = true
-            for (char in inner) {
-                when (char) {
-                    '\\' -> continue // 跳过转义字符的下一个字符
-                    '\'' if !inDoubleQuote -> inSingleQuote = !inSingleQuote
-                    '"' if !inSingleQuote -> inDoubleQuote = !inDoubleQuote
-                    '(' if !inSingleQuote && !inDoubleQuote -> parenCount++
-                    ')' if !inSingleQuote && !inDoubleQuote -> parenCount--
-                }
-                if (parenCount < 0) {
-                    isCompletePair = false
-                    break
-                }
-            }
-            if (isCompletePair && parenCount == 0 && !inSingleQuote && !inDoubleQuote) {
+            if (isCompleteParens(inner)) {
                 return parseLogicalExpression(player, inner)
             }
         }
 
         // 匹配比较运算符
         val regex = "(>=|<=|==|!=|>|<)".toRegex()
-        val match = regex.find(trimmed) ?: run {
-            return false
-        }
+        val match = regex.find(trimmed) ?: return false
 
         val op = match.value
         val parts = trimmed.split(op, limit = 2)
@@ -434,67 +733,49 @@ object ConditionUtils {
         return when (op) {
             "==" -> compareEquals(left, right)
             "!=" -> !compareEquals(left, right)
-            ">"  -> left.toDoubleDefault(0.0) > right.toDoubleDefault(0.0)
-            ">=" -> left.toDoubleDefault(0.0) >= right.toDoubleDefault(0.0)
-            "<"  -> left.toDoubleDefault(0.0) < right.toDoubleDefault(0.0)
-            "<=" -> left.toDoubleDefault(0.0) <= right.toDoubleDefault(0.0)
+            ">"  -> (left.toDoubleOrNull() ?: 0.0) > (right.toDoubleOrNull() ?: 0.0)
+            ">=" -> (left.toDoubleOrNull() ?: 0.0) >= (right.toDoubleOrNull() ?: 0.0)
+            "<"  -> (left.toDoubleOrNull() ?: 0.0) < (right.toDoubleOrNull() ?: 0.0)
+            "<=" -> (left.toDoubleOrNull() ?: 0.0) <= (right.toDoubleOrNull() ?: 0.0)
             else -> false
         }
     }
 
-        /**
+    /**
+     * 检查括号是否成对
+     */
+    private fun isCompleteParens(inner: String): Boolean {
+        var parenCount = 0
+        var inSingleQuote = false
+        var inDoubleQuote = false
+        for (char in inner) {
+            when (char) {
+                '\\' -> continue
+                '\'' if !inDoubleQuote -> inSingleQuote = !inSingleQuote
+                '"' if !inSingleQuote -> inDoubleQuote = !inDoubleQuote
+                '(' if !inSingleQuote && !inDoubleQuote -> parenCount++
+                ')' if !inSingleQuote && !inDoubleQuote -> parenCount--
+            }
+            if (parenCount < 0) return false
+        }
+        return parenCount == 0 && !inSingleQuote && !inDoubleQuote
+    }
+
+    /**
      * 解析并执行内置条件方法
-     * 格式: "method.value" 或 "!method.value" 或 "method.\"value\"" 或 "!method.\"value\""
-     * 支持 ! 前缀进行反向判断
-     * 支持使用双引号包裹值以避免特殊字符被误解析
-     * 支持的方法:
-     *   - isNum: 判断是否为数字（整数或小数）
-     *   - isPosNum: 判断是否为正数（大于0）
-     *   - isInt: 判断是否为整数
-     *   - isPosInt: 判断是否为正整数（大于0）
-     *   - hasPerm: 判断玩家是否拥有权限 (value应为权限节点)
-     *   - hasMoney: 判断玩家是否有足够的金币 (value应为金额)
-     *   - hasStockItem: 判断玩家背包中是否有足够数量的指定物品 (格式: 物品名称;数量)
-     *   - hasItem: 判断玩家背包中是否有足够的普通物品 (格式: [mats=材质;amount=数量;lore=描述;model=模型])
-     * @throws NotBuiltinConditionException 如果这不是一个有效的内置条件格式
      */
     private fun evaluateBuiltinCondition(player: Player, condition: String): Boolean {
         val trimmed = condition.trim()
-
-        // 检查是否为反向判断
         val isNegative = trimmed.startsWith("!")
         val conditionWithoutNegation = if (isNegative) trimmed.substring(1).trim() else trimmed
 
-        // 查找第一个点号，但要考虑引号
-        var dotIndex = -1
-        var inQuote = false
-        var i = 0
-        while (i < conditionWithoutNegation.length) {
-            val char = conditionWithoutNegation[i]
-            when (char) {
-                '\\' -> {
-                    // 跳过转义字符的下一个字符
-                    i++
-                }
-                '"' -> {
-                    inQuote = !inQuote
-                }
-                '.' if !inQuote -> {
-                    dotIndex = i
-                    break
-                }
-            }
-            i++
-        }
-
-        if (dotIndex == -1) {
-            throw NotBuiltinConditionException()
-        }
+        val dotIndex = findDotOutsideQuotes(conditionWithoutNegation)
+        if (dotIndex == -1) throw NotBuiltinConditionException()
 
         val method = conditionWithoutNegation.take(dotIndex).trim()
         var value = conditionWithoutNegation.substring(dotIndex + 1).trim()
 
-        // 如果值被双引号包裹，则去掉引号
+        // 去掉双引号
         if (value.startsWith("\"") && value.endsWith("\"") && value.length >= 2) {
             value = value.substring(1, value.length - 1)
         }
@@ -506,226 +787,152 @@ object ConditionUtils {
             "isPosInt" -> value.toIntOrNull()?.let { it > 0 } ?: false
             "hasPerm" -> player.hasPermission(value)
             "hasMoney" -> {
-                val amount = value.toDoubleOrNull()
-                if (amount == null) {
-                    false
-                } else {
-                    checkPlayerMoney(player, amount)
-                }
+                val amount = value.toDoubleOrNull() ?: return false
+                checkPlayerMoney(player, amount)
             }
             "hasStockItem" -> {
-                // 解析参数：物品名称;数量
                 val params = value.split(";", limit = 2)
-                if (params.size != 2) {
-                    false
-                } else {
+                if (params.size != 2) false
+                else {
                     val itemName = params[0].trim()
                     val requiredAmount = params[1].trim().toIntOrNull() ?: 1
-                    checkPlayerStockItem(player, itemName, requiredAmount)
+                    getPlayerStockItemCount(player, itemName) >= requiredAmount
                 }
             }
             "hasItem" -> {
-                // 解析参数：[mats=材质;amount=数量;lore=描述;model=模型]
-                if (!value.startsWith("[") || !value.endsWith("]")) {
-                    false
-                } else {
-                    val paramsStr = value.substring(1, value.length - 1).trim()
-                    checkPlayerHasItem(player, paramsStr)
-                }
+                if (!value.startsWith("[") || !value.endsWith("]")) false
+                else checkPlayerHasItem(player, value.substring(1, value.length - 1).trim())
             }
-            else -> {
-                // 未知方法，说明这不是内置条件，应该按普通比较处理
-                throw NotBuiltinConditionException()
-            }
+            else -> throw NotBuiltinConditionException()
         }
 
-        // 返回判断结果（如果为反向判断则取反）
         return if (isNegative) !result else result
     }
 
     /**
-     * 检查玩家是否有足够的金币
-     * 支持 Vault 和其他经济插件
+     * 在引号外查找点号位置
      */
-    private fun checkPlayerMoney(player: Player, amount: Double): Boolean {
-        // 检查Vault经济插件
-        val economy = Bukkit.getPluginManager().getPlugin("Vault")
-        if (economy != null && economy.isEnabled) {
-            try {
-                val economyProvider = Bukkit.getServicesManager().getRegistration(
-                    net.milkbowl.vault.economy.Economy::class.java
-                )
-                if (economyProvider != null) {
-                    val econ = economyProvider.provider
-                    return econ.getBalance(player) >= amount
-                }
-            } catch (_: Exception) {
-                // Vault 检查失败，忽略
+    private fun findDotOutsideQuotes(str: String): Int {
+        var inQuote = false
+        var i = 0
+        while (i < str.length) {
+            when (str[i]) {
+                '\\' -> i++ // 跳过转义字符
+                '"' -> inQuote = !inQuote
+                '.' if !inQuote -> return i
             }
+            i++
         }
-
-        return false
+        return -1
     }
 
     /**
-     * 检查玩家背包中是否有足够数量的指定物品
-     * @param player 玩家对象
-     * @param itemName 物品名称
-     * @param requiredAmount 需要的数量（用于条件判断）
-     * @return 是否有足够数量的物品（用于条件判断）
+     * 检查玩家是否有足够的金币
      */
-    private fun checkPlayerStockItem(player: Player, itemName: String, requiredAmount: Int): Boolean {
-        return getPlayerStockItemCount(player, itemName) >= requiredAmount
+    private fun checkPlayerMoney(player: Player, amount: Double): Boolean {
+        val economy = Bukkit.getPluginManager().getPlugin("Vault") ?: return false
+        if (!economy.isEnabled) return false
+        return try {
+            val provider = Bukkit.getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy::class.java)
+                ?: return false
+            provider.provider.getBalance(player) >= amount
+        } catch (_: Exception) {
+            false
+        }
     }
+
+    // ==================== 物品检查（供外部使用） ====================
 
     /**
      * 获取玩家背包中指定存储库物品的数量
-     * @param player 玩家对象
-     * @param itemName 物品名称
-     * @return 背包中该物品的数量
      */
     fun getPlayerStockItemCount(player: Player, itemName: String): Int {
-        if (plugin == null) {
-            return 0
-        }
-
-        // 从数据库获取保存的物品模板
+        if (plugin == null) return 0
         val savedItem = plugin!!.itemManager.getItem(itemName) ?: return 0
 
-        // 统计玩家背包中与物品模板相似的数量
         val inventory = player.inventory
         var totalCount = 0
-
-        // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
-        val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
-        allItems.addAll(inventory.storageContents.filterNotNull())
-        allItems.addAll(inventory.armorContents.filterNotNull())
-        allItems.add(inventory.itemInOffHand)
-        allItems.add(inventory.itemInMainHand)
+        val allItems = buildList {
+            addAll(inventory.storageContents.filterNotNull())
+            addAll(inventory.armorContents.filterNotNull())
+            add(inventory.itemInOffHand)
+            add(inventory.itemInMainHand)
+        }
 
         for (item in allItems) {
             if (!item.isEmpty && item.isSimilar(savedItem)) {
                 totalCount += item.amount
             }
         }
-
         return totalCount
     }
 
     /**
-     * 检查玩家背包中是否有足够的普通物品
-     * @param player 玩家对象
-     * @param paramsStr 参数字符串（格式: mats=材质;amount=数量;lore=描述;model=模型）
-     * @return 是否有足够数量的物品（用于条件判断）
+     * 检查玩家背包中是否有足够的物品
      */
     private fun checkPlayerHasItem(player: Player, paramsStr: String): Boolean {
         var requiredAmount = 1
-
-        // 解析参数以获取需要的数量
         paramsStr.split(";").forEach { param ->
             val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                if (key == "amount") {
-                    requiredAmount = value.toIntOrNull() ?: 1
-                }
+            if (parts.size == 2 && parts[0].trim().lowercase() == "amount") {
+                requiredAmount = parts[1].trim().toIntOrNull() ?: 1
             }
         }
-
         return getPlayerItemCount(player, paramsStr) >= requiredAmount
     }
 
     /**
      * 获取玩家背包中符合条件的物品数量
-     * @param player 玩家对象
-     * @param paramsStr 参数字符串（格式: mats=材质;lore=描述;model=模型）
-     * @return 背包中符合条件的物品数量
      */
     fun getPlayerItemCount(player: Player, paramsStr: String): Int {
         var materialName = ""
         var loreText: String? = null
         var itemModel: String? = null
 
-        // 解析参数
         paramsStr.split(";").forEach { param ->
             val parts = param.split("=", limit = 2)
             if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "mats" -> materialName = value
-                    "lore" -> loreText = value
-                    "model" -> itemModel = value
+                when (parts[0].trim().lowercase()) {
+                    "mats" -> materialName = parts[1].trim()
+                    "lore" -> loreText = parts[1].trim()
+                    "model" -> itemModel = parts[1].trim()
                 }
             }
         }
 
-        // 材质是必需的
-        if (materialName.isEmpty()) {
-            return 0
-        }
+        if (materialName.isEmpty()) return 0
+        val material = MaterialUtils.matchMaterial(materialName) ?: return 0
 
-        // 获取材质（使用规范化的材质匹配）
-        val material = MaterialUtils.matchMaterial(materialName)
-        if (material == null) {
-            return 0
-        }
-
-        // 统计玩家背包中符合条件的物品数量
         val inventory = player.inventory
         var totalCount = 0
-
-        // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
-        val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
-        allItems.addAll(inventory.storageContents.filterNotNull())
-        allItems.addAll(inventory.armorContents.filterNotNull())
-        allItems.add(inventory.itemInOffHand)
-        allItems.add(inventory.itemInMainHand)
+        val allItems = buildList {
+            addAll(inventory.storageContents.filterNotNull())
+            addAll(inventory.armorContents.filterNotNull())
+            add(inventory.itemInOffHand)
+            add(inventory.itemInMainHand)
+        }
 
         for (item in allItems) {
             if (!item.isEmpty && item.type == material) {
-                // 检查 lore 是否匹配（如果指定了 lore）
                 if (loreText != null) {
                     val itemMeta = item.itemMeta
-                    if (itemMeta != null && itemMeta.hasLore()) {
-                        val lore = itemMeta.lore()
-                        // 检查 lore 中是否包含指定字符串（忽略大小写）
-                        val loreMatched = lore?.any { line ->
-                            val plainText = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(line)
-                            plainText.contains(loreText, ignoreCase = true)
-                        } ?: false
-                        if (!loreMatched) {
-                            continue
-                        }
-                    } else {
-                        // 没有 lore，跳过
-                        continue
-                    }
+                    if (itemMeta?.hasLore() != true) continue
+                    val loreMatched = itemMeta.lore()?.any { line ->
+                        val plainText = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                            .serialize(line)
+                        plainText.contains(loreText, ignoreCase = true)
+                    } ?: false
+                    if (!loreMatched) continue
                 }
 
-                // 检查 item_model 是否匹配（如果指定了 model）
                 if (itemModel != null) {
                     val itemMeta = item.itemMeta
-                    if (itemMeta != null && itemMeta.hasItemModel()) {
-                        val modelKey = itemMeta.getItemModel()
-                        if (modelKey != null) {
-                            // 格式化为 namespace:key
-                            val modelStr = "${modelKey.namespace()}:${modelKey.value()}"
-                            if (!modelStr.equals(itemModel, ignoreCase = true)) {
-                                continue
-                            }
-                        } else {
-                            // 没有模型，跳过
-                            continue
-                        }
-                    } else {
-                        // 没有模型，跳过
-                        continue
-                    }
+                    if (itemMeta?.hasItemModel() != true) continue
+                    val modelKey = itemMeta.itemModel ?: continue
+                    val modelStr = "${modelKey.namespace()}:${modelKey.value()}"
+                    if (!modelStr.equals(itemModel, ignoreCase = true)) continue
                 }
 
-                // 符合所有条件，累加数量
                 totalCount += item.amount
             }
         }
@@ -733,256 +940,48 @@ object ConditionUtils {
         return totalCount
     }
 
-    private fun String.toDoubleDefault(default: Double): Double = this.toDoubleOrNull() ?: default
-
     /**
      * 解析引号包裹的字符串
-     * 支持单引号和双引号包裹，如果未用引号包裹则直接返回原字符串
-     * @param str 原始字符串
-     * @return 去除引号后的字符串
      */
     private fun parseQuotedString(str: String): String {
         val trimmed = str.trim()
 
-        // 检查是否被双引号包裹
         if (trimmed.startsWith("\"") && trimmed.endsWith("\"") && trimmed.length >= 2) {
-            // 检查引号是否匹配（避免像 "test 这样的情况）
             val content = trimmed.substring(1, trimmed.length - 1)
-            // 检查内容中是否有未转义的引号
-            if (!content.contains("\"")) {
-                return content
-            }
+            if (!content.contains("\"")) return content
         }
 
-        // 检查是否被单引号包裹
         if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2) {
             val content = trimmed.substring(1, trimmed.length - 1)
-            if (!content.contains("'")) {
-                return content
-            }
+            if (!content.contains("'")) return content
         }
 
-        // 未用引号包裹，直接返回
         return trimmed
     }
 
     /**
      * 比较两个值是否相等（支持数值和字符串）
-     * 优先使用数值比较，失败则使用字符串比较
      */
     private fun compareEquals(left: String, right: String): Boolean {
-        // 1. 先尝试数值比较
         val leftNum = left.toDoubleOrNull()
         val rightNum = right.toDoubleOrNull()
 
-        if (leftNum != null && rightNum != null) {
-            // 两边都是数字，使用数值比较
-            return leftNum == rightNum
-        }
+        if (leftNum != null && rightNum != null) return leftNum == rightNum
 
-        // 2. 尝试布尔值比较
         val leftBool = parseBoolean(left)
         val rightBool = parseBoolean(right)
 
-        if (leftBool != null && rightBool != null) {
-            return leftBool == rightBool
-        }
+        if (leftBool != null && rightBool != null) return leftBool == rightBool
 
-        // 3. 字符串比较（忽略大小写）
         return left.equals(right, ignoreCase = true)
     }
 
     /**
-     * 解析字符串为布尔值
-     * 支持的 true 值：true, yes, 1, t, y
-     * 支持的 false 值：false, no, 0, f, n
-     * 其他情况返回 null
+     * 解析布尔值
      */
-    private fun parseBoolean(value: String): Boolean? {
-        val normalized = value.trim().lowercase()
-        return when (normalized) {
-            "true", "yes", "1" -> true
-            "false", "no", "0" -> false
-            else -> null
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 字符串值
-     */
-    fun getConditionalValueFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
-        // 检查该路径下是否为列表格式（条件判断）
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val value = getConditionalValueFromList(player, conditions, defaultValue)
-            return resolveVariables(player, value)
-        } else {
-            // 简单字符串值
-            val value = section.getString(path, defaultValue) ?: defaultValue
-            // 支持 \n 换行符（YAML 已经处理了字面量换行，这里处理显式的 \n）
-            val withNewlines = value.replace("\\n", "\n")
-            return resolveVariables(player, withNewlines)
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的值（支持条件判断，allow/deny 支持列表或字符串）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 字符串值（列表会用 \n 连接）
-     */
-    fun getConditionalValueOrListFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
-        // 检查该路径下是否为列表格式
-        if (section.isList(path)) {
-            val list = section.getList(path) ?: return defaultValue
-            val firstItem = list.firstOrNull()
-
-            // 检查是否为条件判断格式（第一个元素是 Map）
-            if (firstItem is Map<*, *>) {
-                // 条件判断格式
-                val value = getConditionalValueOrListFromList(player, list, defaultValue)
-                return resolveVariables(player, value)
-            } else {
-                // 直接的字符串列表，用换行符连接
-                val stringList = list.filterIsInstance<String>()
-                val joinedValue = if (stringList.isNotEmpty()) {
-                    stringList.joinToString("\n")
-                } else {
-                    defaultValue
-                }
-                return resolveVariables(player, joinedValue)
-            }
-        } else {
-            // 简单字符串值
-            val value = section.getString(path, defaultValue) ?: defaultValue
-            // 支持 \n 换行符（YAML 已经处理了字面量换行，这里处理显式的 \n）
-            val withNewlines = value.replace("\\n", "\n")
-            return resolveVariables(player, withNewlines)
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的整数值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 整数值
-     */
-    fun getConditionalIntFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Int = 0): Int {
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
-            val resolved = resolveVariables(player, stringValue)
-            return resolved.toIntOrNull() ?: defaultValue
-        } else {
-            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
-            val resolved = resolveVariables(player, value)
-            return resolved.toIntOrNull() ?: defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的双精度浮点数值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 双精度浮点数值
-     */
-    fun getConditionalDoubleFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Double = 0.0): Double {
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
-            val resolved = resolveVariables(player, stringValue)
-            return resolved.toDoubleOrNull() ?: defaultValue
-        } else {
-            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
-            val resolved = resolveVariables(player, value)
-            return resolved.toDoubleOrNull() ?: defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的布尔值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 布尔值
-     */
-    fun getConditionalBooleanFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: Boolean = false): Boolean {
-        if (section.isList(path)) {
-            val conditions = section.getList(path) ?: return defaultValue
-            val stringValue = getConditionalValueFromList(player, conditions, defaultValue.toString())
-            val resolved = resolveVariables(player, stringValue)
-            return resolved.toBooleanStrictOrNull() ?: defaultValue
-        } else {
-            val value = section.getString(path, defaultValue.toString()) ?: defaultValue.toString()
-            val resolved = resolveVariables(player, value)
-            return resolved.toBooleanStrictOrNull() ?: defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的列表值（支持条件判断）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认列表
-     * @return 列表值
-     */
-    fun getConditionalListFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: List<String> = emptyList()): List<String> {
-        if (section.isList(path)) {
-            val firstItem = section.getList(path)?.firstOrNull()
-            // 检查是否为条件判断格式（第一个元素是 Map）
-            if (firstItem is Map<*, *>) {
-                val conditions = section.getList(path) ?: return defaultValue
-                val list = getConditionalListFromList(player, conditions, defaultValue)
-                return list.map { resolveVariables(player, it) }
-            } else {
-                // 普通字符串列表
-                val list = section.getStringList(path)
-                return list.map { resolveVariables(player, it) }
-            }
-        } else {
-            return defaultValue
-        }
-    }
-
-    /**
-     * 从 ConfigurationSection 获取适合当前玩家的类型值（支持条件判断和 'none'）
-     * @param player 玩家对象
-     * @param section 配置节
-     * @param path 配置路径（相对于 section）
-     * @param defaultValue 默认值
-     * @return 类型值，如果类型为 'none' 或为空则返回 'none'
-     */
-    fun getConditionalTypeFromSection(player: Player, section: ConfigurationSection, path: String, defaultValue: String = ""): String {
-        val rawValue = getConditionalValueFromSection(player, section, path, defaultValue)
-        if (rawValue.isEmpty()) {
-            return "none"
-        }
-
-        // 检查是否为列表格式（条件判断）
-        if (section.isList(path)) {
-            val firstItem = section.getList(path)?.firstOrNull()
-            // 检查是否为条件判断格式（第一个元素是 Map）
-            if (firstItem is Map<*, *>) {
-                val conditions = section.getList(path) ?: return "none"
-                val result = getConditionalValueFromList(player, conditions, defaultValue)
-                return result.ifEmpty { "none" }
-            }
-        }
-
-        // 返回解析后的值
-        return rawValue
+    private fun parseBoolean(value: String): Boolean? = when (value.trim().lowercase()) {
+        "true", "yes", "1" -> true
+        "false", "no", "0" -> false
+        else -> null
     }
 }

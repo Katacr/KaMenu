@@ -1,0 +1,524 @@
+Title: '&8» &6&lNewbie 7-Day Sign-In &8«'
+
+Settings:
+  can_escape: true
+  after_action: NONE
+  need_placeholder:
+    - 'server'
+
+Events:
+  Open:
+    # First entry: initialize data
+    - condition: '{data:sign_day} == null'
+      allow:
+        - 'data: type=set;key=sign_day;var=`0`'
+  Click:
+    # ========== Common: Already signed in today ==========
+    already_today:
+      - 'sound: block.note_block.bass'
+      - 'actionbar: &cYou already signed in today! Come back tomorrow.'
+    # ========== Common: Not yet reached ==========
+    not_yet:
+      - 'sound: block.note_block.bass'
+      - 'actionbar: &cPlease complete previous sign-ins in order!'
+    # ========== Common: Already claimed ==========
+    already_done:
+      - 'sound: block.note_block.bass'
+      - 'actionbar: &aReward already claimed!'
+
+Body:
+  intro:
+    type: 'message'
+    text:
+      - '&7Sign in once daily to get all rewards'
+      - '&7after &67&7 consecutive days'
+      - '&7Today: &e%server_time_YYYYMMdd%'
+    width: 320
+  progress:
+    type: 'message'
+    text: '&fSigned in: &a{data:sign_day}&f / &67 &fdays'
+    width: 200
+  reward_legend:
+    type: 'message'
+    text:
+      - '&6&lReward Legend: &eCoins &7| &bDiamonds &7| &7Iron &7| &6Gold &7| &aEmeralds'
+    width: 350
+  tip:
+    type: 'message'
+    text:
+      - condition: '{data:sign_day} == 7'
+        allow: '&6&lCongratulations on completing 7-day sign-in!'
+        deny:
+          - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+            allow: '&cSigned in today, come back tomorrow~'
+            deny: '&aSign in available today, click the button below!'
+    width: 300
+
+Bottom:
+  type: 'multi'
+  columns: 1
+  buttons:
+    # ==================== Day 1 ====================
+    day1:
+      text:
+        - condition: '{data:sign_day} >= 1'
+          allow: '&a✔ Day 1'
+          deny: '&e▶ Day 1'
+      tooltip:
+        - condition: '{data:sign_day} >= 1'
+          allow:
+            - '&a&l✓ Day 1 Signed &7- &aClaimed'
+            - ''
+            - '&7Rewards received:'
+            - '  &e● 100 Coins'
+            - '  &b● 1 Diamond'
+          deny:
+            - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+              allow:
+                - '&c&lSigned in today'
+                - ''
+                - '&7Rewards received:'
+                - '  &e● 100 Coins'
+                - '  &b● 1 Diamond'
+                - ''
+                - '&7Come back tomorrow →'
+              deny:
+                - '&a&l▶ Day 1 Sign &e&l(Today Available)'
+                - ''
+                - '&7Click to claim rewards:'
+                - '  &e● 100 Coins'
+                - '  &b● 1 Diamond'
+                - ''
+                - '&e&oClick button to sign in'
+      width: 150
+      actions:
+        # Already claimed
+        - condition: '{data:sign_day} >= 1'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        # Already signed in today
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        # Normal sign in
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`1`'
+        - 'money: type=add;num=100'
+        - 'item: type=give;mats=DIAMOND;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&fDay 1 sign-in complete!;icon=diamond'
+        - 'title: title=&aDay 1 Sign-In;subtitle=&fReceived 100 Coins + 1 Diamond;in=5;keep=60;out=20'
+        - 'tell: &a✔ Day 1 sign-in success! Received &e100 Coins &a+ &b1 Diamond'
+
+    # ==================== Day 2 ====================
+    day2:
+      text:
+        - condition: '{data:sign_day} >= 2'
+          allow: '&a✔ Day 2'
+          deny:
+            - condition: '{data:sign_day} >= 1'
+              allow: '&e▶ Day 2'
+              deny: '&8✘ Day 2'
+      tooltip:
+        - condition: '{data:sign_day} >= 2'
+          allow:
+            - '&a&l✓ Day 2 Signed &7- &aClaimed'
+            - ''
+            - '&7Rewards received:'
+            - '  &e● 150 Coins'
+            - '  &b● 1 Diamond'
+          deny:
+            - condition: '{data:sign_day} < 1'
+              allow:
+                - '&8&l✘ Day 2 Sign &7- &8Locked'
+                - ''
+                - '&7Must complete &eDay 1 &7sign-in first'
+                - '&7Button will light up after completion →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&lSigned in today'
+                    - ''
+                    - '&7Rewards received:'
+                    - '  &e● 150 Coins'
+                    - '  &b● 1 Diamond'
+                    - ''
+                    - '&7Come back tomorrow →'
+                  deny:
+                    - '&a&l▶ Day 2 Sign &e&l(Today Available)'
+                    - ''
+                    - '&7Click to claim rewards:'
+                    - '  &e● 150 Coins'
+                    - '  &b● 1 Diamond'
+                    - ''
+                    - '&e&oClick button to sign in'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 2'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 1'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`2`'
+        - 'money: type=add;num=150'
+        - 'item: type=give;mats=DIAMOND;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&fDay 2 sign-in complete!;icon=diamond'
+        - 'title: title=&aDay 2 Sign-In;subtitle=&fReceived 150 Coins + 1 Diamond;in=5;keep=60;out=20'
+        - 'tell: &a✔ Day 2 sign-in success! Received &e150 Coins &a+ &b1 Diamond'
+
+    # ==================== Day 3 ====================
+    day3:
+      text:
+        - condition: '{data:sign_day} >= 3'
+          allow: '&a✔ Day 3'
+          deny:
+            - condition: '{data:sign_day} >= 2'
+              allow: '&e▶ Day 3'
+              deny: '&8✘ Day 3'
+      tooltip:
+        - condition: '{data:sign_day} >= 3'
+          allow:
+            - '&a&l✓ Day 3 Signed &7- &aClaimed'
+            - ''
+            - '&7Rewards received:'
+            - '  &e● 200 Coins'
+            - '  &b● 2 Diamonds'
+          deny:
+            - condition: '{data:sign_day} < 2'
+              allow:
+                - '&8&l✘ Day 3 Sign &7- &8Locked'
+                - ''
+                - '&7Must complete &eDay 2 &7sign-in first'
+                - '&7Button will light up after completion →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&lSigned in today'
+                    - ''
+                    - '&7Rewards received:'
+                    - '  &e● 200 Coins'
+                    - '  &b● 2 Diamonds'
+                    - ''
+                    - '&7Come back tomorrow →'
+                  deny:
+                    - '&a&l▶ Day 3 Sign &e&l(Today Available)'
+                    - ''
+                    - '&7Click to claim rewards:'
+                    - '  &e● 200 Coins'
+                    - '  &b● 2 Diamonds'
+                    - ''
+                    - '&e&oClick button to sign in'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 3'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 2'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`3`'
+        - 'money: type=add;num=200'
+        - 'item: type=give;mats=DIAMOND;amount=2'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&fDay 3 sign-in complete!;icon=diamond'
+        - 'title: title=&aDay 3 Sign-In;subtitle=&fReceived 200 Coins + 2 Diamonds;in=5;keep=60;out=20'
+        - 'tell: &a✔ Day 3 sign-in success! Received &e200 Coins &a+ &b2 Diamonds'
+
+    # ==================== Day 4 ====================
+    day4:
+      text:
+        - condition: '{data:sign_day} >= 4'
+          allow: '&a✔ Day 4'
+          deny:
+            - condition: '{data:sign_day} >= 3'
+              allow: '&e▶ Day 4'
+              deny: '&8✘ Day 4'
+      tooltip:
+        - condition: '{data:sign_day} >= 4'
+          allow:
+            - '&a&l✓ Day 4 Signed &7- &aClaimed'
+            - ''
+            - '&7Rewards received:'
+            - '  &e● 250 Coins'
+            - '  &b● 2 Diamonds'
+            - '  &7● 1 Iron Ingot'
+          deny:
+            - condition: '{data:sign_day} < 3'
+              allow:
+                - '&8&l✘ Day 4 Sign &7- &8Locked'
+                - ''
+                - '&7Must complete &eDay 3 &7sign-in first'
+                - '&7Button will light up after completion →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&lSigned in today'
+                    - ''
+                    - '&7Rewards received:'
+                    - '  &e● 250 Coins'
+                    - '  &b● 2 Diamonds'
+                    - '  &7● 1 Iron Ingot'
+                    - ''
+                    - '&7Come back tomorrow →'
+                  deny:
+                    - '&a&l▶ Day 4 Sign &e&l(Today Available)'
+                    - ''
+                    - '&7Click to claim rewards:'
+                    - '  &e● 250 Coins'
+                    - '  &b● 2 Diamonds'
+                    - '  &7● 1 Iron Ingot'
+                    - ''
+                    - '&e&oClick button to sign in'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 4'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 3'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`4`'
+        - 'money: type=add;num=250'
+        - 'item: type=give;mats=DIAMOND;amount=2'
+        - 'item: type=give;mats=IRON_INGOT;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&fDay 4 sign-in complete!;icon=diamond'
+        - 'title: title=&aDay 4 Sign-In;subtitle=&fReceived 250 Coins + 2 Diamonds + 1 Iron;in=5;keep=60;out=20'
+        - 'tell: &a✔ Day 4 sign-in success! Received &e250 Coins &a+ &b2 Diamonds &a+ &71 Iron'
+
+    # ==================== Day 5 ====================
+    day5:
+      text:
+        - condition: '{data:sign_day} >= 5'
+          allow: '&a✔ Day 5'
+          deny:
+            - condition: '{data:sign_day} >= 4'
+              allow: '&e▶ Day 5'
+              deny: '&8✘ Day 5'
+      tooltip:
+        - condition: '{data:sign_day} >= 5'
+          allow:
+            - '&a&l✓ Day 5 Signed &7- &aClaimed'
+            - ''
+            - '&7Rewards received:'
+            - '  &e● 300 Coins'
+            - '  &b● 3 Diamonds'
+          deny:
+            - condition: '{data:sign_day} < 4'
+              allow:
+                - '&8&l✘ Day 5 Sign &7- &8Locked'
+                - ''
+                - '&7Must complete &eDay 4 &7sign-in first'
+                - '&7Button will light up after completion →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&lSigned in today'
+                    - ''
+                    - '&7Rewards received:'
+                    - '  &e● 300 Coins'
+                    - '  &b● 3 Diamonds'
+                    - ''
+                    - '&7Come back tomorrow →'
+                  deny:
+                    - '&a&l▶ Day 5 Sign &e&l(Today Available)'
+                    - ''
+                    - '&7Click to claim rewards:'
+                    - '  &e● 300 Coins'
+                    - '  &b● 3 Diamonds'
+                    - ''
+                    - '&e&oClick button to sign in'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 5'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 4'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`5`'
+        - 'money: type=add;num=300'
+        - 'item: type=give;mats=DIAMOND;amount=3'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&fDay 5 sign-in complete!;icon=diamond'
+        - 'title: title=&aDay 5 Sign-In;subtitle=&fReceived 300 Coins + 3 Diamonds;in=5;keep=60;out=20'
+        - 'tell: &a✔ Day 5 sign-in success! Received &e300 Coins &a+ &b3 Diamonds'
+
+    # ==================== Day 6 ====================
+    day6:
+      text:
+        - condition: '{data:sign_day} >= 6'
+          allow: '&a✔ Day 6'
+          deny:
+            - condition: '{data:sign_day} >= 5'
+              allow: '&e▶ Day 6'
+              deny: '&8✘ Day 6'
+      tooltip:
+        - condition: '{data:sign_day} >= 6'
+          allow:
+            - '&a&l✓ Day 6 Signed &7- &aClaimed'
+            - ''
+            - '&7Rewards received:'
+            - '  &e● 400 Coins'
+            - '  &b● 4 Diamonds'
+            - '  &6● 1 Gold Ingot'
+          deny:
+            - condition: '{data:sign_day} < 5'
+              allow:
+                - '&8&l✘ Day 6 Sign &7- &8Locked'
+                - ''
+                - '&7Must complete &eDay 5 &7sign-in first'
+                - '&7Button will light up after completion →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&lSigned in today'
+                    - ''
+                    - '&7Rewards received:'
+                    - '  &e● 400 Coins'
+                    - '  &b● 4 Diamonds'
+                    - '  &6● 1 Gold Ingot'
+                    - ''
+                    - '&7Come back tomorrow →'
+                  deny:
+                    - '&a&l▶ Day 6 Sign &e&l(Today Available)'
+                    - ''
+                    - '&7Click to claim rewards:'
+                    - '  &e● 400 Coins'
+                    - '  &b● 4 Diamonds'
+                    - '  &6● 1 Gold Ingot'
+                    - ''
+                    - '&e&oClick button to sign in'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 6'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 5'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`6`'
+        - 'money: type=add;num=400'
+        - 'item: type=give;mats=DIAMOND;amount=4'
+        - 'item: type=give;mats=GOLD_INGOT;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&fDay 6 sign-in complete!;icon=gold_ingot'
+        - 'title: title=&aDay 6 Sign-In;subtitle=&fReceived 400 Coins + 4 Diamonds + 1 Gold;in=5;keep=60;out=20'
+        - 'tell: &a✔ Day 6 sign-in success! Received &e400 Coins &a+ &b4 Diamonds &a+ &61 Gold'
+
+    # ==================== Day 7 (Grand Prize) ====================
+    day7:
+      text:
+        - condition: '{data:sign_day} >= 7'
+          allow: '&6✔ Day 7 &l(Completed)'
+          deny:
+            - condition: '{data:sign_day} >= 6'
+              allow: '&6▶ Day 7 &l(Grand Prize)'
+              deny: '&8✘ Day 7 (Grand Prize)'
+      tooltip:
+        - condition: '{data:sign_day} >= 7'
+          allow:
+            - '&6&l★ Day 7 Signed &7- &aAll Complete!'
+            - ''
+            - '&7Rewards received:'
+            - '  &e● 500 Coins'
+            - '  &b● 5 Diamonds'
+            - '  &a● 1 Emerald'
+            - ''
+            - '&6&lCongratulations on completing 7-day challenge!'
+          deny:
+            - condition: '{data:sign_day} < 6'
+              allow:
+                - '&8&l✘ Day 7 Sign &7- &8Locked'
+                - ''
+                - '&7Must complete &eDay 6 &7sign-in first'
+                - '&7Grand Prize available after completion →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&lSigned in today'
+                    - ''
+                    - '&7Tomorrow you can claim the Grand Prize:'
+                    - '  &e● 500 Coins'
+                    - '  &b● 5 Diamonds'
+                    - '  &a● 1 Emerald'
+                    - ''
+                    - '&6&oCome back tomorrow for the Grand Prize!'
+                  deny:
+                    - '&6&l★ Day 7 Grand Prize &e&l(Today Available)'
+                    - ''
+                    - '&7Click to claim the Grand Prize:'
+                    - '  &e● 500 Coins'
+                    - '  &b● 5 Diamonds'
+                    - '  &a● 1 Emerald'
+                    - ''
+                    - '&6&oClick button to claim Grand Prize!'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 7'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 6'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`7`'
+        - 'money: type=add;num=500'
+        - 'item: type=give;mats=DIAMOND;amount=5'
+        - 'item: type=give;mats=EMERALD;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'sound: ui.toast.challenge_complete'
+        - 'toast: type=challenge;msg=&f7-Day Sign-In Complete!;icon=emerald'
+        - 'title: title=&6&l7-Day Sign-In Complete!;subtitle=&fReceived 500 Coins + 5 Diamonds + 1 Emerald;in=5;keep=100;out=20'
+        - 'tell: &6&l★ 7-Day Grand Prize! ★ Received &e500 Coins &a+ &b5 Diamonds &a+ &a1 Emerald!'
+        - 'console: tellraw @a[tag=admin] {"text":"[Sign-In] %player_name% completed 7-Day Newbie Sign-In!","color":"gold"}'
+
+  exit:
+    text: '&8[ Close ]'
+    actions:
+      - 'close'

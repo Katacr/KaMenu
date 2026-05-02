@@ -19,13 +19,13 @@ import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import org.katacr.kamenu.ConditionUtils.getConditionalBooleanFromSection
-import org.katacr.kamenu.ConditionUtils.getConditionalDoubleFromSection
-import org.katacr.kamenu.ConditionUtils.getConditionalIntFromSection
-import org.katacr.kamenu.ConditionUtils.getConditionalListFromSection
-import org.katacr.kamenu.ConditionUtils.getConditionalTypeFromSection
-import org.katacr.kamenu.ConditionUtils.getConditionalValueFromSection
-import org.katacr.kamenu.ConditionUtils.getConditionalValueOrListFromSection
+import org.katacr.kamenu.ConditionUtils.getBoolean
+import org.katacr.kamenu.ConditionUtils.getDouble
+import org.katacr.kamenu.ConditionUtils.getFirstConditionString
+import org.katacr.kamenu.ConditionUtils.getInt
+import org.katacr.kamenu.ConditionUtils.getString
+import org.katacr.kamenu.ConditionUtils.getStringList
+import org.katacr.kamenu.ConditionUtils.getType
 import java.util.concurrent.CompletableFuture
 
 object MenuUI {
@@ -208,7 +208,7 @@ object MenuUI {
         menuOpener: ((Player, String) -> Unit)? = null
     ): Component {
         // 获取文本内容（支持列表和字符串）
-        val rawText = getConditionalValueOrListFromSection(player, section, path, defaultText)
+        val rawText = getString(player, section, path, defaultText)
 
         // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
         return MenuActions.parseClickableText(
@@ -231,7 +231,7 @@ object MenuUI {
         // 检查该路径下是否为列表格式（条件判断）
         if (config.isList(path)) {
             val conditions = config.getList(path) ?: return defaultValue
-            return ConditionUtils.getConditionalValueFromList(player, conditions, defaultValue)
+            return getFirstConditionString(player, conditions, defaultValue)
         } else {
             // 简单字符串值
             return config.getString(path, defaultValue) ?: defaultValue
@@ -380,14 +380,14 @@ object MenuUI {
         // 1. 解析 Body
         config.getConfigurationSection("Body")?.let { section ->
             for (key in section.getKeys(false)) {
-                val type = getConditionalTypeFromSection(player, section, "$key.type", "")
+                val type = getType(player, section, "$key.type", "")
                 // 如果类型为 'none'，跳过此组件
                 if (type == "none") continue
 
                 when (type) {
                     "message" -> {
                         val component = createMessageComponent(player, section, "$key.text", "", config, menuOpener)
-                        val width = getConditionalIntFromSection(player, section, "$key.width", 0)
+                        val width = getInt(player, section, "$key.width", 0)
                         if (width > 0) {
                             bodyList.add(DialogBody.plainMessage(component, width))
                         } else {
@@ -395,7 +395,7 @@ object MenuUI {
                         }
                     }
                     "item" -> {
-                        val materialStr = ConditionUtils.resolveVariables(player, getConditionalValueFromSection(player, section, "$key.material", "PAPER"))
+                        val materialStr = getString(player, section, "$key.material", "PAPER")
                         val item: ItemStack
                         
                         // 检查是否为槽位引用格式 [SLOT] 或 [SLOT:Player]
@@ -447,10 +447,10 @@ object MenuUI {
                                 }
                                 
                                 // 槽位引用模式下，跳过其他属性设置（lore、item_model等）
-                                val width = getConditionalIntFromSection(player, section, "$key.width", 16)
-                                val height = getConditionalIntFromSection(player, section, "$key.height", 16)
-                                val showOverlays = getConditionalBooleanFromSection(player, section, "$key.show_overlays", true)
-                                val tooltip = getConditionalBooleanFromSection(player, section, "$key.tooltip", true)
+                                val width = getInt(player, section, "$key.width", 16)
+                                val height = getInt(player, section, "$key.height", 16)
+                                val showOverlays = getBoolean(player, section, "$key.show_overlays", true)
+                                val tooltip = getBoolean(player, section, "$key.tooltip", true)
                                 
                                 bodyList.add(DialogBody.item(item, null, showOverlays, tooltip, width, height))
                                 continue  // 跳过后续处理
@@ -458,21 +458,21 @@ object MenuUI {
                         } else {
                             // 正常物品创建流程
                             val material = MaterialUtils.matchMaterial(materialStr) ?: Material.PAPER
-                            val amount = getConditionalIntFromSection(player, section, "$key.amount", 1)
+                            val amount = getInt(player, section, "$key.amount", 1)
                             item = ItemStack(material, amount)
 
                             item.editMeta { meta ->
-                                val name = getConditionalValueFromSection(player, section, "$key.name", "")
+                                val name = getString(player, section, "$key.name", "")
                                 if (name.isNotEmpty()) {
                                     meta.displayName(parseText(name))
                                 }
-                                val lore = getConditionalListFromSection(player, section, "$key.lore")
+                                val lore = getStringList(player, section, "$key.lore")
                                 if (lore.isNotEmpty()) {
                                     meta.lore(lore.map { parseText(it) })
                                 }
                                 
                                 // 支持设置 item_model（1.21.7+ 命名空间物品模型）
-                                val itemModel = getConditionalValueFromSection(player, section, "$key.item_model", "")
+                                val itemModel = getString(player, section, "$key.item_model", "")
                                 if (itemModel.isNotEmpty()) {
                                     val namespacedKey = org.bukkit.NamespacedKey.minecraft("item_model")
                                     val pdc = meta.persistentDataContainer
@@ -480,8 +480,8 @@ object MenuUI {
                                 }
                             }
                         }
-                        val descriptionText = getConditionalValueOrListFromSection(player, section, "$key.description", "")
-                        val descriptionWidth = getConditionalIntFromSection(player, section, "$key.description_width", 0)
+                        val descriptionText = getString(player, section, "$key.description", "")
+                        val descriptionWidth = getInt(player, section, "$key.description_width", 0)
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
                             if (descriptionWidth > 0) {
                                 DialogBody.plainMessage(MenuActions.parseClickableText(it), descriptionWidth)
@@ -490,10 +490,10 @@ object MenuUI {
                             }
                         }
 
-                        val width = getConditionalIntFromSection(player, section, "$key.width", 16)
-                        val height = getConditionalIntFromSection(player, section, "$key.height", 16)
-                        val showOverlays = getConditionalBooleanFromSection(player, section, "$key.show_overlays", true)
-                        val tooltip = getConditionalBooleanFromSection(player, section, "$key.tooltip", true)
+                        val width = getInt(player, section, "$key.width", 16)
+                        val height = getInt(player, section, "$key.height", 16)
+                        val showOverlays = getBoolean(player, section, "$key.show_overlays", true)
+                        val tooltip = getBoolean(player, section, "$key.tooltip", true)
 
                         bodyList.add(DialogBody.item(item, descriptionBody, showOverlays, tooltip, width, height))
                     }
@@ -504,28 +504,28 @@ object MenuUI {
         // 2. 解析 Inputs
         config.getConfigurationSection("Inputs")?.let { section ->
             for (key in section.getKeys(false)) {
-                val type = getConditionalTypeFromSection(player, section, "$key.type", "text")
+                val type = getType(player, section, "$key.type", "text")
                 // 如果类型为 'none'，跳过此组件
                 if (type == "none") continue
 
-                val prompt = parseText(getConditionalValueFromSection(player, section, "$key.text", ""))
+                val prompt = parseText(getString(player, section, "$key.text", ""))
 
                 when (type) {
                     "checkbox" -> {
                         inputTypes[key] = "checkbox"  // 记录为布尔类型
-                        val onTrue = getConditionalValueFromSection(player, section, "$key.on_true", "true")
-                        val onFalse = getConditionalValueFromSection(player, section, "$key.on_false", "false")
+                        val onTrue = getString(player, section, "$key.on_true", "true")
+                        val onFalse = getString(player, section, "$key.on_false", "false")
                         checkboxMappings[key] = Pair(onTrue, onFalse)  // 记录映射
                         inputList.add(DialogInput.bool(key, prompt)
-                            .initial(getConditionalBooleanFromSection(player, section, "$key.default", false))
+                            .initial(getBoolean(player, section, "$key.default", false))
                             .onTrue(onTrue)
                             .onFalse(onFalse)
                             .build())
                     }
                     "slider" -> {
                         inputTypes[key] = "number"  // 记录为数值类型
-                        val start = getConditionalDoubleFromSection(player, section, "$key.min", 0.0).toFloat()
-                        val end = getConditionalDoubleFromSection(player, section, "$key.max", 10.0).toFloat()
+                        val start = getDouble(player, section, "$key.min", 0.0).toFloat()
+                        val end = getDouble(player, section, "$key.max", 10.0).toFloat()
 
                         // 验证 min 必须小于 max
                         val (effectiveMin, effectiveMax) = if (start >= end) {
@@ -537,34 +537,34 @@ object MenuUI {
 
                         inputList.add(DialogInput.numberRange(
                             key, 250, prompt,
-                            getConditionalValueFromSection(player, section, "$key.format", "%s: %s"),
-                            effectiveMin, effectiveMax, getConditionalDoubleFromSection(player, section, "$key.default", effectiveMin.toDouble()).toFloat(),
-                            getConditionalDoubleFromSection(player, section, "$key.step", 1.0).toFloat()
+                            getString(player, section, "$key.format", "%s: %s"),
+                            effectiveMin, effectiveMax, getDouble(player, section, "$key.default", effectiveMin.toDouble()).toFloat(),
+                            getDouble(player, section, "$key.step", 1.0).toFloat()
                         ))
                     }
                     "input" -> {
                         inputTypes[key] = "text"  // 记录为文本类型
                         val builder = DialogInput.text(key, prompt)
-                            .width(getConditionalIntFromSection(player, section, "$key.width", 250))
-                            .initial(getConditionalValueFromSection(player, section, "$key.default", ""))
-                            .maxLength(getConditionalIntFromSection(player, section, "$key.max_length", 256))
+                            .width(getInt(player, section, "$key.width", 250))
+                            .initial(getString(player, section, "$key.default", ""))
+                            .maxLength(getInt(player, section, "$key.max_length", 256))
 
                         if (section.contains("$key.multiline")) {
                             builder.multiline(TextDialogInput.MultilineOptions.create(
-                                getConditionalIntFromSection(player, section, "$key.multiline.max_lines", 5),
-                                getConditionalIntFromSection(player, section, "$key.multiline.height", 100)
+                                getInt(player, section, "$key.multiline.max_lines", 5),
+                                getInt(player, section, "$key.multiline.height", 100)
                             ))
                         }
                         inputList.add(builder.build())
                     }
                     "dropdown" -> {
                         inputTypes[key] = "text"  // 记录为文本类型
-                        val defaultId = getConditionalValueFromSection(player, section, "$key.default_id", "")
-                        val options = getConditionalListFromSection(player, section, "$key.options")
+                        val defaultId = getString(player, section, "$key.default_id", "")
+                        val options = getStringList(player, section, "$key.options")
                         val entries = options.map {
                             SingleOptionDialogInput.OptionEntry.create(it, parseText(it), it == defaultId)
                         }
-                        inputList.add(DialogInput.singleOption(key, prompt, entries).width(getConditionalIntFromSection(player, section, "$key.width", 200)).build())
+                        inputList.add(DialogInput.singleOption(key, prompt, entries).width(getInt(player, section, "$key.width", 200)).build())
                     }
                 }
                 inputKeys.add(key)
@@ -589,14 +589,14 @@ object MenuUI {
                             continue
                         }
 
-                        val btnText = getConditionalValueFromSection(player, btnSection, "$btnKey.text", "按钮")
-                        val btnWidth = getConditionalIntFromSection(player, btnSection, "$btnKey.width", 0)
+                        val btnText = getString(player, btnSection, "$btnKey.text", "按钮")
+                        val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
 
                         val builder = ActionButton.builder(parseText(btnText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                         // 读取 tooltip 配置
-                        val tooltipList = getConditionalListFromSection(player, btnSection, "$btnKey.tooltip")
+                        val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
                         if (tooltipList.isNotEmpty()) {
                             // 将 tooltip 列表转换为 Component，每个元素作为一行
                             val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { parseText(it) }.toTypedArray())
@@ -614,9 +614,9 @@ object MenuUI {
 
                 // 退出/返回按钮
                 val exitBtn = bottomSection?.let { section ->
-                    val exitText = getConditionalValueFromSection(player, section, "exit.text", "")
+                    val exitText = getString(player, section, "exit.text", "")
                     if (exitText.isNotEmpty()) {
-                        val exitWidth = getConditionalIntFromSection(player, section, "exit.width", 0)
+                        val exitWidth = getInt(player, section, "exit.width", 0)
                         val builder = ActionButton.builder(parseText(exitText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
 
@@ -636,17 +636,17 @@ object MenuUI {
             }
 
             "confirmation" -> {
-                val confirmBtnText = bottomSection?.let { getConditionalValueFromSection(player, it, "confirm.text", "确认") } ?: "确认"
-                val denyBtnText = bottomSection?.let { getConditionalValueFromSection(player, it, "deny.text", "取消") } ?: "取消"
+                val confirmBtnText = bottomSection?.let { getString(player, it, "confirm.text", "确认") } ?: "确认"
+                val denyBtnText = bottomSection?.let { getString(player, it, "deny.text", "取消") } ?: "取消"
 
-                val confirmWidth = bottomSection?.let { getConditionalIntFromSection(player, it, "confirm.width", 0) } ?: 0
-                val denyWidth = bottomSection?.let { getConditionalIntFromSection(player, it, "deny.width", 0) } ?: 0
+                val confirmWidth = bottomSection?.let { getInt(player, it, "confirm.width", 0) } ?: 0
+                val denyWidth = bottomSection?.let { getInt(player, it, "deny.width", 0) } ?: 0
 
                 val confirmBuilder = ActionButton.builder(parseText(confirmBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                 
                 // 读取 confirm 按钮的 tooltip
-                val confirmTooltipList = bottomSection?.let { getConditionalListFromSection(player, it, "confirm.tooltip") }
+                val confirmTooltipList = bottomSection?.let { getStringList(player, it, "confirm.tooltip") }
                 confirmTooltipList?.let {
                     if (it.isNotEmpty()) {
                         val confirmTooltipComponent = Component.join(Component.newline(), *confirmTooltipList.map { parseText(it) }.toTypedArray())
@@ -663,7 +663,7 @@ object MenuUI {
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                 
                 // 读取 deny 按钮的 tooltip
-                val denyTooltipList = bottomSection?.let { getConditionalListFromSection(player, it, "deny.tooltip") }
+                val denyTooltipList = bottomSection?.let { getStringList(player, it, "deny.tooltip") }
                 denyTooltipList?.let {
                     if (it.isNotEmpty()) {
                         val denyTooltipComponent = Component.join(Component.newline(), *denyTooltipList.map { parseText(it) }.toTypedArray())
@@ -681,19 +681,19 @@ object MenuUI {
 
             else -> { // notice 模式
                 val path = if (config.contains("Bottom.confirm.actions")) "Bottom.confirm.actions" else "Bottom.button1.actions"
-                val btnText = bottomSection?.let { getConditionalValueFromSection(player, it, "confirm.text", "") }?.takeIf { it.isNotEmpty() }
-                    ?: bottomSection?.let { getConditionalValueFromSection(player, it, "button1.text", "") }?.takeIf { it.isNotEmpty() }
+                val btnText = bottomSection?.let { getString(player, it, "confirm.text", "") }?.takeIf { it.isNotEmpty() }
+                    ?: bottomSection?.let { getString(player, it, "button1.text", "") }?.takeIf { it.isNotEmpty() }
                     ?: "确认"
 
                 val widthPath = if (config.contains("Bottom.confirm.width")) "Bottom.confirm.width" else "Bottom.button1.width"
-                val btnWidth = getConditionalIntFromSection(player, config, widthPath, 0)
+                val btnWidth = getInt(player, config, widthPath, 0)
 
                 val builder = ActionButton.builder(parseText(btnText))
                     .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                 // 读取 tooltip 配置
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"
-                val tooltipList = getConditionalListFromSection(player, config, tooltipPath)
+                val tooltipList = getStringList(player, config, tooltipPath)
                 if (tooltipList.isNotEmpty()) {
                     val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { parseText(it) }.toTypedArray())
                     builder.tooltip(tooltipComponent)

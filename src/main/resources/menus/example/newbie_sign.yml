@@ -1,0 +1,523 @@
+Title: '&8» &6&l新人七日签到 &8«'
+
+Settings:
+  can_escape: true
+  after_action: NONE
+  need_placeholder:
+    - 'server'
+
+Events:
+  Open:
+    # 首次进入：初始化数据
+    - condition: '{data:sign_day} == null'
+      allow:
+        - 'data: type=set;key=sign_day;var=`0`'
+  Click:
+    # ========== 公共：今日已签到提示 ==========
+    already_today:
+      - 'sound: block.note_block.bass'
+      - 'actionbar: &c今日已签到！请明天再来。'
+    # ========== 公共：未到该天提示 ==========
+    not_yet:
+      - 'sound: block.note_block.bass'
+      - 'actionbar: &c请按顺序完成前面的签到！'
+    # ========== 公共：已领取提示 ==========
+    already_done:
+      - 'sound: block.note_block.bass'
+      - 'actionbar: &a该天奖励已领取！'
+
+Body:
+  intro:
+    type: 'message'
+    text:
+      - '&7每天完成一次签到，连续签到 &67&7 天可领取全部奖励'
+      - '&7今日日期：&e%server_time_YYYYMMdd%'
+    width: 320
+  progress:
+    type: 'message'
+    text: '&f已签到：&a{data:sign_day}&f / &67 &f天'
+    width: 200
+  reward_legend:
+    type: 'message'
+    text:
+      - '&6&l奖励图例： &e金币 &7| &b钻石 &7| &7铁锭 &7| &6金锭 &7| &a绿宝石'
+    width: 350
+  tip:
+    type: 'message'
+    text:
+      - condition: '{data:sign_day} == 7'
+        allow: '&6&l恭喜完成七日签到！'
+        deny:
+          - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+            allow: '&c今日已签到，明天再来吧～'
+            deny: '&a今日可签到，点击下方对应按钮！'
+    width: 300
+
+Bottom:
+  type: 'multi'
+  columns: 1
+  buttons:
+    # ==================== 第 1 日 ====================
+    day1:
+      text:
+        - condition: '{data:sign_day} >= 1'
+          allow: '&a✔ 第一日'
+          deny: '&e▶ 第一日'
+      tooltip:
+        - condition: '{data:sign_day} >= 1'
+          allow:
+            - '&a&l✓ 第一日签到 &7- &a已领取'
+            - ''
+            - '&7获得奖励：'
+            - '  &e● 100 金币'
+            - '  &b● 1 颗钻石'
+          deny:
+            - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+              allow:
+                - '&c&l今日已签到'
+                - ''
+                - '&7已领取奖励：'
+                - '  &e● 100 金币'
+                - '  &b● 1 颗钻石'
+                - ''
+                - '&7明天再来签到 →'
+              deny:
+                - '&a&l▶ 第一日签到 &e&l(今日可签)'
+                - ''
+                - '&7点击领取以下奖励：'
+                - '  &e● 100 金币'
+                - '  &b● 1 颗钻石'
+                - ''
+                - '&e&o点击按钮进行签到'
+      width: 150
+      actions:
+        # 已领取
+        - condition: '{data:sign_day} >= 1'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        # 今日已签到
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        # 正常签到
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`1`'
+        - 'money: type=add;num=100'
+        - 'item: type=give;mats=DIAMOND;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&f第一日签到完成！;icon=diamond'
+        - 'title: title=&a第一日签到;subtitle=&f获得 100金币 + 1钻石;in=5;keep=60;out=20'
+        - 'tell: &a✔ 第一日签到成功！获得 &e100金币 &a+ &b1颗钻石'
+
+    # ==================== 第 2 日 ====================
+    day2:
+      text:
+        - condition: '{data:sign_day} >= 2'
+          allow: '&a✔ 第二日'
+          deny:
+            - condition: '{data:sign_day} >= 1'
+              allow: '&e▶ 第二日'
+              deny: '&8✘ 第二日'
+      tooltip:
+        - condition: '{data:sign_day} >= 2'
+          allow:
+            - '&a&l✓ 第二日签到 &7- &a已领取'
+            - ''
+            - '&7获得奖励：'
+            - '  &e● 150 金币'
+            - '  &b● 1 颗钻石'
+          deny:
+            - condition: '{data:sign_day} < 1'
+              allow:
+                - '&8&l✘ 第二日签到 &7- &8未解锁'
+                - ''
+                - '&7需要先完成 &e第一日 &7签到'
+                - '&7完成后此按钮将亮起 →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&l今日已签到'
+                    - ''
+                    - '&7已领取奖励：'
+                    - '  &e● 150 金币'
+                    - '  &b● 1 颗钻石'
+                    - ''
+                    - '&7明天再来签到 →'
+                  deny:
+                    - '&a&l▶ 第二日签到 &e&l(今日可签)'
+                    - ''
+                    - '&7点击领取以下奖励：'
+                    - '  &e● 150 金币'
+                    - '  &b● 1 颗钻石'
+                    - ''
+                    - '&e&o点击按钮进行签到'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 2'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 1'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`2`'
+        - 'money: type=add;num=150'
+        - 'item: type=give;mats=DIAMOND;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&f第二日签到完成！;icon=diamond'
+        - 'title: title=&a第二日签到;subtitle=&f获得 150金币 + 1钻石;in=5;keep=60;out=20'
+        - 'tell: &a✔ 第二日签到成功！获得 &e150金币 &a+ &b1颗钻石'
+
+    # ==================== 第 3 日 ====================
+    day3:
+      text:
+        - condition: '{data:sign_day} >= 3'
+          allow: '&a✔ 第三日'
+          deny:
+            - condition: '{data:sign_day} >= 2'
+              allow: '&e▶ 第三日'
+              deny: '&8✘ 第三日'
+      tooltip:
+        - condition: '{data:sign_day} >= 3'
+          allow:
+            - '&a&l✓ 第三日签到 &7- &a已领取'
+            - ''
+            - '&7获得奖励：'
+            - '  &e● 200 金币'
+            - '  &b● 2 颗钻石'
+          deny:
+            - condition: '{data:sign_day} < 2'
+              allow:
+                - '&8&l✘ 第三日签到 &7- &8未解锁'
+                - ''
+                - '&7需要先完成 &e第二日 &7签到'
+                - '&7完成后此按钮将亮起 →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&l今日已签到'
+                    - ''
+                    - '&7已领取奖励：'
+                    - '  &e● 200 金币'
+                    - '  &b● 2 颗钻石'
+                    - ''
+                    - '&7明天再来签到 →'
+                  deny:
+                    - '&a&l▶ 第三日签到 &e&l(今日可签)'
+                    - ''
+                    - '&7点击领取以下奖励：'
+                    - '  &e● 200 金币'
+                    - '  &b● 2 颗钻石'
+                    - ''
+                    - '&e&o点击按钮进行签到'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 3'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 2'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`3`'
+        - 'money: type=add;num=200'
+        - 'item: type=give;mats=DIAMOND;amount=2'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&f第三日签到完成！;icon=diamond'
+        - 'title: title=&a第三日签到;subtitle=&f获得 200金币 + 2钻石;in=5;keep=60;out=20'
+        - 'tell: &a✔ 第三日签到成功！获得 &e200金币 &a+ &b2颗钻石'
+
+    # ==================== 第 4 日 ====================
+    day4:
+      text:
+        - condition: '{data:sign_day} >= 4'
+          allow: '&a✔ 第四日'
+          deny:
+            - condition: '{data:sign_day} >= 3'
+              allow: '&e▶ 第四日'
+              deny: '&8✘ 第四日'
+      tooltip:
+        - condition: '{data:sign_day} >= 4'
+          allow:
+            - '&a&l✓ 第四日签到 &7- &a已领取'
+            - ''
+            - '&7获得奖励：'
+            - '  &e● 250 金币'
+            - '  &b● 2 颗钻石'
+            - '  &7● 1 个铁锭'
+          deny:
+            - condition: '{data:sign_day} < 3'
+              allow:
+                - '&8&l✘ 第四日签到 &7- &8未解锁'
+                - ''
+                - '&7需要先完成 &e第三日 &7签到'
+                - '&7完成后此按钮将亮起 →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&l今日已签到'
+                    - ''
+                    - '&7已领取奖励：'
+                    - '  &e● 250 金币'
+                    - '  &b● 2 颗钻石'
+                    - '  &7● 1 个铁锭'
+                    - ''
+                    - '&7明天再来签到 →'
+                  deny:
+                    - '&a&l▶ 第四日签到 &e&l(今日可签)'
+                    - ''
+                    - '&7点击领取以下奖励：'
+                    - '  &e● 250 金币'
+                    - '  &b● 2 颗钻石'
+                    - '  &7● 1 个铁锭'
+                    - ''
+                    - '&e&o点击按钮进行签到'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 4'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 3'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`4`'
+        - 'money: type=add;num=250'
+        - 'item: type=give;mats=DIAMOND;amount=2'
+        - 'item: type=give;mats=IRON_INGOT;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&f第四日签到完成！;icon=diamond'
+        - 'title: title=&a第四日签到;subtitle=&f获得 250金币 + 2钻石 + 1铁锭;in=5;keep=60;out=20'
+        - 'tell: &a✔ 第四日签到成功！获得 &e250金币 &a+ &b2钻石 &a+ &71铁锭'
+
+    # ==================== 第 5 日 ====================
+    day5:
+      text:
+        - condition: '{data:sign_day} >= 5'
+          allow: '&a✔ 第五日'
+          deny:
+            - condition: '{data:sign_day} >= 4'
+              allow: '&e▶ 第五日'
+              deny: '&8✘ 第五日'
+      tooltip:
+        - condition: '{data:sign_day} >= 5'
+          allow:
+            - '&a&l✓ 第五日签到 &7- &a已领取'
+            - ''
+            - '&7获得奖励：'
+            - '  &e● 300 金币'
+            - '  &b● 3 颗钻石'
+          deny:
+            - condition: '{data:sign_day} < 4'
+              allow:
+                - '&8&l✘ 第五日签到 &7- &8未解锁'
+                - ''
+                - '&7需要先完成 &e第四日 &7签到'
+                - '&7完成后此按钮将亮起 →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&l今日已签到'
+                    - ''
+                    - '&7已领取奖励：'
+                    - '  &e● 300 金币'
+                    - '  &b● 3 颗钻石'
+                    - ''
+                    - '&7明天再来签到 →'
+                  deny:
+                    - '&a&l▶ 第五日签到 &e&l(今日可签)'
+                    - ''
+                    - '&7点击领取以下奖励：'
+                    - '  &e● 300 金币'
+                    - '  &b● 3 颗钻石'
+                    - ''
+                    - '&e&o点击按钮进行签到'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 5'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 4'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`5`'
+        - 'money: type=add;num=300'
+        - 'item: type=give;mats=DIAMOND;amount=3'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&f第五日签到完成！;icon=diamond'
+        - 'title: title=&a第五日签到;subtitle=&f获得 300金币 + 3钻石;in=5;keep=60;out=20'
+        - 'tell: &a✔ 第五日签到成功！获得 &e300金币 &a+ &b3颗钻石'
+
+    # ==================== 第 6 日 ====================
+    day6:
+      text:
+        - condition: '{data:sign_day} >= 6'
+          allow: '&a✔ 第六日'
+          deny:
+            - condition: '{data:sign_day} >= 5'
+              allow: '&e▶ 第六日'
+              deny: '&8✘ 第六日'
+      tooltip:
+        - condition: '{data:sign_day} >= 6'
+          allow:
+            - '&a&l✓ 第六日签到 &7- &a已领取'
+            - ''
+            - '&7获得奖励：'
+            - '  &e● 400 金币'
+            - '  &b● 4 颗钻石'
+            - '  &6● 1 个金锭'
+          deny:
+            - condition: '{data:sign_day} < 5'
+              allow:
+                - '&8&l✘ 第六日签到 &7- &8未解锁'
+                - ''
+                - '&7需要先完成 &e第五日 &7签到'
+                - '&7完成后此按钮将亮起 →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&l今日已签到'
+                    - ''
+                    - '&7已领取奖励：'
+                    - '  &e● 400 金币'
+                    - '  &b● 4 颗钻石'
+                    - '  &6● 1 个金锭'
+                    - ''
+                    - '&7明天再来签到 →'
+                  deny:
+                    - '&a&l▶ 第六日签到 &e&l(今日可签)'
+                    - ''
+                    - '&7点击领取以下奖励：'
+                    - '  &e● 400 金币'
+                    - '  &b● 4 颗钻石'
+                    - '  &6● 1 个金锭'
+                    - ''
+                    - '&e&o点击按钮进行签到'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 6'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 5'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`6`'
+        - 'money: type=add;num=400'
+        - 'item: type=give;mats=DIAMOND;amount=4'
+        - 'item: type=give;mats=GOLD_INGOT;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'toast: type=task;msg=&f第六日签到完成！;icon=gold_ingot'
+        - 'title: title=&a第六日签到;subtitle=&f获得 400金币 + 4钻石 + 1金锭;in=5;keep=60;out=20'
+        - 'tell: &a✔ 第六日签到成功！获得 &e400金币 &a+ &b4钻石 &a+ &61金锭'
+
+    # ==================== 第 7 日（大奖） ====================
+    day7:
+      text:
+        - condition: '{data:sign_day} >= 7'
+          allow: '&6✔ 第七日 &l(已完成)'
+          deny:
+            - condition: '{data:sign_day} >= 6'
+              allow: '&6▶ 第七日 &l(大奖)'
+              deny: '&8✘ 第七日 (大奖)'
+      tooltip:
+        - condition: '{data:sign_day} >= 7'
+          allow:
+            - '&6&l★ 第七日签到 &7- &a已全部完成！'
+            - ''
+            - '&7获得奖励：'
+            - '  &e● 500 金币'
+            - '  &b● 5 颗钻石'
+            - '  &a● 1 个绿宝石'
+            - ''
+            - '&6&l恭喜完成七日签到挑战！'
+          deny:
+            - condition: '{data:sign_day} < 6'
+              allow:
+                - '&8&l✘ 第七日签到 &7- &8未解锁'
+                - ''
+                - '&7需要先完成 &e第六日 &7签到'
+                - '&7完成后即可领取最终大奖 →'
+              deny:
+                - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+                  allow:
+                    - '&c&l今日已签到'
+                    - ''
+                    - '&7明日即可领取最终大奖：'
+                    - '  &e● 500 金币'
+                    - '  &b● 5 颗钻石'
+                    - '  &a● 1 个绿宝石'
+                    - ''
+                    - '&6&o明天来领取七日大奖吧！'
+                  deny:
+                    - '&6&l★ 第七日大奖 &e&l(今日可签)'
+                    - ''
+                    - '&7点击领取最终大奖：'
+                    - '  &e● 500 金币'
+                    - '  &b● 5 颗钻石'
+                    - '  &a● 1 个绿宝石'
+                    - ''
+                    - '&6&o点击按钮领取七日大奖！'
+      width: 150
+      actions:
+        - condition: '{data:sign_day} >= 7'
+          allow:
+            - 'actions: already_done'
+            - 'return'
+        - condition: '{data:sign_day} < 6'
+          allow:
+            - 'actions: not_yet'
+            - 'return'
+        - condition: "{data:sign_last_date} == %server_time_YYYYMMdd%"
+          allow:
+            - 'actions: already_today'
+            - 'return'
+        - 'data: type=set;key=sign_last_date;var=`%server_time_YYYYMMdd%`'
+        - 'data: type=set;key=sign_day;var=`7`'
+        - 'money: type=add;num=500'
+        - 'item: type=give;mats=DIAMOND;amount=5'
+        - 'item: type=give;mats=EMERALD;amount=1'
+        - 'sound: entity.player.levelup'
+        - 'sound: ui.toast.challenge_complete'
+        - 'toast: type=challenge;msg=&f七日签到全部完成！;icon=emerald'
+        - 'title: title=&6&l七日签到完成！;subtitle=&f获得 500金币 + 5钻石 + 1绿宝石;in=5;keep=100;out=20'
+        - 'tell: &6&l★ 七日签到大奖！★ 获得 &e500金币 &a+ &b5钻石 &a+ &a1绿宝石！'
+        - 'console: tellraw @a[tag=admin] {"text":"[签到] %player_name% 完成了七日新人签到！","color":"gold"}'
+
+  exit:
+    text: '&8[ 关闭 ]'
+    actions:
+      - 'close'

@@ -494,9 +494,18 @@ object MenuActions {
         // 创建异步执行链
         var chain: CompletableFuture<Void> = CompletableFuture.completedFuture(null)
         var currentDelay = initialDelay  // 使用传入的初始延迟
+        var shouldReturn = false  // 用于标记是否应该中断执行
 
         for (action in actionList) {
+            // 每次迭代检查是否应该中断
+            if (shouldReturn) break
+
             chain = chain.thenCompose { _ ->
+                // 如果已经标记为中断，跳过执行
+                if (shouldReturn) {
+                    return@thenCompose CompletableFuture.completedFuture(null)
+                }
+
                 when (action) {
                     is Map<*, *> -> {
                         // 条件判断动作
@@ -517,8 +526,11 @@ object MenuActions {
                             denyActions
                         }
 
-                        // 递归执行子动作列表并等待完成，传递当前累积的延迟
-                        executeActionListAsync(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, config, currentDelay)
+                        // 同步执行子动作列表，return 会设置 shouldReturn
+                        executeActionListSyncWithReturnFlag(actionsToUse.map { it ?: Any() }, player, variables, menuOpener, config) { flag ->
+                            shouldReturn = flag
+                        }
+                        CompletableFuture.completedFuture(null)
                     }
                     is List<*> -> {
                         // 普通动作列表 - 按顺序执行
@@ -526,6 +538,7 @@ object MenuActions {
                         var subChain: CompletableFuture<Void> = CompletableFuture.completedFuture(null)
 
                         for (subAction in action) {
+                            if (shouldReturn) break
                             val actionStr = subAction?.toString() ?: continue
                             var finalAction = actionStr
                             variables.forEach { (key, value) ->
@@ -543,6 +556,7 @@ object MenuActions {
                                 }
                                 finalAction.trim() == "return" -> {
                                     // return 动作 - 中断执行
+                                    shouldReturn = true
                                     break
                                 }
                                 finalAction.startsWith("actions:", ignoreCase = true) -> {
@@ -554,6 +568,9 @@ object MenuActions {
                                         if (actionList != null && actionList.isNotEmpty()) {
                                             // 传递当前累积的延迟，并等待动作组完成
                                             subChain = subChain.thenCompose { _ ->
+                                                if (shouldReturn) {
+                                                    return@thenCompose CompletableFuture.completedFuture(null)
+                                                }
                                                 executeActionListAsync(
                                                     player,
                                                     actionList.map { it ?: Any() },
@@ -573,6 +590,9 @@ object MenuActions {
                                     // 普通动作 - 应用当前累积的延迟
                                     val future = CompletableFuture<Void>()
                                     subChain = subChain.thenCompose { _ ->
+                                        if (shouldReturn) {
+                                            return@thenCompose CompletableFuture.completedFuture(null)
+                                        }
                                         if (capturedDelay > 0) {
                                             // 应用累积的延迟 - 使用异步延迟任务
                                             Bukkit.getScheduler().runTaskLaterAsynchronously(plugin ?: return@thenCompose CompletableFuture.completedFuture(null), Runnable {
@@ -608,6 +628,7 @@ object MenuActions {
                             }
                             finalAction.trim() == "return" -> {
                                 // return 动作 - 中断执行
+                                shouldReturn = true
                                 CompletableFuture.completedFuture(null)
                             }
                             finalAction.startsWith("actions:", ignoreCase = true) -> {
@@ -665,6 +686,135 @@ object MenuActions {
             plugin?.logger?.severe("动作执行失败: ${error.message}")
             error.printStackTrace()
             null
+        }
+    }
+
+    /**
+     * 执行动作列表（同步版本，带return标志回调）
+     * 用于异步执行链中处理条件判断的子动作列表
+     * @param actionList 动作列表
+     * @param player 玩家
+     * @param variables 变量映射
+     * @param menuOpener 菜单打开器
+     * @param config 配置
+     * @param onReturn 当遇到return时调用的回调，用于设置外层的shouldReturn标志
+     */
+    private fun executeActionListSyncWithReturnFlag(
+        actionList: List<Any>,
+        player: Player,
+        variables: Map<String, String>,
+        menuOpener: (Player, String) -> Unit,
+        config: YamlConfiguration?,
+        onReturn: (Boolean) -> Unit
+    ) {
+        var shouldReturn = false
+
+        for (action in actionList) {
+            if (shouldReturn) break
+
+            when (action) {
+                is Map<*, *> -> {
+                    // 条件判断动作
+                    val group = action
+                    var conditionStr = group["condition"] as? String ?: ""
+
+                    variables.forEach { (key, value) ->
+                        conditionStr = conditionStr.replace("$($key)", value)
+                    }
+
+                    val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
+                    val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
+
+                    val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) {
+                        successActions
+                    } else {
+                        denyActions
+                    }
+
+                    // 递归执行子动作列表
+                    executeActionListSyncWithReturnFlag(actionsToUse.map { it ?: Any() }, player, variables, menuOpener, config) { flag ->
+                        shouldReturn = flag
+                        if (flag) onReturn(true)
+                    }
+                }
+                is List<*> -> {
+                    action.forEach { subAction ->
+                        if (shouldReturn) return@forEach
+                        val actionStr = subAction?.toString() ?: return@forEach
+                        var finalAction = actionStr
+                        variables.forEach { (key, value) ->
+                            finalAction = finalAction.replace("$($key)", value)
+                        }
+
+                        when {
+                            finalAction.startsWith("wait:", ignoreCase = true) -> {
+                                // 同步版本跳过 wait 动作
+                            }
+                            finalAction.trim() == "return" -> {
+                                shouldReturn = true
+                                onReturn(true)
+                                return@forEach
+                            }
+                            finalAction.startsWith("actions:", ignoreCase = true) -> {
+                                // actions: 动作
+                                val actionKey = finalAction.removePrefix("actions:").trim()
+                                if (config != null && actionKey.isNotEmpty()) {
+                                    val actionPath = "Events.Click.$actionKey"
+                                    val subActionList = config.getList(actionPath)
+                                    if (subActionList != null && subActionList.isNotEmpty()) {
+                                        executeActionListSyncWithReturnFlag(subActionList.map { it ?: Any() }, player, mapOf(), menuOpener, config) { flag ->
+                                            if (flag) {
+                                                shouldReturn = true
+                                                onReturn(true)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            else -> {
+                                executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
+                            }
+                        }
+                    }
+                }
+                is String -> {
+                    var finalAction: String = action
+                    variables.forEach { (key, value) ->
+                        finalAction = finalAction.replace("$($key)", value)
+                    }
+
+                    when {
+                        finalAction.startsWith("wait:", ignoreCase = true) -> {
+                            // 同步版本跳过 wait 动作
+                        }
+                        finalAction.trim() == "return" -> {
+                            shouldReturn = true
+                            onReturn(true)
+                        }
+                        finalAction.startsWith("actions:", ignoreCase = true) -> {
+                            val actionKey = finalAction.removePrefix("actions:").trim()
+                            if (config != null && actionKey.isNotEmpty()) {
+                                val actionPath = "Events.Click.$actionKey"
+                                val subActionList = config.getList(actionPath)
+                                if (subActionList != null && subActionList.isNotEmpty()) {
+                                    executeActionListSyncWithReturnFlag(subActionList.map { it ?: Any() }, player, mapOf(), menuOpener, config) { flag ->
+                                        if (flag) {
+                                            shouldReturn = true
+                                            onReturn(true)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else -> {
+                            executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
+                        }
+                    }
+                }
+                else -> {
+                    // 忽略其他类型
+                }
+            }
         }
     }
 
