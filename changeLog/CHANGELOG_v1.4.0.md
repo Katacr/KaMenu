@@ -18,6 +18,7 @@ Tab 补全现在支持模糊检索，不再仅限于首字母/前缀匹配。输
 - ✅ **大小写不敏感**：输入大小写均可匹配
 
 **对比:**
+
 | 场景 | 旧行为 | 新行为 |
 |------|--------|--------|
 | `/km open a` | 展示所有菜单 | 只展示包含 `a` 的菜单 |
@@ -187,6 +188,7 @@ Tab completion now supports fuzzy keyword matching instead of prefix-only matchi
 - ✅ **Case Insensitive**: Matching ignores case
 
 **Comparison:**
+
 | Scenario | Old | New |
 |----------|-----|-----|
 | `/km open a` | Shows all menus | Only menus containing `a` |
