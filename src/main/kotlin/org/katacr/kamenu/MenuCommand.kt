@@ -356,42 +356,56 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
      * 实现 Tab 补全功能
      */
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): List<String>? {
-        if (args.size == 1) return listOf("help", "open", "reload", "action", "list", "item")
+        // 获取当前正在输入的关键字
+        val keyword = args.lastOrNull() ?: ""
+        
+        if (args.size == 1) return filterByKeyword(listOf("help", "open", "reload", "action", "list", "item"), keyword)
         if (args.size == 2 && args[0].equals("open", ignoreCase = true)) {
-            // 这里动态获取所有已加载的菜单 ID
-            return plugin.menuManager.getAllMenuIds()
+            // 这里动态获取所有已加载的菜单 ID，按输入关键字模糊匹配
+            return filterByKeyword(plugin.menuManager.getAllMenuIds(), keyword)
         }
         if (args.size == 2 && args[0].equals("action", ignoreCase = true)) {
-            // 返回在线玩家列表
-            return Bukkit.getOnlinePlayers().map { it.name }
+            // 返回在线玩家列表，按输入关键字模糊匹配
+            return filterByKeyword(Bukkit.getOnlinePlayers().map { it.name }, keyword)
         }
         if (args.size == 3 && args[0].equals("action", ignoreCase = true)) {
-            // 返回常用动作前缀
-            return listOf(
+            // 返回常用动作前缀，按输入关键字模糊匹配
+            return filterByKeyword(listOf(
                 "tell:", "actionbar:", "title:", "hovertext:",
                 "command:", "console:", "sound:",
                 "open:", "close",
                 "data:", "gdata:", "meta:",
                 "set-data:", "set-gdata:", "set-meta:",
                 "toast:", "money:"
-            )
+            ), keyword)
         }
         if (args.size == 2 && args[0].equals("item", ignoreCase = true)) {
-            // 返回物品子指令
-            return listOf("save", "give", "delete")
+            // 返回物品子指令，按输入关键字模糊匹配
+            return filterByKeyword(listOf("save", "give", "delete"), keyword)
         }
         if (args.size == 3 && args[0].equals("item", ignoreCase = true) && args[1].equals("give", ignoreCase = true)) {
-            // 返回所有保存的物品名称
-            return plugin.itemManager.getAllItemNames()
+            // 返回所有保存的物品名称，按输入关键字模糊匹配
+            return filterByKeyword(plugin.itemManager.getAllItemNames(), keyword)
         }
         if (args.size == 3 && args[0].equals("item", ignoreCase = true) && args[1].equals("delete", ignoreCase = true)) {
-            // 返回所有保存的物品名称
-            return plugin.itemManager.getAllItemNames()
+            // 返回所有保存的物品名称，按输入关键字模糊匹配
+            return filterByKeyword(plugin.itemManager.getAllItemNames(), keyword)
         }
         if (args.size == 4 && args[0].equals("item", ignoreCase = true) && args[1].equals("give", ignoreCase = true)) {
-            // 返回在线玩家列表
-            return Bukkit.getOnlinePlayers().map { it.name }
+            // 返回在线玩家列表，按输入关键字模糊匹配
+            return filterByKeyword(Bukkit.getOnlinePlayers().map { it.name }, keyword)
         }
         return emptyList()
+    }
+
+    /**
+     * 按输入关键字模糊匹配补全列表（包含该关键字即可）
+     * @param list 原始补全列表
+     * @param keyword 用户已输入的关键字
+     * @return 过滤后的补全列表
+     */
+    private fun filterByKeyword(list: List<String>, keyword: String): List<String> {
+        if (keyword.isEmpty()) return list
+        return list.filter { it.contains(keyword, ignoreCase = true) }
     }
 }
