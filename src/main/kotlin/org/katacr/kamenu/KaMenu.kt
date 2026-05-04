@@ -121,6 +121,7 @@ class KaMenu : JavaPlugin() {
         // 设置工具类的语言管理器引用
         ConditionUtils.setLanguageManager(languageManager)
         MenuActions.setLanguageManager(languageManager)
+        ActionHandlers.setLanguageManager(languageManager)
         ConfigUpdater.setLanguageManager(languageManager)
 
         // 初始化 MenuUI
@@ -129,12 +130,16 @@ class KaMenu : JavaPlugin() {
         // 设置 MenuActions 插件引用
         MenuActions.setPlugin(this)
 
+        // 初始化 ActionHandlers
+        ActionHandlers.init(this)
+
         // 初始化 JavaScript 支持
         JavaScriptManager.initialize(this)
 
         // 0.5 读取并应用 BungeeCord 配置
         bungeeCordEnabled = config.getBoolean("bungeecord", false)
         MenuActions.setBungeeCordEnabled(bungeeCordEnabled)
+        ActionHandlers.setBungeeCordEnabled(bungeeCordEnabled)
         if (bungeeCordEnabled) {
             server.messenger.registerOutgoingPluginChannel(this, "BungeeCord")
             logger.info("BungeeCord support enabled")
@@ -164,14 +169,17 @@ class KaMenu : JavaPlugin() {
         databaseManager = DatabaseManager(this)
         databaseManager.setup()
         MenuActions.setDatabaseManager(databaseManager)
+        ActionHandlers.setDatabaseManager(databaseManager)
 
         // 6.5 初始化元数据管理器
         metaDataManager = MetaDataManager()
         MenuActions.setMetaDataManager(metaDataManager)
+        ActionHandlers.setMetaDataManager(metaDataManager)
 
         // 6.6 初始化物品管理器
         itemManager = ItemManager(this)
         MenuActions.setItemManager(itemManager)
+        ActionHandlers.setItemManager(itemManager)
 
         // 设置 ConditionUtils 插件引用
         ConditionUtils.setPlugin(this)
@@ -179,6 +187,7 @@ class KaMenu : JavaPlugin() {
         // 7. 设置经济系统
         setupEconomy()
         MenuActions.setEconomy(economy)
+        ActionHandlers.setEconomy(economy)
 
         // 7.5 初始化 API
         org.katacr.kamenu.api.KaMenuAPI.init(this)
@@ -192,6 +201,11 @@ class KaMenu : JavaPlugin() {
         // 9. 注册 PlaceholderAPI 扩展
         if (server.pluginManager.getPlugin("PlaceholderAPI") != null) {
             KaMenuExpansion(this).register()
+        }
+
+        // 9.5 异步检查更新
+        if (config.getBoolean("check-update", true)) {
+            UpdateChecker.check(this)
         }
 
         // 10. 打印启动信息

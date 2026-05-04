@@ -2,11 +2,13 @@
 
 package org.katacr.kamenu
 
+import org.bukkit.Bukkit
 import org.bukkit.event.block.Action
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
 import org.bukkit.inventory.EquipmentSlot
@@ -111,6 +113,16 @@ class MenuListener(private val plugin: KaMenu) : Listener {
         // 取消事件，打开菜单
         event.isCancelled = true
         MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
+    }
+
+    @EventHandler
+    fun onPlayerJoin(event: PlayerJoinEvent) {
+        if (plugin.config.getBoolean("check-update", true)) {
+            val player = event.player
+            Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+                UpdateChecker.notifyIfUpdateAvailable(player)
+            }, 100L) // 5秒延迟，避免被进服消息冲掉
+        }
     }
 
     @EventHandler

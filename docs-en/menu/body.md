@@ -403,7 +403,7 @@ Displays an item icon in the menu, optionally with a name, Lore, and description
 | `width` | `Int` | ❌ | `16` | Item icon width (px) |
 | `height` | `Int` | ❌ | `16` | Item icon height (px) |
 | `show_overlays` | `Boolean` | ❌ | `true` | Whether to show item overlays (durability bar, cooldown, count, etc.) |
-| `tooltip` | `Boolean` | ❌ | `true` | Whether to show the item tooltip on hover |
+| `show_tooltip` | `Boolean` | ❌ | `true` | Whether to show the item tooltip on hover |
 
 **Example:**
 

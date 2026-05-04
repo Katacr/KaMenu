@@ -11,8 +11,6 @@ import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.minimessage.MiniMessage
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
@@ -29,8 +27,6 @@ import org.katacr.kamenu.ConditionUtils.getType
 import java.util.concurrent.CompletableFuture
 
 object MenuUI {
-    private val serializer = LegacyComponentSerializer.legacyAmpersand()
-    private val miniMessage = MiniMessage.miniMessage()
     private lateinit var plugin: KaMenu
 
     /**
@@ -38,151 +34,6 @@ object MenuUI {
      */
     fun init(kaMenu: KaMenu) {
         this.plugin = kaMenu
-    }
-
-    /**
-     * 将颜色代码转换为 Adventure Component（Legacy 格式 &a, &b 等）
-     */
-    fun color(text: String?): Component =
-        if (text == null) Component.empty() else serializer.deserialize(text)
-
-    /**
-     * 将 MiniMessage 格式转换为 Adventure Component
-     * 支持丰富的格式：<red>、<gradient:red:blue>、<bold> 等
-     * 同时也兼容 Legacy 颜色代码（&a, &b 等）
-     */
-    fun miniMessage(text: String?): Component =
-        if (text == null) Component.empty() else miniMessage.deserialize(text)
-
-    /**
-     * Legacy 颜色代码到 MiniMessage 标签的映射
-     */
-    private val legacyToMiniMessageMap = mapOf(
-        // 颜色代码
-        "&0" to "<black>", "§0" to "<black>",
-        "&1" to "<dark_blue>", "§1" to "<dark_blue>",
-        "&2" to "<dark_green>", "§2" to "<dark_green>",
-        "&3" to "<dark_aqua>", "§3" to "<dark_aqua>",
-        "&4" to "<dark_red>", "§4" to "<dark_red>",
-        "&5" to "<dark_purple>", "§5" to "<dark_purple>",
-        "&6" to "<gold>", "§6" to "<gold>",
-        "&7" to "<gray>", "§7" to "<gray>",
-        "&8" to "<dark_gray>", "§8" to "<dark_gray>",
-        "&9" to "<blue>", "§9" to "<blue>",
-        "&a" to "<green>", "§a" to "<green>",
-        "&b" to "<aqua>", "§b" to "<aqua>",
-        "&c" to "<red>", "§c" to "<red>",
-        "&d" to "<light_purple>", "§d" to "<light_purple>",
-        "&e" to "<yellow>", "§e" to "<yellow>",
-        "&f" to "<white>", "§f" to "<white>",
-        // 格式化代码
-        "&k" to "<obfuscated>", "§k" to "<obfuscated>",
-        "&l" to "<bold>", "§l" to "<bold>",
-        "&m" to "<strikethrough>", "§m" to "<strikethrough>",
-        "&n" to "<underline>", "§n" to "<underline>",
-        "&o" to "<italic>", "§o" to "<italic>",
-        "&r" to "<reset>", "§r" to "<reset>",
-        // 大写版本
-        "&A" to "<green>", "§A" to "<green>",
-        "&B" to "<aqua>", "§B" to "<aqua>",
-        "&C" to "<red>", "§C" to "<red>",
-        "&D" to "<light_purple>", "§D" to "<light_purple>",
-        "&E" to "<yellow>", "§E" to "<yellow>",
-        "&F" to "<white>", "§F" to "<white>",
-        "&K" to "<obfuscated>", "§K" to "<obfuscated>",
-        "&L" to "<bold>", "§L" to "<bold>",
-        "&M" to "<strikethrough>", "§M" to "<strikethrough>",
-        "&N" to "<underline>", "§N" to "<underline>",
-        "&O" to "<italic>", "§O" to "<italic>",
-        "&R" to "<reset>", "§R" to "<reset>"
-    )
-
-    /**
-     * 将 Legacy 颜色代码转换为 MiniMessage 标签
-     * @param text 包含 Legacy 颜色代码的文本
-     * @return 转换后的文本
-     */
-    private fun convertLegacyToMiniMessage(text: String): String {
-        var result = text
-        legacyToMiniMessageMap.forEach { (legacy, mini) ->
-            result = result.replace(legacy, mini)
-        }
-        return result
-    }
-
-    /**
-     * 将简化的十六进制颜色代码转换为 MiniMessage 标签
-     * &#FF4444你好 → <color:#FF4444>你好
-     * @param text 包含简化十六进制颜色代码的文本
-     * @return 转换后的文本
-     */
-    private fun convertHexToMiniMessage(text: String): String {
-        // 匹配 &#RRGGBB 或 &#RRGGBBAA 格式（可选的透明度）
-        val hexPattern = Regex("&#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?")
-        return text.replace(hexPattern) { matchResult ->
-            val color = matchResult.groupValues[1].uppercase()
-            "<color:#$color>"
-        }
-    }
-
-    /**
-     * 将简化的物品图标语法转换为 MiniMessage sprite 标签
-     * &item:[diamond] → <sprite:items:item/diamond>
-     * &item:[stone] → <sprite:blocks:block/stone>
-     * &item:[DiamOnd] → <sprite:items:item/diamond>
-     * @param text 包含简化物品图标语法的文本
-     * @return 转换后的文本
-     */
-    private fun convertItemSpriteToMiniMessage(text: String): String {
-        // 匹配 &item:[材质名称] 格式，使用 [] 包裹以支持任意长度的枚举名
-        val itemPattern = Regex("&item:\\[([^\\]]+)\\]")
-        return text.replace(itemPattern) { matchResult ->
-            val materialName = matchResult.groupValues[1]
-            MaterialUtils.getSpriteTag(materialName) ?: matchResult.value
-        }
-    }
-
-    /**
-     * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）
-     * 如果文本包含 MiniMessage 标签，则使用 MiniMessage 解析以支持所有高级特性（点击、悬停等）
-     * 否则使用 Legacy 颜色代码解析
-     * 注意: hovertext 格式 (<text=...>) 应该先在 parseClickableText 中处理
-     * @param text 文本内容
-     * @return Adventure Component
-     */
-    fun parseText(text: String?): Component {
-        if (text == null) return Component.empty()
-
-        // 1. 先将简化的十六进制颜色代码转换为 MiniMessage 标签
-        // &#FF4444你好 → <color:FF4444>你好
-        var convertedText = convertHexToMiniMessage(text)
-
-        // 2. 将简化的物品图标语法转换为 MiniMessage sprite 标签
-        // &item:diamond → <sprite:items:item/diamond>
-        // &item:stone → <sprite:blocks:block/stone>
-        convertedText = convertItemSpriteToMiniMessage(convertedText)
-
-        // 检测是否包含 MiniMessage 标签（<...>，排除 <text=...> 自定义格式）
-        // MiniMessage 标签特征：尖括号包裹的字母、冒号、渐变等
-        val hasMiniMessageTags = convertedText.contains(Regex("<[a-z_]+(?:[:][^>]*)?>", RegexOption.IGNORE_CASE))
-
-        return if (hasMiniMessageTags) {
-            // 检测是否包含 Legacy 颜色代码
-            val hasLegacyCodes = convertedText.contains(Regex("[&§][0-9a-fA-FlmnoOrkLKMNO]"))
-            
-            val textToParse = if (hasLegacyCodes) {
-                // 将 Legacy 颜色代码转换为 MiniMessage 标签
-                convertLegacyToMiniMessage(convertedText)
-            } else {
-                convertedText
-            }
-            
-            // 使用 MiniMessage 解析，保留所有高级特性（点击、悬停、渐变等）
-            miniMessage(textToParse)
-        } else {
-            // 使用 Legacy 颜色代码解析
-            color(convertedText)
-        }
     }
 
     /**
@@ -348,7 +199,7 @@ object MenuUI {
         }
 
         val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
-        val title = parseText(ConditionUtils.resolveVariables(player, rawTitle))
+        val title = TextParser.parseText(ConditionUtils.resolveVariables(player, rawTitle))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -395,7 +246,7 @@ object MenuUI {
                         }
                     }
                     "item" -> {
-                        val materialStr = getString(player, section, "$key.material", "PAPER")
+                        val materialStr = ConditionUtils.resolveVariables(player, getString(player, section, "$key.material", "PAPER"))
                         val item: ItemStack
                         
                         // 检查是否为槽位引用格式 [SLOT] 或 [SLOT:Player]
@@ -434,14 +285,14 @@ object MenuUI {
                                     val skull = ItemStack(Material.PLAYER_HEAD)
                                     skull.editMeta { meta ->
                                         val skullMeta = meta as org.bukkit.inventory.meta.SkullMeta
-                                        skullMeta.setOwningPlayer(targetPlayer)
+                                        skullMeta.owningPlayer = targetPlayer
                                     }
                                     skull
                                 } else {
                                     // 其他槽位为空，渲染浅灰色玻璃板，name设为"无"
                                     val glass = ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE)
                                     glass.editMeta { meta ->
-                                        meta.displayName(parseText("无"))
+                                        meta.displayName(TextParser.parseText("无"))
                                     }
                                     glass
                                 }
@@ -450,9 +301,9 @@ object MenuUI {
                                 val width = getInt(player, section, "$key.width", 16)
                                 val height = getInt(player, section, "$key.height", 16)
                                 val showOverlays = getBoolean(player, section, "$key.show_overlays", true)
-                                val tooltip = getBoolean(player, section, "$key.tooltip", true)
+                                val showTooltip = getBoolean(player, section, "$key.show_tooltip", true)
                                 
-                                bodyList.add(DialogBody.item(item, null, showOverlays, tooltip, width, height))
+                                bodyList.add(DialogBody.item(item, null, showOverlays, showTooltip, width, height))
                                 continue  // 跳过后续处理
                             }
                         } else {
@@ -462,17 +313,17 @@ object MenuUI {
                             item = ItemStack(material, amount)
 
                             item.editMeta { meta ->
-                                val name = getString(player, section, "$key.name", "")
+                                val name = ConditionUtils.resolveVariables(player, getString(player, section, "$key.name", ""))
                                 if (name.isNotEmpty()) {
-                                    meta.displayName(parseText(name))
+                                    meta.displayName(TextParser.parseText(name))
                                 }
                                 val lore = getStringList(player, section, "$key.lore")
                                 if (lore.isNotEmpty()) {
-                                    meta.lore(lore.map { parseText(it) })
+                                    meta.lore(lore.map { TextParser.parseText(it) })
                                 }
                                 
                                 // 支持设置 item_model（1.21.7+ 命名空间物品模型）
-                                val itemModel = getString(player, section, "$key.item_model", "")
+                                val itemModel = ConditionUtils.resolveVariables(player, getString(player, section, "$key.item_model", ""))
                                 if (itemModel.isNotEmpty()) {
                                     val namespacedKey = org.bukkit.NamespacedKey.minecraft("item_model")
                                     val pdc = meta.persistentDataContainer
@@ -480,7 +331,7 @@ object MenuUI {
                                 }
                             }
                         }
-                        val descriptionText = getString(player, section, "$key.description", "")
+                        val descriptionText = ConditionUtils.resolveVariables(player, getString(player, section, "$key.description", ""))
                         val descriptionWidth = getInt(player, section, "$key.description_width", 0)
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
                             if (descriptionWidth > 0) {
@@ -493,9 +344,9 @@ object MenuUI {
                         val width = getInt(player, section, "$key.width", 16)
                         val height = getInt(player, section, "$key.height", 16)
                         val showOverlays = getBoolean(player, section, "$key.show_overlays", true)
-                        val tooltip = getBoolean(player, section, "$key.tooltip", true)
+                        val showTooltip = getBoolean(player, section, "$key.show_tooltip", true)
 
-                        bodyList.add(DialogBody.item(item, descriptionBody, showOverlays, tooltip, width, height))
+                        bodyList.add(DialogBody.item(item, descriptionBody, showOverlays, showTooltip, width, height))
                     }
                 }
             }
@@ -508,7 +359,7 @@ object MenuUI {
                 // 如果类型为 'none'，跳过此组件
                 if (type == "none") continue
 
-                val prompt = parseText(getString(player, section, "$key.text", ""))
+                val prompt = TextParser.parseText(getString(player, section, "$key.text", ""))
 
                 when (type) {
                     "checkbox" -> {
@@ -562,7 +413,7 @@ object MenuUI {
                         val defaultId = getString(player, section, "$key.default_id", "")
                         val options = getStringList(player, section, "$key.options")
                         val entries = options.map {
-                            SingleOptionDialogInput.OptionEntry.create(it, parseText(it), it == defaultId)
+                            SingleOptionDialogInput.OptionEntry.create(it, TextParser.parseText(it), it == defaultId)
                         }
                         inputList.add(DialogInput.singleOption(key, prompt, entries).width(getInt(player, section, "$key.width", 200)).build())
                     }
@@ -592,14 +443,14 @@ object MenuUI {
                         val btnText = getString(player, btnSection, "$btnKey.text", "按钮")
                         val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
 
-                        val builder = ActionButton.builder(parseText(btnText))
+                        val builder = ActionButton.builder(TextParser.parseText(btnText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                         // 读取 tooltip 配置
                         val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
                         if (tooltipList.isNotEmpty()) {
                             // 将 tooltip 列表转换为 Component，每个元素作为一行
-                            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { parseText(it) }.toTypedArray())
+                            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { TextParser.parseText(it) }.toTypedArray())
                             builder.tooltip(tooltipComponent)
                         }
 
@@ -617,7 +468,7 @@ object MenuUI {
                     val exitText = getString(player, section, "exit.text", "")
                     if (exitText.isNotEmpty()) {
                         val exitWidth = getInt(player, section, "exit.width", 0)
-                        val builder = ActionButton.builder(parseText(exitText))
+                        val builder = ActionButton.builder(TextParser.parseText(exitText))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                         // 如果设置了宽度（width > 0），则应用宽度设置
@@ -642,14 +493,14 @@ object MenuUI {
                 val confirmWidth = bottomSection?.let { getInt(player, it, "confirm.width", 0) } ?: 0
                 val denyWidth = bottomSection?.let { getInt(player, it, "deny.width", 0) } ?: 0
 
-                val confirmBuilder = ActionButton.builder(parseText(confirmBtnText))
+                val confirmBuilder = ActionButton.builder(TextParser.parseText(confirmBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                 
                 // 读取 confirm 按钮的 tooltip
                 val confirmTooltipList = bottomSection?.let { getStringList(player, it, "confirm.tooltip") }
                 confirmTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        val confirmTooltipComponent = Component.join(Component.newline(), *confirmTooltipList.map { parseText(it) }.toTypedArray())
+                        val confirmTooltipComponent = Component.join(Component.newline(), *confirmTooltipList.map { TextParser.parseText(it) }.toTypedArray())
                         confirmBuilder.tooltip(confirmTooltipComponent)
                     }
                 }
@@ -659,14 +510,14 @@ object MenuUI {
                 }
                 val confirmBtn = confirmBuilder.build()
 
-                val denyBuilder = ActionButton.builder(parseText(denyBtnText))
+                val denyBuilder = ActionButton.builder(TextParser.parseText(denyBtnText))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
                 
                 // 读取 deny 按钮的 tooltip
                 val denyTooltipList = bottomSection?.let { getStringList(player, it, "deny.tooltip") }
                 denyTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        val denyTooltipComponent = Component.join(Component.newline(), *denyTooltipList.map { parseText(it) }.toTypedArray())
+                        val denyTooltipComponent = Component.join(Component.newline(), *denyTooltipList.map { TextParser.parseText(it) }.toTypedArray())
                         denyBuilder.tooltip(denyTooltipComponent)
                     }
                 }
@@ -688,14 +539,14 @@ object MenuUI {
                 val widthPath = if (config.contains("Bottom.confirm.width")) "Bottom.confirm.width" else "Bottom.button1.width"
                 val btnWidth = getInt(player, config, widthPath, 0)
 
-                val builder = ActionButton.builder(parseText(btnText))
+                val builder = ActionButton.builder(TextParser.parseText(btnText))
                     .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener))
 
                 // 读取 tooltip 配置
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"
                 val tooltipList = getStringList(player, config, tooltipPath)
                 if (tooltipList.isNotEmpty()) {
-                    val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { parseText(it) }.toTypedArray())
+                    val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { TextParser.parseText(it) }.toTypedArray())
                     builder.tooltip(tooltipComponent)
                 }
 

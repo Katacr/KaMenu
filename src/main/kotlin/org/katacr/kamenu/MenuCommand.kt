@@ -376,7 +376,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 "open:", "close",
                 "data:", "gdata:", "meta:",
                 "set-data:", "set-gdata:", "set-meta:",
-                "toast:", "money:"
+                "toast:", "money:", "tppos:"
             ), keyword)
         }
         if (args.size == 2 && args[0].equals("item", ignoreCase = true)) {

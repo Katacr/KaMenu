@@ -2,23 +2,15 @@
 
 package org.katacr.kamenu
 
-import com.google.common.io.ByteStreams
 import io.papermc.paper.registry.data.dialog.action.DialogAction
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.event.ClickEvent
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
-import net.kyori.adventure.text.minimessage.MiniMessage
-import net.kyori.adventure.title.Title
 import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
-import org.bukkit.NamespacedKey
-import org.bukkit.SoundCategory
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
-import com.google.common.io.ByteArrayDataOutput
 import java.time.Duration
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -26,8 +18,6 @@ import java.util.concurrent.CompletableFuture
  * 负责解析和执行菜单中的各种动作
  */
 object MenuActions {
-    private val serializer = LegacyComponentSerializer.legacyAmpersand()
-    private val miniMessage = MiniMessage.miniMessage()
     private var languageManager: LanguageManager? = null
     private var databaseManager: DatabaseManager? = null
     private var metaDataManager: MetaDataManager? = null
@@ -116,12 +106,6 @@ object MenuActions {
     }
 
     /**
-     * 将颜色代码转换为 Adventure Component
-     */
-    internal fun color(text: String?): Component =
-        if (text == null) Component.empty() else serializer.deserialize(text)
-
-    /**
      * 解析目标选择器
      * 从动作字符串中提取 {player: ...} 部分
      * @param action 原始动作字符串
@@ -198,144 +182,6 @@ object MenuActions {
         }
     }
 
-    /**
-     * 将 MiniMessage 格式转换为 Adventure Component
-     * 支持丰富的格式：<red>、<gradient:red:blue>、<bold> 等
-     * 同时也兼容 Legacy 颜色代码（&a, &b 等）
-     */
-    fun miniMessage(text: String?): Component =
-        if (text == null) Component.empty() else miniMessage.deserialize(text)
-
-    /**
-     * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）
-     * 如果文本包含 MiniMessage 标签，则使用 MiniMessage 解析以支持所有高级特性（点击、悬停等）
-     * 否则使用 Legacy 颜色代码解析
-     * 注意: hovertext 格式 (<text=...>) 应该先在 parseClickableText 中处理
-     * @param text 文本内容
-     * @return Adventure Component
-     */
-    /**
-     * Legacy 颜色代码到 MiniMessage 标签的映射
-     */
-    private val legacyToMiniMessageMap = mapOf(
-        // 颜色代码
-        "&0" to "<black>", "§0" to "<black>",
-        "&1" to "<dark_blue>", "§1" to "<dark_blue>",
-        "&2" to "<dark_green>", "§2" to "<dark_green>",
-        "&3" to "<dark_aqua>", "§3" to "<dark_aqua>",
-        "&4" to "<dark_red>", "§4" to "<dark_red>",
-        "&5" to "<dark_purple>", "§5" to "<dark_purple>",
-        "&6" to "<gold>", "§6" to "<gold>",
-        "&7" to "<gray>", "§7" to "<gray>",
-        "&8" to "<dark_gray>", "§8" to "<dark_gray>",
-        "&9" to "<blue>", "§9" to "<blue>",
-        "&a" to "<green>", "§a" to "<green>",
-        "&b" to "<aqua>", "§b" to "<aqua>",
-        "&c" to "<red>", "§c" to "<red>",
-        "&d" to "<light_purple>", "§d" to "<light_purple>",
-        "&e" to "<yellow>", "§e" to "<yellow>",
-        "&f" to "<white>", "§f" to "<white>",
-        // 格式化代码
-        "&k" to "<obfuscated>", "§k" to "<obfuscated>",
-        "&l" to "<bold>", "§l" to "<bold>",
-        "&m" to "<strikethrough>", "§m" to "<strikethrough>",
-        "&n" to "<underline>", "§n" to "<underline>",
-        "&o" to "<italic>", "§o" to "<italic>",
-        "&r" to "<reset>", "§r" to "<reset>",
-        // 大写版本
-        "&A" to "<green>", "§A" to "<green>",
-        "&B" to "<aqua>", "§B" to "<aqua>",
-        "&C" to "<red>", "§C" to "<red>",
-        "&D" to "<light_purple>", "§D" to "<light_purple>",
-        "&E" to "<yellow>", "§E" to "<yellow>",
-        "&F" to "<white>", "§F" to "<white>",
-        "&K" to "<obfuscated>", "§K" to "<obfuscated>",
-        "&L" to "<bold>", "§L" to "<bold>",
-        "&M" to "<strikethrough>", "§M" to "<strikethrough>",
-        "&N" to "<underline>", "§N" to "<underline>",
-        "&O" to "<italic>", "§O" to "<italic>",
-        "&R" to "<reset>", "§R" to "<reset>"
-    )
-
-    /**
-     * 将 Legacy 颜色代码转换为 MiniMessage 标签
-     * @param text 包含 Legacy 颜色代码的文本
-     * @return 转换后的文本
-     */
-    private fun convertLegacyToMiniMessage(text: String): String {
-        var result = text
-        legacyToMiniMessageMap.forEach { (legacy, mini) ->
-            result = result.replace(legacy, mini)
-        }
-        return result
-    }
-
-    /**
-     * 将简化的十六进制颜色代码转换为 MiniMessage 标签
-     * &#FF4444你好 → <color:#FF4444>你好
-     * @param text 包含简化十六进制颜色代码的文本
-     * @return 转换后的文本
-     */
-    private fun convertHexToMiniMessage(text: String): String {
-        // 匹配 &#RRGGBB 或 &#RRGGBBAA 格式（可选的透明度）
-        val hexPattern = Regex("&#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?")
-        return text.replace(hexPattern) { matchResult ->
-            val color = matchResult.groupValues[1].uppercase()
-            "<color:#$color>"
-        }
-    }
-
-    /**
-     * 将简化的物品图标语法转换为 MiniMessage sprite 标签
-     * &item:[diamond] → <sprite:items:item/diamond>
-     * &item:[stone] → <sprite:blocks:block/stone>
-     * &item:[DiamOnd] → <sprite:items:item/diamond>
-     * @param text 包含简化物品图标语法的文本
-     * @return 转换后的文本
-     */
-    private fun convertItemSpriteToMiniMessage(text: String): String {
-        // 匹配 &item:[材质名称] 格式，使用 [] 包裹以支持任意长度的枚举名
-        val itemPattern = Regex("&item:\\[([^\\]]+)\\]")
-        return text.replace(itemPattern) { matchResult ->
-            val materialName = matchResult.groupValues[1]
-            MaterialUtils.getSpriteTag(materialName) ?: matchResult.value
-        }
-    }
-
-    internal fun parseText(text: String?): Component {
-        if (text == null) return Component.empty()
-
-        // 1. 先将简化的十六进制颜色代码转换为 MiniMessage 标签
-        // &#FF4444你好 → <color:FF4444>你好
-        var convertedText = convertHexToMiniMessage(text)
-
-        // 2. 将简化的物品图标语法转换为 MiniMessage sprite 标签
-        // &item:diamond → <sprite:items:item/diamond>
-        // &item:stone → <sprite:blocks:block/stone>
-        convertedText = convertItemSpriteToMiniMessage(convertedText)
-
-        // 检测是否包含 MiniMessage 标签（<...>，排除 <text=...> 自定义格式）
-        // MiniMessage 标签特征：尖括号包裹的字母、冒号、渐变等
-        val hasMiniMessageTags = convertedText.contains(Regex("<[a-z_]+(?:[:][^>]*)?>", RegexOption.IGNORE_CASE))
-
-        return if (hasMiniMessageTags) {
-            // 检测是否包含 Legacy 颜色代码
-            val hasLegacyCodes = convertedText.contains(Regex("[&§][0-9a-fA-FlmnoOrkLKMNO]"))
-            
-            val textToParse = if (hasLegacyCodes) {
-                // 将 Legacy 颜色代码转换为 MiniMessage 标签
-                convertLegacyToMiniMessage(convertedText)
-            } else {
-                convertedText
-            }
-            
-            // 使用 MiniMessage 解析，保留所有高级特性（点击、悬停、渐变等）
-            miniMessage(textToParse)
-        } else {
-            // 使用 Legacy 颜色代码解析
-            color(text)
-        }
-    }
 
     /**
      * 解析变量（完整顺序：$(var) -> {data:var} -> %papi_var%）
@@ -344,42 +190,6 @@ object MenuActions {
      * @param variables 输入变量映射（$(var)）
      * @return 解析后的文本
      */
-    fun resolveVariablesWithInput(player: Player, text: String, variables: Map<String, String> = emptyMap()): String {
-        var result = text
-
-        // 1. 解析输入变量 $(key)
-        variables.forEach { (key, value) ->
-            result = result.replace("$($key)", value)
-        }
-
-        // 2. 解析内置变量 {data:key}、{gdata:key}、{meta:key}
-        result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            databaseManager?.getPlayerData(player.uniqueId, key)
-                ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
-        }
-        result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            databaseManager?.getGlobalData(key)
-                ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
-        }
-        result = result.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            metaDataManager?.getPlayerMeta(player.uniqueId, key) ?: "null"
-        }
-
-        // 3. 解析 PAPI 变量
-        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            try {
-                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
-            } catch (_: Exception) {
-                // PAPI 解析失败，忽略
-            }
-        }
-
-        return result
-    }
-
     /**
      * 解析变量（内置变量 + PAPI）
      * @param player 玩家对象
@@ -387,7 +197,7 @@ object MenuActions {
      * @return 解析后的文本
      */
     private fun resolveVariables(player: Player, text: String): String {
-        return resolveVariablesWithInput(player, text, emptyMap())
+        return ActionHandlers.resolveVariables(player, text)
     }
 
     /**
@@ -831,7 +641,7 @@ object MenuActions {
         config: YamlConfiguration?
     ): Boolean {
         val actionsToExecute = mutableListOf<DeferredAction>()
-        var currentDelay = 0L
+        val currentDelay = 0L
         var shouldReturn = false
 
         for (action in actionList) {
@@ -1244,7 +1054,7 @@ object MenuActions {
         when {
             // tell: 普通消息
             finalCmd.startsWith("tell:") ->
-                player.sendMessage(parseText(finalCmd.removePrefix("tell:").trim()))
+                player.sendMessage(TextParser.parseText(finalCmd.removePrefix("tell:").trim()))
 
             // js: 执行 JavaScript 代码或预定义函数
             finalCmd.startsWith("js:") -> {
@@ -1281,13 +1091,13 @@ object MenuActions {
                                 val result = JavaScriptManager.executePredefinedFunctionWithArgs(player, functionName, argsString, config)
                                 if (result != null && result != "") {
                                     // 如果有返回值，显示给玩家（可选）
-                                    player.sendMessage(parseText("§aJS Result: $result"))
+                                    player.sendMessage(TextParser.parseText("§aJS Result: $result"))
                                 }
                             } else {
                                 // 格式错误，直接当作代码执行
                                 val result = JavaScriptManager.evaluateWithContext(player, jsCode)
                                 if (result != null && result != "") {
-                                    player.sendMessage(parseText("§aJS Result: $result"))
+                                    player.sendMessage(TextParser.parseText("§aJS Result: $result"))
                                 }
                             }
                         } else {
@@ -1295,29 +1105,29 @@ object MenuActions {
                             val result = JavaScriptManager.evaluateWithContext(player, jsCode)
                             if (result != null && result != "") {
                                 // 如果有返回值，显示给玩家（可选）
-                                player.sendMessage(parseText("§aJS Result: $result"))
+                                player.sendMessage(TextParser.parseText("§aJS Result: $result"))
                             }
                         }
                     } catch (e: Exception) {
                         plugin?.logger?.warning("JavaScript execution error for player ${player.name}: ${e.message}")
-                        player.sendMessage(parseText("§cJavaScript execution failed: ${e.message}"))
+                        player.sendMessage(TextParser.parseText("§cJavaScript execution failed: ${e.message}"))
                     }
                 } else {
-                    player.sendMessage(parseText("§cJavaScript feature is not available. Please restart the server to complete the initial setup."))
+                    player.sendMessage(TextParser.parseText("§cJavaScript feature is not available. Please restart the server to complete the initial setup."))
                 }
             }
 
             // actionbar: ActionBar 消息
             finalCmd.startsWith("actionbar:") -> {
                 val message = finalCmd.removePrefix("actionbar:").trim()
-                player.sendActionBar(parseText(message))
+                player.sendActionBar(TextParser.parseText(message))
             }
 
             // title: 发送标题
             finalCmd.startsWith("title:") -> {
                 val args = finalCmd.removePrefix("title:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
-                    parseAndSendTitle(player, args)
+                    ActionHandlers.parseAndSendTitle(player, args)
                 })
             }
 
@@ -1356,7 +1166,7 @@ object MenuActions {
             finalCmd.startsWith("sound:") -> {
                 val args = finalCmd.removePrefix("sound:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
-                    parseAndPlaySound(player, args)
+                    ActionHandlers.parseAndPlaySound(player, args)
                 })
             }
 
@@ -1415,7 +1225,7 @@ object MenuActions {
                                     config
                                 )
                             } else {
-                                player.sendMessage(parseText(plugin!!.languageManager.getMessage("actions.action_list_not_found", actionKey)))
+                                player.sendMessage(TextParser.parseText(plugin!!.languageManager.getMessage("actions.action_list_not_found", actionKey)))
                             }
                         })
                     }
@@ -1425,7 +1235,7 @@ object MenuActions {
             // set-data: 设置玩家数据
             finalCmd.startsWith("set-data:") -> {
                 val args = finalCmd.removePrefix("set-data:").trim()
-                parseDataAction(args, player.uniqueId.toString(), "data") { uuid, key, value ->
+                ActionHandlers.parseDataAction(args, player.uniqueId.toString(), "data") { uuid, key, value ->
                     if (asyncDataOperations) {
                         // 异步执行数据库操作，避免阻塞主线程
                         Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseDataAction, Runnable {
@@ -1441,7 +1251,7 @@ object MenuActions {
             // data: 玩家数据操作
             finalCmd.startsWith("data:") -> {
                 val args = finalCmd.removePrefix("data:").trim()
-                parseAndExecuteDataAction(
+                ActionHandlers.parseAndExecuteDataAction(
                     args = args,
                     player = player,
                     dataType = "data",
@@ -1484,7 +1294,7 @@ object MenuActions {
             // set-gdata: 设置全局数据
             finalCmd.startsWith("set-gdata:") -> {
                 val args = finalCmd.removePrefix("set-gdata:").trim()
-                parseDataAction(args, "", "gdata") { _, key, value ->
+                ActionHandlers.parseDataAction(args, "", "gdata") { _, key, value ->
                     if (asyncDataOperations) {
                         // 异步执行数据库操作，避免阻塞主线程
                         Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseDataAction, Runnable {
@@ -1500,7 +1310,7 @@ object MenuActions {
             // gdata: 全局数据操作
             finalCmd.startsWith("gdata:") -> {
                 val args = finalCmd.removePrefix("gdata:").trim()
-                parseAndExecuteDataAction(
+                ActionHandlers.parseAndExecuteDataAction(
                     args = args,
                     player = player,
                     dataType = "gdata",
@@ -1543,7 +1353,7 @@ object MenuActions {
             // set-meta: 设置玩家元数据（内存缓存）
             finalCmd.startsWith("set-meta:") -> {
                 val args = finalCmd.removePrefix("set-meta:").trim()
-                parseDataAction(args, player.uniqueId.toString(), "meta") { uuid, key, value ->
+                ActionHandlers.parseDataAction(args, player.uniqueId.toString(), "meta") { uuid, key, value ->
                     metaDataManager?.setPlayerMeta(java.util.UUID.fromString(uuid), key, value)
                 }
             }
@@ -1551,7 +1361,7 @@ object MenuActions {
             // meta: 玩家元数据操作
             finalCmd.startsWith("meta:") -> {
                 val args = finalCmd.removePrefix("meta:").trim()
-                parseAndExecuteDataAction(
+                ActionHandlers.parseAndExecuteDataAction(
                     args = args,
                     player = player,
                     dataType = "meta",
@@ -1614,7 +1424,7 @@ object MenuActions {
             finalCmd.startsWith("toast:") -> {
                 val args = finalCmd.removePrefix("toast:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
-                    parseAndSendToast(player, args)
+                    ActionHandlers.parseAndSendToast(player, args)
                 })
             }
 
@@ -1622,7 +1432,7 @@ object MenuActions {
             finalCmd.startsWith("money:") -> {
                 val args = finalCmd.removePrefix("money:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
-                    parseAndHandleMoney(player, args, variables)
+                    ActionHandlers.parseAndHandleMoney(player, args, variables)
                 })
             }
 
@@ -1630,7 +1440,7 @@ object MenuActions {
             finalCmd.startsWith("stock-item:") -> {
                 val args = finalCmd.removePrefix("stock-item:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
-                    parseAndHandleStockItem(player, args, variables)
+                    ActionHandlers.parseAndHandleStockItem(player, args, variables)
                 })
             }
 
@@ -1638,7 +1448,7 @@ object MenuActions {
             finalCmd.startsWith("item:") -> {
                 val args = finalCmd.removePrefix("item:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
-                    parseAndHandleItem(player, args, variables)
+                    ActionHandlers.parseAndHandleItem(player, args, variables)
                 })
             }
 
@@ -1646,7 +1456,15 @@ object MenuActions {
             finalCmd.startsWith("server:") -> {
                 val serverName = finalCmd.removePrefix("server:").trim()
                 Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
-                    parseAndHandleServer(player, serverName)
+                    ActionHandlers.parseAndHandleServer(player, serverName)
+                })
+            }
+
+            // tppos: 传送到指定坐标
+            finalCmd.startsWith("tppos:") -> {
+                val args = finalCmd.removePrefix("tppos:").trim()
+                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                    ActionHandlers.parseAndHandleTppos(player, args)
                 })
             }
         }
@@ -1660,7 +1478,7 @@ object MenuActions {
      */
     fun executeTestAction(player: Player, actionString: String): Boolean {
         if (plugin == null) {
-            player.sendMessage(parseText(languageManager?.getMessage("actions.test_failed", "插件未初始化") ?: "§c插件未初始化，无法执行动作"))
+            player.sendMessage(TextParser.parseText(languageManager?.getMessage("actions.test_failed", "插件未初始化") ?: "§c插件未初始化，无法执行动作"))
             return false
         }
 
@@ -1674,105 +1492,11 @@ object MenuActions {
             executeSingleAction(player, actionString, emptyMap(), menuOpener, null)
             return true
         } catch (e: Exception) {
-            player.sendMessage(parseText(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))
+            player.sendMessage(TextParser.parseText(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))
             plugin?.logger?.severe("测试动作执行失败: ${e.message}")
             e.printStackTrace()
             return false
         }
-    }
-
-    /**
-     * 解析并发送声音
-     * 格式: sound_name;volume=1.0;pitch=1.0;category=master
-     */
-    private fun parseAndPlaySound(player: Player, args: String) {
-        var soundName = ""
-        var volume = 1f
-        var pitch = 1f
-        var category = SoundCategory.MASTER
-
-        val params = args.split(";")
-        for (param in params) {
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "volume" -> volume = value.toFloatOrNull() ?: 1f
-                    "pitch" -> pitch = value.toFloatOrNull() ?: 1f
-                    "category" -> category = value.lowercase().let { cat ->
-                        when (cat) {
-                            "master" -> SoundCategory.MASTER
-                            "music" -> SoundCategory.MUSIC
-                            "record" -> SoundCategory.RECORDS
-                            "weather" -> SoundCategory.WEATHER
-                            "block" -> SoundCategory.BLOCKS
-                            "hostile" -> SoundCategory.HOSTILE
-                            "neutral" -> SoundCategory.NEUTRAL
-                            "player" -> SoundCategory.PLAYERS
-                            "ambient" -> SoundCategory.AMBIENT
-                            "voice" -> SoundCategory.VOICE
-                            "ui" -> SoundCategory.UI
-                            else -> {
-                                player.sendMessage(languageManager?.getMessage("actions.unknown_sound_category", cat) ?: "§c未知的声音类别: $cat")
-                                SoundCategory.MASTER
-                            }
-                        }
-                    }
-                    else -> soundName = soundName.ifEmpty { parts[0].trim() }
-                }
-            } else if (parts.size == 1 && param.trim().isNotEmpty()) {
-                if (soundName.isEmpty()) soundName = param.trim()
-            }
-        }
-
-        if (soundName.isNotEmpty()) {
-            val soundKey = NamespacedKey.minecraft(soundName.lowercase())
-            val sound = org.bukkit.Registry.SOUND_EVENT.get(soundKey)
-            if (sound != null) {
-                player.playSound(player.location, sound, category, volume, pitch)
-            }
-        }
-    }
-
-    /**
-     * 解析并发送标题
-     * 格式: title=主标题;subtitle=副标题;in=淡入时长;keep=停留时长;out=淡出时长
-     */
-    private fun parseAndSendTitle(player: Player, args: String) {
-        var title = ""
-        var subtitle = ""
-        var fadeIn = 0
-        var stay = 60
-        var fadeOut = 20
-
-        val params = args.split(";")
-        for (param in params) {
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "title" -> title = value
-                    "subtitle" -> subtitle = value
-                    "in" -> fadeIn = value.toIntOrNull() ?: 0
-                    "keep" -> stay = value.toIntOrNull() ?: 60
-                    "out" -> fadeOut = value.toIntOrNull() ?: 20
-                }
-            }
-        }
-
-        val titleComponent = if (title.isEmpty()) Component.empty() else parseText(title)
-        val subtitleComponent = if (subtitle.isEmpty()) Component.empty() else parseText(subtitle)
-
-        // 使用 Adventure API 的 Title (Paper 推荐方式)
-        val titleTimes = Title.Times.times(
-            Duration.ofMillis(fadeIn * 50L),   // ticks to milliseconds
-            Duration.ofMillis(stay * 50L),     // ticks to milliseconds
-            Duration.ofMillis(fadeOut * 50L)   // ticks to milliseconds
-        )
-        val adventureTitle = Title.title(titleComponent, subtitleComponent, titleTimes)
-        player.showTitle(adventureTitle)
     }
 
     /**
@@ -1827,7 +1551,7 @@ object MenuActions {
 
         // 如果没有 hovertext，直接用 parseText 处理 MiniMessage
         if (replacements.isEmpty()) {
-            return parseText(rawText)
+            return TextParser.parseText(rawText)
         }
 
         // 按位置升序排序，从前往后处理
@@ -1840,7 +1564,7 @@ object MenuActions {
         replacements.forEach { (range, component) ->
             // 添加 hovertext 之前的文本（包含 MiniMessage）
             if (range.first > lastEnd) {
-                mainBuilder.append(parseText(rawText.substring(lastEnd, range.first)))
+                mainBuilder.append(TextParser.parseText(rawText.substring(lastEnd, range.first)))
             }
             // 添加 hovertext 组件
             mainBuilder.append(component)
@@ -1849,7 +1573,7 @@ object MenuActions {
 
         // 添加最后剩余的文本
         if (lastEnd < rawText.length) {
-            mainBuilder.append(parseText(rawText.substring(lastEnd)))
+            mainBuilder.append(TextParser.parseText(rawText.substring(lastEnd)))
         }
 
         return mainBuilder.build()
@@ -1930,19 +1654,6 @@ object MenuActions {
     }
 
     /**
-     * 创建可点击文本组件 (使用 Adventure API)
-     */
-    fun createAdventureClickableText(
-        text: String,
-        hoverText: String = "",
-        command: String = "",
-        url: String = "",
-        newline: Boolean = false
-    ): Component {
-        return createAdventureClickableText(text, hoverText, command, url, "", newline, null, null, null)
-    }
-
-    /**
      * 创建可点击文本组件 (使用 Adventure API) - 带上下文版本
      * @param text 显示文本
      * @param hoverText 悬停文本
@@ -1965,7 +1676,7 @@ object MenuActions {
         config: YamlConfiguration? = null,
         menuOpener: ((Player, String) -> Unit)? = null
     ): Component {
-        var component = parseText(text)
+        var component = TextParser.parseText(text)
 
         // 添加点击事件
         if (actions.isNotEmpty()) {
@@ -1992,7 +1703,7 @@ object MenuActions {
                                 })
                             }
                         } else {
-                            audience.sendMessage(parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actions)))
+                            audience.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actions)))
                         }
                     }
                 }, ClickCallback.Options.builder()
@@ -2007,7 +1718,7 @@ object MenuActions {
 
         // 添加悬停事件
         if (hoverText.isNotEmpty()) {
-            component = component.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(parseText(hoverText)))
+            component = component.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(TextParser.parseText(hoverText)))
         }
 
         // 添加换行
@@ -2016,526 +1727,5 @@ object MenuActions {
         }
 
         return component
-    }
-
-    /**
-     * 解析并发送 Toast 通知
-     * 格式: frame=类型;icon=物品ID;title=标题;description=描述
-     * 参数:
-     * - frame: task(默认), goal, challenge
-     * - icon: 物品ID (如 diamond_sword)
-     * - title: 标题文本
-     * - description: 描述文本
-     */
-    private fun parseAndSendToast(player: Player, args: String) {
-        var frameType = "task"
-        var iconItem = "minecraft:stone"
-        var title = "提示"
-        var description = ""
-
-        // 解析参数
-        args.split(";").forEach { param ->
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "type" -> frameType = value.lowercase()
-                    "icon" -> iconItem = if (value.contains(":")) value else "minecraft:$value"
-                    "msg" -> title = value
-                    "description" -> description = value
-                }
-            }
-        }
-
-        // 生成唯一 Key
-        val randomKey = NamespacedKey("kamenu", "toast_${System.currentTimeMillis()}")
-
-        val titleJson = GsonComponentSerializer.gson().serialize(parseText(title))
-        val descJson = GsonComponentSerializer.gson().serialize(parseText(description))
-
-        val advancementJson = """
-    {
-      "display": {
-        "icon": {
-          "id": "${iconItem.lowercase()}"
-        },
-        "title": $titleJson,
-        "description": $descJson,
-        "frame": "${if (frameType in listOf("task", "goal", "challenge")) frameType else "task"}",
-        "show_toast": true,
-        "announce_to_chat": false,
-        "hidden": true
-      },
-      "criteria": {
-        "impossible": {
-          "trigger": "minecraft:impossible"
-        }
-      }
-    }
-    """.trimIndent()
-
-        try {
-            val advancement = Bukkit.getUnsafe().loadAdvancement(randomKey, advancementJson)
-            val progress = player.getAdvancementProgress(advancement)
-            progress.awardCriteria("impossible")
-
-            plugin?.let {
-                Bukkit.getScheduler().runTaskLater(it, Runnable {
-                    if (player.isOnline) {
-                        progress.revokeCriteria("impossible")
-                        Bukkit.getUnsafe().removeAdvancement(randomKey)
-                    }
-                }, 10L)
-            }
-        } catch (e: Exception) {
-            plugin?.logger?.severe("Toast 发送失败: ${e.message}")
-            // 打印出生成的 JSON 方便调试
-            plugin?.logger?.info("生成的 JSON: $advancementJson")
-        }
-    }
-
-    /**
-     * 解析并处理金币操作
-     * 格式: type=add;num=100 | type=take;num=100 | type=reset;num=100
-     */
-    private fun parseAndHandleMoney(player: Player, args: String, variables: Map<String, String> = emptyMap()) {
-        if (economy == null) {
-            plugin?.logger?.warning("经济系统未启用，无法执行 money 动作。玩家: ${player.name}")
-            return
-        }
-
-        var type = ""
-        var amountStr = "0"
-
-        val params = args.split(";")
-        for (param in params) {
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "type" -> type = value.lowercase()
-                    "num" -> amountStr = value
-                }
-            }
-        }
-
-        // 使用通用的变量解析方法
-        val finalAmountStr = resolveVariablesWithInput(player, amountStr, variables)
-        val amount = finalAmountStr.toDoubleOrNull() ?: 0.0
-
-        val balance = economy!!.getBalance(player)
-
-        when (type) {
-            "add" -> {
-                economy!!.depositPlayer(player, amount)
-            }
-            "take" -> {
-                if (balance >= amount) {
-                    economy!!.withdrawPlayer(player, amount)
-                } else {
-                    plugin?.logger?.warning("玩家 ${player.name} 余额不足，无法扣除 ${amount} 金币。当前余额: $balance")
-                }
-            }
-            "reset" -> {
-                val difference = amount - balance
-                if (difference > 0) {
-                    economy!!.depositPlayer(player, difference)
-                } else if (difference < 0) {
-                    economy!!.withdrawPlayer(player, -difference)
-                }
-            }
-            else -> {
-                plugin?.logger?.warning("无效的金币操作类型: $type。玩家: ${player.name}")
-            }
-        }
-    }
-
-    /**
-     * 解析旧的 set-data/set-gdata/set-meta 格式（向后兼容）
-     * @param args 参数字符串
-     * @param uuid 玩家 UUID（对于 gdata 不需要）
-     * @param dataType 数据类型
-     * @param action 执行动作的回调
-     */
-    private fun parseDataAction(
-        args: String,
-        uuid: String,
-        dataType: String,
-        action: (String, String, String) -> Unit
-    ) {
-        val parts = args.split(" ", limit = 2)
-        if (parts.size >= 2) {
-            val key = parts[0]
-            val value = parts[1]
-            action(uuid, key, value)
-        }
-    }
-
-    /**
-     * 解析并执行新的 data/gdata/meta 动作
-     * @param args 参数字符串（格式: type=set;key=test;var=value 或 type=add;key=num;var=10 或 type=delete;key=num）
-     * @param player 玩家对象
-     * @param dataType 数据类型（data/gdata/meta）
-     * @param setAction set 动作的回调
-     * @param modifyAction modify（add/take）动作的回调（参数为 String，方法内部会转换为 Double）
-     * @param deleteAction delete 动作的回调
-     */
-    private fun parseAndExecuteDataAction(
-        args: String,
-        player: Player,
-        dataType: String,
-        setAction: (String, String) -> Unit,
-        modifyAction: (String, String) -> Unit,
-        deleteAction: (String) -> Unit = {}
-    ) {
-        var type = ""
-        var key = ""
-        var value = ""
-
-        // 解析参数
-        args.split(";").forEach { param ->
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val paramKey = parts[0].trim().lowercase()
-                val paramValue = parts[1].trim().removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
-                when (paramKey) {
-                    "type" -> type = paramValue.lowercase()
-                    "key" -> key = paramValue
-                    "var" -> value = paramValue
-                }
-            }
-        }
-
-        if (key.isEmpty()) {
-            plugin?.logger?.warning("$dataType 操作失败: 缺少 key 参数。玩家: ${player.name}")
-            return
-        }
-
-        when (type) {
-            "set" -> {
-                // set 动作：直接设置值
-                setAction(key, value)
-            }
-            "add" -> {
-                // add 动作：增加数值
-                val numValue = value.toDoubleOrNull()
-                if (numValue != null) {
-                    modifyAction(key, numValue.toString())
-                } else {
-                    plugin?.logger?.warning("$dataType 操作失败: add/take 操作的值 '$value' 不是纯数字。玩家: ${player.name}")
-                }
-            }
-            "take" -> {
-                // take 动作：减少数值
-                val numValue = value.toDoubleOrNull()
-                if (numValue != null) {
-                    modifyAction(key, (-numValue).toString())
-                } else {
-                    plugin?.logger?.warning("$dataType 操作失败: add/take 操作的值 '$value' 不是纯数字。玩家: ${player.name}")
-                }
-            }
-            "delete" -> {
-                // delete 动作：删除数据
-                deleteAction(key)
-            }
-            else -> {
-                plugin?.logger?.warning("$dataType 操作失败: 无效的 type 参数 '$type'，支持的类型: set, add, take, delete。玩家: ${player.name}")
-            }
-        }
-    }
-
-    /**
-     * 解析并处理物品给予/扣除动作
-     * 格式: type=give;name=物品名称;amount=数量 或 type=take;name=物品名称;amount=数量
-     */
-    private fun parseAndHandleStockItem(player: Player, args: String, variables: Map<String, String> = emptyMap()) {
-        if (itemManager == null) {
-            languageManager?.getMessage("actions.stock_item_manager_not_init", player.name)?.let {
-                plugin?.logger?.warning(it)
-            }
-            return
-        }
-
-        var type = ""
-        var itemName = ""
-        var amountStr = "1"
-
-        // 解析参数
-        args.split(";").forEach { param ->
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "type" -> type = value.lowercase()
-                    "name" -> itemName = value
-                    "amount" -> amountStr = value
-                }
-            }
-        }
-
-        // 解析变量替换
-        val finalItemName = resolveVariablesWithInput(player, itemName, variables)
-        val finalAmountStr = resolveVariablesWithInput(player, amountStr, variables)
-        val amount = (finalAmountStr.toIntOrNull() ?: 1).coerceAtLeast(1)
-
-        if (finalItemName.isEmpty()) {
-            languageManager?.getMessage("actions.stock_item_missing_name", player.name)?.let {
-                plugin?.logger?.warning(it)
-            }
-            return
-        }
-
-        // 从数据库获取物品
-        val item = itemManager!!.getItem(finalItemName)
-        if (item == null) {
-            languageManager?.getMessage("condition.stock_item_not_exist", finalItemName)?.let {
-                player.sendMessage(parseText(it))
-            }
-            return
-        }
-
-        when (type) {
-            "give" -> {
-                // 给予物品
-                val itemToGive = item.clone()
-                itemToGive.amount = amount
-                val leftover = player.inventory.addItem(itemToGive)
-
-                if (leftover.isNotEmpty()) {
-                    // 物品栏已满，将剩余物品掉落在地上
-                    var droppedAmount = 0
-                    leftover.values.forEach { item ->
-                        player.world.dropItem(player.location, item)
-                        droppedAmount += item.amount
-                    }
-
-                    // 发送 actionbar 提示和拾取音效
-                    val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
-                    if (actionbarMessage != null) {
-                        player.sendActionBar(parseText(actionbarMessage))
-                    }
-                    player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
-                }
-            }
-            "take" -> {
-                // 扣除物品
-                val inventory = player.inventory
-                var remaining = amount
-
-                // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
-                val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
-                allItems.addAll(inventory.storageContents.filterNotNull())
-                allItems.addAll(inventory.armorContents.filterNotNull())
-                allItems.add(inventory.itemInOffHand)
-                allItems.add(inventory.itemInMainHand)
-
-                for (stack in allItems) {
-                    if (remaining <= 0) break
-                    if (!stack.isEmpty && stack.isSimilar(item)) {
-                        val stackAmount = stack.amount
-                        if (stackAmount <= remaining) {
-                            // 整个堆叠都扣除
-                            stack.amount = 0
-                            remaining -= stackAmount
-                        } else {
-                            // 部分扣除
-                            stack.amount -= remaining
-                            remaining = 0
-                        }
-                    }
-                }
-
-                // 更新玩家背包
-                player.updateInventory()
-            }
-            else -> {
-                languageManager?.getMessage("actions.stock_item_unknown_type", type, player.name)?.let {
-                    plugin?.logger?.warning(it)
-                }
-            }
-        }
-    }
-
-    /**
-     * 解析并处理服务器传送
-     * 根据配置选择使用 BungeeCord 插件消息系统或执行 /server 命令
-     * @param player 玩家对象
-     * @param serverName 目标服务器名称
-     */
-    private fun parseAndHandleServer(player: Player, serverName: String) {
-        if (serverName.isEmpty()) {
-            return
-        }
-
-        if (bungeeCordEnabled) {
-            // 使用 BungeeCord 插件消息系统（不需要玩家权限）
-            try {
-                val out: ByteArrayDataOutput = ByteStreams.newDataOutput()
-                out.writeUTF("Connect")
-                out.writeUTF(serverName)
-
-                plugin?.let { player.sendPluginMessage(it, "BungeeCord", out.toByteArray()) }
-            } catch (e: Exception) {
-                plugin?.logger?.severe("Connect ${player.name} server $serverName error: ${e.message}")
-                e.printStackTrace()
-            }
-        }
-    }
-
-    /**
-     * 解析并处理普通物品给予/扣除动作
-     * 格式: type=give;mats=材质;amount=数量 或 type=take;mats=材质;amount=数量;lore=描述;model=模型
-     * lore和model是可选的，仅用于take操作
-     */
-    private fun parseAndHandleItem(player: Player, args: String, variables: Map<String, String> = emptyMap()) {
-        var type = ""
-        var materialName = ""
-        var amountStr = "1"
-        var loreText: String? = null
-        var itemModel: String? = null
-
-        // 解析参数
-        args.split(";").forEach { param ->
-            val parts = param.split("=", limit = 2)
-            if (parts.size == 2) {
-                val key = parts[0].trim().lowercase()
-                val value = parts[1].trim()
-                when (key) {
-                    "type" -> type = value.lowercase()
-                    "mats" -> materialName = value
-                    "amount" -> amountStr = value
-                    "lore" -> loreText = value
-                    "model" -> itemModel = value
-                }
-            }
-        }
-
-        // 解析变量替换
-        val finalMaterialName = resolveVariablesWithInput(player, materialName, variables)
-        val finalAmountStr = resolveVariablesWithInput(player, amountStr, variables)
-        val finalLoreText = loreText?.let { resolveVariablesWithInput(player, it, variables) }
-        val finalItemModel = itemModel?.let { resolveVariablesWithInput(player, it, variables) }
-        val amount = (finalAmountStr.toIntOrNull() ?: 1).coerceAtLeast(1)
-
-        // 材质是必需的
-        if (finalMaterialName.isEmpty()) {
-            languageManager?.getMessage("actions.item_missing_material", player.name)?.let {
-                plugin?.logger?.warning(it)
-            }
-            return
-        }
-
-        // 获取材质（使用规范化的材质匹配）
-        val material = MaterialUtils.matchMaterial(finalMaterialName)
-        if (material == null) {
-            languageManager?.getMessage("actions.item_invalid_material", finalMaterialName, player.name)?.let {
-                plugin?.logger?.warning(it)
-            }
-            return
-        }
-
-        when (type) {
-            "give" -> {
-                // 给予物品（只需要材质和数量，忽略lore和model）
-                val itemToGive = org.bukkit.inventory.ItemStack(material, amount)
-                val leftover = player.inventory.addItem(itemToGive)
-
-                if (leftover.isNotEmpty()) {
-                    // 物品栏已满，将剩余物品掉落在地上
-                    var droppedAmount = 0
-                    leftover.values.forEach { item ->
-                        player.world.dropItem(player.location, item)
-                        droppedAmount += item.amount
-                    }
-
-                    // 发送 actionbar 提示和拾取音效
-                    val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
-                    if (actionbarMessage != null) {
-                        player.sendActionBar(parseText(actionbarMessage))
-                    }
-                    player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
-                }
-            }
-            "take" -> {
-                // 扣除物品（支持lore和model判断）
-                val inventory = player.inventory
-                var remaining = amount
-
-                // 遍历背包中的所有物品（包括盔甲、副手物品栏和背包）
-                val allItems = mutableListOf<org.bukkit.inventory.ItemStack>()
-                allItems.addAll(inventory.storageContents.filterNotNull())
-                allItems.addAll(inventory.armorContents.filterNotNull())
-                allItems.add(inventory.itemInOffHand)
-                allItems.add(inventory.itemInMainHand)
-
-                for (stack in allItems) {
-                    if (remaining <= 0) break
-                    if (!stack.isEmpty && stack.type == material) {
-                        // 检查 lore 是否匹配（如果指定了 lore）
-                        if (finalLoreText != null) {
-                            val itemMeta = stack.itemMeta
-                            if (itemMeta != null && itemMeta.hasLore()) {
-                                val lore = itemMeta.lore()
-                                // 检查 lore 中是否包含指定字符串（忽略大小写）
-                                val loreMatched = lore?.any { line ->
-                                    val plainText = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(line)
-                                    plainText.contains(finalLoreText, ignoreCase = true)
-                                } ?: false
-                                if (!loreMatched) {
-                                    continue
-                                }
-                            } else {
-                                // 没有 lore，跳过
-                                continue
-                            }
-                        }
-
-                        // 检查 item_model 是否匹配（如果指定了 model）
-                        if (finalItemModel != null) {
-                            val itemMeta = stack.itemMeta
-                            if (itemMeta != null && itemMeta.hasItemModel()) {
-                                val modelKey = itemMeta.getItemModel()
-                                if (modelKey != null) {
-                                    // 格式化为 namespace:key
-                                    val modelStr = "${modelKey.namespace()}:${modelKey.value()}"
-                                    if (!modelStr.equals(finalItemModel, ignoreCase = true)) {
-                                        continue
-                                    }
-                                } else {
-                                    // 没有模型，跳过
-                                    continue
-                                }
-                            } else {
-                                // 没有模型，跳过
-                                continue
-                            }
-                        }
-
-                        // 符合所有条件，执行扣除
-                        val stackAmount = stack.amount
-                        if (stackAmount <= remaining) {
-                            // 整个堆叠都扣除
-                            stack.amount = 0
-                            remaining -= stackAmount
-                        } else {
-                            // 部分扣除
-                            stack.amount -= remaining
-                            remaining = 0
-                        }
-                    }
-                }
-
-                // 更新玩家背包
-                player.updateInventory()
-            }
-            else -> {
-                languageManager?.getMessage("actions.item_unknown_type", type, player.name)?.let {
-                    plugin?.logger?.warning(it)
-                }
-            }
-        }
     }
 }

@@ -34,6 +34,7 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `chat` | Make the player send a message in chat |
 | `console` | Execute a command with console permissions |
 | `server` | Transfer to a specified server (BungeeCord/Velocity) |
+| `tppos` | Teleport to specified coordinates |
 | `sound` | Play a sound at the player's location |
 | `money` | Operate player coins (requires Vault) |
 | `stock-item` | Give/take stored items |
@@ -461,6 +462,40 @@ Events:
           - 'server: lobby'
           - 'tell: &aConnecting to lobby...'
 ```
+
+---
+
+### tppos - Teleport to Coordinates
+
+Teleport the player to specified coordinates.
+
+**Format:** `tppos: <world>,<x>,<y>,<z>[,<yaw>,<pitch>]`
+
+**Parameters:**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| world | Target world name | ✅ |
+| x | X coordinate | ✅ |
+| y | Y coordinate | ✅ |
+| z | Z coordinate | ✅ |
+| yaw | Horizontal rotation | ❌ (defaults to player's current yaw) |
+| pitch | Vertical rotation | ❌ (defaults to player's current pitch) |
+
+**Example:**
+
+```yaml
+# Coordinates only, keep current facing direction
+- 'tppos: world,100,64,200'
+
+# Full coordinates + rotation
+- 'tppos: world,100,64,200,90,0'
+
+# With variables
+- 'tppos: {data:target_world},{data:target_x},{data:target_y},{data:target_z}'
+```
+
+**Note:** The world name must exist; teleport will not execute if it doesn't.
 
 ---
 

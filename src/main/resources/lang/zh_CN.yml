@@ -6,6 +6,9 @@ plugin:
   enabled: "§a[KaMenu] 插件已就绪！"
   disabled: "§e[KaMenu] 插件已关闭。"
   language_set: "当前语言设置为: {0}"
+  update_available: "&e[KaMenu] &f检测到新版本 &a{0}&f，当前: &7{1}  &a[MineBBS]&8 | &b[SpigotMC]"
+  update_minebbs_hover: "&7点击打开 MineBBS 页面"
+  update_spigotmc_hover: "&7点击打开 SpigotMC 页面"
 
 # 启动信息
 logo:

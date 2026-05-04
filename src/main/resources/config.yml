@@ -5,7 +5,7 @@
 
 # Configuration file version (DO NOT MODIFY THIS VALUE)
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
-config-version: 2
+config-version: 3
 
 # Plugin language (must match filename in lang/ folder)
 # Supported values: zh_CN (Chinese), en_US (English)
@@ -103,3 +103,11 @@ custom-commands:
   zcd: 'example/main_menu'       # /zcd command / zcd指令
   actions: 'example/actions_demo'  # /actions command / actions指令
   menu: 'example/main_menu'      # /menu command / menu指令
+
+# ============================================
+# Update Checker
+# 更新检查
+# ============================================
+# Check for new versions on GitHub when OP players join
+# OP 玩家进入时检查 GitHub 上是否有新版本
+check-update: true

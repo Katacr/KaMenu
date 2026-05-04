@@ -6,6 +6,9 @@ plugin:
   enabled: "§a[KaMenu] Plugin is ready!"
   disabled: "§e[KaMenu] Plugin has been disabled."
   language_set: "Current language set to: {0}"
+  update_available: "&e[KaMenu] &fNew version available: &a{0}&f, current: &7{1}  &a[MineBBS]&8 | &b[SpigotMC]"
+  update_minebbs_hover: "&7Click to open MineBBS page"
+  update_spigotmc_hover: "&7Click to open SpigotMC page"
 
 # Startup Info
 logo:

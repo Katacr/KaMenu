@@ -403,7 +403,7 @@ Body:
 | `width` | `Int` | ❌ | `16` | 物品图标宽度（像素）                                                 |
 | `height` | `Int` | ❌ | `16` | 物品图标高度（像素）                                                 |
 | `show_overlays` | `Boolean` | ❌ | `true` | 是否显示物品叠加层（耐久条、冷却、数量等）                               |
-| `tooltip` | `Boolean` | ❌ | `true` | 鼠标悬停时是否显示物品 Tooltip                                        |
+| `show_tooltip` | `Boolean` | ❌ | `true` | 鼠标悬停时是否显示物品 Tooltip                                        |
 
 **示例：**
 
