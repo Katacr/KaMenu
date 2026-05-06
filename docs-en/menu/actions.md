@@ -23,36 +23,39 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 
 ## Action Type Overview
 
-| Action | Description |
-|--------|-------------|
-| `tell` | Send a chat message to the player |
-| `actionbar` | Send an action bar message (bottom of screen) |
-| `title` | Send a screen title and subtitle |
-| `toast` | Display a Toast notification on screen |
-| `hovertext` | Send a chat message with hover tooltip and click functionality |
-| `command` | Make the player execute a command |
-| `chat` | Make the player send a message in chat |
-| `console` | Execute a command with console permissions |
-| `server` | Transfer to a specified server (BungeeCord/Velocity) |
-| `tppos` | Teleport to specified coordinates |
-| `sound` | Play a sound at the player's location |
-| `money` | Operate player coins (requires Vault) |
-| `stock-item` | Give/take stored items |
-| `item` | Give/take regular items |
-| `open` | Open another menu for the player |
-| `close` | Close the current menu |
-| `url` | Open a specified link (only works with single action) |
-| `copy` | Copy text to clipboard (only works with single action) |
-| `data` | Operate player data (supports set/add/take/delete) |
-| `gdata` | Operate global data (supports set/add/take/delete) |
-| `meta` | Operate player metadata (supports set/add/take/delete) |
-| `set-data` | Set player data (legacy format, use `data` instead) |
-| `set-gdata` | Set global data (legacy format, use `gdata` instead) |
-| `set-meta` | Set player metadata (legacy format, use `meta` instead) |
-| `js` | Execute JavaScript code (supports predefined functions) |
-| `actions` | Execute an action list defined under Events.Click |
-| `wait` | Insert delayed execution |
-| `return` | Interrupt action execution list |
+| Action        | Description                                                    | Supports Target Selector |
+|---------------|----------------------------------------------------------------|--------------------------|
+| `tell`        | Send a chat message to the player                              | ✅                        | 
+| `actionbar`   | Send an action bar message (bottom of screen)                  | ✅                        | 
+| `title`       | Send a screen title and subtitle                               | ✅                        | 
+| `toast`       | Display a Toast notification on screen                         | ✅                        | 
+| `hovertext`   | Send a chat message with hover tooltip and click functionality | ✅                        | 
+| `command`     | Make the player execute a command                              | ✅                        | 
+| `chat`        | Make the player send a message in chat                         | ✅                        | 
+| `console`     | Execute a command with console permissions                     | ✅                        | 
+| `server`      | Transfer to a specified server (BungeeCord/Velocity)           | ✅                        | 
+| `tppos`       | Teleport to specified coordinates                              | ✅                        | 
+| `sound`       | Play a sound at the player's location                          | ✅                        | 
+| `money`       | Operate player coins (requires Vault)                          | ✅                        | 
+| `stock-item`  | Give/take stored items                                         | ✅                        | 
+| `item`        | Give/take regular items                                        | ✅                        | 
+| `open`        | Open another menu for the player                               | ✅                        | 
+| `close`       | Close the current menu                                         | ❌                        | 
+| `force-open`  | Force open menu (skips Events.Open)                            | ❌                        | 
+| `force-close` | Force close menu (skips Events.Close)                          | ❌                        | 
+| `reset`       | Reopen current menu (skips Events.Open)                        | ❌                        | 
+| `url`         | Open a specified link (only works with single action)          | ❌                        | 
+| `copy`        | Copy text to clipboard (only works with single action)         | ❌                        | 
+| `data`        | Operate player data (supports set/add/take/delete)             | ✅                        | 
+| `gdata`       | Operate global data (supports set/add/take/delete)             | ✅                        | 
+| `meta`        | Operate player metadata (supports set/add/take/delete)         | ✅                        | 
+| `set-data`    | Set player data (legacy format, use `data` instead)            | ✅                        | 
+| `set-gdata`   | Set global data (legacy format, use `gdata` instead)           | ✅                        | 
+| `set-meta`    | Set player metadata (legacy format, use `meta` instead)        | ✅                        | 
+| `js`          | Execute JavaScript code (supports predefined functions)        | ❌                        | 
+| `actions`     | Execute an action list defined under Events.Click              | ❌                        | 
+| `wait`        | Insert delayed execution                                       | ❌                        | 
+| `return`      | Interrupt action execution list                                | ❌                        | 
 
 ---
 
@@ -89,36 +92,11 @@ All actions support a target selector to specify which player(s) the action affe
 | `{player: all}` | All online players (same as *) | `{player: all}` |
 | `{player: condition}` | Online players meeting the condition | `{player: %player_level% >= 10}` |
 
-**Supported Action Types:**
 
-| Action Type | Supports Target Selector | Description |
-|-------------|-------------------------|-------------|
-| `tell` | ✅ | Chat message |
-| `actionbar` | ✅ | Action bar message |
-| `title` | ✅ | Screen title |
-| `toast` | ✅ | Toast notification |
-| `hovertext` | ✅ | Clickable text |
-| `command` | ✅ | Execute command |
-| `chat` | ✅ | Chat message |
-| `console` | ✅ | Console command (executes once only) |
-| `sound` | ✅ | Play sound |
-| `money` | ✅ | Coin operation |
-| `stock-item` | ✅ | Item operation |
-| `item` | ✅ | Item operation |
-| `data` | ✅ | Player data |
-| `gdata` | ✅ | Global data |
-| `meta` | ✅ | Player metadata |
-| `js` | ✅ | JavaScript code |
-| `open` | ❌ | Open menu (current player only) |
-| `close` | ❌ | Close menu (current player only) |
-| `server` | ❌ | Server transfer (current player only) |
-| `actions` | ❌ | Action list (current player only) |
-| `wait` | ❌ | Delayed execution (doesn't directly execute actions) |
-| `return` | ❌ | Interrupt execution (doesn't directly execute actions) |
 
 **Condition Expressions:**
 
-Target selectors support all condition expressions supported by `ConditionUtils`:
+Target selectors support all condition expressions supported by `Condition`:
 
 - **PAPI variables**: `%player_level%`, `%vault_eco_balance%`
 - **Comparison operators**: `>`, `>=`, `<`, `<=`, `==`, `!=`, `contains`, `!contains`
@@ -560,7 +538,7 @@ Open another menu for the player, current menu closes automatically.
 
 ### close - Close Menu
 
-Close the currently open menu.
+Close the currently open menu (**executes Events.Close first**).
 
 **Format:** `close`
 
@@ -570,6 +548,64 @@ Close the currently open menu.
 - 'tell: &cGoodbye!'
 - 'close'
 ```
+
+---
+
+### force-open - Force Open Menu
+
+Force open a specified menu for the player, **skipping the target menu's Events.Open action list**. Unlike `open`, this does not trigger the target menu's Open event.
+
+**Format:** `force-open: <menu_id>`
+
+**Example:**
+
+```yaml
+# Normal open (triggers target's Open event)
+- 'open: shop'
+
+# Force open (skips Open event)
+- 'force-open: shop'
+```
+
+**Use Cases:**
+- Opening a menu without triggering initialization logic in the Open event
+- Nesting menu opens in Events.Click without re-executing the Open event
+
+---
+
+### force-close - Force Close Menu
+
+Force close the current menu **without executing the Events.Close action list**.
+
+**Format:** `force-close`
+
+**Example:**
+
+```yaml
+- 'force-close'
+```
+
+**Use Cases:**
+- Immediately closing the menu without triggering cleanup/recording logic in the Close event
+
+---
+
+### reset - Reopen Current Menu
+
+Reopen the current menu (equivalent to refresh), **without executing the Events.Open action list**.
+
+**Format:** `reset`
+
+**Example:**
+
+```yaml
+# Refresh current menu
+- 'reset'
+```
+
+**Use Cases:**
+- Refreshing current menu content (e.g., updated variable displays)
+- Resetting button states
 
 ---
 

@@ -23,36 +23,39 @@ Bottom:
 
 ## 动作类型总览
 
-| 动作          | 功能说明                            |
-|-------------|---------------------------------|
-| `tell`      | 向玩家发送聊天消息                       |
-| `actionbar` | 向玩家发送动作栏消息（屏幕底部）                |
-| `title`     | 向玩家发送屏幕标题和副标题                   |
-| `toast`     | 在屏幕上显示 Toast 通知                 |
-| `hovertext` | 发送带有悬停提示和点击功能的聊天消息              |
-| `command`   | 让玩家执行一条指令                       |
-| `chat`      | 让玩家在聊天框中发送消息                    |
-| `console`   | 以控制台权限执行一条指令                    |
-| `server`    | 传送到指定服务器（BungeeCord/Velocity）   |
-| `tppos`     | 传送到指定坐标                         |
-| `sound`     | 在玩家位置播放声音                       |
-| `money`     | 操作玩家金币（需要 Vault）                |
-| `stock-item`| 存储库物品给予/扣除                      |
-| `item`| 物品给予/扣除                         |
-| `open`      | 为玩家打开另一个菜单                      |
-| `close`     | 关闭当前菜单                          |
-| `url`       | 打开指定链接（仅单动作时生效）                 |
-| `copy`      | 复制文字到剪贴板（仅单动作时生效）               |
-| `data`      | 操作玩家数据（支持 set/add/take/delete）  |
-| `gdata`     | 操作全局数据（支持 set/add/take/delete）  |
-| `meta`      | 操作玩家元数据（支持 set/add/take/delete） |
-| `set-data`  | 设置玩家数据（旧格式，推荐使用 `data`）         |
-| `set-gdata` | 设置全局数据（旧格式，推荐使用 `gdata`）        |
-| `set-meta`  | 设置玩家元数据（旧格式，推荐使用 `meta`）        |
-| `js`        | 执行 JavaScript 代码（支持预定义函数）       |
-| `actions`   | 执行 Events.Click 下定义的动作列表        |
-| `wait`      | 插入延迟执行                          |
-| `return`    | 中断动作执行列表                        |
+| 动作            | 功能说明                            | 支持目标选择器 |
+|---------------|---------------------------------|-----------|
+| `tell`        | 向玩家发送聊天消息                       | ✅ |
+| `actionbar`   | 向玩家发送动作栏消息（屏幕底部）                | ✅ |
+| `title`       | 向玩家发送屏幕标题和副标题                   | ✅ |
+| `toast`       | 在屏幕上显示 Toast 通知                 | ✅ |
+| `hovertext`   | 发送带有悬停提示和点击功能的聊天消息              | ✅ |
+| `command`     | 让玩家执行一条指令                       | ✅ |
+| `chat`        | 让玩家在聊天框中发送消息                    | ✅ |
+| `console`     | 以控制台权限执行一条指令                    | ✅ |
+| `server`      | 传送到指定服务器（BungeeCord/Velocity）   | ✅ |
+| `tppos`       | 传送到指定坐标                         | ✅ |
+| `sound`       | 在玩家位置播放声音                       | ✅ |
+| `money`       | 操作玩家金币（需要 Vault）                | ✅ |
+| `stock-item`  | 存储库物品给予/扣除                      | ✅ |
+| `item`        | 物品给予/扣除                         | ✅ |
+| `open`        | 为玩家打开另一个菜单                      | ❌ |
+| `close`       | 关闭当前菜单                          | ❌ |
+| `force-open`  | 强制打开菜单（跳过 Events.Open）          | ❌ |
+| `force-close` | 强制关闭菜单（跳过 Events.Close）         | ❌ |
+| `reset`       | 重新打开当前菜单（跳过 Events.Open）        | ❌ |
+| `url`         | 打开指定链接（仅单动作时生效）                 | ❌ |
+| `copy`        | 复制文字到剪贴板（仅单动作时生效）               | ❌ |
+| `data`        | 操作玩家数据（支持 set/add/take/delete）  | ✅ |
+| `gdata`       | 操作全局数据（支持 set/add/take/delete）  | ✅ |
+| `meta`        | 操作玩家元数据（支持 set/add/take/delete） | ✅ |
+| `set-data`    | 设置玩家数据（旧格式，推荐使用 `data`）         | ✅ |
+| `set-gdata`   | 设置全局数据（旧格式，推荐使用 `gdata`）        | ✅ |
+| `set-meta`    | 设置玩家元数据（旧格式，推荐使用 `meta`）        | ✅ |
+| `js`          | 执行 JavaScript 代码（支持预定义函数）       | ❌ |
+| `actions`     | 执行 Events.Click 下定义的动作列表        | ❌ |
+| `wait`        | 插入延迟执行                          | ❌ |
+| `return`      | 中断动作执行列表                        | ❌ |
 
 ---
 
@@ -89,36 +92,10 @@ Bottom:
 | `{player: all}` | 所有在线玩家（同 *） | `{player: all}` |
 | `{player: 条件}` | 满足条件的在线玩家 | `{player: %player_level% >= 10}` |
 
-**支持的动作类型：**
-
-| 动作类型 | 是否支持目标选择器 | 说明 |
-|----------|------------------|------|
-| `tell` | ✅ | 聊天消息 |
-| `actionbar` | ✅ | 动作栏消息 |
-| `title` | ✅ | 屏幕标题 |
-| `toast` | ✅ | Toast 通知 |
-| `hovertext` | ✅ | 可点击文本 |
-| `command` | ✅ | 执行指令 |
-| `chat` | ✅ | 聊天消息 |
-| `console` | ✅ | 控制台指令（只执行一次） |
-| `sound` | ✅ | 播放声音 |
-| `money` | ✅ | 金币操作 |
-| `stock-item` | ✅ | 物品操作 |
-| `item` | ✅ | 物品操作 |
-| `data` | ✅ | 玩家数据 |
-| `gdata` | ✅ | 全局数据 |
-| `meta` | ✅ | 玩家元数据 |
-| `js` | ✅ | JavaScript 代码 |
-| `open` | ❌ | 打开菜单（只对当前玩家） |
-| `close` | ❌ | 关闭菜单（只对当前玩家） |
-| `server` | ❌ | 服务器传送（只对当前玩家） |
-| `actions` | ❌ | 动作组（只对当前玩家） |
-| `wait` | ❌ | 延迟执行（不直接执行动作） |
-| `return` | ❌ | 中断执行（不直接执行动作） |
 
 **条件表达式：**
 
-目标选择器支持所有 `ConditionUtils` 支持的条件表达式，包括：
+目标选择器支持所有 `Condition` 支持的条件表达式，包括：
 
 - **PAPI 变量**：`%player_level%`, `%vault_eco_balance%`
 - **比较运算**：`>`, `>=`, `<`, `<=`, `==`, `!=`, `contains`, `!contains`
@@ -561,7 +538,7 @@ Events:
 
 ### close - 关闭菜单
 
-关闭当前打开的菜单。
+关闭当前打开的菜单（**会先执行 Events.Close 事件**）。
 
 **格式：** `close`
 
@@ -571,6 +548,64 @@ Events:
 - 'tell: &c再见！'
 - 'close'
 ```
+
+---
+
+### force-open - 强制打开菜单
+
+强制为玩家打开指定菜单，**跳过目标菜单的 Events.Open 动作列表**。与 `open` 动作不同之处在于不会触发目标菜单的打开事件。
+
+**格式：** `force-open: <菜单ID>`
+
+**示例：**
+
+```yaml
+# 普通打开（会执行目标菜单的 Open 事件）
+- 'open: shop'
+
+# 强制打开（跳过 Open 事件）
+- 'force-open: shop'
+```
+
+**使用场景：**
+- 需要打开菜单但不想触发 Open 事件中的初始化逻辑
+- 在 Events.Click 中嵌套打开菜单时避免重复执行 Open 事件
+
+---
+
+### force-close - 强制关闭菜单
+
+强制关闭当前菜单，**不执行 Events.Close 动作列表**。
+
+**格式：** `force-close`
+
+**示例：**
+
+```yaml
+- 'force-close'
+```
+
+**使用场景：**
+- 需要立即关闭菜单而不触发 Close 事件中的清理/记录逻辑
+
+---
+
+### reset - 重新打开当前菜单
+
+重新打开当前菜单（相当于刷新），**不执行 Events.Open 动作列表**。
+
+**格式：** `reset`
+
+**示例：**
+
+```yaml
+# 刷新当前菜单
+- 'reset'
+```
+
+**使用场景：**
+- 刷新当前菜单内容（如更新了变量显示）
+- 重置按钮状态
 
 ---
 
