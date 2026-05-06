@@ -136,6 +136,13 @@ class MenuManager(private val plugin: KaMenu) {
     fun getMenuConfig(id: String): YamlConfiguration? {
         return menus[id]
     }
+
+    /**
+     * 根据配置实例反查菜单ID
+     */
+    fun getMenuId(config: YamlConfiguration): String? {
+        return menus.entries.find { it.value === config }?.key
+    }
     fun getAllMenuIds(): List<String> {
         return menus.keys.toList()
     }

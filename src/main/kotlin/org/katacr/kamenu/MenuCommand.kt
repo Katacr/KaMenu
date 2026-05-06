@@ -373,7 +373,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             return filterByKeyword(listOf(
                 "tell:", "actionbar:", "title:", "hovertext:",
                 "command:", "console:", "sound:",
-                "open:", "close",
+                "open:", "force-open:", "close", "force-close", "reset",
                 "data:", "gdata:", "meta:",
                 "set-data:", "set-gdata:", "set-meta:",
                 "toast:", "money:", "tppos:"

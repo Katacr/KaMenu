@@ -143,6 +143,18 @@ object MenuUI {
     }
 
     /**
+     * 强制打开菜单（不执行 Events.Open 动作列表）
+     */
+    fun forceOpenMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
+        val config = manager.getMenuConfig(menuId)
+        if (config == null) {
+            player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
+            return
+        }
+        openMenuInternal(player, config, plugin, menuId)
+    }
+
+    /**
      * 实际打开菜单的内部方法（在主线程执行）
      */
     private fun openMenuInternal(player: Player, config: YamlConfiguration, plugin: KaMenu, menuId: String) {
