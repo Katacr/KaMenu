@@ -29,6 +29,30 @@ import java.util.concurrent.CompletableFuture
 object MenuUI {
     private lateinit var plugin: KaMenu
 
+    private data class DropdownOption(
+        val id: String,
+        val display: String
+    )
+
+    /**
+     * 解析 dropdown 选项。
+     * 支持：
+     * 1. 旧格式："warrior" -> id=warrior, display=warrior
+     * 2. 新格式："warrior => &c战士" -> id=warrior, display=&c战士
+     *
+     * 使用字符串分隔而不是 Map 配置，这样可以继续兼容现有 options 的条件判断列表能力。
+     */
+    private fun parseDropdownOption(raw: String): DropdownOption {
+        val parts = raw.split("=>", limit = 2)
+        return if (parts.size == 2) {
+            val id = parts[0].trim()
+            val display = parts[1].trim().ifEmpty { id }
+            DropdownOption(id, display)
+        } else {
+            DropdownOption(raw, raw)
+        }
+    }
+
     /**
      * 初始化插件引用
      */
@@ -426,7 +450,12 @@ object MenuUI {
                         val defaultId = getString(player, section, "$key.default_id", "")
                         val options = getStringList(player, section, "$key.options")
                         val entries = options.map {
-                            SingleOptionDialogInput.OptionEntry.create(it, TextParser.parseText(it), it == defaultId)
+                            val option = parseDropdownOption(it)
+                            SingleOptionDialogInput.OptionEntry.create(
+                                option.id,
+                                TextParser.parseText(option.display),
+                                option.id == defaultId
+                            )
                         }
                         inputList.add(
                             DialogInput.singleOption(key, prompt, entries)
