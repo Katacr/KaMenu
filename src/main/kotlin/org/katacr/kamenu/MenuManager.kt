@@ -4,6 +4,7 @@ package org.katacr.kamenu
 
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
+import java.net.JarURLConnection
 
 class MenuManager(private val plugin: KaMenu) {
     private val menus = mutableMapOf<String, YamlConfiguration>()
@@ -44,8 +45,8 @@ class MenuManager(private val plugin: KaMenu) {
                 }
                 "jar" -> {
                     // 生产环境，从 jar 包读取
-                    val jarPath = url.path.substringBefore("!")
-                    val jarFile = File(jarPath.substringAfter("file:"))
+                    val jarConnection = url.openConnection() as JarURLConnection
+                    val jarFile = File(jarConnection.jarFileURL.toURI())
                     saveDefaultMenusFromJar(folder, jarFile, resourcePath)
                 }
                 else -> {
