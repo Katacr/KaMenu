@@ -66,6 +66,7 @@ Allows players to enter arbitrary text.
 |------|------|----------|---------|-------------|
 | `type` | `String` | ✅ | — | Fixed value `input` |
 | `text` | `String` | ✅ | — | Input field label text, supports conditions |
+| `hide_text` | `Boolean` | ❌ | `false` | Whether to hide the input field's own label text |
 | `default` | `String` | ❌ | `""` | Default placeholder text |
 | `max_length` | `Int` | ❌ | `256` | Maximum input character count |
 | `width` | `Int` | ❌ | `250` | Input field width (pixels) |
@@ -91,6 +92,7 @@ Inputs:
   feedback:
     type: 'input'
     text: '&7Feedback content'
+    hide_text: true
     default: 'Type here...'
     multiline:
       max_lines: 5
@@ -156,9 +158,44 @@ Allows players to select one option from a predefined list.
 |------|------|----------|---------|-------------|
 | `type` | `String` | ✅ | — | Fixed value `dropdown` |
 | `text` | `String` | ✅ | — | Dropdown label text, supports conditions |
-| `options` | `List<String>` | ✅ | — | List of options, each supports color codes |
-| `default_id` | `String` | ❌ | — | Default selected option (must exactly match an option in `options`) |
+| `hide_text` | `Boolean` | ❌ | `false` | Whether to hide the dropdown's own label text |
+| `options` | `List<String>` | ✅ | — | Option list. Supports plain strings, `id => display` format, and conditional option lists |
+| `default_id` | `String` | ❌ | — | Default selected option ID |
 | `width` | `Int` | ❌ | `200` | Dropdown width (pixels) |
+
+**Supported `options` formats:**
+
+1. **Old format: display text and submitted value are the same**
+```yaml
+options:
+  - 'red'
+  - 'green'
+  - 'blue'
+```
+
+2. **New format: use `id => display` to separate submitted value from visible text**
+```yaml
+options:
+  - 'red => &cRed'
+  - 'green => &aGreen'
+  - 'blue => &bBlue'
+```
+
+3. **Conditional format: compatible with `allow` / `deny` returning string lists**
+```yaml
+options:
+  - condition: "%player_is_op% == true"
+    allow:
+      - 'red => &cOP-Red'
+      - 'green => &aOP-Green'
+    deny:
+      - 'red => &cPlayer-Red'
+      - 'green => &aPlayer-Green'
+```
+
+> When using `id => display`:
+> - The left side `id` becomes the real submitted value used by `$(variable)` in actions
+> - The right side `display` is what players actually see in the UI
 
 **Example:**
 
@@ -167,12 +204,13 @@ Inputs:
   color_select:
     type: 'dropdown'
     text: '&bSelect Color'
+    hide_text: true
     options:
-      - '&cRed'
-      - '&aGreen'
-      - '&bBlue'
-      - '&eYellow'
-    default_id: '&aGreen'
+      - 'red => &cRed'
+      - 'green => &aGreen'
+      - 'blue => &bBlue'
+      - 'yellow => &eYellow'
+    default_id: 'green'
 
   server_select:
     type: 'dropdown'
@@ -255,9 +293,25 @@ Inputs:
     type: 'dropdown'
     text: '&aLanguage'
     options:
-      - '简体中文'
-      - 'English'
-    default_id: '简体中文'
+      - 'zh_cn => 简体中文'
+      - 'en_us => English'
+    default_id: 'zh_cn'
+
+  color_select:
+    type: 'dropdown'
+    text: '&bSelect Color'
+    hide_text: true
+    options:
+      - condition: "%player_is_op% == true"
+        allow:
+          - 'red => &cOP-Red'
+          - 'green => &aOP-Green'
+          - 'blue => &bOP-Blue'
+        deny:
+          - 'red => &cPlayer-Red'
+          - 'green => &aPlayer-Green'
+          - 'blue => &bPlayer-Blue'
+    default_id: 'red'
 
   join_notify:
     type: 'checkbox'

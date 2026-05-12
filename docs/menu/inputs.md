@@ -66,6 +66,7 @@ Bottom:
 |------|------|------|--------|------|
 | `type` | `String` | ✅ | — | 固定值 `input` |
 | `text` | `String` | ✅ | — | 输入框标签文字，支持条件判断 |
+| `hide_text` | `Boolean` | ❌ | `false` | 是否隐藏输入框自身的标签文字 |
 | `default` | `String` | ❌ | `""` | 默认填充文字 |
 | `max_length` | `Int` | ❌ | `256` | 最大输入字符数 |
 | `width` | `Int` | ❌ | `250` | 输入框宽度（像素）|
@@ -91,6 +92,7 @@ Inputs:
   feedback:
     type: 'input'
     text: '&7留言内容'
+    hide_text: true
     default: '请在此输入...'
     multiline:
       max_lines: 5
@@ -156,9 +158,44 @@ Inputs:
 |------|------|------|--------|------|
 | `type` | `String` | ✅ | — | 固定值 `dropdown` |
 | `text` | `String` | ✅ | — | 下拉框标签文字，支持条件判断 |
-| `options` | `List<String>` | ✅ | — | 选项列表，每项支持颜色代码 |
-| `default_id` | `String` | ❌ | — | 默认选中的选项（需与 `options` 中某项完全一致）|
+| `hide_text` | `Boolean` | ❌ | `false` | 是否隐藏下拉框自身的标签文字 |
+| `options` | `List<String>` | ✅ | — | 选项列表，支持普通字符串、`id => display` 格式，以及条件判断列表 |
+| `default_id` | `String` | ❌ | — | 默认选中的选项 ID |
 | `width` | `Int` | ❌ | `200` | 下拉框宽度（像素）|
+
+**options 支持格式：**
+
+1. **旧格式：显示值与提交值相同**
+```yaml
+options:
+  - 'red'
+  - 'green'
+  - 'blue'
+```
+
+2. **新格式：使用 `id => display` 分离提交值与显示值**
+```yaml
+options:
+  - 'red => &c红色'
+  - 'green => &a绿色'
+  - 'blue => &b蓝色'
+```
+
+3. **条件判断格式：兼容 `allow` / `deny` 返回字符串列表**
+```yaml
+options:
+  - condition: "%player_is_op% == true"
+    allow:
+      - 'red => &cOP-红色'
+      - 'green => &aOP-绿色'
+    deny:
+      - 'red => &c玩家-红色'
+      - 'green => &a玩家-绿色'
+```
+
+> 当使用 `id => display` 时：
+> - 左侧 `id` 会作为动作中 `$(变量名)` 的真实值
+> - 右侧 `display` 是玩家在界面中看到的文本
 
 **示例：**
 
@@ -167,12 +204,13 @@ Inputs:
   color_select:
     type: 'dropdown'
     text: '&b选择颜色'
+    hide_text: true
     options:
-      - '&c红色'
-      - '&a绿色'
-      - '&b蓝色'
-      - '&e黄色'
-    default_id: '&a绿色'
+      - 'red => &c红色'
+      - 'green => &a绿色'
+      - 'blue => &b蓝色'
+      - 'yellow => &e黄色'
+    default_id: 'green'
 
   server_select:
     type: 'dropdown'
@@ -255,9 +293,25 @@ Inputs:
     type: 'dropdown'
     text: '&a语言'
     options:
-      - '简体中文'
-      - 'English'
-    default_id: '简体中文'
+      - 'zh_cn => 简体中文'
+      - 'en_us => English'
+    default_id: 'zh_cn'
+
+  color_select:
+    type: 'dropdown'
+    text: '&b选择颜色'
+    hide_text: true
+    options:
+      - condition: "%player_is_op% == true"
+        allow:
+          - 'red => &cOP-红色'
+          - 'green => &aOP-绿色'
+          - 'blue => &bOP-蓝色'
+        deny:
+          - 'red => &c玩家-红色'
+          - 'green => &a玩家-绿色'
+          - 'blue => &b玩家-蓝色'
+    default_id: 'red'
 
   join_notify:
     type: 'checkbox'
