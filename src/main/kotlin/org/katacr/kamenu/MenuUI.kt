@@ -409,6 +409,7 @@ object MenuUI {
                         inputTypes[key] = "text"  // 记录为文本类型
                         val builder = DialogInput.text(key, prompt)
                             .width(getInt(player, section, "$key.width", 250))
+                            .labelVisible(!getBoolean(player, section, "$key.hide_text", false))
                             .initial(getString(player, section, "$key.default", ""))
                             .maxLength(getInt(player, section, "$key.max_length", 256))
 
@@ -427,7 +428,12 @@ object MenuUI {
                         val entries = options.map {
                             SingleOptionDialogInput.OptionEntry.create(it, TextParser.parseText(it), it == defaultId)
                         }
-                        inputList.add(DialogInput.singleOption(key, prompt, entries).width(getInt(player, section, "$key.width", 200)).build())
+                        inputList.add(
+                            DialogInput.singleOption(key, prompt, entries)
+                                .width(getInt(player, section, "$key.width", 200))
+                                .labelVisible(!getBoolean(player, section, "$key.hide_text", false))
+                                .build()
+                        )
                     }
                 }
                 inputKeys.add(key)

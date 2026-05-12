@@ -19,6 +19,7 @@ Inputs:
   feedback:
     type: 'input'
     text: '&7Feedback Content'
+    hide_text: true
     default: 'Please enter here...'
     multiline:
       max_lines: 5

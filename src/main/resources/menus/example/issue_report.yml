@@ -19,6 +19,7 @@ Inputs:
   feedback:
     type: 'input'
     text: '&7反馈内容'
+    hide_text: true
     default: '请在此输入...'
     multiline:
       max_lines: 5
