@@ -13,6 +13,7 @@ import io.papermc.paper.registry.data.dialog.type.DialogType
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
@@ -357,13 +358,32 @@ object MenuUI {
                                 if (lore.isNotEmpty()) {
                                     meta.lore(lore.map { TextParser.parseText(it) })
                                 }
+
+                                // 支持设置 custom_model_data（兼容 ItemsAdder 等基于该属性的资源包物品）
+                                val customModelDataStr = ConditionUtils.resolveVariables(player, getString(player, section, "$key.custom_model_data", ""))
+                                if (customModelDataStr.isNotEmpty()) {
+                                    val customModelData = customModelDataStr.toIntOrNull()
+                                    if (customModelData != null) {
+                                        meta.setCustomModelData(customModelData)
+                                    } else {
+                                        plugin.logger.warning("Invalid custom_model_data: $customModelDataStr, menu: $menuId, component: $key")
+                                    }
+                                }
                                 
-                                // 支持设置 item_model（1.21.7+ 命名空间物品模型）
+                                // 支持设置 item_model（Paper 1.21.5+；本插件整体仍要求 1.21.7+）
                                 val itemModel = ConditionUtils.resolveVariables(player, getString(player, section, "$key.item_model", ""))
                                 if (itemModel.isNotEmpty()) {
-                                    val namespacedKey = org.bukkit.NamespacedKey.minecraft("item_model")
-                                    val pdc = meta.persistentDataContainer
-                                    pdc.set(namespacedKey, org.bukkit.persistence.PersistentDataType.STRING, itemModel)
+                                    val modelKey = if (itemModel.contains(":")) {
+                                        NamespacedKey.fromString(itemModel)
+                                    } else {
+                                        NamespacedKey.minecraft(itemModel)
+                                    }
+
+                                    if (modelKey != null) {
+                                        meta.itemModel = modelKey
+                                    } else {
+                                        plugin.logger.warning("Invalid item_model: $itemModel, menu: $menuId, component: $key")
+                                    }
                                 }
                             }
                         }
