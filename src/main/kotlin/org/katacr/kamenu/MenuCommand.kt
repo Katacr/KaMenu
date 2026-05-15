@@ -25,6 +25,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             plugin.languageManager.reload()
             val menuCount = plugin.menuManager.reload()
             val commandCount = plugin.customCommandManager.registerCustomCommands()
+            UpdateChecker.reload(plugin)
 
             sender.sendMessage(plugin.languageManager.getMessage("menu.reloaded", menuCount.toString(), commandCount.toString()))
             return true

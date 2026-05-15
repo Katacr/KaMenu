@@ -24,6 +24,24 @@ object UpdateChecker {
     private var checkComplete = false
     private var languageManager: LanguageManager? = null
 
+    /**
+     * 根据当前配置重新应用更新检查设置。
+     * - 启用时：重新发起一次异步检查
+     * - 禁用时：清空缓存状态，确保 reload 后立即停止提示
+     */
+    fun reload(plugin: KaMenu) {
+        languageManager = plugin.languageManager
+        currentVersion = plugin.description.version
+
+        if (!plugin.config.getBoolean("check-update", true)) {
+            latestVersion = null
+            checkComplete = false
+            return
+        }
+
+        check(plugin)
+    }
+
     private val httpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(5))
         .followRedirects(HttpClient.Redirect.NORMAL)
@@ -35,6 +53,8 @@ object UpdateChecker {
     fun check(plugin: KaMenu) {
         currentVersion = plugin.description.version
         languageManager = plugin.languageManager
+        latestVersion = null
+        checkComplete = false
         Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
             try {
                 val request = HttpRequest.newBuilder()
