@@ -26,6 +26,8 @@ import org.katacr.kamenu.ConditionUtils.getString
 import org.katacr.kamenu.ConditionUtils.getStringList
 import org.katacr.kamenu.ConditionUtils.getType
 import java.util.concurrent.CompletableFuture
+import org.bukkit.inventory.meta.SkullMeta
+import com.destroystokyo.paper.profile.ProfileProperty
 
 object MenuUI {
     private lateinit var plugin: KaMenu
@@ -321,7 +323,7 @@ object MenuUI {
                                     // 头部为空，渲染玩家皮肤头颅
                                     val skull = ItemStack(Material.PLAYER_HEAD)
                                     skull.editMeta { meta ->
-                                        val skullMeta = meta as org.bukkit.inventory.meta.SkullMeta
+                                        val skullMeta = meta as SkullMeta
                                         skullMeta.owningPlayer = targetPlayer
                                     }
                                     skull
@@ -383,6 +385,26 @@ object MenuUI {
                                         meta.itemModel = modelKey
                                     } else {
                                         plugin.logger.warning("Invalid item_model: $itemModel, menu: $menuId, component: $key")
+                                    }
+                                }
+
+                                // 支持设置玩家头颅皮肤
+                                if (meta is SkullMeta) {
+                                    // skull_texture: 自定义 Base64 纹理
+                                    val skullTexture = ConditionUtils.resolveVariables(player, getString(player, section, "$key.skull_texture", ""))
+                                    if (skullTexture.isNotEmpty()) {
+                                        // 基于纹理值生成固定 UUID，使客户端能缓存已下载的纹理
+                                        val textureUUID = java.util.UUID.nameUUIDFromBytes(skullTexture.toByteArray())
+                                        val profile = Bukkit.createProfile(textureUUID, "custom_head")
+                                        profile.setProperty(ProfileProperty("textures", skullTexture))
+                                        meta.playerProfile = profile
+                                    } else {
+                                        // skull_owner: 通过玩家名设置头颅
+                                        val skullOwner = ConditionUtils.resolveVariables(player, getString(player, section, "$key.skull_owner", ""))
+                                        if (skullOwner.isNotEmpty()) {
+                                            val ownerPlayer = Bukkit.getOfflinePlayer(skullOwner)
+                                            meta.owningPlayer = ownerPlayer
+                                        }
                                     }
                                 }
                             }
