@@ -124,15 +124,19 @@ object MenuUI {
             return
         }
 
+        openConfig(player, config, plugin, menuId)
+    }
+
+    fun openConfig(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
         val openActions = config.getList("Events.Open")
         if (openActions.isNullOrEmpty()) {
-            openMenuInternal(player, config, plugin, menuId)
+            openMenuInternal(player, config, plugin, contextId)
             return
         }
 
         MenuActions.executeEvent(player, config, "Open").whenComplete { shouldStop, error ->
             if (error != null) {
-                plugin.logger.severe("Open 事件执行失败: ${error.message}")
+                plugin.logger.severe("Open 事件执行失败: contextId=$contextId, 错误: ${error.message}")
                 error.printStackTrace()
                 return@whenComplete
             }
@@ -142,7 +146,7 @@ object MenuUI {
             }
 
             Bukkit.getScheduler().runTask(plugin, Runnable {
-                openMenuInternal(player, config, plugin, menuId)
+                openMenuInternal(player, config, plugin, contextId)
             })
         }
     }

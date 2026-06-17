@@ -10,8 +10,10 @@ import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
+import org.katacr.kamenu.api.KaMenuActionHandler
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 菜单动作处理器
@@ -25,6 +27,7 @@ object MenuActions {
     private var plugin: KaMenu? = null
     private var itemManager: ItemManager? = null
     private var bungeeCordEnabled: Boolean = false
+    private val externalActionHandlers = ConcurrentHashMap<String, KaMenuActionHandler>()
 
     /**
      * 解析后的动作数据类（包含目标选择器）
@@ -178,6 +181,46 @@ object MenuActions {
                 }
                 targetPlayers
             }
+        }
+    }
+
+    fun registerExternalActionHandler(namespace: String, handler: KaMenuActionHandler): Boolean {
+        val normalized = namespace.trim().lowercase()
+        if (normalized.isEmpty() || normalized.contains(":")) {
+            return false
+        }
+        externalActionHandlers[normalized] = handler
+        return true
+    }
+
+    fun unregisterExternalActionHandler(namespace: String) {
+        val normalized = namespace.trim().lowercase()
+        if (normalized.isNotEmpty()) {
+            externalActionHandlers.remove(normalized)
+        }
+    }
+
+    private fun dispatchExternalAction(
+        player: Player,
+        action: String,
+        variables: Map<String, String>,
+        config: YamlConfiguration?
+    ): Boolean {
+        val trimmed = action.trim()
+        val colonIndex = trimmed.indexOf(':')
+        if (colonIndex <= 0) {
+            return false
+        }
+
+        val namespace = trimmed.substring(0, colonIndex).trim().lowercase()
+        val handler = externalActionHandlers[namespace] ?: return false
+
+        return try {
+            handler.execute(player, trimmed, variables, config)
+        } catch (e: Exception) {
+            plugin?.logger?.warning("外部 action handler 执行失败: namespace=$namespace, action=$trimmed, 错误: ${e.message}")
+            e.printStackTrace()
+            true
         }
     }
 
@@ -586,6 +629,10 @@ object MenuActions {
 
         // 解析内置变量 {data:var} 和 {gdata:var}，以及 PAPI 变量
         finalCmd = resolveVariables(player, finalCmd)
+
+        if (dispatchExternalAction(player, finalCmd, variables, config)) {
+            return
+        }
 
         when {
             // tell: 普通消息

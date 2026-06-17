@@ -1,8 +1,10 @@
 package org.katacr.kamenu.api
 
+import org.bukkit.configuration.file.YamlConfiguration
+import org.bukkit.Bukkit
 import org.bukkit.entity.Player
-import org.bukkit.plugin.Plugin
-import org.bukkit.plugin.java.JavaPlugin
+import org.katacr.kamenu.MenuActions
+import org.katacr.kamenu.MenuUI
 
 /**
  * KaMenu 公开 API
@@ -31,11 +33,74 @@ object KaMenuAPI {
         }
         try {
             val menuManager = plugin!!.menuManager
-            org.katacr.kamenu.MenuUI.openMenu(player, menuId, menuManager, plugin!!)
+            MenuUI.openMenu(player, menuId, menuManager, plugin!!)
             return true
         } catch (e: Exception) {
             plugin!!.logger.warning("打开菜单失败: $menuId, 错误: ${e.message}")
             return false
+        }
+    }
+
+    /**
+     * 从内存 YAML 字符串打开菜单。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun openYaml(player: Player, yaml: String, contextId: String = "external"): Boolean {
+        val currentPlugin = plugin ?: return false
+        return try {
+            val config = YamlConfiguration()
+            config.loadFromString(yaml)
+            openConfig(player, config, contextId)
+        } catch (e: Exception) {
+            currentPlugin.logger.warning("外部菜单 YAML 解析失败: contextId=$contextId, 错误: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * 从内存配置打开菜单。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun openConfig(player: Player, config: YamlConfiguration, contextId: String = "external"): Boolean {
+        val currentPlugin = plugin ?: return false
+        return try {
+            if (Bukkit.isPrimaryThread()) {
+                MenuUI.openConfig(player, config, currentPlugin, contextId)
+            } else {
+                Bukkit.getScheduler().runTask(currentPlugin, Runnable {
+                    MenuUI.openConfig(player, config, currentPlugin, contextId)
+                })
+            }
+            true
+        } catch (e: Exception) {
+            currentPlugin.logger.warning("打开外部菜单失败: contextId=$contextId, 错误: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * 注册外部动作命名空间。
+     */
+    @JvmStatic
+    fun registerActionHandler(namespace: String, handler: KaMenuActionHandler): Boolean {
+        val normalized = namespace.trim().lowercase()
+        if (normalized.isEmpty() || normalized.contains(":")) {
+            plugin?.logger?.warning("外部 action handler 注册失败: namespace 非法: $namespace")
+            return false
+        }
+        return MenuActions.registerExternalActionHandler(normalized, handler)
+    }
+
+    /**
+     * 注销外部动作命名空间。
+     */
+    @JvmStatic
+    fun unregisterActionHandler(namespace: String) {
+        val normalized = namespace.trim().lowercase()
+        if (normalized.isNotEmpty()) {
+            MenuActions.unregisterExternalActionHandler(normalized)
         }
     }
 
