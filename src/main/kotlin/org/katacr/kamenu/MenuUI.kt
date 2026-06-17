@@ -90,7 +90,7 @@ object MenuUI {
 
         // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
         return MenuActions.parseClickableText(
-            ConditionUtils.resolveVariables(player, rawText),
+            TextResolver.resolve(player, rawText),
             player,
             config,
             menuOpener
@@ -124,49 +124,27 @@ object MenuUI {
             return
         }
 
-        // 0. 检查 Events.Open 是否包含 wait 动作
         val openActions = config.getList("Events.Open")
-        val hasWait = MenuActions.hasWaitActionInList(openActions ?: emptyList<Any>())
-
-        if (hasWait) {
-            // 有 wait 动作，整个打开过程异步执行
-            openMenuAsync(player, config, manager, plugin)
-        } else {
-            // 没有 wait 动作，同步执行 Open 事件
-            val shouldStop = MenuActions.executeEventSync(player, config, "Open")
-            if (shouldStop) {
-                // 如果Open事件中遇到return，停止打开菜单
-                return
-            }
-            // 继续打开菜单
+        if (openActions.isNullOrEmpty()) {
             openMenuInternal(player, config, plugin, menuId)
+            return
         }
-    }
 
-    /**
-     * 异步打开菜单（用于包含 wait 动作的 Events.Open）
-     */
-    private fun openMenuAsync(player: Player, config: YamlConfiguration, manager: MenuManager, plugin: KaMenu) {
-        // 异步执行 Open 事件
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
-            val eventFuture: CompletableFuture<Boolean> = MenuActions.executeEvent(player, config, "Open")
-            try {
-                val shouldStop: Boolean = eventFuture.get()
-                if (shouldStop) {
-                    // 如果Open事件中遇到return，停止打开菜单
-                    return@Runnable
-                }
-            } catch (e: Exception) {
-                plugin.logger.severe("Open 事件执行失败: ${e.message}")
-                e.printStackTrace()
-                return@Runnable
+        MenuActions.executeEvent(player, config, "Open").whenComplete { shouldStop, error ->
+            if (error != null) {
+                plugin.logger.severe("Open 事件执行失败: ${error.message}")
+                error.printStackTrace()
+                return@whenComplete
             }
 
-            // Open 事件执行完成，切换到主线程打开菜单
+            if (shouldStop) {
+                return@whenComplete
+            }
+
             Bukkit.getScheduler().runTask(plugin, Runnable {
-                openMenuInternal(player, config, plugin, "")
+                openMenuInternal(player, config, plugin, menuId)
             })
-        })
+        }
     }
 
     /**
@@ -238,7 +216,7 @@ object MenuUI {
         }
 
         val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
-        val title = TextParser.parseText(ConditionUtils.resolveVariables(player, rawTitle))
+        val title = TextParser.parseText(TextResolver.resolve(player, rawTitle))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -285,7 +263,7 @@ object MenuUI {
                         }
                     }
                     "item" -> {
-                        val materialStr = ConditionUtils.resolveVariables(player, getString(player, section, "$key.material", "PAPER"))
+                        val materialStr = TextResolver.resolve(player, getString(player, section, "$key.material", "PAPER"))
                         val item: ItemStack
                         
                         // 检查是否为槽位引用格式 [SLOT] 或 [SLOT:Player]
@@ -352,7 +330,7 @@ object MenuUI {
                             item = ItemStack(material, amount)
 
                             item.editMeta { meta ->
-                                val name = ConditionUtils.resolveVariables(player, getString(player, section, "$key.name", ""))
+                                val name = TextResolver.resolve(player, getString(player, section, "$key.name", ""))
                                 if (name.isNotEmpty()) {
                                     meta.displayName(TextParser.parseText(name))
                                 }
@@ -362,7 +340,7 @@ object MenuUI {
                                 }
 
                                 // 支持设置 custom_model_data（兼容 ItemsAdder 等基于该属性的资源包物品）
-                                val customModelDataStr = ConditionUtils.resolveVariables(player, getString(player, section, "$key.custom_model_data", ""))
+                                val customModelDataStr = TextResolver.resolve(player, getString(player, section, "$key.custom_model_data", ""))
                                 if (customModelDataStr.isNotEmpty()) {
                                     val customModelData = customModelDataStr.toIntOrNull()
                                     if (customModelData != null) {
@@ -373,7 +351,7 @@ object MenuUI {
                                 }
                                 
                                 // 支持设置 item_model（Paper 1.21.5+；本插件整体仍要求 1.21.7+）
-                                val itemModel = ConditionUtils.resolveVariables(player, getString(player, section, "$key.item_model", ""))
+                                val itemModel = TextResolver.resolve(player, getString(player, section, "$key.item_model", ""))
                                 if (itemModel.isNotEmpty()) {
                                     val modelKey = if (itemModel.contains(":")) {
                                         NamespacedKey.fromString(itemModel)
@@ -391,7 +369,7 @@ object MenuUI {
                                 // 支持设置玩家头颅皮肤
                                 if (meta is SkullMeta) {
                                     // skull_texture: 自定义 Base64 纹理
-                                    val skullTexture = ConditionUtils.resolveVariables(player, getString(player, section, "$key.skull_texture", ""))
+                                    val skullTexture = TextResolver.resolve(player, getString(player, section, "$key.skull_texture", ""))
                                     if (skullTexture.isNotEmpty()) {
                                         // 基于纹理值生成固定 UUID，使客户端能缓存已下载的纹理
                                         val textureUUID = java.util.UUID.nameUUIDFromBytes(skullTexture.toByteArray())
@@ -400,7 +378,7 @@ object MenuUI {
                                         meta.playerProfile = profile
                                     } else {
                                         // skull_owner: 通过玩家名设置头颅
-                                        val skullOwner = ConditionUtils.resolveVariables(player, getString(player, section, "$key.skull_owner", ""))
+                                        val skullOwner = TextResolver.resolve(player, getString(player, section, "$key.skull_owner", ""))
                                         if (skullOwner.isNotEmpty()) {
                                             val ownerPlayer = Bukkit.getOfflinePlayer(skullOwner)
                                             meta.owningPlayer = ownerPlayer
@@ -409,7 +387,7 @@ object MenuUI {
                                 }
                             }
                         }
-                        val descriptionText = ConditionUtils.resolveVariables(player, getString(player, section, "$key.description", ""))
+                        val descriptionText = TextResolver.resolve(player, getString(player, section, "$key.description", ""))
                         val descriptionWidth = getInt(player, section, "$key.description_width", 0)
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
                             if (descriptionWidth > 0) {

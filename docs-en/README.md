@@ -44,15 +44,22 @@ Supports a wide range of button click actions:
 * `open` / `close` — menu navigation and dismissal
 * `hovertext` — hoverable and clickable chat text
 * `actions` — execute predefined action lists (supports reuse and conditional branching)
-* `wait` — delay subsequent actions
+* `return` — stop the current action chain
+* `wait` / `return` — delay subsequent actions or stop the current action chain
 * `set-data` / `set-gdata` — read/write persistent data
 * `url` / `copy` — open links or copy to clipboard
+
+Advanced action and text features:
+
+* `{js:...}` — use JavaScript expression results in any text position
+* `Events.Open` — waits for the full action chain before opening the menu
 
 ### 🔍 Universal Condition System
 
 * Use conditions in **any text field** (title, button text, component text)
 * Nest conditions within **action lists** for branching execution logic
 * Supports PlaceholderAPI variables, comparison operators (`==` `!=` `>` `<` `>=` `<=`), and logical operators (`&&` `||`)
+* `{js:...}` can be used directly in conditions for dynamic evaluation
 
 ### 💾 Built-in Data Storage
 

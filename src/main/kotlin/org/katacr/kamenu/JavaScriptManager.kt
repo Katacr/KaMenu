@@ -13,6 +13,7 @@ object JavaScriptManager {
     private var scriptEngine: ScriptEngine? = null
     private var available = false
     private var plugin: JavaPlugin? = null
+    private val scriptLock = Any()
 
     /**
      * 初始化 JavaScript 支持
@@ -114,14 +115,16 @@ object JavaScriptManager {
             return null
         }
 
-        return try {
-            scriptEngine!!.eval(script)
-        } catch (e: ScriptException) {
-            plugin?.logger?.warning("JavaScript execution error: ${e.message}")
-            null
-        } catch (e: Exception) {
-            plugin?.logger?.warning("JavaScript error: ${e.message}")
-            null
+        return synchronized(scriptLock) {
+            try {
+                scriptEngine!!.eval(script)
+            } catch (e: ScriptException) {
+                plugin?.logger?.warning("JavaScript execution error: ${e.message}")
+                null
+            } catch (e: Exception) {
+                plugin?.logger?.warning("JavaScript error: ${e.message}")
+                null
+            }
         }
     }
 
@@ -150,32 +153,32 @@ object JavaScriptManager {
             return null
         }
 
-        return try {
-            // 绑定玩家相关的变量
-            putVariable("player", player)
-            putVariable("uuid", player.uniqueId.toString())
-            putVariable("name", player.name)
-            putVariable("location", player.location)
-            putVariable("inventory", player.inventory)
-            putVariable("world", player.world)
+        return synchronized(scriptLock) {
+            try {
+                // 绑定玩家相关的变量
+                putVariable("player", player)
+                putVariable("uuid", player.uniqueId.toString())
+                putVariable("name", player.name)
+                putVariable("location", player.location)
+                putVariable("inventory", player.inventory)
+                putVariable("world", player.world)
 
-            val result = scriptEngine!!.eval(script)
-
-            // 清理绑定的变量
-            putVariable("player", null)
-            putVariable("uuid", null)
-            putVariable("name", null)
-            putVariable("location", null)
-            putVariable("inventory", null)
-            putVariable("world", null)
-
-            result
-        } catch (e: ScriptException) {
-            plugin?.logger?.warning("JavaScript execution error for player ${player.name}: ${e.message}")
-            null
-        } catch (e: Exception) {
-            plugin?.logger?.warning("JavaScript error for player ${player.name}: ${e.message}")
-            null
+                scriptEngine!!.eval(script)
+            } catch (e: ScriptException) {
+                plugin?.logger?.warning("JavaScript execution error for player ${player.name}: ${e.message}")
+                null
+            } catch (e: Exception) {
+                plugin?.logger?.warning("JavaScript error for player ${player.name}: ${e.message}")
+                null
+            } finally {
+                // 清理绑定的变量
+                putVariable("player", null)
+                putVariable("uuid", null)
+                putVariable("name", null)
+                putVariable("location", null)
+                putVariable("inventory", null)
+                putVariable("world", null)
+            }
         }
     }
 
@@ -228,53 +231,52 @@ object JavaScriptManager {
             return null
         }
 
-        return try {
-            // 绑定玩家相关的变量
-            putVariable("player", player)
-            putVariable("uuid", player.uniqueId.toString())
-            putVariable("name", player.name)
-            putVariable("location", player.location)
-            putVariable("inventory", player.inventory)
-            putVariable("world", player.world)
+        return synchronized(scriptLock) {
+            try {
+                // 绑定玩家相关的变量
+                putVariable("player", player)
+                putVariable("uuid", player.uniqueId.toString())
+                putVariable("name", player.name)
+                putVariable("location", player.location)
+                putVariable("inventory", player.inventory)
+                putVariable("world", player.world)
 
-            // 预处理参数：创建 JavaScript 数组并绑定
-            val argsArrayJs = if (args.isEmpty()) {
-                "[]"
-            } else {
-                args.joinToString(", ", "[", "]") { arg ->
-                    // 转义 JavaScript 字符串中的特殊字符
-                    val escaped = arg
-                        .replace("\\", "\\\\")  // 反斜杠
-                        .replace("\"", "\\\"")   // 双引号
-                        .replace("\n", "\\n")    // 换行
-                        .replace("\r", "\\r")    // 回车
-                        .replace("\t", "\\t")    // 制表符
-                    "\"$escaped\""
+                // 预处理参数：创建 JavaScript 数组并绑定
+                val argsArrayJs = if (args.isEmpty()) {
+                    "[]"
+                } else {
+                    args.joinToString(", ", "[", "]") { arg ->
+                        // 转义 JavaScript 字符串中的特殊字符
+                        val escaped = arg
+                            .replace("\\", "\\\\")  // 反斜杠
+                            .replace("\"", "\\\"")   // 双引号
+                            .replace("\n", "\\n")    // 换行
+                            .replace("\r", "\\r")    // 回车
+                            .replace("\t", "\\t")    // 制表符
+                        "\"$escaped\""
+                    }
                 }
+
+                // 将 args 绑定为 JavaScript 数组
+                scriptEngine!!.eval("var args = $argsArrayJs;")
+
+                // 只执行指定的 JavaScript 代码块
+                scriptEngine!!.eval(jsCode)
+            } catch (e: ScriptException) {
+                plugin?.logger?.warning("JavaScript execution error for function '$functionName': ${e.message}")
+                null
+            } catch (e: Exception) {
+                plugin?.logger?.warning("JavaScript error for function '$functionName': ${e.message}")
+                null
+            } finally {
+                // 清理绑定的变量
+                putVariable("player", null)
+                putVariable("uuid", null)
+                putVariable("name", null)
+                putVariable("location", null)
+                putVariable("inventory", null)
+                putVariable("world", null)
             }
-
-
-            // 将 args 绑定为 JavaScript 数组
-            scriptEngine!!.eval("var args = $argsArrayJs;")
-
-            // 只执行指定的 JavaScript 代码块
-            val result = scriptEngine!!.eval(jsCode)
-
-            // 清理绑定的变量
-            putVariable("player", null)
-            putVariable("uuid", null)
-            putVariable("name", null)
-            putVariable("location", null)
-            putVariable("inventory", null)
-            putVariable("world", null)
-
-            result
-        } catch (e: ScriptException) {
-            plugin?.logger?.warning("JavaScript execution error for function '$functionName': ${e.message}")
-            null
-        } catch (e: Exception) {
-            plugin?.logger?.warning("JavaScript error for function '$functionName': ${e.message}")
-            null
         }
     }
 

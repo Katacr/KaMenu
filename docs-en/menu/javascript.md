@@ -32,6 +32,23 @@ Bottom:
       - 'js: player.sendMessage("Random number: " + random);'
 ```
 
+### Using `{js:...}` as a text placeholder
+
+`{js:...}` can be written anywhere in text, and KaMenu will replace it with the return value of the JavaScript expression:
+
+```yaml
+Title: '&6Result: {js:player.getLevel()}'
+
+actions:
+  - 'tell: Congratulations, player {js:name} got a bonus package'
+  - 'tell: Level check result: {js:player.getLevel() >= 10}'
+```
+
+**Notes:**
+- `{js:...}` is for value output only, not side effects
+- If the script returns nothing or fails, it is replaced with an empty string
+- It can be used in titles, text, conditions, and action parameters
+
 ---
 
 ## 📦 Built-in Variables

@@ -64,39 +64,7 @@ object ActionHandlers {
      * 解析变量（完整顺序：$(var) -> {data:var} -> %papi_var%）
      */
     fun resolveVariablesWithInput(player: Player, text: String, variables: Map<String, String> = emptyMap()): String {
-        var result = text
-
-        // 1. 解析输入变量 $(key)
-        variables.forEach { (key, value) ->
-            result = result.replace("$($key)", value)
-        }
-
-        // 2. 解析内置变量 {data:key}、{gdata:key}、{meta:key}
-        result = result.replace(Regex("\\{data:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            databaseManager?.getPlayerData(player.uniqueId, key)
-                ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
-        }
-        result = result.replace(Regex("\\{gdata:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            databaseManager?.getGlobalData(key)
-                ?: languageManager?.getMessage("papi.data_not_found", key) ?: "null"
-        }
-        result = result.replace(Regex("\\{meta:([^}]+)}")) { matchResult ->
-            val key = matchResult.groupValues[1]
-            metaDataManager?.getPlayerMeta(player.uniqueId, key) ?: "null"
-        }
-
-        // 3. 解析 PAPI 变量
-        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            try {
-                result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, result)
-            } catch (_: Exception) {
-                // PAPI 解析失败，忽略
-            }
-        }
-
-        return result
+        return TextResolver.resolve(player, text, variables)
     }
 
     /**

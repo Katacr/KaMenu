@@ -32,6 +32,14 @@ field_name:
     deny: 'value when condition is not met'
 ```
 
+Any text inside a condition expression can use built-in placeholders such as `{data:...}`, `{gdata:...}`, `{meta:...}`, `$(input)`, and `{js:...}`:
+
+```yaml
+condition: '{js:player.getLevel() >= 10} == true'
+allow: '&aLevel requirement met'
+deny: '&cLevel too low'
+```
+
 ### Examples
 
 **Menu Title:**
@@ -127,6 +135,7 @@ actions:
 **Note:**
 - String comparisons (`==` and `!=`) are **case-insensitive** by default
 - Strings that cannot be converted to numbers are treated as `0` in numeric comparisons
+- `{js:...}` can be used in conditions to dynamically compute a returned value
 
 ### Logical Operators
 

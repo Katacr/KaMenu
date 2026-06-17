@@ -27,20 +27,19 @@ object MenuActions {
     private var bungeeCordEnabled: Boolean = false
 
     /**
-     * 延迟动作数据类
-     */
-    private data class DeferredAction(
-        val delay: Long,
-        val action: String,
-        val variables: Map<String, String>
-    )
-
-    /**
      * 解析后的动作数据类（包含目标选择器）
      */
     private data class ParsedAction(
         val action: String,
         val targetSelector: String?
+    )
+
+    private data class ActionExecutionContext(
+        val player: Player,
+        val variables: Map<String, String>,
+        val menuOpener: (Player, String) -> Unit,
+        val config: YamlConfiguration?,
+        val asyncDataOperations: Boolean
     )
 
     /**
@@ -201,6 +200,31 @@ object MenuActions {
     }
 
     /**
+     * 解析条件动作 Map，并返回当前玩家应执行的分支。
+     * 支持 actions/allow 作为成功分支，deny 作为失败分支。
+     */
+    private fun selectConditionalActions(
+        player: Player,
+        group: Map<*, *>,
+        variables: Map<String, String>
+    ): List<*> {
+        val condition = group["condition"] as? String ?: ""
+        val resolvedCondition = TextResolver.resolve(player, condition, variables)
+        val (successActions, denyActions) = getConditionalBranches(group)
+        return if (ConditionUtils.checkCondition(player, resolvedCondition)) {
+            successActions
+        } else {
+            denyActions
+        }
+    }
+
+    private fun getConditionalBranches(group: Map<*, *>): Pair<List<*>, List<*>> {
+        val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
+        val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
+        return successActions to denyActions
+    }
+
+    /**
      * 从配置文件中构建一个 DialogAction 对象
      */
     fun buildActionFromConfig(
@@ -279,482 +303,13 @@ object MenuActions {
                 variables[key] = value ?: ""
             }
 
-            // 执行动作列表（支持条件判断）- 使用异步版本，支持 wait 动作和条件判断
-            // 在主线程回调中启动异步执行，但不阻塞主线程
-            executeActionListAsync(player, actionList.map { it ?: Any() }, variables, menuOpener, config)
+            executeActionList(player, actionList.map { it ?: Any() }, variables, menuOpener, config = config)
         }, ClickCallback.Options.builder().lifetime(Duration.ofMinutes(5)).build())
     }
 
     /**
-     * 执行动作列表（异步版本）- 用于主线程中的 Dialog 回调
-     * 支持 wait 动作和条件判断，但不阻塞主线程
-     * 使用 CompletableFuture 链保证执行顺序
-     * 数据操作异步执行，确保在条件判断之前完成
-     * @param initialDelay 初始延迟（从父动作链累积的延迟）
-     * @return CompletableFuture<Boolean> 在所有动作完成后完成，Boolean表示是否遇到return中断
-     */
-    private fun executeActionListAsync(
-        player: Player,
-        actionList: List<Any>,
-        variables: Map<String, String>,
-        menuOpener: (Player, String) -> Unit,
-        config: YamlConfiguration?,
-        initialDelay: Long = 0L
-    ): CompletableFuture<Boolean> {
-        // 创建异步执行链
-        var chain: CompletableFuture<Boolean> = CompletableFuture.completedFuture(false)
-        var currentDelay = initialDelay  // 使用传入的初始延迟
-        var shouldReturn: Boolean = false  // 用于标记是否应该中断执行
-
-        for (action in actionList) {
-            // 每次迭代检查是否应该中断
-            if (shouldReturn) break
-
-            chain = chain.thenCompose { _ ->
-                // 如果已经标记为中断，跳过执行
-                if (shouldReturn) {
-                    return@thenCompose CompletableFuture.completedFuture(false)
-                }
-
-                when (action) {
-                    is Map<*, *> -> {
-                        // 条件判断动作
-                        val group = action
-                        var conditionStr = group["condition"] as? String ?: ""
-
-                        // 替换条件中的变量
-                        variables.forEach { (key, value) ->
-                            conditionStr = conditionStr.replace("$($key)", value)
-                        }
-
-                        val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
-                        val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
-
-                        val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) {
-                            successActions
-                        } else {
-                            denyActions
-                        }
-
-                        // 递归调用自身，wait 延迟被等待，return 被传播
-                        executeActionListAsync(
-                            player,
-                            actionsToUse.map { it ?: Any() },
-                            variables,
-                            menuOpener,
-                            config,
-                            currentDelay
-                        ).thenApply { innerShouldReturn: Boolean ->
-                            if (innerShouldReturn) shouldReturn = true
-                            false
-                        }
-                    }
-                    is List<*> -> {
-                        // 普通动作列表 - 按顺序执行
-                        var listDelay = currentDelay  // 使用父链传递的初始延迟
-                        var subChain: CompletableFuture<Boolean> = CompletableFuture.completedFuture(false)
-
-                        for (subAction in action) {
-                            if (shouldReturn) break
-                            val actionStr = subAction?.toString() ?: continue
-                            var finalAction = actionStr
-                            variables.forEach { (key, value) ->
-                                finalAction = finalAction.replace("$($key)", value)
-                            }
-
-                            val capturedDelay = listDelay  // 捕获当前延迟
-                            when {
-                                finalAction.startsWith("wait:", ignoreCase = true) -> {
-                                    // wait 动作 - 只累积延迟，不执行任何操作
-                                    val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
-                                    listDelay += waitTime
-                                    // 添加一个空的 thenCompose 来保持链的顺序
-                                    subChain = subChain.thenCompose { CompletableFuture.completedFuture(false) }
-                                }
-                                finalAction.trim() == "return" -> {
-                                    // return 动作 - 中断执行
-                                    shouldReturn = true
-                                    break
-                                }
-                                finalAction.startsWith("actions:", ignoreCase = true) -> {
-                                    // actions: 动作 - 执行 Events.Click 下的动作组并等待完成
-                                    val actionKey = finalAction.removePrefix("actions:").trim()
-                                    if (config != null && actionKey.isNotEmpty()) {
-                                        val actionPath = "Events.Click.$actionKey"
-                                        val actionList = config.getList(actionPath)
-                                        if (actionList != null && actionList.isNotEmpty()) {
-                                            // 传递当前累积的延迟，并等待动作组完成
-                                            subChain = subChain.thenCompose { _ ->
-                                                if (shouldReturn) {
-                                                    return@thenCompose CompletableFuture.completedFuture(false)
-                                                }
-                                                executeActionListAsync(
-                                                    player,
-                                                    actionList.map { it ?: Any() },
-                                                    mapOf(),  // actions 组不继承父动作的 variables
-                                                    menuOpener,
-                                                    config,
-                                                    capturedDelay  // 传递当前累积的延迟
-                                                ).thenApply { _: Boolean -> false }
-                                            }
-                                        } else {
-                                            // 动作组不存在或为空，继续执行
-                                        }
-                                    }
-                                    listDelay = 0L  // 重置延迟（即使动作组不存在）
-                                }
-                                else -> {
-                                    // 普通动作 - 应用当前累积的延迟
-                                    val future = CompletableFuture<Boolean>()
-                                    subChain = subChain.thenCompose { _ ->
-                                        if (shouldReturn) {
-                                            return@thenCompose CompletableFuture.completedFuture(false)
-                                        }
-                                        if (capturedDelay > 0) {
-                                            // 应用累积的延迟 - 使用异步延迟任务
-                                            Bukkit.getScheduler().runTaskLaterAsynchronously(plugin ?: return@thenCompose CompletableFuture.completedFuture(false), Runnable {
-                                                executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
-                                                future.complete(false)
-                                            }, capturedDelay)
-                                            listDelay = 0L  // 应用后重置延迟
-                                        } else {
-                                            // 无延迟，立即执行
-                                            executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
-                                            future.complete(false)
-                                        }
-                                        future
-                                    }
-                                }
-                            }
-                        }
-                        subChain
-                    }
-                    is String -> {
-                        // 单个动作字符串
-                        var finalAction: String = action
-                        variables.forEach { (key, value) ->
-                            finalAction = finalAction.replace("$($key)", value)
-                        }
-
-                        when {
-                            finalAction.startsWith("wait:", ignoreCase = true) -> {
-                                // wait 动作 - 只累积延迟
-                                val waitTime = finalAction.substring(5).trim().toLongOrNull() ?: 0L
-                                currentDelay += waitTime
-                                CompletableFuture.completedFuture(false)
-                            }
-                            finalAction.trim() == "return" -> {
-                                // return 动作 - 中断执行
-                                shouldReturn = true
-                                CompletableFuture.completedFuture(false)
-                            }
-                            finalAction.startsWith("actions:", ignoreCase = true) -> {
-                                // actions: 动作 - 执行 Events.Click 下的动作组并等待完成
-                                val actionKey = finalAction.removePrefix("actions:").trim()
-                                if (config != null && actionKey.isNotEmpty()) {
-                                    val actionPath = "Events.Click.$actionKey"
-                                    val actionList = config.getList(actionPath)
-                                    if (actionList != null && actionList.isNotEmpty()) {
-                                        // 传递当前累积的延迟，并等待动作组完成
-                                        executeActionListAsync(
-                                            player,
-                                            actionList.map { it ?: Any() },
-                                            mapOf(),  // actions 组不继承父动作的 variables
-                                            menuOpener,
-                                            config,
-                                            currentDelay  // 传递当前累积的延迟
-                                        ).thenApply { _: Boolean -> false }
-                                    } else {
-                                        CompletableFuture.completedFuture(false)
-                                    }
-                                } else {
-                                    CompletableFuture.completedFuture(false)
-                                }
-                            }
-                            else -> {
-                                // 普通动作
-                                val future = CompletableFuture<Boolean>()
-                                if (currentDelay > 0) {
-                                    // 应用累积的延迟 - 使用异步延迟任务
-                                    Bukkit.getScheduler().runTaskLaterAsynchronously(plugin ?: return@thenCompose CompletableFuture.completedFuture(false), Runnable {
-                                        executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
-                                        future.complete(false)
-                                    }, currentDelay)
-                                    currentDelay = 0L  // 重置延迟
-                                } else {
-                                    // 无延迟，立即执行
-                                    executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
-                                    future.complete(false)
-                                }
-                                future
-                            }
-                        }
-                    }
-                    else -> {
-                        // 忽略其他类型
-                        CompletableFuture.completedFuture(false)
-                    }
-                }
-            }
-        }
-
-        // 消耗末尾 wait 累积的剩余延迟
-        if (currentDelay > 0) {
-            val remainingDelay = currentDelay
-            chain = chain.thenCompose { _ ->
-                val future = CompletableFuture<Boolean>()
-                Bukkit.getScheduler().runTaskLater(plugin ?: return@thenCompose CompletableFuture.completedFuture(false), Runnable { future.complete(false) }, remainingDelay)
-                future
-            }
-        }
-
-        // 返回异步执行链，shouldReturn 标记是否有 return 中断
-        return chain.exceptionally { error ->
-            plugin?.logger?.severe("动作执行失败: ${error.message}")
-            error.printStackTrace()
-            false
-        }.handle { _, _ -> shouldReturn }
-    }
-
-    /**
-     * 执行动作列表（同步版本，带return标志回调）
-     * 用于异步执行链中处理条件判断的子动作列表
-     * @param actionList 动作列表
-     * @param player 玩家
-     * @param variables 变量映射
-     * @param menuOpener 菜单打开器
-     * @param config 配置
-     * @param onReturn 当遇到return时调用的回调，用于设置外层的shouldReturn标志
-     */
-    private fun executeActionListSyncWithReturnFlag(
-        actionList: List<Any>,
-        player: Player,
-        variables: Map<String, String>,
-        menuOpener: (Player, String) -> Unit,
-        config: YamlConfiguration?,
-        onReturn: (Boolean) -> Unit
-    ) {
-        var shouldReturn = false
-
-        for (action in actionList) {
-            if (shouldReturn) break
-
-            when (action) {
-                is Map<*, *> -> {
-                    // 条件判断动作
-                    val group = action
-                    var conditionStr = group["condition"] as? String ?: ""
-
-                    variables.forEach { (key, value) ->
-                        conditionStr = conditionStr.replace("$($key)", value)
-                    }
-
-                    val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
-                    val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
-
-                    val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) {
-                        successActions
-                    } else {
-                        denyActions
-                    }
-
-                    // 递归执行子动作列表
-                    executeActionListSyncWithReturnFlag(actionsToUse.map { it ?: Any() }, player, variables, menuOpener, config) { flag ->
-                        shouldReturn = flag
-                        if (flag) onReturn(true)
-                    }
-                }
-                is List<*> -> {
-                    action.forEach { subAction ->
-                        if (shouldReturn) return@forEach
-                        val actionStr = subAction?.toString() ?: return@forEach
-                        var finalAction = actionStr
-                        variables.forEach { (key, value) ->
-                            finalAction = finalAction.replace("$($key)", value)
-                        }
-
-                        when {
-                            finalAction.startsWith("wait:", ignoreCase = true) -> {
-                                // 同步版本跳过 wait 动作
-                            }
-                            finalAction.trim() == "return" -> {
-                                shouldReturn = true
-                                onReturn(true)
-                                return@forEach
-                            }
-                            finalAction.startsWith("actions:", ignoreCase = true) -> {
-                                // actions: 动作
-                                val actionKey = finalAction.removePrefix("actions:").trim()
-                                if (config != null && actionKey.isNotEmpty()) {
-                                    val actionPath = "Events.Click.$actionKey"
-                                    val subActionList = config.getList(actionPath)
-                                    if (subActionList != null && subActionList.isNotEmpty()) {
-                                        executeActionListSyncWithReturnFlag(subActionList.map { it ?: Any() }, player, mapOf(), menuOpener, config) { flag ->
-                                            if (flag) {
-                                                shouldReturn = true
-                                                onReturn(true)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else -> {
-                                executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
-                            }
-                        }
-                    }
-                }
-                is String -> {
-                    var finalAction: String = action
-                    variables.forEach { (key, value) ->
-                        finalAction = finalAction.replace("$($key)", value)
-                    }
-
-                    when {
-                        finalAction.startsWith("wait:", ignoreCase = true) -> {
-                            // 同步版本跳过 wait 动作
-                        }
-                        finalAction.trim() == "return" -> {
-                            shouldReturn = true
-                            onReturn(true)
-                        }
-                        finalAction.startsWith("actions:", ignoreCase = true) -> {
-                            val actionKey = finalAction.removePrefix("actions:").trim()
-                            if (config != null && actionKey.isNotEmpty()) {
-                                val actionPath = "Events.Click.$actionKey"
-                                val subActionList = config.getList(actionPath)
-                                if (subActionList != null && subActionList.isNotEmpty()) {
-                                    executeActionListSyncWithReturnFlag(subActionList.map { it ?: Any() }, player, mapOf(), menuOpener, config) { flag ->
-                                        if (flag) {
-                                            shouldReturn = true
-                                            onReturn(true)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else -> {
-                            executeSingleAction(player, finalAction, variables, menuOpener, config, asyncDataOperations = true)
-                        }
-                    }
-                }
-                else -> {
-                    // 忽略其他类型
-                }
-            }
-        }
-    }
-
-    /**
-     * 执行动作列表（同步版本）- 用于主线程中的 Dialog 回调
-     * 在主线程中同步执行动作，避免使用 CompletableFuture 阻塞
-     * @return Boolean 表示是否应该中断后续动作的执行（true表示中断）
-     */
-    private fun executeActionListSync(
-        player: Player,
-        actionList: List<Any>,
-        variables: Map<String, String>,
-        menuOpener: (Player, String) -> Unit,
-        config: YamlConfiguration?
-    ): Boolean {
-        val actionsToExecute = mutableListOf<DeferredAction>()
-        val subActionFutures = mutableListOf<CompletableFuture<Boolean>>()
-        val currentDelay = 0L
-        var shouldReturn = false
-
-        for (action in actionList) {
-            when (action) {
-                is Map<*, *> -> {
-                    // 条件判断动作 - 使用 ConditionUtils 处理
-                    val group = action
-                    var conditionStr = group["condition"] as? String ?: ""
-
-                    // 支持 'actions' 和 'allow' 两个键名
-                    val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
-                    val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
-
-                    // 先替换条件中的变量 $(key)
-                    variables.forEach { (key, value) ->
-                        conditionStr = conditionStr.replace("$($key)", value)
-                    }
-
-                    val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) {
-                        successActions
-                    } else {
-                        denyActions
-                    }
-
-                    // 递归执行子动作列表（同步版本）
-                    val subResult = executeActionListSync(player, actionsToUse.map { it ?: Any() }, variables, menuOpener, config)
-                    if (subResult) {
-                        shouldReturn = true
-                        break
-                    }
-                }
-                is List<*> -> {
-                    // 普通动作列表 - 遍历并执行每个动作
-                    action.forEach { subAction ->
-                        val actionStr = subAction?.toString() ?: return@forEach
-                        var finalAction = actionStr
-                        variables.forEach { (key, value) ->
-                            finalAction = finalAction.replace("$($key)", value)
-                        }
-
-                        // 检查是否是 wait 动作 - 同步版本不支持 wait
-                        if (finalAction.startsWith("wait:", ignoreCase = true)) {
-                            // 同步版本跳过 wait 动作
-                        } else if (finalAction.trim() == "return") {
-                            // return 动作，中断后续动作
-                            shouldReturn = true
-                            return@forEach
-                        } else {
-                            actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
-                        }
-                    }
-                }
-                is String -> {
-                    var finalAction: String = action
-                    variables.forEach { (key, value) ->
-                        finalAction = finalAction.replace("$($key)", value)
-                    }
-
-                    // 检查是否是 wait 动作 - 同步版本不支持 wait
-                    if (finalAction.startsWith("wait:", ignoreCase = true)) {
-                        // 同步版本跳过 wait 动作
-                    } else if (finalAction.trim() == "return") {
-                        // return 动作，中断后续动作
-                        shouldReturn = true
-                        break
-                    } else {
-                        actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
-                    }
-                }
-                else -> {
-                    // 忽略其他类型的值（数字、布尔值等）
-                }
-            }
-        }
-
-        // 按延迟时间执行所有动作（同步执行）
-        actionsToExecute.forEach { deferred ->
-            if (deferred.delay > 0) {
-                // 同步版本使用延迟执行，但不阻塞
-                Bukkit.getScheduler().runTaskLater(plugin ?: return@forEach, Runnable {
-                    executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations = true)
-                }, deferred.delay)
-            } else {
-                // 无延迟，直接执行
-                executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations = true)
-            }
-        }
-
-        return shouldReturn
-    }
-
-    /**
-     * 执行动作列表（支持简单动作、列表动作和条件判断动作）
-     * @param asyncMode 是否完全异步执行（包括wait动作）。true: 所有动作异步执行，false: 数据操作异步，其他操作同步
-     * @return 包含执行结果的 CompletableFuture，Boolean 表示是否应该中断后续动作的执行（true表示中断）
+     * 按顺序执行动作列表。
+     * wait 是序列中的暂停节点；条件和普通动作都会在真正轮到该节点时解析变量。
      */
     private fun executeActionList(
         player: Player,
@@ -763,90 +318,105 @@ object MenuActions {
         menuOpener: (Player, String) -> Unit,
         baseDelay: Long = 0L,
         config: YamlConfiguration? = null,
-        asyncDataOperations: Boolean = true,
-        asyncMode: Boolean = false
+        asyncDataOperations: Boolean = true
     ): CompletableFuture<Boolean> {
-        val actionsToExecute = mutableListOf<DeferredAction>()
-        var currentDelay = baseDelay
-        var shouldReturn = false
-
-        // 内联处理扁平动作列表（含条件递归），使 return/wait 同步传播
-        fun processFlatList(subActions: List<Any>) {
-            for (subAction in subActions) {
-                if (shouldReturn) break
-                when (subAction) {
-                    is String -> {
-                        var finalAction: String = subAction
-                        variables.forEach { (key, value) -> finalAction = finalAction.replace("$($key)", value) }
-                        if (finalAction.startsWith("wait:", ignoreCase = true)) {
-                            currentDelay += finalAction.substring(5).trim().toLongOrNull() ?: 0L
-                        } else if (finalAction.trim() == "return") {
-                            shouldReturn = true
-                            break
-                        } else {
-                            actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
-                        }
-                    }
-                    is List<*> -> processFlatList(subAction.map { it ?: Any() })
-                    is Map<*, *> -> {
-                        val group = subAction
-                        var conditionStr = group["condition"] as? String ?: ""
-                        variables.forEach { (key, value) -> conditionStr = conditionStr.replace("$($key)", value) }
-                        val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
-                        val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
-                        val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) successActions else denyActions
-                        processFlatList(actionsToUse.map { it ?: Any() })
-                    }
-                    else -> {}
-                }
+        val context = ActionExecutionContext(player, variables, menuOpener, config, asyncDataOperations)
+        val start = if (baseDelay > 0) delayTicks(baseDelay) else CompletableFuture.completedFuture(false)
+        return start.thenCompose { executeActionSequence(context, actionList) }
+            .exceptionally { error ->
+                plugin?.logger?.severe("动作执行失败: ${error.message}")
+                error.printStackTrace()
+                false
             }
+    }
+
+    private fun executeActionSequence(
+        context: ActionExecutionContext,
+        actionList: List<Any>,
+        index: Int = 0
+    ): CompletableFuture<Boolean> {
+        if (index >= actionList.size) {
+            return CompletableFuture.completedFuture(false)
         }
 
-        for (action in actionList) {
-            if (shouldReturn) break
-            when (action) {
-                is Map<*, *> -> {
-                    // 条件判断动作 - 内联处理，return/wait 与父级同步传播
-                    val group = action
-                    var conditionStr = group["condition"] as? String ?: ""
-                    variables.forEach { (key, value) -> conditionStr = conditionStr.replace("$($key)", value) }
-                    val successActions = (group["actions"] ?: group["allow"]) as? List<*> ?: emptyList<Any>()
-                    val denyActions = (group["deny"] as? List<*>) ?: emptyList<Any>()
-                    val actionsToUse = if (ConditionUtils.checkCondition(player, conditionStr)) successActions else denyActions
-                    processFlatList(actionsToUse.map { it ?: Any() })
-                }
-                is List<*> -> processFlatList(action.map { it ?: Any() })
-                is String -> {
-                    var finalAction: String = action
-                    variables.forEach { (key, value) -> finalAction = finalAction.replace("$($key)", value) }
-                    if (finalAction.startsWith("wait:", ignoreCase = true)) {
-                        currentDelay += finalAction.substring(5).trim().toLongOrNull() ?: 0L
-                    } else if (finalAction.trim() == "return") {
-                        shouldReturn = true
-                        break
+        return executeActionNode(context, actionList[index]).thenCompose { shouldReturn ->
+            if (shouldReturn) {
+                CompletableFuture.completedFuture(true)
+            } else {
+                executeActionSequence(context, actionList, index + 1)
+            }
+        }
+    }
+
+    private fun executeActionNode(
+        context: ActionExecutionContext,
+        action: Any
+    ): CompletableFuture<Boolean> {
+        return when (action) {
+            is Map<*, *> -> {
+                val actionsToUse = selectConditionalActions(context.player, action, context.variables)
+                executeActionSequence(context, actionsToUse.map { it ?: Any() })
+            }
+            is List<*> -> executeActionSequence(context, action.map { it ?: Any() })
+            is String -> executeActionString(context, action)
+            else -> CompletableFuture.completedFuture(false)
+        }
+    }
+
+    private fun executeActionString(
+        context: ActionExecutionContext,
+        action: String
+    ): CompletableFuture<Boolean> {
+        val controlAction = TextResolver.resolve(context.player, action, context.variables).trim()
+
+        return when {
+            controlAction.startsWith("wait:", ignoreCase = true) -> {
+                val ticks = controlAction.substringAfter(":", "").trim().toLongOrNull() ?: 0L
+                delayTicks(ticks).thenApply { false }
+            }
+            controlAction.equals("return", ignoreCase = true) -> {
+                CompletableFuture.completedFuture(true)
+            }
+            controlAction.startsWith("actions:", ignoreCase = true) -> {
+                val actionKey = controlAction.substringAfter(":", "").trim()
+                val config = context.config
+                if (config == null || actionKey.isEmpty()) {
+                    CompletableFuture.completedFuture(false)
+                } else {
+                    val subActionList = config.getList("Events.Click.$actionKey")
+                    if (subActionList.isNullOrEmpty()) {
+                        context.player.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actionKey)))
+                        CompletableFuture.completedFuture(false)
                     } else {
-                        actionsToExecute.add(DeferredAction(currentDelay, finalAction, variables))
+                        executeActionSequence(context, subActionList.map { it ?: Any() })
                     }
                 }
-                else -> {}
+            }
+            else -> {
+                executeSingleAction(
+                    context.player,
+                    action,
+                    context.variables,
+                    context.menuOpener,
+                    context.config,
+                    context.asyncDataOperations
+                )
+                CompletableFuture.completedFuture(false)
             }
         }
+    }
 
-        // 消耗末尾 wait 累积的剩余延迟（末尾无后续动作时无法被触发）
-        if (currentDelay > 0) {
-            actionsToExecute.add(DeferredAction(currentDelay, "", emptyMap()))
+    private fun delayTicks(ticks: Long): CompletableFuture<Boolean> {
+        if (ticks <= 0) {
+            return CompletableFuture.completedFuture(false)
         }
 
-        // 按延迟时间执行所有动作
-        val actionFutures = actionsToExecute.map { deferred ->
-            executeDeferredAction(player, deferred, menuOpener, config, asyncDataOperations, asyncMode)
-        }
-
-        return if (actionFutures.isEmpty()) {
-            CompletableFuture.completedFuture(shouldReturn)
-        } else {
-            CompletableFuture.allOf(*actionFutures.toTypedArray()).handle { _, _ -> shouldReturn }
-        }
+        val currentPlugin = plugin ?: return CompletableFuture.completedFuture(false)
+        val future = CompletableFuture<Boolean>()
+        Bukkit.getScheduler().runTaskLater(currentPlugin, Runnable {
+            future.complete(false)
+        }, ticks)
+        return future
     }
 
     /**
@@ -871,11 +441,7 @@ object MenuActions {
             }
         }
 
-        // 检查是否包含 wait 动作
-        val hasWaitAction = hasWaitAction(eventActions)
-
         // 执行事件动作（没有输入变量，也不支持 $(input) 变量）
-        // 如果有 wait 动作，使用完全异步模式；否则使用半异步模式（数据操作异步，其他操作同步）
         return executeActionList(
             player,
             eventActions.map { it ?: Any() },
@@ -883,8 +449,7 @@ object MenuActions {
             menuOpener,
             0L,
             config,
-            asyncDataOperations = true,
-            asyncMode = hasWaitAction
+            asyncDataOperations = true
         )
     }
 
@@ -910,14 +475,13 @@ object MenuActions {
             }
         }
 
-        // 同步执行事件动作（使用同步版本避免阻塞）
-        return executeActionListSync(
+        return executeActionList(
             player,
             eventActions.map { it ?: Any() },
             emptyMap(),
             menuOpener,
-            config
-        )
+            config = config
+        ).get()
     }
 
     /**
@@ -935,8 +499,7 @@ object MenuActions {
             when (action) {
                 is Map<*, *> -> {
                     // 递归检查条件判断中的动作
-                    val successActions = (action["actions"] ?: action["allow"]) as? List<*> ?: emptyList<Any>()
-                    val denyActions = (action["deny"] as? List<*>) ?: emptyList<Any>()
+                    val (successActions, denyActions) = getConditionalBranches(action)
                     if (hasWaitAction(successActions) || hasWaitAction(denyActions)) {
                         return true
                     }
@@ -944,7 +507,7 @@ object MenuActions {
                 is List<*> -> {
                     for (subAction in action) {
                         val actionStr = subAction?.toString() ?: continue
-                        if (actionStr.trim().lowercase().startsWith("wait:")) {
+                        if (actionStr.trim().startsWith("wait:", ignoreCase = true)) {
                             return true
                         }
                         // 递归检查嵌套的列表
@@ -954,48 +517,13 @@ object MenuActions {
                     }
                 }
                 is String -> {
-                    if (action.trim().lowercase().startsWith("wait:")) {
+                    if (action.trim().startsWith("wait:", ignoreCase = true)) {
                         return true
                     }
                 }
             }
         }
         return false
-    }
-
-    /**
-     * 执行延迟动作
-     * @return CompletableFuture 在动作执行完成后完成
-     */
-    private fun executeDeferredAction(
-        player: Player,
-        deferred: DeferredAction,
-        menuOpener: (Player, String) -> Unit,
-        config: YamlConfiguration? = null,
-        asyncDataOperations: Boolean = true,
-        asyncMode: Boolean = false
-    ): CompletableFuture<Void> {
-        val future = CompletableFuture<Void>()
-
-        if (deferred.delay > 0 && asyncMode) {
-            // 完全异步模式：延迟也是异步的
-            Bukkit.getScheduler().runTaskLaterAsynchronously(plugin ?: return CompletableFuture.completedFuture(null), Runnable {
-                executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations)
-                future.complete(null)
-            }, deferred.delay)
-        } else if (deferred.delay > 0) {
-            // 半异步模式：延迟在主线程执行，但数据操作异步
-            Bukkit.getScheduler().runTaskLater(plugin ?: return CompletableFuture.completedFuture(null), Runnable {
-                executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations)
-                future.complete(null)
-            }, deferred.delay)
-        } else {
-            // 无延迟，直接执行
-            executeSingleAction(player, deferred.action, deferred.variables, menuOpener, config, asyncDataOperations)
-            future.complete(null)
-        }
-
-        return future
     }
 
     /**
@@ -1189,7 +717,7 @@ object MenuActions {
                 val menuName = finalCmd.removePrefix("force-open:").trim()
                 val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
                 if (kaMenu != null) {
-                    Bukkit.getScheduler().runTask(kaMenu ?: return, Runnable {
+                    Bukkit.getScheduler().runTask(kaMenu, Runnable {
                         MenuUI.forceOpenMenu(player, menuName, kaMenu.menuManager, kaMenu)
                     })
                 }
@@ -1202,7 +730,7 @@ object MenuActions {
                     if (kaMenu != null) {
                         val currentMenuId = kaMenu.menuManager.getMenuId(config)
                         if (currentMenuId != null) {
-                            Bukkit.getScheduler().runTask(kaMenu ?: return, Runnable {
+                            Bukkit.getScheduler().runTask(kaMenu, Runnable {
                                 MenuUI.forceOpenMenu(player, currentMenuId, kaMenu.menuManager, kaMenu)
                             })
                         }

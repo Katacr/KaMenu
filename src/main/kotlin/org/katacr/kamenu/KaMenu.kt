@@ -117,6 +117,8 @@ class KaMenu : JavaPlugin() {
         // 2. 初始化语言管理器
         languageManager = LanguageManager(this)
         languageManager.init()
+        TextResolver.setPlugin(this)
+        TextResolver.setLanguageManager(languageManager)
 
         // 设置工具类的语言管理器引用
         ConditionUtils.setLanguageManager(languageManager)

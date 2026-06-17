@@ -14,6 +14,7 @@ KaMenu supports executing predefined action lists at specific moments in the men
 
 **Important notes:**
 - The `Open` event fires before the menu opens, so it does **not support** `$(input_key)` input variables (the input fields haven't been displayed yet)
+- The `Open` event waits for the full action chain to complete before opening the menu; if `return` is encountered, the menu will not open
 - The `Close` event fires after the menu closes and supports all variable formats, including `$(input_key)`
 
 ---
