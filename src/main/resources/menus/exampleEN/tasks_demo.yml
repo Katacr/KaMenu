@@ -1,0 +1,135 @@
+Title: '&8» &b&lTasks Demo &8«'
+
+Settings:
+  can_escape: false
+  after_action: NONE
+
+Events:
+  Open:
+    - 'tell: &b[TasksDemo] &7Menu opened. The auto task should start only once.'
+    - 'set-meta: tasks_auto_count 0'
+    - 'set-meta: tasks_manual_count 0'
+    - 'set-meta: tasks_once_count 0'
+
+  Close:
+    - 'tell: &b[TasksDemo] &7Menu closed. All periodic tasks should stop.'
+
+  Tasks:
+    auto_status:
+      mode: auto
+      interval: 40
+      repeat: -1
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'meta: type=add;key=tasks_auto_count;var=`1`'
+        - 'actionbar: &bAuto task running &7count: &f{meta:tasks_auto_count}'
+      on_end:
+        - 'tell: &b[TasksDemo] &7auto_status ended. Final count: &f{meta:tasks_auto_count}'
+
+    manual_ping:
+      mode: manual
+      interval: 20
+      repeat: -1
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'meta: type=add;key=tasks_manual_count;var=`1`'
+        - 'tell: &d[Manual] &7Round &f{meta:tasks_manual_count}'
+        - condition: '{meta:tasks_manual_count} >= 5'
+          allow:
+            - 'tell: &d[Manual] &7Stopping itself after 5 rounds with stop-current-task'
+            - 'stop-current-task'
+      on_end:
+        - 'tell: &d[Manual] &7manual_ping ended'
+
+    limited_once:
+      mode: manual
+      interval: 20
+      repeat: 3
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'meta: type=add;key=tasks_once_count;var=`1`'
+        - 'tell: &e[Limited] &7Round &f{meta:tasks_once_count}'
+      on_end:
+        - 'tell: &e[Limited] &7limited_once lifecycle ended'
+
+Body:
+  intro:
+    type: message
+    text: |
+      &7This menu tests &bEvents.Tasks&7:
+      &f- auto_status starts automatically and should not duplicate after reset
+      &f- manual_ping starts manually and stops itself after 5 rounds
+      &f- limited_once tests repeat and run-task count override
+      &f- run-task: * / stop-task: * batch control tasks in this menu
+
+  counters:
+    type: message
+    text: |
+      &7Current counters:
+      &bauto_status: &f{meta:tasks_auto_count}
+      &dmanual_ping: &f{meta:tasks_manual_count}
+      &elimited_once: &f{meta:tasks_once_count}
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    refresh_same:
+      text: '&b[ Refresh Menu ]'
+      tooltip:
+        - '&7Reopen the current menu'
+        - '&7Use this to test lifecycle de-duplication'
+      actions:
+        - 'tell: &b[TasksDemo] &7Running reset. Existing same-context tasks should not duplicate.'
+        - 'reset'
+
+    run_manual:
+      text: '&d[ Start Manual ]'
+      actions:
+        - 'tell: &d[TasksDemo] &7Starting manual_ping'
+        - 'run-task: manual_ping'
+
+    run_limited_default:
+      text: '&e[ Start 3x ]'
+      actions:
+        - 'tell: &e[TasksDemo] &7Starting limited_once with configured repeat: 3'
+        - 'run-task: limited_once'
+
+    run_limited_10:
+      text: '&6[ Override 10x ]'
+      actions:
+        - 'tell: &6[TasksDemo] &7Starting limited_once with count override: 10'
+        - 'run-task: limited_once 10'
+
+    run_all:
+      text: '&a[ Start All ]'
+      actions:
+        - 'tell: &a[TasksDemo] &7run-task: *'
+        - 'run-task: *'
+
+    run_all_5:
+      text: '&2[ All 5x ]'
+      actions:
+        - 'tell: &2[TasksDemo] &7run-task: * 5'
+        - 'run-task: * 5'
+
+    stop_manual:
+      text: '&c[ Stop Manual ]'
+      actions:
+        - 'tell: &c[TasksDemo] &7stop-task: manual_ping'
+        - 'stop-task: manual_ping'
+
+    stop_all:
+      text: '&4[ Stop All ]'
+      actions:
+        - 'tell: &4[TasksDemo] &7stop-task: *'
+        - 'stop-task: *'
+
+  exit:
+    text: '&8[ Close Menu ]'
+    actions:
+      - 'tell: &8[TasksDemo] &7Closing menu'
+      - 'close'

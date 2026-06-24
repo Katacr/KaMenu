@@ -7,7 +7,7 @@ Body:
 
   hovertext_demo:
     type: 'message'
-    text: '&7Try clickable text: Visit<text=&b[ website ];hover=&7Open official site;url=https://example.com> Claim<text=&e[ reward ];hover=&6Click to claim;command=daily> View<text=&a[ help ];hover=&cOpen help docs;command=help>'
+    text: '&7Try clickable text: Visit<text=&b[ website ];hover=&7Open official site;url=https://example.com> Claim<text=&e[ reward ];hover=&6Click to claim;command=daily> Greet<text=&a[ click greet ];hover=&7Run hello action list with arguments;actions=hello,player,survival server>'
 
   mixed_text:
     type: 'message'
@@ -149,3 +149,8 @@ Bottom:
     actions:
       - 'actionbar: &7Menu closed'
       - 'close'
+
+Events:
+  Click:
+    hello:
+      - 'tell: &aHello, {arg:0}! Welcome to &e{arg:1}&a.'

@@ -38,6 +38,11 @@ object MenuActions {
         val targetSelector: String?
     )
 
+    private data class ParsedActionCall(
+        val name: String,
+        val arguments: List<String>
+    )
+
     private data class ActionExecutionContext(
         val player: Player,
         val variables: Map<String, String>,
@@ -246,6 +251,74 @@ object MenuActions {
      */
     private fun resolveVariables(player: Player, text: String): String {
         return ActionHandlers.resolveVariables(player, text)
+    }
+
+    private fun parseActionCall(raw: String): ParsedActionCall {
+        val parts = splitActionCallArguments(raw)
+        val name = parts.firstOrNull()?.trim().orEmpty()
+        val args = if (parts.size > 1) parts.drop(1).map { stripArgumentQuotes(it.trim()) } else emptyList()
+        return ParsedActionCall(name, args)
+    }
+
+    private fun splitActionCallArguments(raw: String): List<String> {
+        val result = mutableListOf<String>()
+        val current = StringBuilder()
+        var quote: Char? = null
+        var escaping = false
+
+        for (ch in raw) {
+            if (escaping) {
+                current.append(ch)
+                escaping = false
+                continue
+            }
+
+            if (ch == '\\') {
+                escaping = true
+                continue
+            }
+
+            if (quote != null) {
+                if (ch == quote) {
+                    quote = null
+                } else {
+                    current.append(ch)
+                }
+                continue
+            }
+
+            when (ch) {
+                '\'', '"', '`' -> quote = ch
+                ',' -> {
+                    result.add(current.toString().trim())
+                    current.clear()
+                }
+                else -> current.append(ch)
+            }
+        }
+
+        if (escaping) {
+            current.append('\\')
+        }
+
+        result.add(current.toString().trim())
+        return result
+    }
+
+    private fun stripArgumentQuotes(value: String): String {
+        return value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+    }
+
+    private fun mergeActionArguments(variables: Map<String, String>, args: List<String>): Map<String, String> {
+        if (args.isEmpty()) {
+            return variables
+        }
+
+        val merged = variables.toMutableMap()
+        args.forEachIndexed { index, value ->
+            merged["arg:$index"] = value
+        }
+        return merged
     }
 
     /**
@@ -509,17 +582,18 @@ object MenuActions {
                 CompletableFuture.completedFuture(true)
             }
             controlAction.startsWith("actions:", ignoreCase = true) -> {
-                val actionKey = controlAction.substringAfter(":", "").trim()
+                val actionCall = parseActionCall(controlAction.substringAfter(":", "").trim())
                 val config = context.config
-                if (config == null || actionKey.isEmpty()) {
+                if (config == null || actionCall.name.isEmpty()) {
                     CompletableFuture.completedFuture(false)
                 } else {
-                    val subActionList = config.getList("Events.Click.$actionKey")
+                    val subActionList = config.getList("Events.Click.${actionCall.name}")
                     if (subActionList.isNullOrEmpty()) {
-                        context.player.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actionKey)))
+                        context.player.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actionCall.name)))
                         CompletableFuture.completedFuture(false)
                     } else {
-                        executeActionSequence(context, subActionList.map { it ?: Any() })
+                        val childContext = context.copy(variables = mergeActionArguments(context.variables, actionCall.arguments))
+                        executeActionSequence(childContext, subActionList.map { it ?: Any() })
                     }
                 }
             }
@@ -713,13 +787,8 @@ object MenuActions {
         asyncDataOperations: Boolean = true,
         handledMenuLifecycle: AtomicBoolean? = null
     ) {
-        var finalCmd = action
-        variables.forEach { (key, value) ->
-            finalCmd = finalCmd.replace("$($key)", value)
-        }
-
-        // 解析内置变量 {data:var} 和 {gdata:var}，以及 PAPI 变量
-        finalCmd = resolveVariables(player, finalCmd)
+        // 解析输入变量、动作包参数、内置变量、JavaScript 与 PAPI 变量
+        val finalCmd = TextResolver.resolve(player, action, variables)
 
         if (dispatchExternalAction(player, finalCmd, variables, config)) {
             return
@@ -808,7 +877,7 @@ object MenuActions {
             // hovertext: 可点击文本
             finalCmd.startsWith("hovertext:") -> {
                 val text = finalCmd.removePrefix("hovertext:").trim()
-                val message = parseClickableText(text)
+                val message = parseClickableText(text, player, config, menuOpener)
                 player.sendMessage(message)
             }
 
@@ -1425,8 +1494,9 @@ object MenuActions {
             if (player != null && config != null && menuOpener != null) {
                 component = component.clickEvent(ClickEvent.callback({ audience ->
                     if (audience is Player) {
+                        val actionCall = parseActionCall(actions)
                         // 从 Events.Click 加载动作列表
-                        val actionPath = "Events.Click.$actions"
+                        val actionPath = "Events.Click.${actionCall.name}"
                         val actionList = config.getList(actionPath)
 
                         if (actionList != null && actionList.isNotEmpty()) {
@@ -1436,7 +1506,7 @@ object MenuActions {
                                     executeActionList(
                                         audience,
                                         actionList.map { it ?: Any() },
-                                        mapOf(),  // 空 variables map
+                                        mergeActionArguments(emptyMap(), actionCall.arguments),
                                         menuOpener,
                                         0L,
                                         config
@@ -1444,7 +1514,7 @@ object MenuActions {
                                 })
                             }
                         } else {
-                            audience.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actions)))
+                            audience.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actionCall.name)))
                         }
                     }
                 }, ClickCallback.Options.builder()

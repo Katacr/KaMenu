@@ -1,0 +1,135 @@
+Title: '&8» &b&l周期任务测试 &8«'
+
+Settings:
+  can_escape: false
+  after_action: NONE
+
+Events:
+  Open:
+    - 'tell: &b[TasksDemo] &7菜单已打开。auto 任务只应启动一次。'
+    - 'set-meta: tasks_auto_count 0'
+    - 'set-meta: tasks_manual_count 0'
+    - 'set-meta: tasks_once_count 0'
+
+  Close:
+    - 'tell: &b[TasksDemo] &7菜单关闭，所有周期任务应结束。'
+
+  Tasks:
+    auto_status:
+      mode: auto
+      interval: 40
+      repeat: -1
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'meta: type=add;key=tasks_auto_count;var=`1`'
+        - 'actionbar: &bAuto任务运行中 &7次数: &f{meta:tasks_auto_count}'
+      on_end:
+        - 'tell: &b[TasksDemo] &7auto_status 已结束，最终次数: &f{meta:tasks_auto_count}'
+
+    manual_ping:
+      mode: manual
+      interval: 20
+      repeat: -1
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'meta: type=add;key=tasks_manual_count;var=`1`'
+        - 'tell: &d[Manual] &7第 &f{meta:tasks_manual_count} &7轮'
+        - condition: '{meta:tasks_manual_count} >= 5'
+          allow:
+            - 'tell: &d[Manual] &75轮后使用 stop-current-task 自动停止'
+            - 'stop-current-task'
+      on_end:
+        - 'tell: &d[Manual] &7manual_ping 已结束'
+
+    limited_once:
+      mode: manual
+      interval: 20
+      repeat: 3
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'meta: type=add;key=tasks_once_count;var=`1`'
+        - 'tell: &e[Limited] &7第 &f{meta:tasks_once_count} &7轮'
+      on_end:
+        - 'tell: &e[Limited] &7limited_once 生命周期结束'
+
+Body:
+  intro:
+    type: message
+    text: |
+      &7此菜单用于测试 &bEvents.Tasks&7：
+      &f- auto_status 自动启动，刷新当前菜单不应重复创建
+      &f- manual_ping 手动启动，5轮后 stop-current-task
+      &f- limited_once 可测试 repeat / run-task 指定次数
+      &f- run-task: * / stop-task: * 可批量控制当前菜单任务
+
+  counters:
+    type: message
+    text: |
+      &7当前计数：
+      &bauto_status: &f{meta:tasks_auto_count}
+      &dmanual_ping: &f{meta:tasks_manual_count}
+      &elimited_once: &f{meta:tasks_once_count}
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    refresh_same:
+      text: '&b[ 刷新当前菜单 ]'
+      tooltip:
+        - '&7重新打开当前菜单'
+        - '&7用于测试同 context 生命周期去重'
+      actions:
+        - 'tell: &b[TasksDemo] &7执行 reset，同名任务不应重复创建'
+        - 'reset'
+
+    run_manual:
+      text: '&d[ 启动手动任务 ]'
+      actions:
+        - 'tell: &d[TasksDemo] &7启动 manual_ping'
+        - 'run-task: manual_ping'
+
+    run_limited_default:
+      text: '&e[ 启动3次任务 ]'
+      actions:
+        - 'tell: &e[TasksDemo] &7启动 limited_once，使用配置 repeat: 3'
+        - 'run-task: limited_once'
+
+    run_limited_10:
+      text: '&6[ 覆盖10次 ]'
+      actions:
+        - 'tell: &6[TasksDemo] &7启动 limited_once，本次覆盖为10次'
+        - 'run-task: limited_once 10'
+
+    run_all:
+      text: '&a[ 启动全部 ]'
+      actions:
+        - 'tell: &a[TasksDemo] &7run-task: *'
+        - 'run-task: *'
+
+    run_all_5:
+      text: '&2[ 全部5次 ]'
+      actions:
+        - 'tell: &2[TasksDemo] &7run-task: * 5'
+        - 'run-task: * 5'
+
+    stop_manual:
+      text: '&c[ 停止手动任务 ]'
+      actions:
+        - 'tell: &c[TasksDemo] &7stop-task: manual_ping'
+        - 'stop-task: manual_ping'
+
+    stop_all:
+      text: '&4[ 停止全部任务 ]'
+      actions:
+        - 'tell: &4[TasksDemo] &7stop-task: *'
+        - 'stop-task: *'
+
+  exit:
+    text: '&8[ 关闭菜单 ]'
+    actions:
+      - 'tell: &8[TasksDemo] &7关闭菜单'
+      - 'close'

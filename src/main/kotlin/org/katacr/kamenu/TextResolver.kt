@@ -14,6 +14,7 @@ object TextResolver {
     private val dataPattern = Regex("\\{data:([^}]+)}")
     private val globalDataPattern = Regex("\\{gdata:([^}]+)}")
     private val metaPattern = Regex("\\{meta:([^}]+)}")
+    private val argPattern = Regex("\\{arg:([^}]+)}")
     private val jsPattern = Regex("\\{js:([^}]+)}")
 
     fun setPlugin(kamenu: KaMenu) {
@@ -29,6 +30,10 @@ object TextResolver {
 
         variables.forEach { (key, value) ->
             result = result.replace("\$($key)", value)
+        }
+
+        result = result.replace(argPattern) { match ->
+            variables["arg:${match.groupValues[1]}"] ?: ""
         }
 
         val currentPlugin = plugin

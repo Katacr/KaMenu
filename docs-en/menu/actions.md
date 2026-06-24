@@ -1196,13 +1196,19 @@ JavaScript functionality is very powerful, supporting access to Bukkit API, math
 
 Execute an action list defined under `Events.Click`. This allows you to reuse defined action lists in actions, avoiding duplicate code.
 
-**Format:** `actions: <action_list_name>`
+**Format:**
+
+```yaml
+- 'actions: <action_list_name>'
+- 'actions: <action_list_name>,<arg0>,<arg1>'
+```
 
 **Parameters:**
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | Action list name | Action list key under `Events.Click` | `greet`, `vip_check`, `daily_reward` |
+| Arguments | Temporary arguments passed into the action list. Read them with `{arg:0}`, `{arg:1}`, or `$(arg:0)` inside the action list | `player`, `survival server` |
 
 **Example:**
 
@@ -1210,7 +1216,7 @@ Execute an action list defined under `Events.Click`. This allows you to reuse de
 Events:
   Click:
     greet:
-      - 'tell: &aHello! Welcome to the server.'
+      - 'tell: &aHello, {arg:0}! Welcome to &e{arg:1}&a.'
       - 'sound: ENTITY_PLAYER_LEVELUP'
 
     vip_check:
@@ -1227,7 +1233,7 @@ Bottom:
     btn_greet:
       text: 'Greeting'
       actions:
-        - 'actions: greet'  # Execute Events.Click.greet
+        - 'actions: greet,player,survival server'  # Execute Events.Click.greet with arguments
 
     btn_vip:
       text: 'VIP Check'
@@ -1263,6 +1269,24 @@ Bottom:
 3. **Variable support**: All KaMenu variables are supported in action lists (`{data:xxx}`, `{gdata:xxx}`, etc.)
 4. **Code reuse**: Avoid redefining the same action sequence in multiple buttons
 
+**Clickable text arguments:**
+
+The `<text>` tag in `Body.message` and the `hovertext:` action can also call an action list with arguments:
+
+```yaml
+Body:
+  hello_text:
+    type: message
+    text: '&7Greet player: <text="&a[click greet]";hover="&7Click to run action list";actions=hello,player,survival server>'
+
+Events:
+  Click:
+    hello:
+      - 'tell: &aHello, {arg:0}! Welcome to &e{arg:1}&a.'
+```
+
+In this example, `{arg:0}` is `player` and `{arg:1}` is `survival server`. Arguments are separated by commas. Use single quotes, double quotes, or backticks around an argument when it needs to contain a comma.
+
 **Error Handling:**
 
 If the referenced action list doesn't exist, the player receives an error message:
@@ -1275,7 +1299,7 @@ If the referenced action list doesn't exist, the player receives an error messag
 | Method | Usage Location | Trigger | Example |
 |--------|--------------|---------|---------|
 | `actions` action | Button actions, commands | Button click/command | `actions: greet` |
-| `<text>` tag's `actions` parameter | Text component (Body.message) | Text click | `<text='Click';actions=greet>` |
+| `<text>` tag's `actions` parameter | Text component (Body.message) | Text click | `<text='Click';actions=greet,player,survival server>` |
 
 **Use Cases:**
 

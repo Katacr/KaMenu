@@ -7,7 +7,7 @@ Body:
 
   hovertext_demo:
     type: 'message'
-    text: '&7体验可点击文本：访问<text=&b[ 官网 ];hover=&7打开官网;url=https://example.com> 领取<text=&e[ 奖励 ];hover=&6点击领取;command=daily> 查看<text=&a[ 帮助 ];hover=&c打开帮助文档;command=help>'
+    text: '&7体验可点击文本：访问<text=&b[ 官网 ];hover=&7打开官网;url=https://example.com> 领取<text=&e[ 奖励 ];hover=&6点击领取;command=daily> 问候<text=&a[ 点击问候 ];hover=&7执行 hello 动作包并传参;actions=hello,玩家,生存服务器>'
 
   mixed_text:
     type: 'message'
@@ -149,3 +149,8 @@ Bottom:
     actions:
       - 'actionbar: &7菜单已关闭'
       - 'close'
+
+Events:
+  Click:
+    hello:
+      - 'tell: &a你好，{arg:0}！欢迎来到 &e{arg:1}&a。'
