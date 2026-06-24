@@ -44,7 +44,6 @@ Supports a wide range of button click actions:
 * `open` / `close` — menu navigation and dismissal
 * `hovertext` — hoverable and clickable chat text
 * `actions` — execute predefined action lists (supports reuse and conditional branching)
-* `return` — stop the current action chain
 * `wait` / `return` — delay subsequent actions or stop the current action chain
 * `set-data` / `set-gdata` — read/write persistent data
 * `url` / `copy` — open links or copy to clipboard
@@ -53,6 +52,7 @@ Advanced action and text features:
 
 * `{js:...}` — use JavaScript expression results in any text position
 * `Events.Open` — waits for the full action chain before opening the menu
+* `Events.Tasks` — run action groups periodically while the menu is open
 
 ### 🔍 Universal Condition System
 
@@ -73,6 +73,7 @@ Advanced action and text features:
 * `/km open <menuId>` — standard command
 * **Hotkey listener:** configure pressing `F` (swap offhand) to open a specified menu
 * **Custom command registration:** map any word to a menu with a single line of config
+* **External plugin API:** other plugins can open file menus or render in-memory YAML / `YamlConfiguration` menus without writing to the `menus` directory or reloading
 
 ### 📊 PlaceholderAPI Support
 

@@ -54,6 +54,9 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `set-meta`    | Set player metadata (legacy format, use `meta` instead)        | ✅                        | 
 | `js`          | Execute JavaScript code (supports predefined functions)        | ❌                        | 
 | `actions`     | Execute an action list defined under Events.Click              | ❌                        | 
+| `run-task`    | Start a periodic task defined under Events.Tasks               | ❌                        | 
+| `stop-task`   | Stop a specified periodic task                                 | ❌                        | 
+| `stop-current-task` | Stop the current periodic task and interrupt the current round | ❌                        | 
 | `wait`        | Insert delayed execution                                       | ❌                        | 
 | `return`      | Interrupt action execution list                                | ❌                        | 
 
@@ -1286,6 +1289,69 @@ If the referenced action list doesn't exist, the player receives an error messag
 1. Action list must be defined under `Events.Click`
 2. Avoid circular references (e.g., action list A references itself)
 3. `actions` action can also be used within conditions
+
+---
+
+### run-task / stop-task - Control Periodic Tasks
+
+Controls periodic tasks defined under `Events.Tasks`.
+
+**Format:**
+
+```yaml
+- 'run-task: <taskId>'
+- 'run-task: <taskId> <count>'
+- 'run-task: *'
+- 'run-task: * <count>'
+- 'stop-task: <taskId>'
+- 'stop-task: *'
+- 'stop-current-task'
+```
+
+**Description:**
+
+| Action | Description |
+|--------|-------------|
+| `run-task: test` | Starts `Events.Tasks.test` |
+| `run-task: test 10` | Starts `test` and limits this run to 10 rounds |
+| `run-task: *` | Starts all non-running tasks in the current menu |
+| `run-task: * 10` | Starts all tasks in the current menu and limits this run to 10 rounds |
+| `stop-task: test` | Stops the running `test` task and runs its `on_end` / `end_actions` |
+| `stop-task: *` | Stops all running periodic tasks in the current menu |
+| `stop-current-task` | Only valid inside a periodic task. Stops the current task loop and immediately interrupts the rest of the current round |
+
+If the specified task is already running, `run-task` does not create a duplicate task.
+
+**Example:**
+
+```yaml
+Events:
+  Tasks:
+    countdown:
+      mode: manual
+      interval: 20
+      run_immediately: true
+      actions:
+        - 'tell: &eCountdown running'
+      on_end:
+        - 'tell: &aCountdown finished'
+
+Bottom:
+  type: multi
+  buttons:
+    start:
+      text: '&a[ Start ]'
+      actions:
+        - 'run-task: countdown 10'
+    stop:
+      text: '&c[ Stop ]'
+      actions:
+        - 'stop-task: countdown'
+    stop_all:
+      text: '&4[ Stop All ]'
+      actions:
+        - 'stop-task: *'
+```
 
 ---
 

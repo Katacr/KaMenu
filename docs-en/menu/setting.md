@@ -24,7 +24,7 @@ Controls how the menu can be closed, determining whether players can press ESC t
 
 | Value | Description |
 |-------|-------------|
-| `true` (default) | Players can close the menu with ESC; the corresponding button's actions will be executed on close |
+| `true` (default) | Players can close the menu with ESC, triggering the corresponding bottom button actions |
 | `false` | Players must click a specific button to close the menu; ESC is disabled |
 
 ### Configuration Example
@@ -44,16 +44,19 @@ Settings:
 - Important confirmation menus (e.g., confirm deletion, confirm payment)
 - Admin operation menus
 - Scenarios where a player must choose an option
+- Menus using `Events.Tasks` where close actions and task cancellation timing must be controlled explicitly
 
-### Default Action When Closing via ESC
+### Button Actions Triggered by ESC
 
-When `can_escape: true`, pressing ESC executes the actions of the corresponding button:
+When `can_escape: true`, pressing ESC triggers bottom button actions according to the button layout:
 
-| Menu Type | Button Executed |
-|-----------|----------------|
-| `notice` | `confirm` / `button1` button |
-| `confirmation` | `deny` button |
-| `multi` | `exit` button |
+| Menu Type | Action triggered by ESC |
+|-----------|-------------------------|
+| `notice` | The only button's actions |
+| `confirmation` | The `deny` (cancel) button's actions |
+| `multi` | The `exit` button's actions, when an `exit` button is configured |
+
+If a menu depends on close events or periodic task lifecycle, the button triggered by ESC is already the close path, so you usually do not need to add `close` there. Use `close` or `force-close` only when you want to close the menu manually from other branches.
 
 **Example configuration:**
 
@@ -70,7 +73,8 @@ Bottom:
   deny:
     text: '&c[ Cancel ]'
     actions:
-      - 'tell: &cYou chose to cancel'  # This runs when ESC is pressed
+      - 'tell: &cYou chose to cancel'
+      - 'close'
 ```
 
 ---
@@ -510,6 +514,7 @@ Bottom:
 2. **Using can_escape**
    - Keep `true` for regular menus to provide a better user experience
    - Set to `false` for important confirmation menus to force a choice
+   - When using `Events.Tasks` or relying on `Events.Close`, let the ESC-mapped button own the close path; use `close` / `force-close` only for manual closure in other branches
 
 3. **pause parameter**
    - Only effective in single-player mode; can be ignored for multiplayer servers

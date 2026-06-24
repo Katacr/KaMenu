@@ -238,6 +238,7 @@ object MenuUI {
         } catch (_: Exception) {
             DialogBase.DialogAfterAction.CLOSE
         }
+        val closesDialogAfterAction = afterAction == DialogBase.DialogAfterAction.CLOSE
 
         // 定义菜单打开器（需要在解析 Body 之前定义，因为 message 组件可能需要它）
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
@@ -515,7 +516,7 @@ object MenuUI {
                         val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
 
                         val builder = ActionButton.builder(TextParser.parseText(btnText))
-                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
+                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
 
                         // 读取 tooltip 配置
                         val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
@@ -540,7 +541,7 @@ object MenuUI {
                     if (exitText.isNotEmpty()) {
                         val exitWidth = getInt(player, section, "exit.width", 0)
                         val builder = ActionButton.builder(TextParser.parseText(exitText))
-                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
+                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
 
                         // 如果设置了宽度（width > 0），则应用宽度设置
                         if (exitWidth > 0) {
@@ -565,7 +566,7 @@ object MenuUI {
                 val denyWidth = bottomSection?.let { getInt(player, it, "deny.width", 0) } ?: 0
 
                 val confirmBuilder = ActionButton.builder(TextParser.parseText(confirmBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
                 
                 // 读取 confirm 按钮的 tooltip
                 val confirmTooltipList = bottomSection?.let { getStringList(player, it, "confirm.tooltip") }
@@ -582,7 +583,7 @@ object MenuUI {
                 val confirmBtn = confirmBuilder.build()
 
                 val denyBuilder = ActionButton.builder(TextParser.parseText(denyBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
                 
                 // 读取 deny 按钮的 tooltip
                 val denyTooltipList = bottomSection?.let { getStringList(player, it, "deny.tooltip") }
@@ -611,7 +612,7 @@ object MenuUI {
                 val btnWidth = getInt(player, config, widthPath, 0)
 
                 val builder = ActionButton.builder(TextParser.parseText(btnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener))
+                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
 
                 // 读取 tooltip 配置
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"
@@ -639,5 +640,6 @@ object MenuUI {
             .afterAction(afterAction)
             .build()
         player.showDialog(Dialog.create { it.empty().base(base).type(dialogType) })
+        MenuTaskManager.attachMenu(player, config, menuId)
     }
 }

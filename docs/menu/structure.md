@@ -88,6 +88,14 @@ JavaScript:
 Events:
   Open:                # 开启菜单时执行的动作
     - 'tell: &a欢迎！'
+  Click:               # 可被 actions 动作或可点击文本触发的动作组
+    hello:
+      - 'tell: &a你好！'
+  Tasks:               # 菜单打开期间周期执行的动作组
+    refresh:
+      interval: 20
+      actions:
+        - 'tell: &7周期任务执行'
 
 # 可选：内容展示区（纯文字、物品展示等）
 Body:
@@ -175,8 +183,10 @@ actions:
 
 | 事件名 | 触发时机 |
 |--------|---------|
-| `Open` | 玩家打开菜单时 |
-| `Close` | 玩家关闭菜单时 |
+| `Open` | 玩家打开菜单前，动作链完成后才继续打开 |
+| `Close` | 玩家通过 KaMenu 动作关闭菜单后 |
+| `Click` | 待触发的可复用动作列表，可被 `actions` 动作或可点击文本调用 |
+| `Tasks` | 菜单成功打开后，按固定 tick 间隔周期执行 |
 
 **示例：**
 ```yaml
@@ -186,6 +196,15 @@ Events:
     - 'sound: entity.experience_orb.pickup'
   Close:
     - 'tell: &7再见！'
+  Click:
+    hello:
+      - 'tell: &a这是一个可复用动作组'
+  Tasks:
+    refresh:
+      interval: 20
+      run_immediately: true
+      actions:
+        - 'tell: &7菜单仍在打开'
 ```
 
 **详细说明和示例：** 详见 [🎯 菜单事件 (Events)](events.md)

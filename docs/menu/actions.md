@@ -54,6 +54,9 @@ Bottom:
 | `set-meta`    | 设置玩家元数据（旧格式，推荐使用 `meta`）        | ✅ |
 | `js`          | 执行 JavaScript 代码（支持预定义函数）       | ❌ |
 | `actions`     | 执行 Events.Click 下定义的动作列表        | ❌ |
+| `run-task`    | 启动 Events.Tasks 下定义的周期任务        | ❌ |
+| `stop-task`   | 停止指定周期任务                         | ❌ |
+| `stop-current-task` | 停止当前周期任务并中断本轮后续动作          | ❌ |
 | `wait`        | 插入延迟执行                          | ❌ |
 | `return`      | 中断动作执行列表                        | ❌ |
 
@@ -1286,6 +1289,69 @@ Bottom:
 1. 动作列表必须在 `Events.Click` 下定义
 2. 避免循环引用（如动作列表 A 引用自己）
 3. `actions` 动作本身也可以在条件判断中使用
+
+---
+
+### run-task / stop-task - 控制周期任务
+
+控制 `Events.Tasks` 下定义的周期任务。
+
+**格式：**
+
+```yaml
+- 'run-task: <任务ID>'
+- 'run-task: <任务ID> <次数>'
+- 'run-task: *'
+- 'run-task: * <次数>'
+- 'stop-task: <任务ID>'
+- 'stop-task: *'
+- 'stop-current-task'
+```
+
+**说明：**
+
+| 动作 | 说明 |
+|------|------|
+| `run-task: test` | 启动 `Events.Tasks.test` 任务 |
+| `run-task: test 10` | 启动 `test` 任务并让本次运行最多执行 10 轮 |
+| `run-task: *` | 启动当前菜单内所有未运行任务 |
+| `run-task: * 10` | 启动当前菜单内所有任务，并让本次运行最多执行 10 轮 |
+| `stop-task: test` | 停止正在运行的 `test` 任务，并执行该任务的 `on_end` / `end_actions` |
+| `stop-task: *` | 停止当前菜单内所有正在运行的周期任务 |
+| `stop-current-task` | 仅在周期任务自身动作中有效，停止当前任务循环，并立即中断本轮后续动作 |
+
+如果指定任务已经在运行，`run-task` 不会重复创建同名任务。
+
+**示例：**
+
+```yaml
+Events:
+  Tasks:
+    countdown:
+      mode: manual
+      interval: 20
+      run_immediately: true
+      actions:
+        - 'tell: &e倒计时运行中'
+      on_end:
+        - 'tell: &a倒计时结束'
+
+Bottom:
+  type: multi
+  buttons:
+    start:
+      text: '&a[ 开始 ]'
+      actions:
+        - 'run-task: countdown 10'
+    stop:
+      text: '&c[ 停止 ]'
+      actions:
+        - 'stop-task: countdown'
+    stop_all:
+      text: '&4[ 停止全部 ]'
+      actions:
+        - 'stop-task: *'
+```
 
 ---
 ## 完整示例

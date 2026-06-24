@@ -52,6 +52,7 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 
 * `{js:...}` — 在任意文本位置使用 JavaScript 表达式返回值
 * `Events.Open` — 会等待整条动作链完成后再打开菜单
+* `Events.Tasks` — 菜单打开期间按固定间隔周期执行动作组
 
 ### 🔍 通用条件判断
 
@@ -72,6 +73,7 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 * `/km open <菜单ID>` — 标准指令打开
 * **快捷键监听**：支持配置按 `F`（切换副手）触发打开指定菜单
 * **自定义指令注册**：一行配置将任意单词变为打开菜单的快捷指令
+* **外部插件 API**：其他插件可直接打开文件菜单，或渲染内存 YAML / `YamlConfiguration` 菜单，无需写入 `menus` 目录和执行 reload
 
 ### 📊 PlaceholderAPI 支持
 

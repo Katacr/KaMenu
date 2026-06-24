@@ -11,11 +11,13 @@ KaMenu supports executing predefined action lists at specific moments in the men
 | `Open` | Before the menu opens | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%` |
 | `Close` | After the menu closes | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%`, `$(input_key)` |
 | `Click` | Pending action list to trigger | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%` |
+| `Tasks` | Repeating task groups while the menu is open | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%`, `{js:*}` |
 
 **Important notes:**
 - The `Open` event fires before the menu opens, so it does **not support** `$(input_key)` input variables (the input fields haven't been displayed yet)
 - The `Open` event waits for the full action chain to complete before opening the menu; if `return` is encountered, the menu will not open
 - The `Close` event fires after the menu closes and supports all variable formats, including `$(input_key)`
+- `Tasks` do not receive live input responses, so they do not support real-time `$(input_key)` values; if a task must stop exactly when the menu closes, make sure every menu-closing path executes `close` / `force-close`
 
 ---
 
@@ -42,6 +44,122 @@ Events:
       deny:
         - 'action when condition is not met 1'
         - 'action when condition is not met 2'
+```
+
+---
+
+## Periodic Tasks (Events.Tasks)
+
+`Events.Tasks` runs action lists repeatedly at a fixed tick interval while the menu is open. Each task has its own execution state and can be used for status refreshes, timed checks, timeout handling, sounds, and similar workflows.
+
+```yaml
+Events:
+  Tasks:
+    refresh:
+      mode: auto
+      interval: 20
+      repeat: -1
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'tell: &7Periodic menu refresh'
+        - condition: '{data:warning} == true'
+          allow:
+            - 'sound: block.note_block.pling 1 1'
+          deny: []
+      on_end:
+        - 'tell: &7Refresh task stopped'
+```
+
+### Options
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mode` | `String` | `auto` | Trigger mode. `auto` starts when the menu opens, `manual` starts only through the `run-task` action |
+| `interval` | `Long` | `20` | Repeat interval in ticks. Minimum value is `1` |
+| `repeat` | `Int` | `-1` | Number of rounds. Missing, `0`, or `-1` means keep running until the menu lifecycle ends or the task is stopped |
+| `run_immediately` | `Boolean` | `false` | Whether to run once immediately after the menu opens |
+| `skip_if_running` | `Boolean` | `true` | Whether to skip a round if the previous action chain is still running |
+| `actions` | `List` | Required | The action list to execute. Supports conditions, `wait`, and nested `actions` |
+| `on_end` / `end_actions` | `List` | `[]` | Action list executed after the task lifecycle ends. Supports normal actions syntax |
+
+### Execution Rules
+
+- Periodic tasks start only after the menu is successfully shown. If `Events.Open` uses `return` to prevent opening, tasks do not start.
+- A player has only one task lifecycle for the same `contextId`; reopening the same menu does not create duplicate running tasks with the same task ID.
+- Each task ID under `Events.Tasks` is an independent running key. If that task is already running, another `run-task` call will not create a duplicate.
+- `mode: auto` tasks start when the menu opens. `mode: manual` tasks start only when `run-task` is executed.
+- The current menu tasks are cancelled when the player opens another menu, uses `open` / `force-open` / `reset` to another menu, uses `close` / `force-close`, leaves the server, or the plugin reloads.
+- `return` inside a periodic task only stops the current round. It does not stop the repeating task. Use `stop-current-task` to stop the current task loop and interrupt the rest of the current round.
+- If a task contains `wait`, keeping `skip_if_running: true` is recommended to prevent overlapping rounds.
+- With `Settings.can_escape: true`, ESC triggers the corresponding bottom button action: `notice` triggers the only button, `confirmation` triggers the `deny` button, and `multi` triggers the `exit` button when it is configured. For strict lifecycle control, make sure those actions include `close` / `force-close`, or set `Settings.can_escape: false` and provide a close button.
+
+### Task Control Actions
+
+- `run-task: <taskId>`: Starts the specified task.
+- `run-task: <taskId> <count>`: Starts the specified task and overrides the round count for this run, for example `run-task: refresh 10`.
+- `run-task: *`: Starts all defined tasks in the current menu that are not already running.
+- `run-task: * <count>`: Starts all tasks in the current menu and overrides the round count for this run.
+- `stop-task: <taskId>`: Stops the specified task and runs its `on_end` / `end_actions`.
+- `stop-task: *`: Stops all running periodic tasks in the current menu and runs each task's `on_end` / `end_actions`.
+- `stop-current-task`: Only valid inside a periodic task. Stops the current task loop and immediately interrupts the rest of the current round.
+
+### Example: Timeout Close
+
+```yaml
+Settings:
+  can_escape: false
+
+Events:
+  Open:
+    - 'set-meta: menu_seconds 0'
+
+  Tasks:
+    timeout:
+      mode: auto
+      interval: 20
+      repeat: 30
+      run_immediately: false
+      actions:
+        - 'meta: menu_seconds + 1'
+        - condition: '{meta:menu_seconds} >= 30'
+          allow:
+            - 'tell: &cMenu timed out'
+            - 'close'
+            - 'stop-current-task'
+      on_end:
+        - 'tell: &7Timeout task ended'
+```
+
+### Example: Manually Started Task
+
+```yaml
+Events:
+  Tasks:
+    countdown:
+      mode: manual
+      interval: 20
+      run_immediately: true
+      actions:
+        - 'tell: &eCountdown running'
+      on_end:
+        - 'tell: &aCountdown finished'
+
+Bottom:
+  type: multi
+  buttons:
+    start:
+      text: '&a[ Start 10 ]'
+      actions:
+        - 'run-task: countdown 10'
+    stop:
+      text: '&c[ Stop ]'
+      actions:
+        - 'stop-task: countdown'
+    stop_all:
+      text: '&4[ Stop All ]'
+      actions:
+        - 'stop-task: *'
 ```
 
 ---

@@ -11,11 +11,13 @@ KaMenu 支持在菜单的特定时刻执行预定义的动作列表，通过 `Ev
 | `Open`  | 菜单打开前    | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%` |
 | `Close` | 菜单关闭后    | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%`, `$(input_key)` |
 | `Click`     | 待触发的动作列表 | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%` |
+| `Tasks` | 菜单打开期间周期执行的任务组 | `{data:*}`, `{gdata:*}`, `{meta:*}`, `%papi_var%`, `{js:*}` |
 
 **重要说明：**
 - `Open` 事件在菜单打开前触发，因此**不支持** `$(input_key)` 输入变量（因为输入框还未显示）
 - `Open` 事件会等待整条动作链执行完成后，才继续打开菜单；中途遇到 `return` 会直接阻止菜单打开
 - `Close` 事件在菜单关闭后触发，支持所有变量格式，包括 `$(input_key)`
+- `Tasks` 周期任务没有实时输入响应，因此不支持实时读取 `$(input_key)`；如果需要严格在关闭后停止任务，请确保所有可关闭菜单的路径都会执行 `close` / `force-close`
 
 ---
 
@@ -42,6 +44,122 @@ Events:
       deny:
         - '条件不满足时执行的动作1'
         - '条件不满足时执行的动作2'
+```
+
+---
+
+## 周期任务 (Events.Tasks)
+
+`Events.Tasks` 用于在菜单打开期间按固定 tick 间隔重复执行动作列表。每个任务都有独立的执行状态，可以用于刷新提示、定时检测、超时关闭、播放提示音等场景。
+
+```yaml
+Events:
+  Tasks:
+    refresh:
+      mode: auto
+      interval: 20
+      repeat: -1
+      run_immediately: true
+      skip_if_running: true
+      actions:
+        - 'tell: &7菜单周期刷新'
+        - condition: '{data:warning} == true'
+          allow:
+            - 'sound: block.note_block.pling 1 1'
+          deny: []
+      on_end:
+        - 'tell: &7刷新任务已停止'
+```
+
+### 配置项
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `mode` | `String` | `auto` | 触发模式。`auto` 表示菜单打开后自动启动，`manual` 表示只通过 `run-task` 动作启动 |
+| `interval` | `Long` | `20` | 周期间隔，单位为 tick，最小值为 `1` |
+| `repeat` | `Int` | `-1` | 循环次数。未填写、`0` 或 `-1` 表示持续执行，直到菜单生命周期结束或任务被停止 |
+| `run_immediately` | `Boolean` | `false` | 菜单打开后是否立即执行一次 |
+| `skip_if_running` | `Boolean` | `true` | 上一轮动作链尚未结束时，是否跳过本轮 |
+| `actions` | `List` | 必填 | 周期执行的动作列表，支持条件、`wait`、嵌套 `actions` |
+| `on_end` / `end_actions` | `List` | `[]` | 任务结束生命周期后执行的动作列表，支持普通 actions 语法 |
+
+### 执行规则
+
+- 菜单成功显示后才会启动周期任务；如果 `Events.Open` 中执行 `return` 阻止菜单打开，任务不会启动。
+- 同一玩家同一 `contextId` 只维护一个任务生命周期；重复打开同一个菜单时，已运行的同名任务不会重复创建。
+- `Events.Tasks` 下每个任务 ID 都是独立运行键；同一个任务已在运行时，再次 `run-task` 不会创建重复任务。
+- `mode: auto` 的任务会在菜单打开后自动启动；`mode: manual` 的任务只会在执行 `run-task` 时启动。
+- 玩家打开新菜单、执行 `open` / `force-open` / `reset` 到其它菜单、执行 `close` / `force-close`、退出服务器或插件重载时，当前菜单的周期任务会被取消。
+- 周期任务中的 `return` 只会停止当前这一轮动作，不会停止整个周期任务；使用 `stop-current-task` 可停止当前任务循环并跳出本轮后续动作。
+- 如果周期任务动作链中包含 `wait`，建议保持 `skip_if_running: true`，避免多轮任务重叠执行。
+- `Settings.can_escape: true` 时，ESC 会触发底部按钮对应动作：`notice` 触发唯一按钮、`confirmation` 触发 `deny` 按钮、`multi` 在配置 `exit` 按钮时触发 `exit` 按钮。需要严格生命周期时，请确保这些动作中包含 `close` / `force-close`，或配置 `Settings.can_escape: false` 并提供关闭按钮。
+
+### 任务控制动作
+
+- `run-task: <任务ID>`：启动指定任务。
+- `run-task: <任务ID> <次数>`：启动指定任务并覆盖本次循环次数，例如 `run-task: refresh 10`。
+- `run-task: *`：启动当前菜单内所有已定义但尚未运行的任务。
+- `run-task: * <次数>`：启动当前菜单内所有任务，并覆盖本次循环次数。
+- `stop-task: <任务ID>`：停止指定任务，并执行该任务的 `on_end` / `end_actions`。
+- `stop-task: *`：停止当前菜单内所有正在运行的周期任务，并执行各自的 `on_end` / `end_actions`。
+- `stop-current-task`：仅在周期任务自身动作中有效，停止当前任务循环，并立即中断本轮后续动作。
+
+### 示例：超时关闭菜单
+
+```yaml
+Settings:
+  can_escape: false
+
+Events:
+  Open:
+    - 'set-meta: menu_seconds 0'
+
+  Tasks:
+    timeout:
+      mode: auto
+      interval: 20
+      repeat: 30
+      run_immediately: false
+      actions:
+        - 'meta: menu_seconds + 1'
+        - condition: '{meta:menu_seconds} >= 30'
+          allow:
+            - 'tell: &c菜单已超时关闭'
+            - 'close'
+            - 'stop-current-task'
+      on_end:
+        - 'tell: &7超时检测任务已结束'
+```
+
+### 示例：手动启动任务
+
+```yaml
+Events:
+  Tasks:
+    countdown:
+      mode: manual
+      interval: 20
+      run_immediately: true
+      actions:
+        - 'tell: &e倒计时进行中'
+      on_end:
+        - 'tell: &a倒计时结束'
+
+Bottom:
+  type: multi
+  buttons:
+    start:
+      text: '&a[ 启动10次 ]'
+      actions:
+        - 'run-task: countdown 10'
+    stop:
+      text: '&c[ 停止 ]'
+      actions:
+        - 'stop-task: countdown'
+    stop_all:
+      text: '&4[ 停止全部 ]'
+      actions:
+        - 'stop-task: *'
 ```
 
 ---

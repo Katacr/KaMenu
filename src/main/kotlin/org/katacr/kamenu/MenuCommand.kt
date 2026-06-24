@@ -21,6 +21,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
                 return true
             }
+            MenuTaskManager.cancelAll()
             plugin.reloadConfig()
             plugin.languageManager.reload()
             val menuCount = plugin.menuManager.reload()

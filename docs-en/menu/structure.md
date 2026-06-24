@@ -88,6 +88,14 @@ JavaScript:
 Events:
   Open:                # Actions executed when the menu opens
     - 'tell: &aWelcome!'
+  Click:               # Action groups triggered by the actions action or clickable text
+    hello:
+      - 'tell: &aHello!'
+  Tasks:               # Action groups repeated while the menu is open
+    refresh:
+      interval: 20
+      actions:
+        - 'tell: &7Periodic task ran'
 
 # Optional: content display area (plain text, item display, etc.)
 Body:
@@ -175,8 +183,10 @@ Defines actions that execute at specific moments during the menu's lifecycle.
 
 | Event Name | Trigger |
 |-----------|---------|
-| `Open` | When a player opens the menu |
-| `Close` | When a player closes the menu |
+| `Open` | Before the menu opens; the menu opens only after the action chain completes |
+| `Close` | After the menu is closed through a KaMenu action |
+| `Click` | Reusable action lists triggered by the `actions` action or clickable text |
+| `Tasks` | Repeating action groups after the menu is successfully opened |
 
 **Example:**
 ```yaml
@@ -186,6 +196,15 @@ Events:
     - 'sound: entity.experience_orb.pickup'
   Close:
     - 'tell: &7Goodbye!'
+  Click:
+    hello:
+      - 'tell: &aThis is a reusable action group'
+  Tasks:
+    refresh:
+      interval: 20
+      run_immediately: true
+      actions:
+        - 'tell: &7The menu is still open'
 ```
 
 **Detailed description and examples:** See [🎯 Menu Events (Events)](events.md)
