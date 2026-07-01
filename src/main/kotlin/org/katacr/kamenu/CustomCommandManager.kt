@@ -6,6 +6,7 @@ import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandMap
 import org.bukkit.command.SimpleCommandMap
+import org.bukkit.configuration.ConfigurationSection
 import java.lang.reflect.Field
 
 /**
@@ -60,35 +61,57 @@ class CustomCommandManager(private val plugin: KaMenu) {
         var successCount = 0
 
         commands.forEach { commandName ->
-            val menuId = customCommandsSection.getString(commandName)
-            if (menuId == null || menuId.isBlank()) {
-                return@forEach
-            }
-
-            // 检查菜单是否存在
-            if (plugin.menuManager.getMenuConfig(menuId) == null) {
+            val definition = parseCommandDefinition(customCommandsSection, commandName) ?: run {
+                plugin.logger.warning("Invalid custom command config: $commandName")
                 return@forEach
             }
 
             try {
-                registerCommand(commandName, menuId)
+                registerCommand(commandName, definition)
                 successCount++
             } catch (e: Exception) {
-                // 忽略注册失败的指令
+                plugin.logger.warning("Failed to register custom command /$commandName: ${e.message}")
             }
         }
 
         return successCount
     }
 
+    private fun parseCommandDefinition(
+        customCommandsSection: ConfigurationSection,
+        commandName: String
+    ): CustomCommandDefinition? {
+        val rawValue = customCommandsSection.get(commandName)
+
+        if (rawValue is String) {
+            val menuId = rawValue.trim()
+            if (menuId.isEmpty()) {
+                return null
+            }
+            if (plugin.menuManager.getMenuConfig(menuId) == null) {
+                plugin.logger.warning("Custom command /$commandName skipped: menu '$menuId' not found")
+                return null
+            }
+            return CustomCommandDefinition.OpenMenu(menuId)
+        }
+
+        val commandSection = customCommandsSection.getConfigurationSection(commandName) ?: return null
+        val actions = commandSection.getList("actions") ?: return null
+        if (actions.isEmpty()) {
+            return null
+        }
+
+        return CustomCommandDefinition.RunActions(actions.map { it ?: Any() })
+    }
+
     /**
      * 注册单个自定义指令
      */
-    private fun registerCommand(commandName: String, menuId: String) {
+    private fun registerCommand(commandName: String, definition: CustomCommandDefinition) {
         val commandMap = this.commandMap ?: throw RuntimeException("CommandMap not initialized")
 
         // 创建自定义指令
-        val command = CustomCommand(plugin, menuId, commandName)
+        val command = CustomCommand(plugin, definition, commandName)
 
         // 注册指令
         commandMap.register("kamenu", command)

@@ -40,10 +40,10 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `stock-item`  | Give/take stored items                                         | ✅                        | 
 | `item`        | Give/take regular items                                        | ✅                        | 
 | `open`        | Open another menu for the player                               | ✅                        | 
-| `close`       | Close the current menu                                         | ❌                        | 
-| `force-open`  | Force open menu (skips Events.Open)                            | ❌                        | 
-| `force-close` | Force close menu (skips Events.Close)                          | ❌                        | 
-| `reset`       | Reopen current menu (skips Events.Open)                        | ❌                        | 
+| `close`       | Close the current menu                                         | ✅                        | 
+| `force-open`  | Force open menu (skips Events.Open)                            | ✅                        | 
+| `force-close` | Force close menu (skips Events.Close)                          | ✅                        | 
+| `reset`       | Reopen current menu (skips Events.Open)                        | ✅                        | 
 | `url`         | Open a specified link (only works with single action)          | ❌                        | 
 | `copy`        | Copy text to clipboard (only works with single action)         | ❌                        | 
 | `data`        | Operate player data (supports set/add/take/delete)             | ✅                        | 
@@ -132,7 +132,9 @@ Target selectors support all condition expressions supported by `Condition`:
 
 - ⚠️ `*` and `all` match all online players, use with caution
 - ⚠️ Variables in condition expressions are resolved individually for each target player
-- ⚠️ Some actions (like `open`, `close`, `server`) don't support target selectors and will ignore the target parameter
+- ⚠️ `server`, `actions`, `js`, `wait`, `return`, and task-control actions don't support target selectors and will ignore the target parameter
+- ✅ `open`, `close`, `force-open`, `force-close`, and `reset` support target selectors and can refresh or close menus for selected players
+- ✅ Selector conditions can use variables such as `{data:*}`, `{gdata:*}`, and `{meta:*}`, for example: `open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
 ---
 

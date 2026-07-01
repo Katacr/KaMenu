@@ -62,11 +62,6 @@ object MenuActions {
     }
 
     /**
-     * 预编译的目标选择器正则表达式（性能优化）
-     */
-    private val targetSelectorPattern = Regex("\\{player:\\s*([^}]*)\\}", RegexOption.IGNORE_CASE)
-
-    /**
      * 设置语言管理器引用
      */
     fun setLanguageManager(manager: LanguageManager) {
@@ -122,15 +117,34 @@ object MenuActions {
      * @return ParsedAction 包含动作和目标选择器
      */
     private fun parseTargetSelector(action: String): ParsedAction {
-        val match = targetSelectorPattern.find(action)
-
-        return if (match != null) {
-            val selector = match.groupValues[1].trim()
-            val actionWithoutSelector = action.replace(match.value, "")
-            ParsedAction(actionWithoutSelector, selector)
-        } else {
-            ParsedAction(action, null)
+        val lower = action.lowercase()
+        val start = lower.lastIndexOf("{player:")
+        if (start < 0) {
+            return ParsedAction(action, null)
         }
+
+        var depth = 0
+        var end = -1
+        for (index in start until action.length) {
+            when (action[index]) {
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth == 0) {
+                        end = index
+                        break
+                    }
+                }
+            }
+        }
+
+        if (end < 0) {
+            return ParsedAction(action, null)
+        }
+
+        val selector = action.substring(start + "{player:".length, end).trim()
+        val actionWithoutSelector = action.removeRange(start, end + 1).trimEnd()
+        return ParsedAction(actionWithoutSelector, selector)
     }
 
     /**
@@ -143,8 +157,6 @@ object MenuActions {
 
         return when {
             // 只对单个玩家有意义的动作
-            trimmedAction.startsWith("close:") -> ActionType.SINGLE_TARGET_ONLY
-            trimmedAction.startsWith("open:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("server:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("actions:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("run-task:") -> ActionType.SINGLE_TARGET_ONLY
@@ -527,6 +539,31 @@ object MenuActions {
             config = config,
             asyncDataOperations = asyncDataOperations,
             taskRef = taskRef
+        )
+    }
+
+    fun executeStandaloneActions(
+        player: Player,
+        actions: List<*>,
+        variables: Map<String, String> = emptyMap(),
+        asyncDataOperations: Boolean = true
+    ): CompletableFuture<Boolean> {
+        val menuOpener: (Player, String) -> Unit = { p, menuName ->
+            val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
+            if (kaMenu != null) {
+                Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                    MenuUI.openMenu(p, menuName, kaMenu.menuManager, kaMenu)
+                })
+            }
+        }
+
+        return executeActionList(
+            player,
+            actions.map { it ?: Any() },
+            variables,
+            menuOpener,
+            config = null,
+            asyncDataOperations = asyncDataOperations
         )
     }
 

@@ -65,11 +65,17 @@ listeners:
     #   require-sneaking: false
 
 # 自定义指令注册
-# 格式: 指令名: 菜单文件名
+# 旧写法: 指令名: 菜单文件名
+# 新写法: 指令名下配置 actions 动作队列
 custom-commands:
   zcd: 'main_menu'
   shop: 'server_shop'
   menu: 'main_menu'
+  test:
+    actions:
+      - "tell: 嘿，你输入了/test指令"
+      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
+      - "tell: 你想测试什么内容呢？"
 ```
 
 ---
@@ -394,9 +400,12 @@ Body:
 
 ### custom-commands - 自定义指令
 
-将简短的自定义指令注册为打开指定菜单的快捷方式，无需额外权限配置。
+将简短的自定义指令注册为打开指定菜单的快捷方式，或直接执行一组 actions 动作队列，无需额外权限配置。
 
-**格式：** `指令名: 菜单ID`
+**格式：**
+
+- `指令名: 菜单ID`
+- `指令名:` 下配置 `actions: 动作队列`
 
 **示例：**
 
@@ -405,5 +414,16 @@ custom-commands:
   shop: 'server_shop'       # /shop -> 打开 server_shop 菜单
   menu: 'main_menu'         # /menu -> 打开 main_menu 菜单
   hub: 'hub/main'           # /hub  -> 打开 hub/main 菜单（子文件夹）
+  test:
+    actions:
+      - "tell: 嘿，你输入了/test指令"
+      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
+      - condition: "hasPerm.test.admin"
+        allow:
+          - "tell: &a你拥有测试权限"
+        deny:
+          - "tell: &c你没有测试权限"
 ```
+动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}` / `$(arg:0)`、`$(args)`、`$(arg_count)` 读取。
+
 想要了解自定义指令的用法和优势，点击此处 [⌨️ 自定义指令](customCommands.md)

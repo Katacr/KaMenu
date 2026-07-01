@@ -65,11 +65,17 @@ listeners:
     #   require-sneaking: false
 
 # Custom command registration
-# Format: command_name: menu_id
+# Legacy form: command_name: menu_id
+# Action form: configure actions under command_name
 custom-commands:
   zcd: 'main_menu'
   shop: 'server_shop'
   menu: 'main_menu'
+  test:
+    actions:
+      - "tell: Hey, you ran /test"
+      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
+      - "tell: What would you like to test?"
 ```
 
 ---
@@ -394,9 +400,12 @@ Body:
 
 ### custom-commands — Custom Commands
 
-Registers short custom commands as shortcuts to open specified menus, without any additional permission configuration.
+Registers short custom commands as shortcuts to open specified menus, or to run an actions list directly, without any additional permission configuration.
 
-**Format:** `command_name: menu_id`
+**Format:**
+
+- `command_name: menu_id`
+- configure `actions: action list` under `command_name:`
 
 **Example:**
 
@@ -405,6 +414,16 @@ custom-commands:
   shop: 'server_shop'       # /shop -> opens server_shop menu
   menu: 'main_menu'         # /menu -> opens main_menu menu
   hub: 'hub/main'           # /hub  -> opens hub/main menu (subdirectory)
+  test:
+    actions:
+      - "tell: Hey, you ran /test"
+      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
+      - condition: "hasPerm.test.admin"
+        allow:
+          - "tell: &aYou have the test permission"
+        deny:
+          - "tell: &cYou do not have the test permission"
 ```
+Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}` / `$(arg:0)`, `$(args)`, and `$(arg_count)`.
 
 To learn more about custom commands and their advantages, see [⌨️ Custom Commands](customCommands.md)

@@ -153,16 +153,6 @@ object ConditionExpressionEngine {
                 return expr
             }
 
-            val token = peek()
-            if (token.type == TokenType.TRUE) {
-                advance()
-                return Literal(true)
-            }
-            if (token.type == TokenType.FALSE) {
-                advance()
-                return Literal(false)
-            }
-
             return parseAtom()
         }
 

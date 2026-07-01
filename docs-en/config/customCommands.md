@@ -26,11 +26,49 @@ Configure custom commands in `config.yml`:
 
 ```yaml
 custom-commands:
-  # command-name: menu-id
+  # Legacy form: command-name: menu-id
   main: example/main_menu
   shop: example/shop_menu
   vip: example/vip_menu
   admin: example/admin_menu
+
+  # Action form: run an actions list
+  test:
+    actions:
+      - "tell: Hey, you ran /test"
+      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
+      - "tell: What would you like to test?"
+```
+
+The `actions` form uses the same action-list behavior as button actions. It supports normal actions, conditional branches, nested action lists, `wait`, `return`, target selectors, and complex conditions.
+
+```yaml
+custom-commands:
+  reward:
+    actions:
+      - condition: "hasPerm.reward.daily && {data:daily_reward} != true"
+        allow:
+          - "money: type=add;num=100"
+          - "data: type=set;key=daily_reward;var=true"
+          - "toast: type=task;msg=Claimed;icon=emerald"
+        deny:
+          - "toast: type=task;msg=Denied;icon=barrier"
+          - "return"
+```
+
+Custom command actions can read command arguments:
+
+- `$(arg:0)` or `{arg:0}`: first argument
+- `$(arg:1)` or `{arg:1}`: second argument
+- `$(args)`: full argument text
+- `$(arg_count)`: argument count
+- `$(command)`: the command label that was used
+
+```yaml
+custom-commands:
+  greet:
+    actions:
+      - "tell: &aHello {arg:0}, welcome to $(arg:1)"
 ```
 
 ## Example: Restricting Access to Specific Players
@@ -93,6 +131,18 @@ custom-commands:
   quest: example/quest_system      # Quest system
 ```
 
+### Scenario 4: Lightweight Commands without Menus
+
+Run a small action list directly without creating a menu file:
+
+```yaml
+custom-commands:
+  ping:
+    actions:
+      - "sound: block.note_block.pling;volume=1.0;pitch=1.4"
+      - "toast: type=task;msg=Received;icon=bell"
+```
+
 ## Best Practices
 
 ### 1. Naming Conventions
@@ -151,6 +201,8 @@ The system will automatically re-register all custom commands — no server rest
 - Supports hot-reload via `/kamenu reload` — no restart needed
 - Command names are case-insensitive (`/menu` and `/MENU` behave identically)
 - Custom commands are independent of the main `/km` command and do not interfere with it
+- String values open menus directly; a command section with an `actions` list runs the action queue
+- Action commands do not have a current menu context, so actions such as `reset` or `actions: Events.ClickAction` that depend on menu config are not suitable here. Use `open: menuId` when a command should open a menu.
 
 ## Summary
 

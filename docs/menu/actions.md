@@ -39,11 +39,11 @@ Bottom:
 | `money`       | 操作玩家金币（需要 Vault）                | ✅ |
 | `stock-item`  | 存储库物品给予/扣除                      | ✅ |
 | `item`        | 物品给予/扣除                         | ✅ |
-| `open`        | 为玩家打开另一个菜单                      | ❌ |
-| `close`       | 关闭当前菜单                          | ❌ |
-| `force-open`  | 强制打开菜单（跳过 Events.Open）          | ❌ |
-| `force-close` | 强制关闭菜单（跳过 Events.Close）         | ❌ |
-| `reset`       | 重新打开当前菜单（跳过 Events.Open）        | ❌ |
+| `open`        | 为玩家打开另一个菜单                      | ✅ |
+| `close`       | 关闭当前菜单                          | ✅ |
+| `force-open`  | 强制打开菜单（跳过 Events.Open）          | ✅ |
+| `force-close` | 强制关闭菜单（跳过 Events.Close）         | ✅ |
+| `reset`       | 重新打开当前菜单（跳过 Events.Open）        | ✅ |
 | `url`         | 打开指定链接（仅单动作时生效）                 | ❌ |
 | `copy`        | 复制文字到剪贴板（仅单动作时生效）               | ❌ |
 | `data`        | 操作玩家数据（支持 set/add/take/delete）  | ✅ |
@@ -131,7 +131,9 @@ Bottom:
 
 - ⚠️ `*` 和 `all` 会匹配所有在线玩家，请谨慎使用
 - ⚠️ 条件表达式中的变量会为每个目标玩家单独解析
-- ⚠️ 某些动作（如 `open`、`close`、`server`）不支持目标选择器，会忽略目标参数
+- ⚠️ `server`、`actions`、`js`、`wait`、`return`、任务控制类动作不支持目标选择器，会忽略目标参数
+- ✅ `open`、`close`、`force-open`、`force-close`、`reset` 支持目标选择器，可用于刷新或关闭指定玩家的菜单
+- ✅ 选择器条件中可以使用 `{data:*}`、`{gdata:*}`、`{meta:*}` 等变量，例如：`open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
 ---
 

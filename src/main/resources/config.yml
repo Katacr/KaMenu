@@ -95,14 +95,19 @@ listeners:
 # Custom Commands Registration
 # 自定义指令注册
 # ============================================
-# Format: command-name: menu-file-path
-# 格式: 指令名: 菜单文件路径
-# Example: /command-name will open the specified menu
-# 示例: 执行 /指令名 将打开指定的菜单
+# Format 1: command-name: menu-file-path
+# 格式 1: 指令名: 菜单文件路径
+# Format 2: command-name: { actions: [...] }
+# 格式 2: 指令名下配置 actions 动作队列
 custom-commands:
   zcd: 'example/main_menu'       # /zcd command / zcd指令
   actions: 'example/actions_demo'  # /actions command / actions指令
   menu: 'example/main_menu'      # /menu command / menu指令
+  test:
+    actions:
+      - "tell: 嘿，你输入了/test指令"
+      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
+      - "tell: 你想测试什么内容呢？"
 
 # ============================================
 # Update Checker
