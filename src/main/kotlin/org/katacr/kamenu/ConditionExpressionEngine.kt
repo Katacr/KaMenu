@@ -64,7 +64,12 @@ object ConditionExpressionEngine {
     fun checkCondition(player: Player, condition: String?): Boolean {
         if (condition == null || condition.isBlank()) return true
         val processed = TextResolver.resolve(player, condition)
-        return evaluate(player, parse(processed))
+        return try {
+            evaluate(player, parse(processed))
+        } catch (ex: IllegalArgumentException) {
+            plugin?.logger?.warning("Invalid condition expression '$condition': ${ex.message}")
+            false
+        }
     }
 
     private fun evaluate(player: Player, expr: Expr): Boolean {
@@ -100,13 +105,21 @@ object ConditionExpressionEngine {
     private fun parse(text: String): Expr {
         val tokens = tokenize(text)
         val parser = Parser(tokens)
-        return parser.parseExpression()
+        return parser.parse()
     }
 
     private class Parser(private val tokens: List<Token>) {
         private var index = 0
 
-        fun parseExpression(): Expr {
+        fun parse(): Expr {
+            val expr = parseExpression()
+            if (peek().type != TokenType.EOF) {
+                throw IllegalArgumentException("Unexpected token '${peek().text}'")
+            }
+            return expr
+        }
+
+        private fun parseExpression(): Expr {
             return parseOr()
         }
 
@@ -156,29 +169,35 @@ object ConditionExpressionEngine {
         private fun parseAtom(): Expr {
             val left = parseOperandText()
 
-            val current = peek()
-            if (current.type == TokenType.DOT && isBuiltinCallAhead()) {
+            if (peek().type == TokenType.DOT && isBuiltinPredicateName(left) && isBuiltinCallAhead()) {
                 advance()
                 val name = left
-                val arg = parseOperandText()
+                val arg = parseDottedOperandText()
                 return BuiltinCall(false, name, arg)
             }
 
-            if (current.type == TokenType.DOT && left.startsWith("!")) {
+            if (peek().type == TokenType.DOT && left.startsWith("!") && isBuiltinPredicateName(left.removePrefix("!"))) {
                 val name = left.removePrefix("!")
                 advance()
-                val arg = parseOperandText()
+                val arg = parseDottedOperandText()
                 return BuiltinCall(true, name, arg)
             }
 
+            val fullLeft = parseRemainingDottedText(left)
             val opToken = peek()
             if (opToken.type in comparisonTokens()) {
                 advance()
-                val right = parseOperandText()
-                return Compare(left, opToken.text, right)
+                val right = parseDottedOperandText()
+                return Compare(fullLeft, opToken.text, right)
             }
 
-            return if (left.equals("true", true)) Literal(true) else if (left.equals("false", true)) Literal(false) else Compare(left, "==", "true")
+            return if (fullLeft.equals("true", true)) {
+                Literal(true)
+            } else if (fullLeft.equals("false", true)) {
+                Literal(false)
+            } else {
+                Compare(fullLeft, "==", "true")
+            }
         }
 
         private fun parseOperandText(): String {
@@ -189,9 +208,33 @@ object ConditionExpressionEngine {
             }
         }
 
+        private fun parseDottedOperandText(): String {
+            return parseRemainingDottedText(parseOperandText())
+        }
+
+        private fun parseRemainingDottedText(first: String): String {
+            val builder = StringBuilder(first)
+            while (peek().type == TokenType.DOT && isOperandToken(peek(1))) {
+                advance()
+                builder.append('.').append(parseOperandText())
+            }
+            return builder.toString()
+        }
+
+        private fun isOperandToken(token: Token): Boolean {
+            return token.type == TokenType.IDENT ||
+                token.type == TokenType.STRING ||
+                token.type == TokenType.NUMBER ||
+                token.type == TokenType.TRUE ||
+                token.type == TokenType.FALSE
+        }
+
+        private fun isBuiltinPredicateName(name: String): Boolean {
+            return builtinPredicates.containsKey(name)
+        }
+
         private fun isBuiltinCallAhead(): Boolean {
-            val next = peek(1)
-            return next.type == TokenType.IDENT || next.type == TokenType.STRING || next.type == TokenType.NUMBER
+            return isOperandToken(peek(1))
         }
 
         private fun comparisonTokens(): Set<TokenType> = setOf(TokenType.EQ, TokenType.NE, TokenType.GT, TokenType.GE, TokenType.LT, TokenType.LE)
@@ -290,6 +333,16 @@ object ConditionExpressionEngine {
                 '.' -> {
                     tokens.add(Token(TokenType.DOT, "."))
                     i++
+                }
+                '[' -> {
+                    i++
+                    val sb = StringBuilder()
+                    while (i < text.length && text[i] != ']') {
+                        sb.append(text[i])
+                        i++
+                    }
+                    if (i < text.length && text[i] == ']') i++
+                    tokens.add(Token(TokenType.STRING, "[${sb}]"))
                 }
                 '"', '\'' -> {
                     val quote = ch
