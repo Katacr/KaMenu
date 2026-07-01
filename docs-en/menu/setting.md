@@ -100,8 +100,8 @@ The `after_action` parameter declares a specific operation to be performed local
 | Value | Client Behaviour | Use Case |
 |-------|-----------------|---------|
 | `CLOSE` (default) | Immediately closes the menu | Menus with no sub-menus or no follow-up behaviour to handle |
-| `NONE` | No local action taken | Most scenarios where all actions are controlled by the server |
-| `WAIT_FOR_RESPONSE` | Displays an overlay screen while waiting for the server | Menus with sub-menus or involving critical operations |
+| `NONE` | No local action taken | Menus where the server explicitly closes, refreshes, or opens another menu |
+| `WAIT_FOR_RESPONSE` | Displays an overlay screen while waiting for the server | Menus where the server explicitly closes, refreshes, or opens another menu after processing |
 
 ### Configuration Example
 
@@ -150,15 +150,26 @@ After clicking a button, the client takes no local action; all logic is controll
 **Advantages:**
 - Maximum flexibility
 - Server has complete control over menu behaviour
-- **Recommended for most scenarios**
+- Useful when closure, refresh, or navigation depends on server-side conditions
 
 **Disadvantages:**
-- Requires explicitly adding a `close` action in the action list
+- Requires every button action path to explicitly close, refresh, or open a menu
 
 **Use Cases:**
-- Most menus (recommended as default)
 - Scenarios requiring complete server control over behaviour
 - Scenarios where menu closure depends on conditions
+- Scenarios where a click refreshes the current menu or opens another menu
+
+{% hint style="warning" %}
+**Important:**
+
+When `after_action: NONE` is used, the client does not automatically close the menu after a button click. Paper Dialog button callbacks are one-shot: after the clicked button's action chain finishes, later clicks on the old dialog will not trigger another server callback. If the action list does not end with `close`, `reset`, `open` / `force-open`, or another action that closes or re-renders the dialog, the client can be left with a cached menu that appears clickable but no longer responds.
+
+Therefore, when using `after_action: NONE`, make sure **every button and every conditional branch** eventually runs one of:
+- `close` / `force-close`: close the menu
+- `reset`: refresh the current menu and rebuild button callbacks
+- `open` / `force-open`: open another menu
+{% endhint %}
 
 **Example:**
 
@@ -178,7 +189,7 @@ Bottom:
           - 'close'  # Manually close the menu
         deny:
           - 'tell: &cInsufficient balance!'
-          # Do not close the menu; let the player choose again
+          - 'reset'  # Re-render the menu to avoid leaving an old dialog with no callback
   deny:
     text: '&c[ Cancel ]'
     actions:
@@ -195,18 +206,24 @@ After clicking a button, the client displays an overlay screen and waits for the
 - Stable user experience
 
 **Disadvantages:**
-- Must ensure the menu is closed (otherwise the overlay screen will remain)
+- Must ensure every button action path eventually closes, refreshes, or opens a menu; otherwise the overlay can remain
 - Adds one extra waiting step
 
 **Use Cases:**
 - Menus with sub-menus (a new menu will open automatically)
 - Critical operations (trades, permission changes)
 - Servers with unstable networks or low TPS
+- Actions that must wait for server-side validation, refresh, or navigation
 
 {% hint style="warning" %}
 **Important:**
 
-When using `WAIT_FOR_RESPONSE`, if a button **does not open a sub-menu**, you must include a `close` action in the action list. Otherwise the client will remain on the overlay screen and the player will be unable to interact.
+When using `WAIT_FOR_RESPONSE`, the client enters a waiting state. As with `NONE`, button callbacks are still one-shot. If the action chain finishes without `close`, `reset`, `open` / `force-open`, or another action that closes or re-renders the dialog, the client can remain on the waiting overlay or old dialog and the player cannot continue interacting.
+
+Therefore, when using `WAIT_FOR_RESPONSE`, make sure **every button and every conditional branch** eventually runs one of:
+- `close` / `force-close`: close the menu and end the wait
+- `reset`: refresh the current menu and rebuild button callbacks
+- `open` / `force-open`: open another menu and end the current wait
 {% endhint %}
 
 **Example (with sub-menu):**
@@ -228,7 +245,7 @@ Bottom:
         - 'close'
 ```
 
-**Example (no sub-menu — must close manually):**
+**Example (no sub-menu — must explicitly finish):**
 
 ```yaml
 Settings:
@@ -246,6 +263,26 @@ Bottom:
     text: '&c[ Cancel ]'
     actions:
       - 'close'  # Required: close the menu and remove the overlay
+```
+
+**Example (validation fails but the menu should stay interactive):**
+
+```yaml
+Settings:
+  after_action: WAIT_FOR_RESPONSE
+
+Bottom:
+  type: 'confirmation'
+  confirm:
+    text: '&a[ Confirm ]'
+    actions:
+      - condition: 'isPosInt.$(amount)'
+        allow:
+          - 'tell: &aInput accepted'
+          - 'close'
+        deny:
+          - 'toast: type=task;msg=Invalid;icon=barrier'
+          - 'reset'  # Required: re-render the menu, clear the wait state, and rebuild callbacks
 ```
 
 ## need_placeholder
@@ -457,6 +494,8 @@ Settings:
   after_action: NONE
 ```
 
+When using this configuration, every button action path must explicitly `close`, `reset`, or open another menu.
+
 ### 2. Critical Operations Configuration
 
 For menus involving critical operations (deletion, payment, permission changes, etc.):
@@ -467,7 +506,7 @@ Settings:
   after_action: WAIT_FOR_RESPONSE
 ```
 
-**Important:** When using `WAIT_FOR_RESPONSE`, ensure that all button action lists include a `close` action (unless a sub-menu is opened).
+**Important:** When using `WAIT_FOR_RESPONSE`, ensure that every button action path eventually `close`s, `reset`s, or opens another menu.
 
 ### 3. Conditional Close Configuration
 
@@ -489,7 +528,7 @@ Bottom:
           - 'close'
         deny:
           - 'tell: &cOperation failed, please try again'
-          # Do not close the menu
+          - 'reset'  # Re-render when keeping the menu interactive
 ```
 
 ### 4. Network Considerations
@@ -497,10 +536,11 @@ Bottom:
 **Servers with good network conditions:**
 - Use `after_action: NONE` for most scenarios
 - Simple menus can use `after_action: CLOSE`
+- With `after_action: NONE`, every button path must eventually `close`, `reset`, or open another menu to avoid leaving a cached dialog with no callback
 
 **Servers with unstable networks or low TPS:**
 - Use `after_action: WAIT_FOR_RESPONSE` for critical operations
-- Ensure menu closure is handled correctly
+- Ensure every button path eventually `close`s, `reset`s, or opens another menu
 
 ---
 
@@ -509,7 +549,8 @@ Bottom:
 1. **Choosing after_action**
    - Use `NONE` by default for maximum flexibility
    - Use `WAIT_FOR_RESPONSE` for critical operations to ensure data consistency
-   - `WAIT_FOR_RESPONSE` must be used alongside a `close` action (unless a sub-menu is opened)
+   - `NONE` does not close automatically, and button callbacks are one-shot; every branch must explicitly `close`, `reset`, or `open`
+   - `WAIT_FOR_RESPONSE` must also explicitly finish or rebuild interaction; every branch must `close`, `reset`, or `open`
 
 2. **Using can_escape**
    - Keep `true` for regular menus to provide a better user experience
