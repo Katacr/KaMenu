@@ -36,6 +36,9 @@ command:
   help_description: "§7Plugin Version: §a{0}"
   help_open: "§a/km open <menu_name> [player] §7- Open a menu"
   help_list: "§a/km list [page] §7- View menu list"
+  help_guide: "§a/km guide §7- Open the getting started guide menu"
+  help_language: "§a/km language <zh_CN|en_US> §7- Set language and reload"
+  help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- Release examples in a language"
   help_reload: "§a/km reload §7- Reload configuration and menus"
   help_action: "§a/km action <player> <action> §7- Test execute action"
   help_help: "§a/km help §7- Show help information"
@@ -43,6 +46,13 @@ command:
   help_footer: "§7For more features and help"
   help_footer_click_text: "[Click Here]"
   help_footer_hover: "View Documentation"
+  guide_missing: "§cThe guide menu resource does not exist or cannot be loaded: §f{0}"
+  guide_load_failed: "§cFailed to load guide menu: {0}"
+  guide_join_hint: "§e[KaMenu] §fNo menus are currently loaded. <text='&a[Open Guide]';hover='&7Click to open the KaMenu guide';command='/km guide'>"
+  language_usage: "§cUsage: /km language <zh_CN|en_US>"
+  language_unknown: "§cUnknown language: {0}"
+  language_set_reload: "§aLanguage set to {0}, and menus have been reloaded. Loaded {1} menus and {2} custom commands."
+  examples_released: "§aReleased {0} examples to example: {1} saved, {2} skipped, {3} failed. Currently loaded {4} menus."
 
 # Item Management
 item:

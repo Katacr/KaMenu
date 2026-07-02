@@ -140,3 +140,8 @@ Bottom:
         - '&e点击测试参数传递'
       actions:
         - 'js: [pass_args] %player_name% 50 {data:test} $(input)'
+  exit:
+    text: '&4[ 退出 ]'
+    actions:
+      - 'tell: &c再见！'
+      - 'close'

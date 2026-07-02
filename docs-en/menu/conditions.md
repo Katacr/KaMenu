@@ -190,6 +190,7 @@ method.value    # Forward check
 | `hasMoney` | Check if player has enough coins | `hasMoney.100` | `!hasMoney.100` |
 | `hasItem` | Check if player inventory has specified material/quantity | `hasItem.[mats=DIAMOND;amount=10]` | `!hasItem.[mats=DIAMOND;amount=10]` |
 | `hasStockItem` | Check if player inventory has stored item | `hasStockItem.MysticFruit;16` | `!hasStockItem.MysticFruit;16` |
+| `inList` / `inGlist` | Check whether a value is in a player/global list | `inGlist.%player_name%;{glist:vip_players}` | `!inList.%player_name%;Steve,Alex` |
 
 **For detailed usage of item checks, see [ hasItem and hasStockItem Condition Methods](conditions_item.md).**
 
@@ -228,6 +229,25 @@ actions:
     deny:
       - 'tell: &cInsufficient balance, 100 coins required'
 ```
+
+**Check whether a value is in a list:**
+
+```yaml
+actions:
+  - condition: "inGlist.%player_name%;{glist:vip_players}"
+    allow:
+      - 'toast: type=task;msg=Listed;icon=emerald'
+    deny:
+      - 'toast: type=error;msg=Not listed;icon=barrier'
+```
+
+`inList` and `inGlist` use the same membership logic and are named for player-list and global-list scenarios. Parameter format is `value;list`, and the list supports:
+
+- JSON array strings returned by `{list:key}` / `{glist:key}`
+- JSON string arrays, such as `["Steve","Alex"]`
+- Simple string lists, such as `Steve,Alex,Notch`
+
+Membership matching is exact and case-insensitive by default.
 
 **Permission check (forward):**
 

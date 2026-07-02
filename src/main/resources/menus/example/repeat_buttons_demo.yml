@@ -1,0 +1,74 @@
+Title: '&6动态按钮列表示例'
+
+Settings:
+  can_escape: true
+  after_action: NONE
+
+JavaScript:
+  getWarpList: |
+    JSON.stringify([
+      { id: "spawn", name: "主城", world: "world", x: 0, y: 80, z: 0 },
+      { id: "home", name: "家", world: "world", x: 120, y: 65, z: -32 },
+      { id: "mine", name: "矿洞", world: "world", x: -42, y: 12, z: 380 },
+      { id: "farm", name: "农场", world: "world", x: 220, y: 70, z: 96 },
+      { id: "nether", name: "下界门", world: "world_nether", x: 12, y: 64, z: 18 },
+      { id: "end", name: "末地门", world: "world_the_end", x: 3, y: 60, z: 3 }
+    ]);
+
+Body:
+  info:
+    type: message
+    width: 320
+    text:
+      - '&7这是一个使用真实按钮生成的动态列表。'
+      - '&7下方按钮会根据列表数据自动分页生成。'
+
+Events:
+  Click:
+    select_warp:
+      - 'toast: type=task;msg=选择{arg:0};icon=compass'
+      - 'tell: &a你选择了传送点：&f{arg:0}'
+      - 'reset'
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    warp_list:
+      type: repeat
+      source: '[getWarpList]'
+      # 示例为了展示翻页使用 4；不填写时默认 20，最大 99
+      page_size: 4
+      item:
+        text: '&a{item.name}'
+        width: 160
+        tooltip:
+          - '&7世界: &f{item.world}'
+          - '&7坐标: &f{item.x}, {item.y}, {item.z}'
+          - '&8ID: {item.id}'
+          - '&e点击选择'
+        actions:
+          - 'actions: select_warp,{item.name}'
+      empty:
+        text: '&7暂无传送点'
+        actions:
+          - 'toast: type=task;msg=暂无数据;icon=barrier'
+
+    prev:
+      text: '&e上一页'
+      show-condition: '{page:warp_list} > 1'
+      actions:
+        - 'page: warp_list prev'
+        - 'reset'
+
+    next:
+      text: '&e下一页'
+      show-condition: '{page:warp_list} < {pages:warp_list}'
+      actions:
+        - 'page: warp_list next'
+        - 'reset'
+
+  exit:
+    text: '&8关闭'
+    actions:
+      - 'close'

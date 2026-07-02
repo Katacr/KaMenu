@@ -9,17 +9,38 @@ import java.net.JarURLConnection
 class MenuManager(private val plugin: KaMenu) {
     private val menus = mutableMapOf<String, YamlConfiguration>()
 
+    data class ReleaseResult(
+        val saved: Int = 0,
+        val skipped: Int = 0,
+        val failed: Int = 0
+    ) {
+        operator fun plus(other: ReleaseResult): ReleaseResult {
+            return ReleaseResult(
+                saved = saved + other.saved,
+                skipped = skipped + other.skipped,
+                failed = failed + other.failed
+            )
+        }
+    }
+
     fun loadMenus() {
         val folder = File(plugin.dataFolder, "menus")
         if (!folder.exists()) folder.mkdirs()
 
-        // 首次加载时释放所有默认菜单
-        if (folder.listFiles()?.isEmpty() == true) {
-            saveDefaultMenus(folder, "menus")
-        }
-
         // 递归加载所有菜单文件
         loadMenusRecursively(folder, "")
+    }
+
+    fun releaseExampleMenus(language: String = plugin.config.getString("language", "zh_CN") ?: "zh_CN", overwrite: Boolean = false): ReleaseResult {
+        val folder = File(plugin.dataFolder, "menus")
+        if (!folder.exists()) folder.mkdirs()
+
+        val sourcePath = if (language.equals("en_US", ignoreCase = true)) {
+            "menus/exampleEN"
+        } else {
+            "menus/example"
+        }
+        return saveDefaultMenus(File(folder, "example"), sourcePath, overwrite)
     }
 
     /**
@@ -27,41 +48,46 @@ class MenuManager(private val plugin: KaMenu) {
      * @param folder 目标文件夹
      * @param resourcePath jar 包内的资源路径前缀
      */
-    private fun saveDefaultMenus(folder: File, resourcePath: String) {
+    private fun saveDefaultMenus(folder: File, resourcePath: String, overwrite: Boolean = false): ReleaseResult {
         try {
+            if (!folder.exists()) folder.mkdirs()
+
             // 尝试从 jar 包中获取资源
             val url = plugin.javaClass.classLoader.getResource(resourcePath)
 
             if (url == null) {
                 plugin.logger.warning(plugin.languageManager.getMessage("manager.resource_not_found", resourcePath))
-                return
+                return ReleaseResult(failed = 1)
             }
 
-            when (url.protocol) {
+            return when (url.protocol) {
                 "file" -> {
                     // IDE 开发环境，直接从文件系统读取
                     val sourceDir = File(url.toURI())
-                    saveDefaultMenusFromFileSystem(folder, sourceDir, resourcePath)
+                    saveDefaultMenusFromFileSystem(folder, sourceDir, overwrite)
                 }
                 "jar" -> {
                     // 生产环境，从 jar 包读取
                     val jarConnection = url.openConnection() as JarURLConnection
                     val jarFile = File(jarConnection.jarFileURL.toURI())
-                    saveDefaultMenusFromJar(folder, jarFile, resourcePath)
+                    saveDefaultMenusFromJar(folder, jarFile, resourcePath, overwrite)
                 }
                 else -> {
                     plugin.logger.warning(plugin.languageManager.getMessage("manager.unsupported_protocol", url.protocol))
+                    ReleaseResult(failed = 1)
                 }
             }
         } catch (e: Exception) {
             plugin.logger.warning(plugin.languageManager.getMessage("manager.save_error", e.message ?: "Unknown error"))
+            return ReleaseResult(failed = 1)
         }
     }
 
     /**
      * 从文件系统（IDE环境）复制菜单文件
      */
-    private fun saveDefaultMenusFromFileSystem(targetFolder: File, sourceDir: File, resourcePath: String) {
+    private fun saveDefaultMenusFromFileSystem(targetFolder: File, sourceDir: File, overwrite: Boolean): ReleaseResult {
+        var result = ReleaseResult()
         sourceDir.listFiles()?.forEach { file ->
             val targetFile = File(targetFolder, file.name)
 
@@ -71,21 +97,30 @@ class MenuManager(private val plugin: KaMenu) {
                     targetFile.mkdirs()
 
                 }
-                saveDefaultMenusFromFileSystem(targetFile, file, "$resourcePath/${file.name}")
+                result += saveDefaultMenusFromFileSystem(targetFile, file, overwrite)
             } else if (file.name.endsWith(".yml")) {
                 // 复制 yml 文件
-                if (!targetFile.exists()) {
-                    file.copyTo(targetFile, overwrite = false)
-
+                if (targetFile.exists() && !overwrite) {
+                    result += ReleaseResult(skipped = 1)
+                } else {
+                    try {
+                        file.copyTo(targetFile, overwrite = true)
+                        result += ReleaseResult(saved = 1)
+                    } catch (e: Exception) {
+                        plugin.logger.warning(plugin.languageManager.getMessage("manager.save_error", e.message ?: "Unknown error"))
+                        result += ReleaseResult(failed = 1)
+                    }
                 }
             }
         }
+        return result
     }
 
     /**
      * 从 jar 包中提取菜单文件
      */
-    private fun saveDefaultMenusFromJar(targetFolder: File, jarFile: File, resourcePath: String) {
+    private fun saveDefaultMenusFromJar(targetFolder: File, jarFile: File, resourcePath: String, overwrite: Boolean): ReleaseResult {
+        var result = ReleaseResult()
         try {
             java.util.zip.ZipFile(jarFile).use { zip ->
                 zip.entries().asSequence()
@@ -100,18 +135,23 @@ class MenuManager(private val plugin: KaMenu) {
                         targetFile.parentFile?.mkdirs()
 
                         // 提取文件
-                        if (!targetFile.exists()) {
+                        if (targetFile.exists() && !overwrite) {
+                            result += ReleaseResult(skipped = 1)
+                        } else {
                             zip.getInputStream(entry).use { input ->
                                 targetFile.outputStream().use { output ->
                                     input.copyTo(output)
                                 }
                             }
+                            result += ReleaseResult(saved = 1)
                         }
                     }
             }
         } catch (e: Exception) {
             plugin.logger.warning(plugin.languageManager.getMessage("manager.jar_extract_error", e.message ?: "Unknown error"))
+            result += ReleaseResult(failed = 1)
         }
+        return result
     }
 
     /**

@@ -701,7 +701,7 @@ Body:
 **完整示例 - 玩家互动菜单：**
 
 ```yaml
-# menus/inspect_player.yml
+# menus/example/inspect_player.yml
 Title: '玩家信息'
 Background: '#1a1a1a'
 
@@ -754,13 +754,13 @@ Events:
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: false
 ```
 
 当玩家右键其他玩家时：
 1. 系统自动设置 `{meta:player}` 为被点击玩家名称
-2. 打开 `inspect_player` 菜单
+2. 打开 `example/inspect_player` 菜单
 3. 菜单中的 `[HEAD:{meta:player}]` 等引用会显示被点击玩家的装备
 
 **注意事项：**

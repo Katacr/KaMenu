@@ -701,7 +701,7 @@ Body:
 **Complete example — Player inspection menu:**
 
 ```yaml
-# menus/inspect_player.yml
+# menus/example/inspect_player.yml
 Title: 'Player Info'
 Background: '#1a1a1a'
 
@@ -754,13 +754,13 @@ In slot reference mode, use the `description` property to add descriptive text, 
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: false
 ```
 
 When a player right-clicks another player:
 1. The system automatically sets `{meta:player}` to the clicked player's name
-2. The `inspect_player` menu opens
+2. The `example/inspect_player` menu opens
 3. The `[HEAD:{meta:player}]` references in the menu display the clicked player's equipment
 
 **Notes:**

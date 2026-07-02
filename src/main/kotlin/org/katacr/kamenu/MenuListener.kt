@@ -117,8 +117,18 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
+        val player = event.player
+        if (player.isOp && plugin.menuManager.getAllMenuIds().isEmpty()) {
+            Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+                if (!player.isOnline || !player.isOp || plugin.menuManager.getAllMenuIds().isNotEmpty()) {
+                    return@Runnable
+                }
+                val message = plugin.languageManager.getMessage("command.guide_join_hint")
+                player.sendMessage(MenuActions.parseClickableText(message))
+            }, 80L)
+        }
+
         if (plugin.config.getBoolean("check-update", true)) {
-            val player = event.player
             Bukkit.getScheduler().runTaskLater(plugin, Runnable {
                 UpdateChecker.notifyIfUpdateAvailable(player)
             }, 100L) // 5秒延迟，避免被进服消息冲掉
@@ -128,6 +138,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
         MenuTaskManager.cancel(event.player)
+        MenuListManager.clear(event.player)
         // 清理该玩家的元数据缓存
         plugin.metaDataManager.clearPlayerMeta(event.player.uniqueId)
     }

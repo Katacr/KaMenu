@@ -13,6 +13,8 @@ object TextResolver {
 
     private val dataPattern = Regex("\\{data:([^}]+)}")
     private val globalDataPattern = Regex("\\{gdata:([^}]+)}")
+    private val listPattern = Regex("\\{list:([^}]+)}")
+    private val globalListPattern = Regex("\\{glist:([^}]+)}")
     private val metaPattern = Regex("\\{meta:([^}]+)}")
     private val argPattern = Regex("\\{arg:([^}]+)}")
     private val jsPattern = Regex("\\{js:([^}]+)}")
@@ -29,7 +31,13 @@ object TextResolver {
         var result = text ?: return ""
 
         variables.forEach { (key, value) ->
-            result = result.replace("\$($key)", value)
+            if (!key.startsWith("item.") && !key.startsWith("list.") && !key.startsWith("arg:")) {
+                result = result.replace("\$($key)", value)
+            }
+        }
+
+        variables.forEach { (key, value) ->
+            result = result.replace("{$key}", value)
         }
 
         result = result.replace(argPattern) { match ->
@@ -38,6 +46,8 @@ object TextResolver {
 
         val currentPlugin = plugin
         if (currentPlugin != null) {
+            result = result.replace("{language}", currentPlugin.config.getString("language", "zh_CN") ?: "zh_CN")
+
             result = result.replace(dataPattern) { match ->
                 val key = match.groupValues[1]
                 currentPlugin.databaseManager.getPlayerData(player.uniqueId, key)
@@ -49,6 +59,14 @@ object TextResolver {
                 currentPlugin.databaseManager.getGlobalData(key)
                     ?: languageManager?.getMessage("papi.data_not_found", key)
                     ?: "null"
+            }
+            result = result.replace(listPattern) { match ->
+                val key = match.groupValues[1]
+                currentPlugin.databaseManager.getPlayerListJson(player.uniqueId, key)
+            }
+            result = result.replace(globalListPattern) { match ->
+                val key = match.groupValues[1]
+                currentPlugin.databaseManager.getGlobalListJson(key)
             }
             result = result.replace(metaPattern) { match ->
                 val key = match.groupValues[1]
@@ -73,6 +91,19 @@ object TextResolver {
             }
         }
 
+        return result
+    }
+
+    fun resolve(
+        player: Player,
+        text: String?,
+        variables: Map<String, String> = emptyMap(),
+        dynamicResolver: (String) -> String?
+    ): String {
+        var result = resolve(player, text, variables)
+        result = result.replace(Regex("\\{([^{}]+)}")) { match ->
+            dynamicResolver(match.groupValues[1]) ?: match.value
+        }
         return result
     }
 }

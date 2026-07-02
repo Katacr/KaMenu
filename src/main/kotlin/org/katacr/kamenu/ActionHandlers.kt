@@ -374,6 +374,95 @@ object ActionHandlers {
     }
 
     /**
+     * 解析并执行 list/glist 动作。
+     *
+     * 列表以 JSON 字符串数组存储，读取变量时可直接作为 repeat source 使用。
+     */
+    fun parseAndExecuteListAction(
+        args: String,
+        player: Player,
+        dataType: String,
+        setAction: (String, List<String>) -> Unit,
+        addAction: (String, List<String>, Boolean) -> Unit,
+        removeAction: (String, List<String>) -> Unit,
+        clearAction: (String) -> Unit,
+        deleteAction: (String) -> Unit
+    ) {
+        var type = ""
+        var key = ""
+        var value = ""
+        var split = ""
+        var unique = true
+
+        args.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val paramKey = parts[0].trim().lowercase()
+                val paramValue = parts[1].trim().removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                when (paramKey) {
+                    "type" -> type = paramValue.lowercase()
+                    "key" -> key = paramValue
+                    "var", "value" -> value = paramValue
+                    "split", "separator" -> split = paramValue
+                    "unique" -> unique = !(paramValue.equals("false", ignoreCase = true) || paramValue == "0" || paramValue.equals("no", ignoreCase = true))
+                }
+            }
+        }
+
+        if (key.isEmpty()) {
+            plugin?.logger?.warning("$dataType 操作失败: 缺少 key 参数。玩家: ${player.name}")
+            return
+        }
+
+        fun parseValues(): List<String> {
+            if (value.isEmpty()) return emptyList()
+            if (split.isNotEmpty()) {
+                val separator = when (split.lowercase()) {
+                    "\\n", "newline", "line" -> "\n"
+                    "\\t", "tab" -> "\t"
+                    else -> split
+                }
+                return value.split(separator).map { it.trim() }.filter { it.isNotEmpty() }
+            }
+            if (value.trim().startsWith("[") && value.trim().endsWith("]")) {
+                return DatabaseManager.decodeStringList(value)
+            }
+            return listOf(value)
+        }
+
+        when (type) {
+            "set", "create" -> {
+                setAction(key, parseValues())
+            }
+            "add", "append" -> {
+                val values = parseValues()
+                if (values.isEmpty()) {
+                    plugin?.logger?.warning("$dataType 操作失败: add 操作缺少 var 参数。玩家: ${player.name}")
+                } else {
+                    addAction(key, values, unique)
+                }
+            }
+            "remove", "take" -> {
+                val values = parseValues()
+                if (values.isEmpty()) {
+                    plugin?.logger?.warning("$dataType 操作失败: remove/take 操作缺少 var 参数。玩家: ${player.name}")
+                } else {
+                    removeAction(key, values)
+                }
+            }
+            "clear" -> {
+                clearAction(key)
+            }
+            "delete" -> {
+                deleteAction(key)
+            }
+            else -> {
+                plugin?.logger?.warning("$dataType 操作失败: 无效的 type 参数 '$type'，支持的类型: set, add, remove, take, clear, delete。玩家: ${player.name}")
+            }
+        }
+    }
+
+    /**
      * 解析并处理存储库物品给予/扣除动作
      */
     fun parseAndHandleStockItem(player: Player, args: String, variables: Map<String, String> = emptyMap()) {

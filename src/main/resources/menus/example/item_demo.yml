@@ -166,3 +166,8 @@ Bottom:
             - 'tell: &a购买成功！用 16 个"测试物品"换取了 10 个钻石'
           deny:
             - 'tell: &c购买失败！你需要 16 个"测试物品"'
+  exit:
+    text: '&4[ 退出 ]'
+    actions:
+      - 'tell: &c再见！'
+      - 'close'

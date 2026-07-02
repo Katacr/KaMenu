@@ -116,6 +116,46 @@ asyncDelay(20, function() {
 
 ```javascript
 var target = getPlayer("Steve");
+```
+
+### `papi(placeholder, targetPlayer)`
+解析 PlaceholderAPI 变量。`targetPlayer` 可选，未填写时使用当前 `player`。
+
+支持带 `%` 和不带 `%` 两种写法：
+
+```javascript
+var playerName = papi("player_name");
+var level = parseInt(papi("%player_level%"));
+var onlinePlayers = JSON.parse(papi("kamenu_online_players"));
+var targetLevel = papi("player_level", getPlayer("Steve"));
+```
+
+如果未安装 PlaceholderAPI 或解析失败，返回空字符串。
+
+### `kvar(variable, targetPlayer)`
+解析 KaMenu 内部变量。`targetPlayer` 可选，未填写时使用当前 `player`。
+
+支持带 `{}` 和不带 `{}` 两种写法：
+
+```javascript
+var coins = data("coins");
+var serverStatus = gdata("server_status");
+var tempChoice = meta("temporary_choice");
+var friends = JSON.parse(list("friends"));
+var servers = JSON.parse(glist("servers"));
+var raw = kvar("{gdata:server_status}");
+```
+
+便捷函数：
+
+- `data(key, targetPlayer)`：等价于 `kvar("data:" + key, targetPlayer)`
+- `gdata(key, targetPlayer)`：等价于 `kvar("gdata:" + key, targetPlayer)`
+- `meta(key, targetPlayer)`：等价于 `kvar("meta:" + key, targetPlayer)`
+- `list(key, targetPlayer)`：等价于 `kvar("list:" + key, targetPlayer)`，返回 JSON 数组字符串
+- `glist(key, targetPlayer)`：等价于 `kvar("glist:" + key, targetPlayer)`，返回 JSON 数组字符串
+
+```javascript
+var target = getPlayer("Steve");
 if (target) {
     tell(target, "你好!");
 }

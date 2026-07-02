@@ -1,0 +1,105 @@
+# ============================================
+# Player Interaction Menu Example
+# Opened by listeners.player-click in config.yml
+# ============================================
+
+Title: '&ePlayer Interaction - {meta:player}'
+
+Settings:
+  can_escape: true
+  after_action: CLOSE
+  pause: false
+
+Body:
+  target:
+    type: message
+    width: 360
+    text:
+      - '&aInspecting player: &f{meta:player}'
+      - '&eThis menu is a template for Shift+right-click player interactions.'
+      - '&fThe equipment display below reads the clicked player''s current armor.'
+
+  helmet_display:
+    type: item
+    material: '[HEAD:{meta:player}]'
+    name: '&b{meta:player}''s Helmet'
+    width: 32
+    height: 32
+
+  chest_display:
+    type: item
+    material: '[CHEST:{meta:player}]'
+    name: '&b{meta:player}''s Chestplate'
+    width: 32
+    height: 32
+
+  leggings_display:
+    type: item
+    material: '[LEGGINGS:{meta:player}]'
+    name: '&b{meta:player}''s Leggings'
+    width: 32
+    height: 32
+
+  boots_display:
+    type: item
+    material: '[BOOTS:{meta:player}]'
+    name: '&b{meta:player}''s Boots'
+    width: 32
+    height: 32
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    add_friend:
+      text: '&a[ Add Friend ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=Friend request;icon=emerald'
+        - 'command: friend add {meta:player}'
+
+    teleport_to:
+      text: '&b[ Teleport To ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=Teleport req;icon=ender_pearl'
+        - 'command: tpa {meta:player}'
+
+    teleport_here:
+      text: '&d[ Teleport Here ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=Bring request;icon=ender_eye'
+        - 'command: tpahere {meta:player}'
+
+    private_message:
+      text: '&e[ Message ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=Open message;icon=paper'
+        - 'command: msg {meta:player} '
+
+    inspect_inventory:
+      text: '&6[ View Inventory ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=View inv;icon=chest'
+        - 'command: invsee {meta:player}'
+
+    kick_player:
+      text: '&c[ Kick Player ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=Kick player;icon=barrier'
+        - 'command: kick {meta:player} Kicked by an administrator'
+
+  exit:
+    text: '&8[ Close ]'
+    width: 140
+    actions:
+      - 'close'
+
+# Notes:
+# - {meta:player} comes from the player-click listener and stores the clicked player's name.
+# - [HEAD:{meta:player}] / [CHEST:{meta:player}] and similar slot references display target equipment.
+# - friend, tpa, tpahere, invsee, and similar commands require matching server plugins and permissions.

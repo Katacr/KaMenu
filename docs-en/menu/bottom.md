@@ -101,6 +101,134 @@ Supports multiple custom buttons arranged in a matrix, with an optional exit but
 | `tooltip` | List | Optional, button hover tooltip (one string per line), supports color codes and MiniMessage |
 | `actions` | List | Optional, list of actions to execute on click; if not set, clicking does nothing |
 
+### repeat - Dynamic Button Lists
+
+Buttons under `multi.buttons` can use `type: repeat` to generate real action buttons from a dynamic data source. This is useful for player lists, warp lists, friend lists, mail lists, and other content with unknown item counts.
+
+```yaml
+JavaScript:
+  getWarpList: |
+    JSON.stringify([
+      { id: "home", name: "Home", world: "world", x: 100, y: 64, z: 200 },
+      { id: "mine", name: "Mine", world: "world", x: -30, y: 12, z: 80 }
+    ]);
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    warp_list:
+      type: repeat
+      source: "[getWarpList]"
+      page_size: 20
+      item:
+        text: "&a{item.name}"
+        width: 160
+        tooltip:
+          - "&7World: &f{item.world}"
+          - "&7Location: &f{item.x}, {item.y}, {item.z}"
+          - "&eClick to teleport"
+        actions:
+          - "actions: teleport_warp,{item.id}"
+      empty:
+        text: "&7No warps"
+        actions:
+          - "toast: type=task;msg=No data;icon=barrier"
+
+    prev:
+      text: "&ePrevious"
+      show-condition: "{page:warp_list} > 1"
+      actions:
+        - "page: warp_list prev"
+        - "reset"
+
+    next:
+      text: "&eNext"
+      show-condition: "{page:warp_list} < {pages:warp_list}"
+      actions:
+        - "page: warp_list next"
+        - "reset"
+```
+
+**repeat Configuration:**
+
+| Field | Type | Default | Description |
+|------|------|---------|-------------|
+| `type` | String | — | Must be `repeat` |
+| `source` | String | — | Data source. Recommended format is `[functionName]`, calling a `JavaScript` function that returns a JSON array |
+| `split` | String | — | Optional separator for non-JSON string lists, such as `","` |
+| `trim` | Boolean | `true` | Whether to trim each item when `split` is used |
+| `page_size` / `page-size` | Int | `20` | Number of generated buttons per page, range `1-99` |
+| `item` | Node | — | Button template for each list item |
+| `empty` | Node | — | Optional button shown when the source has no items |
+
+`source` can return a JSON array. Items may be objects, strings, or numbers. Object fields become `{item.fieldName}` and can be used in button text, tooltip, show-condition, and actions.
+
+Built-in list variables `{list:key}` and `{glist:key}` return JSON array strings and can be used directly as `source`:
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    friends:
+      type: repeat
+      source: "{list:friends}"
+      item:
+        text: "&a{item.value}"
+        actions:
+          - "tell: You clicked {item.value}"
+```
+
+If the data source returns a simple string list such as `player1, player2, player3`, use `split`:
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    player_list:
+      type: repeat
+      source: "%kamenu_online_players%"
+      split: ","
+      trim: true
+      item:
+        text: "&a{item.value}"
+        actions:
+          - "tell: You clicked {item.value}"
+```
+
+Built-in item variables:
+
+| Variable | Description |
+|----------|-------------|
+| `{item.xxx}` | Field from the current item object |
+| `{item.value}` | Value when the current item is a string or number |
+| `{item.index}` | Index in the full list, starting at 0 |
+| `{item.number}` | Number in the full list, starting at 1 |
+| `{item.page_index}` | Index on the current page, starting at 0 |
+| `{item.page_number}` | Number on the current page, starting at 1 |
+
+Pagination variables can be used in normal `Bottom.multi.buttons` and repeat item templates:
+
+| Variable | Description |
+|----------|-------------|
+| `{page:listId}` | Current page |
+| `{pages:listId}` | Total pages |
+| `{total:listId}` | Total item count |
+| `{start:listId}` | Current page start index |
+| `{end:listId}` | Current page end index |
+
+Pagination actions:
+
+```yaml
+- "page: warp_list next"
+- "page: warp_list prev"
+- "page: warp_list 1"
+- "page: warp_list +1"
+- "page: warp_list -1"
+```
+
+The `page:` action only changes page state. It does not refresh the dialog by itself. Usually follow it with `reset`, `open`, or `force-open`.
+
 **Exit Button Configuration:**
 
 | Field | Type | Description |

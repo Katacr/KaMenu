@@ -5,7 +5,7 @@
 
 # Configuration file version (DO NOT MODIFY THIS VALUE)
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
-config-version: 3
+config-version: 4
 
 # Plugin language (must match filename in lang/ folder)
 # Supported values: zh_CN (Chinese), en_US (English)
@@ -51,14 +51,14 @@ listeners:
   # 切换副手监听器（默认按 F 键触发）
   swap-hand:
     enabled: true           # Enable this listener / 启用此监听器
-    menu: 'main_menu'       # Menu file path to open / 要打开的菜单文件路径
+    menu: 'example/main_menu'       # Menu file path to open / 要打开的菜单文件路径
     require-sneaking: true  # Require sneaking to trigger / 需要潜行才能触发
 
   # Right-click player listener (triggered by right-clicking on a player)
   # 右键玩家监听器（右键玩家触发）
   player-click:
     enabled: true          # Enable this listener / 启用此监听器
-    menu: 'inspect_player'  # Menu file path to open / 要打开的菜单文件路径
+    menu: 'example/inspect_player'  # Menu file path to open / 要打开的菜单文件路径
     require-sneaking: true # Require sneaking to trigger (Shift+Right-Click) / 需要潜行才能触发（Shift+右键）
 
   # Item lore detection listener (triggered by right-clicking the item)
@@ -70,7 +70,7 @@ listeners:
       enabled: true           # Enable this menu / 启用此菜单
       material: 'CLOCK'       # Item material to detect / 要检测的物品材质
       target-lore: 'main menu'     # Lore text to match / 匹配的lore文本
-      menu: 'main_menu'       # Menu file path to open / 要打开的菜单文件路径
+      menu: 'example/main_menu'       # Menu file path to open / 要打开的菜单文件路径
       require-sneaking: false # Require sneaking to trigger / 需要潜行才能触发
 
     # Shop menu configuration

@@ -1,0 +1,73 @@
+Title: '&6Dynamic Button List Demo'
+
+Settings:
+  can_escape: true
+  after_action: NONE
+
+JavaScript:
+  getWarpList: |
+    JSON.stringify([
+      { id: "spawn", name: "Spawn", world: "world", x: 0, y: 80, z: 0 },
+      { id: "home", name: "Home", world: "world", x: 120, y: 65, z: -32 },
+      { id: "mine", name: "Mine", world: "world", x: -42, y: 12, z: 380 },
+      { id: "farm", name: "Farm", world: "world", x: 220, y: 70, z: 96 },
+      { id: "nether", name: "Nether Portal", world: "world_nether", x: 12, y: 64, z: 18 },
+      { id: "end", name: "End Portal", world: "world_the_end", x: 3, y: 60, z: 3 }
+    ]);
+
+Body:
+  info:
+    type: message
+    width: 320
+    text:
+      - '&7This menu uses real buttons generated from a list.'
+      - '&7The buttons below are paged automatically from the source data.'
+
+Events:
+  Click:
+    select_warp:
+      - 'toast: type=task;msg=Selected {arg:0};icon=compass'
+      - 'tell: &aYou selected warp: &f{arg:0}'
+      - 'reset'
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    warp_list:
+      type: repeat
+      source: '[getWarpList]'
+      page_size: 4
+      item:
+        text: '&a{item.name}'
+        width: 160
+        tooltip:
+          - '&7World: &f{item.world}'
+          - '&7Location: &f{item.x}, {item.y}, {item.z}'
+          - '&8ID: {item.id}'
+          - '&eClick to select'
+        actions:
+          - 'actions: select_warp,{item.name}'
+      empty:
+        text: '&7No warps'
+        actions:
+          - 'toast: type=task;msg=No data;icon=barrier'
+
+    prev:
+      text: '&ePrevious'
+      show-condition: '{page:warp_list} > 1'
+      actions:
+        - 'page: warp_list prev'
+        - 'reset'
+
+    next:
+      text: '&eNext'
+      show-condition: '{page:warp_list} < {pages:warp_list}'
+      actions:
+        - 'page: warp_list next'
+        - 'reset'
+
+  exit:
+    text: '&8Close'
+    actions:
+      - 'close'

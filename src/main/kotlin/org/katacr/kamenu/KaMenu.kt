@@ -222,6 +222,7 @@ class KaMenu : JavaPlugin() {
         }
 
         MenuTaskManager.cancelAll()
+        MenuListManager.clearAll()
         if (::menuManager.isInitialized) {
             menuManager.clear()
         }

@@ -120,6 +120,85 @@ View all loaded menus on the server.
 
 ---
 
+### /km guide
+
+Opens the built-in getting started guide menu.
+
+**Format:** `/km guide`
+
+**Permission:** `kamenu.admin`
+
+**Notes:**
+- The guide menu is loaded from inside the plugin jar into memory and is not written to the `menus` directory
+- It helps with first-time language setup, example release, and example menu descriptions
+- When no menus are loaded and an OP player joins the server, KaMenu sends a clickable prompt to open this guide
+
+**Examples:**
+
+```bash
+/km guide
+/kamenu guide
+```
+
+---
+
+### /km language
+
+Sets the plugin language and immediately reloads configuration and menus.
+
+**Format:** `/km language <zh_CN|en_US>`
+
+**Permission:** `kamenu.admin`
+
+**Alias:** `/km lang <zh_CN|en_US>`
+
+**Examples:**
+
+```bash
+# Switch to Simplified Chinese
+/km language zh_CN
+
+# Switch to English
+/km language en_US
+```
+
+---
+
+### /km examples
+
+Releases built-in sample menus for the selected language to `plugins/KaMenu/menus/example/`.
+
+**Format:** `/km examples [zh_CN|en_US] [overwrite]`
+
+**Permission:** `kamenu.admin`
+
+**Aliases:** `/km example`, `/km release-examples`
+
+**Notes:**
+- If no language is specified, KaMenu uses the current `language` in `config.yml`
+- Both Chinese and English examples are released to `menus/example/`; no runtime `exampleEN` directory is created
+- Existing files are skipped by default
+- Add `overwrite` to replace existing sample menus with the same names
+- Menus are automatically reloaded after release
+
+**Examples:**
+
+```bash
+# Release examples using the current language
+/km examples
+
+# Release Chinese examples
+/km examples zh_CN
+
+# Release English examples
+/km examples en_US
+
+# Overwrite Chinese examples
+/km examples zh_CN overwrite
+```
+
+---
+
 ### /km reload
 
 Reloads all plugin configuration files and menu files without restarting the server.
@@ -226,18 +305,11 @@ Test and execute a specified action for debugging and verifying action configura
 **Notes:** This command can be used by both players and the console; a target player must always be specified.
 
 **Supported action types:**
-- `tell:message` — Send a chat message
-- `actionbar:message` — Send an ActionBar message
-- `title:params` — Send a title
-- `sound:params` — Play a sound
-- `command:command` — Player executes a command
-- `console:command` — Console executes a command
-- `data:operation` — Player data operation
-- `gdata:operation` — Global data operation
-- `meta:operation` — Metadata operation
+- Supports all server-executed action prefixes, such as `tell:`, `actionbar:`, `title:`, `hovertext:`, `command:`, `chat:`, `console:`, `sound:`, `open:`, `force-open:`, `close`, `force-close`, `reset`, `server:`, `tppos:`, `data:`, `gdata:`, `list:`, `glist:`, `meta:`, `toast:`, `money:`, `stock-item:`, `item:`, `js:`, and more.
+- Action-chain or menu-context actions such as `wait`, `return`, `run-task:`, `stop-task:`, `stop-current-task`, `page:`, and `actions:` can be entered, but some effects depend on the current menu config or task lifecycle.
+- `url:` and `copy:` are Paper Dialog static button click events. They only work as a single menu button action and are not useful `/km action` test targets.
 
-
-  For a full list of action types, see [🤖 Actions](../menu/actions.md).
+For a full list of action types, see [🤖 Actions](../menu/actions.md).
 
 ---
 
@@ -262,7 +334,7 @@ Test and execute a specified action for debugging and verifying action configura
 
 **Tab completion:**
 - After `/km action `, Tab shows all online players
-- After a player name, Tab shows common action prefixes
+- After a player name, Tab shows supported server action prefixes
 
 {% hint style="info" %}
 This command supports all built-in variables (`{data:var}`, `{gdata:var}`, `{meta:var}`) and PlaceholderAPI variables (`%player_name%`, etc.).

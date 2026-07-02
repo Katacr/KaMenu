@@ -60,11 +60,42 @@ All KaMenu features work standalone — no hard dependencies. The following are 
 2. Start the server
 3. The plugin will automatically:
    - Create the `plugins/KaMenu/` configuration directory
-   - Generate the default `config.yml` and sample menus
+   - Generate the default `config.yml`
    - Initialize the database (SQLite by default)
 
 {% hint style="info" %}
-After the first startup, sample menu files are automatically generated in `plugins/KaMenu/menus/`. You can reference or modify them directly.
+For first-time setup, run `/kamenu guide` (or `/km guide`) in game to open the getting started guide. The guide menu is loaded directly from inside the plugin jar into memory and is not written to the `menus` directory.
+{% endhint %}
+
+### 4. Open the Getting Started Guide
+
+After the server starts, a player with the `kamenu.admin` permission can run:
+
+```bash
+/kamenu guide
+```
+
+The guide helps you set the plugin language and release sample menus for the selected language. Sample menus are written to:
+
+```text
+plugins/KaMenu/menus/example/
+```
+
+You can also release sample menus directly with commands:
+
+```bash
+# Release examples using the current plugin language
+/kamenu examples
+
+# Release Chinese examples
+/kamenu examples zh_CN
+
+# Release English examples
+/kamenu examples en_US
+```
+
+{% hint style="info" %}
+When no menus are loaded and an OP player joins the server, KaMenu sends a clickable guide prompt to make first-time setup easier.
 {% endhint %}
 
 ---
@@ -76,10 +107,10 @@ After starting the server, the console should show the KaMenu startup banner, in
 You can also verify in-game with:
 
 ```
-/km open example/actions_demo
+/kamenu guide
 ```
 
-If a demo menu pops up, the installation is working correctly.
+If the guide opens, the installation is working correctly. After releasing the examples, you can also run `/km open example/actions_demo` to open the actions demo menu.
 
 ---
 

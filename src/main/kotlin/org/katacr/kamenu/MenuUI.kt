@@ -25,16 +25,21 @@ import org.katacr.kamenu.ConditionUtils.getInt
 import org.katacr.kamenu.ConditionUtils.getString
 import org.katacr.kamenu.ConditionUtils.getStringList
 import org.katacr.kamenu.ConditionUtils.getType
-import java.util.concurrent.CompletableFuture
 import org.bukkit.inventory.meta.SkullMeta
 import com.destroystokyo.paper.profile.ProfileProperty
 
 object MenuUI {
     private lateinit var plugin: KaMenu
+    private const val DEFAULT_REPEAT_PAGE_SIZE = 20
+    private const val MAX_REPEAT_PAGE_SIZE = 99
 
     private data class DropdownOption(
         val id: String,
         val display: String
+    )
+
+    private data class RepeatItem(
+        val values: Map<String, String>
     )
 
     /**
@@ -53,6 +58,253 @@ object MenuUI {
             DropdownOption(id, display)
         } else {
             DropdownOption(raw, raw)
+        }
+    }
+
+    private fun dynamicVariable(player: Player, contextId: String, key: String): String? {
+        val dotIndex = key.indexOf(':')
+        if (dotIndex <= 0) {
+            return null
+        }
+
+        val type = key.substring(0, dotIndex).trim().lowercase()
+        val listId = key.substring(dotIndex + 1).trim()
+        if (listId.isEmpty()) {
+            return null
+        }
+
+        val info = MenuListManager.getPageInfo(player, contextId, listId)
+        return when (type) {
+            "page" -> (info?.page ?: MenuListManager.getPage(player, contextId, listId)).toString()
+            "pages" -> (info?.pages ?: 1).toString()
+            "total" -> (info?.total ?: 0).toString()
+            "start" -> (info?.start ?: 0).toString()
+            "end" -> (info?.end ?: 0).toString()
+            else -> null
+        }
+    }
+
+    private fun resolveMenuText(
+        player: Player,
+        text: String?,
+        variables: Map<String, String> = emptyMap(),
+        contextId: String? = null
+    ): String {
+        return if (contextId == null) {
+            TextResolver.resolve(player, text, variables)
+        } else {
+            TextResolver.resolve(player, text, variables) { key ->
+                dynamicVariable(player, contextId, key)
+            }
+        }
+    }
+
+    private fun resolveRepeatSource(
+        player: Player,
+        config: YamlConfiguration,
+        rawSource: String,
+        split: String?,
+        trimItems: Boolean
+    ): List<RepeatItem> {
+        val source = rawSource.trim()
+        val result = when {
+            isJavaScriptFunctionSource(source) -> {
+                val functionName = source.substring(1, source.length - 1).trim()
+                JavaScriptManager.executePredefinedFunctionWithArgs(player, functionName, "", config)
+            }
+            else -> resolveMenuText(player, source)
+        } ?: return emptyList()
+
+        return repeatItemsFromAny(result, split, trimItems)
+    }
+
+    private fun isJavaScriptFunctionSource(source: String): Boolean {
+        if (!source.startsWith("[") || !source.endsWith("]")) {
+            return false
+        }
+        val functionName = source.substring(1, source.length - 1).trim()
+        return functionName.matches(Regex("[A-Za-z_$][A-Za-z0-9_$]*"))
+    }
+
+    private fun repeatItemsFromAny(value: Any?, split: String? = null, trimItems: Boolean = true): List<RepeatItem> {
+        return when (value) {
+            null -> emptyList()
+            is Iterable<*> -> value.mapIndexedNotNull { index, item -> repeatItemFromAny(index, item) }
+            is Array<*> -> value.mapIndexedNotNull { index, item -> repeatItemFromAny(index, item) }
+            is String -> {
+                val parsed = JavaScriptManager.parseJsonCompatible(value)
+                if (parsed != null && parsed !is String) {
+                    repeatItemsFromAny(parsed)
+                } else if (!split.isNullOrEmpty()) {
+                    splitStringItems(value, split, trimItems)
+                } else {
+                    value.lines()
+                        .filter { it.isNotBlank() }
+                        .mapIndexed { index, line ->
+                            RepeatItem(mapOf(
+                                "item.value" to line.trim(),
+                                "item.text" to line.trim(),
+                                "item.index" to index.toString(),
+                                "item.number" to (index + 1).toString()
+                            ))
+                        }
+                }
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun splitStringItems(value: String, split: String, trimItems: Boolean): List<RepeatItem> {
+        return value.split(split)
+            .map { if (trimItems) it.trim() else it }
+            .filter { it.isNotEmpty() }
+            .mapIndexed { index, item ->
+                RepeatItem(mapOf(
+                    "item.value" to item,
+                    "item.text" to item,
+                    "item.index" to index.toString(),
+                    "item.number" to (index + 1).toString()
+                ))
+            }
+    }
+
+    private fun repeatItemFromAny(index: Int, item: Any?): RepeatItem? {
+        return when (item) {
+            null -> null
+            is Map<*, *> -> {
+                val values = mutableMapOf<String, String>()
+                item.forEach { (key, value) ->
+                    if (key != null) {
+                        values["item.${key.toString()}"] = value?.toString() ?: ""
+                    }
+                }
+                values["item.index"] = index.toString()
+                values["item.number"] = (index + 1).toString()
+                RepeatItem(values)
+            }
+            else -> RepeatItem(mapOf(
+                "item.value" to item.toString(),
+                "item.text" to item.toString(),
+                "item.index" to index.toString(),
+                "item.number" to (index + 1).toString()
+            ))
+        }
+    }
+
+    private fun createActionButton(
+        player: Player,
+        config: YamlConfiguration,
+        path: String,
+        btnSection: ConfigurationSection,
+        btnKey: String,
+        defaultText: String,
+        variables: Map<String, String>,
+        contextId: String,
+        inputKeys: List<String>,
+        inputTypes: Map<String, String>,
+        checkboxMappings: Map<String, Pair<String, String>>,
+        menuOpener: (Player, String) -> Unit,
+        closesDialogAfterAction: Boolean
+    ): ActionButton {
+        val btnText = resolveMenuText(player, getString(player, btnSection, "$btnKey.text", defaultText), variables, contextId)
+        val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
+
+        val builder = ActionButton.builder(TextParser.parseText(btnText))
+            .action(MenuActions.buildActionFromConfig(player, config, "$path.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId))
+
+        val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
+            .map { resolveMenuText(player, it, variables, contextId) }
+        if (tooltipList.isNotEmpty()) {
+            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { TextParser.parseText(it) }.toTypedArray())
+            builder.tooltip(tooltipComponent)
+        }
+
+        if (btnWidth > 0) {
+            builder.width(btnWidth)
+        }
+
+        return builder.build()
+    }
+
+    private fun addRepeatButtons(
+        player: Player,
+        config: YamlConfiguration,
+        contextId: String,
+        listId: String,
+        listSection: ConfigurationSection,
+        actionButtons: MutableList<ActionButton>,
+        inputKeys: List<String>,
+        inputTypes: Map<String, String>,
+        checkboxMappings: Map<String, Pair<String, String>>,
+        menuOpener: (Player, String) -> Unit,
+        closesDialogAfterAction: Boolean
+    ) {
+        val source = listSection.getString("source", "") ?: ""
+        val split = listSection.getString("split")
+        val trimItems = getBoolean(player, listSection, "trim", true)
+        val pageSize = getInt(
+            player,
+            listSection,
+            "page_size",
+            getInt(player, listSection, "page-size", DEFAULT_REPEAT_PAGE_SIZE)
+        ).coerceIn(1, MAX_REPEAT_PAGE_SIZE)
+        val items = resolveRepeatSource(player, config, source, split, trimItems)
+        val pageInfo = MenuListManager.updatePageInfo(player, contextId, listId, pageSize, items.size)
+
+        if (items.isEmpty()) {
+            val emptySection = listSection.getConfigurationSection("empty") ?: return
+            actionButtons.add(createActionButton(
+                player = player,
+                config = config,
+                path = emptySection.currentPath ?: "Bottom.buttons.$listId.empty",
+                btnSection = listSection,
+                btnKey = "empty",
+                defaultText = "暂无数据",
+                variables = emptyMap(),
+                contextId = contextId,
+                inputKeys = inputKeys,
+                inputTypes = inputTypes,
+                checkboxMappings = checkboxMappings,
+                menuOpener = menuOpener,
+                closesDialogAfterAction = closesDialogAfterAction
+            ))
+            return
+        }
+
+        val itemSection = listSection.getConfigurationSection("item") ?: return
+        val visibleItems = items.subList(pageInfo.start, pageInfo.end)
+        visibleItems.forEachIndexed { pageIndex, item ->
+            val variables = item.values.toMutableMap()
+            variables["item.page_index"] = pageIndex.toString()
+            variables["item.page_number"] = (pageIndex + 1).toString()
+            variables["list.id"] = listId
+            variables["list.page"] = pageInfo.page.toString()
+            variables["list.pages"] = pageInfo.pages.toString()
+            variables["list.total"] = pageInfo.total.toString()
+
+            val showCondition = itemSection.getString("show-condition") ?: itemSection.getString("show_condition")
+            if (showCondition != null) {
+                val resolvedCondition = resolveMenuText(player, showCondition, variables, contextId)
+                if (!ConditionUtils.checkCondition(player, resolvedCondition)) {
+                    return@forEachIndexed
+                }
+            }
+
+            actionButtons.add(createActionButton(
+                player = player,
+                config = config,
+                path = "Bottom.buttons.$listId.item",
+                btnSection = listSection,
+                btnKey = "item",
+                defaultText = "{item.text}",
+                variables = variables,
+                contextId = contextId,
+                inputKeys = inputKeys,
+                inputTypes = inputTypes,
+                checkboxMappings = checkboxMappings,
+                menuOpener = menuOpener,
+                closesDialogAfterAction = closesDialogAfterAction
+            ))
         }
     }
 
@@ -134,7 +386,7 @@ object MenuUI {
             return
         }
 
-        MenuActions.executeEvent(player, config, "Open").whenComplete { shouldStop, error ->
+        MenuActions.executeEvent(player, config, "Open", contextId).whenComplete { shouldStop, error ->
             if (error != null) {
                 plugin.logger.severe("Open 事件执行失败: contextId=$contextId, 错误: ${error.message}")
                 error.printStackTrace()
@@ -502,36 +754,52 @@ object MenuUI {
             "multi" -> {
                 // 矩阵按钮解析
                 val actionButtons = mutableListOf<ActionButton>()
+                val contextId = menuId
                 bottomSection?.getConfigurationSection("buttons")?.let { btnSection ->
                     for (btnKey in btnSection.getKeys(false)) {
+                        val buttonType = btnSection.getString("$btnKey.type", "")?.lowercase()
+                        if (buttonType == "repeat") {
+                            btnSection.getConfigurationSection(btnKey)?.let { repeatSection ->
+                                addRepeatButtons(
+                                    player = player,
+                                    config = config,
+                                    contextId = contextId,
+                                    listId = btnKey,
+                                    listSection = repeatSection,
+                                    actionButtons = actionButtons,
+                                    inputKeys = inputKeys,
+                                    inputTypes = inputTypes,
+                                    checkboxMappings = checkboxMappings,
+                                    menuOpener = menuOpener,
+                                    closesDialogAfterAction = closesDialogAfterAction
+                                )
+                            }
+                            continue
+                        }
+
                         // 检查按钮显示条件（兼容 show-condition 和 show_condition 两种写法）
                         val showCondition = btnSection.getString("$btnKey.show-condition") ?: btnSection.getString("$btnKey.show_condition")
 
-                        if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition)) {
+                        if (showCondition != null && !ConditionUtils.checkCondition(player, resolveMenuText(player, showCondition, contextId = contextId))) {
                             // 条件不满足，不显示此按钮
                             continue
                         }
 
-                        val btnText = getString(player, btnSection, "$btnKey.text", "按钮")
-                        val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
-
-                        val builder = ActionButton.builder(TextParser.parseText(btnText))
-                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.buttons.$btnKey.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
-
-                        // 读取 tooltip 配置
-                        val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
-                        if (tooltipList.isNotEmpty()) {
-                            // 将 tooltip 列表转换为 Component，每个元素作为一行
-                            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { TextParser.parseText(it) }.toTypedArray())
-                            builder.tooltip(tooltipComponent)
-                        }
-
-                        // 如果设置了宽度（width > 0），则应用宽度设置
-                        if (btnWidth > 0) {
-                            builder.width(btnWidth)
-                        }
-
-                        actionButtons.add(builder.build())
+                        actionButtons.add(createActionButton(
+                            player = player,
+                            config = config,
+                            path = "Bottom.buttons.$btnKey",
+                            btnSection = btnSection,
+                            btnKey = btnKey,
+                            defaultText = "按钮",
+                            variables = emptyMap(),
+                            contextId = contextId,
+                            inputKeys = inputKeys,
+                            inputTypes = inputTypes,
+                            checkboxMappings = checkboxMappings,
+                            menuOpener = menuOpener,
+                            closesDialogAfterAction = closesDialogAfterAction
+                        ))
                     }
                 }
 
@@ -541,7 +809,7 @@ object MenuUI {
                     if (exitText.isNotEmpty()) {
                         val exitWidth = getInt(player, section, "exit.width", 0)
                         val builder = ActionButton.builder(TextParser.parseText(exitText))
-                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
+                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
 
                         // 如果设置了宽度（width > 0），则应用宽度设置
                         if (exitWidth > 0) {
@@ -566,7 +834,7 @@ object MenuUI {
                 val denyWidth = bottomSection?.let { getInt(player, it, "deny.width", 0) } ?: 0
 
                 val confirmBuilder = ActionButton.builder(TextParser.parseText(confirmBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
                 
                 // 读取 confirm 按钮的 tooltip
                 val confirmTooltipList = bottomSection?.let { getStringList(player, it, "confirm.tooltip") }
@@ -583,7 +851,7 @@ object MenuUI {
                 val confirmBtn = confirmBuilder.build()
 
                 val denyBuilder = ActionButton.builder(TextParser.parseText(denyBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
                 
                 // 读取 deny 按钮的 tooltip
                 val denyTooltipList = bottomSection?.let { getStringList(player, it, "deny.tooltip") }
@@ -612,7 +880,7 @@ object MenuUI {
                 val btnWidth = getInt(player, config, widthPath, 0)
 
                 val builder = ActionButton.builder(TextParser.parseText(btnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction))
+                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
 
                 // 读取 tooltip 配置
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"

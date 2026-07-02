@@ -167,3 +167,9 @@ Bottom:
             - 'tell: &aPurchase successful! Traded 16 "Test Items" for 10 diamonds'
           deny:
             - 'tell: &cPurchase failed! You need 16 "Test Items"'
+
+  exit:
+    text: '&8[ Exit ]'
+    actions:
+      - 'actionbar: &7Menu closed'
+      - 'close'

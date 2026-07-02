@@ -1,0 +1,202 @@
+Title:
+  - condition: "{language} == zh_CN"
+    allow: "&6KaMenu 入门向导"
+    deny: "&6KaMenu Getting Started"
+
+Settings:
+  can_escape: true
+  after_action: CLOSE
+
+Body:
+  header:
+    type: message
+    width: 380
+    text:
+      - condition: "{language} == zh_CN"
+        allow:
+          - "&a欢迎使用 KaMenu！"
+          - "&e请先选择语言，然后释放示例菜单学习完整写法。"
+        deny:
+          - "&aWelcome to KaMenu!"
+          - "&eChoose a language first, then release examples to learn full menu syntax."
+
+  language:
+    type:
+      - condition: "{meta:guide_language_selected} == null"
+        allow: message
+        deny: none
+    width: 380
+    text:
+      - condition: "{language} == zh_CN"
+        allow:
+          - ""
+          - "&e当前语言: &f{language}"
+          - "&f点击下方按钮可切换语言，插件会自动重载配置和菜单。"
+        deny:
+          - ""
+          - "&eCurrent language: &f{language}"
+          - "&fUse the buttons below to switch language and reload the plugin."
+
+  release_prompt:
+    type:
+      - condition: "{meta:guide_language_selected} == true && {meta:guide_examples_released} != true"
+        allow: message
+        deny: none
+    width: 380
+    text:
+      - condition: "{language} == zh_CN"
+        allow:
+          - ""
+          - "&e语言已设置为: &f{language}"
+          - "&e下一步：释放当前语言的示例菜单到 &bmenus/example&e。"
+        deny:
+          - ""
+          - "&eLanguage set to: &f{language}"
+          - "&eNext: release the current-language examples to &bmenus/example&e."
+
+  examples:
+    type:
+      - condition: "{meta:guide_examples_released} == true"
+        allow: message
+        deny: none
+    width: 380
+    text:
+      - condition: "{language} == zh_CN"
+        allow:
+          - ""
+          - "&b示例菜单说明"
+          - '&fexample/main_menu &f- 基础主菜单与按钮布局 <text="&a[打开]";hover="&e打开 example/main_menu";command="/km open example/main_menu">'
+          - '&fexample/simple_shop &f- 简单商店与条件购买 <text="&a[打开]";hover="&e打开 example/simple_shop";command="/km open example/simple_shop">'
+          - '&fexample/actions_demo &f- 常用动作、数据和列表操作 <text="&a[打开]";hover="&e打开 example/actions_demo";command="/km open example/actions_demo">'
+          - '&fexample/condition_demo &f- 权限、PAPI、复合条件和嵌套判断 <text="&a[打开]";hover="&e打开 example/condition_demo";command="/km open example/condition_demo">'
+          - '&fexample/item_demo &f- 保存物品和物品检测 <text="&a[打开]";hover="&e打开 example/item_demo";command="/km open example/item_demo">'
+          - '&fexample/javascript_demo &f- JS 变量与脚本动作 <text="&a[打开]";hover="&e打开 example/javascript_demo";command="/km open example/javascript_demo">'
+          - '&fexample/tasks_demo &f- 菜单打开期间的周期任务 <text="&a[打开]";hover="&e打开 example/tasks_demo";command="/km open example/tasks_demo">'
+          - '&fexample/repeat_buttons_demo &f- 动态列表按钮与分页 <text="&a[打开]";hover="&e打开 example/repeat_buttons_demo";command="/km open example/repeat_buttons_demo">'
+          - '&fexample/target_selector_demo &f- 动作目标选择器 <text="&a[打开]";hover="&e打开 example/target_selector_demo";command="/km open example/target_selector_demo">'
+          - '&fexample/inspect_player &f- Shift+右键玩家互动菜单 <text="&a[打开]";hover="&e打开 example/inspect_player";command="/km open example/inspect_player">'
+        deny:
+          - ""
+          - "&bExample Menus"
+          - '&fexample/main_menu &f- Basic main menu and buttons <text="&a[Open]";hover="&eOpen example/main_menu";command="/km open example/main_menu">'
+          - '&fexample/simple_shop &f- Simple shop and conditional purchase <text="&a[Open]";hover="&eOpen example/simple_shop";command="/km open example/simple_shop">'
+          - '&fexample/actions_demo &f- Common actions, data, and list operations <text="&a[Open]";hover="&eOpen example/actions_demo";command="/km open example/actions_demo">'
+          - '&fexample/condition_demo &f- Permissions, PAPI, compound and nested conditions <text="&a[Open]";hover="&eOpen example/condition_demo";command="/km open example/condition_demo">'
+          - '&fexample/item_demo &f- Saved items and item checks <text="&a[Open]";hover="&eOpen example/item_demo";command="/km open example/item_demo">'
+          - '&fexample/javascript_demo &f- JS variables and script actions <text="&a[Open]";hover="&eOpen example/javascript_demo";command="/km open example/javascript_demo">'
+          - '&fexample/tasks_demo &f- Periodic tasks while a menu is open <text="&a[Open]";hover="&eOpen example/tasks_demo";command="/km open example/tasks_demo">'
+          - '&fexample/repeat_buttons_demo &f- Dynamic repeat buttons and paging <text="&a[Open]";hover="&eOpen example/repeat_buttons_demo";command="/km open example/repeat_buttons_demo">'
+          - '&fexample/target_selector_demo &f- Action target selectors <text="&a[Open]";hover="&eOpen example/target_selector_demo";command="/km open example/target_selector_demo">'
+          - '&fexample/inspect_player &f- Shift+right-click player interaction menu <text="&a[Open]";hover="&eOpen example/inspect_player";command="/km open example/inspect_player">'
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    zh_cn:
+      show-condition: "{meta:guide_language_selected} == null"
+      text: "&a[ 中文 ]"
+      tooltip:
+        - "&f设置 language: zh_CN"
+        - "&f并重载插件"
+      actions:
+        - "command: km language zh_CN"
+        - "set-meta: guide_language_selected true"
+        - "wait: 2"
+        - "command: km guide"
+
+    en_us:
+      show-condition: "{meta:guide_language_selected} == null"
+      text: "&a[ English ]"
+      tooltip:
+        - "&fSet language: en_US"
+        - "&fand reload the plugin"
+      actions:
+        - "command: km language en_US"
+        - "set-meta: guide_language_selected true"
+        - "wait: 2"
+        - "command: km guide"
+
+    release_examples:
+      show-condition: "{meta:guide_language_selected} == true && {meta:guide_examples_released} != true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&e[ 释放示例菜单 ]"
+          deny: "&e[ Release Examples ]"
+      tooltip:
+        - condition: "{language} == zh_CN"
+          allow:
+            - "&f释放当前语言示例菜单到 &bexample"
+            - "&f默认不会覆盖你已有的文件"
+          deny:
+            - "&fRelease current-language examples to &bexample"
+            - "&fExisting files will not be overwritten"
+      actions:
+        - "command: km examples {language}"
+        - "set-meta: guide_examples_released true"
+        - "wait: 2"
+        - "command: km guide"
+
+    list_menus:
+      show-condition: "{meta:guide_examples_released} == true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&6[ 查看菜单列表 ]"
+          deny: "&6[ Menu List ]"
+      actions:
+        - "command: km list"
+
+    open_main:
+      show-condition: "{meta:guide_examples_released} == true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&2[ 中文主菜单 ]"
+          deny: "&2[ Main Menu ]"
+      tooltip:
+        - "example/main_menu"
+      actions:
+        - "command: km open example/main_menu"
+
+    open_actions:
+      show-condition: "{meta:guide_examples_released} == true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&d[ 动作示例 ]"
+          deny: "&d[ Actions Demo ]"
+      actions:
+        - "command: km open example/actions_demo"
+
+    open_conditions:
+      show-condition: "{meta:guide_examples_released} == true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&5[ 条件示例 ]"
+          deny: "&5[ Conditions Demo ]"
+      actions:
+        - "command: km open example/condition_demo"
+
+    open_tasks:
+      show-condition: "{meta:guide_examples_released} == true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&9[ 周期任务 ]"
+          deny: "&9[ Tasks Demo ]"
+      actions:
+        - "command: km open example/tasks_demo"
+
+    open_repeat:
+      show-condition: "{meta:guide_examples_released} == true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&b[ 动态列表 ]"
+          deny: "&b[ Repeat List ]"
+      actions:
+        - "command: km open example/repeat_buttons_demo"
+
+  exit:
+    text:
+      - condition: "{language} == zh_CN"
+        allow: "&8[ 关闭 ]"
+        deny: "&8[ Close ]"
+    actions:
+      - "close"

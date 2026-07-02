@@ -187,13 +187,33 @@ Bottom:
       - 'actions: hello'  # Executes the `hello` action list defined above
 ```
 
+### Action List Arguments
+
+`actions:` can append arguments after the action list name. Arguments are separated by commas:
+
+```yaml
+Events:
+  Click:
+    greet:
+      - 'tell: &aHello, {arg:0}! Welcome to &e{arg:1}&a.'
+
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a[ Greet ]'
+    actions:
+      - 'actions: greet,player,survival server'
+```
+
+Inside the action list, use `{arg:0}`, `{arg:1}` to read arguments. Use single quotes, double quotes, or backticks around an argument when it needs to contain a comma.
+
 **Activate with a clickable text:**
 
 ```yaml
 Body:
   text:
     type: 'message'
-    text: 'Please <text="click to greet";actions=hello;hover=Click to run the hello action> to see the welcome message'
+    text: 'Please <text="click to greet";actions=hello,player,survival server;hover=Click to run the hello action> to see the welcome message'
 ```
 
 ```yaml
@@ -202,7 +222,7 @@ Bottom:
   confirm:
     text: '&a[ OK ]'
     actions:
-      - 'hovertext: Please <text="[Click to Greet]";actions=hello;hover=Click to run the hello action> to see the welcome message'  
+      - 'hovertext: Please <text="[Click to Greet]";actions=hello,player,survival server;hover=Click to run the hello action> to see the welcome message'  
 ```
 ---
 

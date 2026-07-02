@@ -55,6 +55,7 @@ object JavaScriptManager {
 
         // 绑定 Bukkit 相关对象
         scriptEngine!!.put("server", Bukkit.getServer())
+        scriptEngine!!.put("__kamenu_js_manager", this)
 
         // 添加一些实用函数
         scriptEngine!!.eval("""
@@ -98,6 +99,36 @@ object JavaScriptManager {
             function getPlayer(name) {
                 return Bukkit.getPlayer(name);
             }
+
+            // 解析 PlaceholderAPI 变量。支持 papi("player_name") 和 papi("%player_name%")。
+            function papi(placeholder, targetPlayer) {
+                return __kamenu_js_manager.resolvePapi(targetPlayer || player, String(placeholder));
+            }
+
+            // 解析 KaMenu 内部变量。支持 kvar("data:key") 和 kvar("{data:key}")。
+            function kvar(variable, targetPlayer) {
+                return __kamenu_js_manager.resolveKaMenuVariable(targetPlayer || player, String(variable));
+            }
+
+            function data(key, targetPlayer) {
+                return kvar("data:" + key, targetPlayer);
+            }
+
+            function gdata(key, targetPlayer) {
+                return kvar("gdata:" + key, targetPlayer);
+            }
+
+            function meta(key, targetPlayer) {
+                return kvar("meta:" + key, targetPlayer);
+            }
+
+            function list(key, targetPlayer) {
+                return kvar("list:" + key, targetPlayer);
+            }
+
+            function glist(key, targetPlayer) {
+                return kvar("glist:" + key, targetPlayer);
+            }
         """)
     }
 
@@ -140,6 +171,65 @@ object JavaScriptManager {
      */
     fun getVariable(name: String): Any? {
         return scriptEngine?.get(name)
+    }
+
+    fun resolvePapi(player: org.bukkit.entity.Player?, placeholder: String?): String {
+        if (player == null || placeholder.isNullOrBlank()) {
+            return ""
+        }
+        if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            return ""
+        }
+
+        val normalized = placeholder.trim().let {
+            if (it.startsWith("%") && it.endsWith("%")) it else "%$it%"
+        }
+
+        return try {
+            me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, normalized)
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun resolveKaMenuVariable(player: org.bukkit.entity.Player?, variable: String?): String {
+        if (player == null || variable.isNullOrBlank()) {
+            return ""
+        }
+
+        val trimmed = variable.trim()
+        val expression = if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            trimmed
+        } else {
+            "{$trimmed}"
+        }
+
+        return try {
+            TextResolver.resolve(player, expression)
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun parseJsonCompatible(json: String): Any? {
+        if (!available || scriptEngine == null || json.isBlank()) {
+            return null
+        }
+
+        return synchronized(scriptLock) {
+            try {
+                scriptEngine!!.put("__kamenu_json_input", json)
+                scriptEngine!!.eval("Java.asJSONCompatible(JSON.parse(__kamenu_json_input))")
+            } catch (e: ScriptException) {
+                plugin?.logger?.warning("JSON parse error: ${e.message}")
+                null
+            } catch (e: Exception) {
+                plugin?.logger?.warning("JSON parse error: ${e.message}")
+                null
+            } finally {
+                scriptEngine!!.put("__kamenu_json_input", null)
+            }
+        }
     }
 
     /**

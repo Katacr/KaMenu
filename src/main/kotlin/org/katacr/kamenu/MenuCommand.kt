@@ -5,7 +5,9 @@ import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
+import java.io.InputStreamReader
 
 class MenuCommand(private val plugin: KaMenu) : TabExecutor {
 
@@ -21,14 +23,81 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
                 return true
             }
-            MenuTaskManager.cancelAll()
-            plugin.reloadConfig()
-            plugin.languageManager.reload()
-            val menuCount = plugin.menuManager.reload()
-            val commandCount = plugin.customCommandManager.registerCustomCommands()
-            UpdateChecker.reload(plugin)
+            val (menuCount, commandCount) = reloadRuntime()
 
             sender.sendMessage(plugin.languageManager.getMessage("menu.reloaded", menuCount.toString(), commandCount.toString()))
+            return true
+        }
+
+        if (args[0].equals("guide", ignoreCase = true)) {
+            if (!sender.hasPermission("kamenu.admin")) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
+                return true
+            }
+            if (sender !is Player) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.player_only"))
+                return true
+            }
+            val guideConfig = loadInternalGuide()
+            if (guideConfig == null) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.guide_missing", "internal/guide.yml"))
+                return true
+            }
+            MenuUI.openConfig(sender, guideConfig, plugin, "internal:guide")
+            return true
+        }
+
+        if (args[0].equals("language", ignoreCase = true) || args[0].equals("lang", ignoreCase = true)) {
+            if (!sender.hasPermission("kamenu.admin")) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
+                return true
+            }
+            if (args.size < 2) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.language_usage"))
+                return true
+            }
+            val language = args[1]
+            if (language !in listOf("zh_CN", "en_US")) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.language_unknown", language))
+                sender.sendMessage(plugin.languageManager.getMessage("command.language_usage"))
+                return true
+            }
+
+            plugin.config.set("language", language)
+            plugin.saveConfig()
+            val (menuCount, commandCount) = reloadRuntime()
+            sender.sendMessage(plugin.languageManager.getMessage("command.language_set_reload", language, menuCount.toString(), commandCount.toString()))
+            return true
+        }
+
+        if (
+            args[0].equals("examples", ignoreCase = true) ||
+            args[0].equals("example", ignoreCase = true) ||
+            args[0].equals("release-examples", ignoreCase = true)
+        ) {
+            if (!sender.hasPermission("kamenu.admin")) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
+                return true
+            }
+            val optionArgs = args.drop(1)
+            val language = optionArgs.firstOrNull { it.equals("zh_CN", ignoreCase = true) || it.equals("en_US", ignoreCase = true) }
+                ?: plugin.config.getString("language", "zh_CN")
+                ?: "zh_CN"
+            val overwrite = optionArgs.any {
+                it.equals("overwrite", ignoreCase = true) || it.equals("true", ignoreCase = true)
+            }
+            val result = plugin.menuManager.releaseExampleMenus(language, overwrite)
+            val menuCount = plugin.menuManager.reload()
+            sender.sendMessage(
+                plugin.languageManager.getMessage(
+                    "command.examples_released",
+                    language,
+                    result.saved.toString(),
+                    result.skipped.toString(),
+                    result.failed.toString(),
+                    menuCount.toString()
+                )
+            )
             return true
         }
 
@@ -273,6 +342,9 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         // 指令列表
         sender.sendMessage(plugin.languageManager.getMessage("command.help_open"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_list"))
+        sender.sendMessage(plugin.languageManager.getMessage("command.help_guide"))
+        sender.sendMessage(plugin.languageManager.getMessage("command.help_language"))
+        sender.sendMessage(plugin.languageManager.getMessage("command.help_examples"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_reload"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_action"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_item"))
@@ -354,6 +426,30 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         player.sendMessage("")
     }
 
+    private fun reloadRuntime(): Pair<Int, Int> {
+        MenuTaskManager.cancelAll()
+        plugin.reloadConfig()
+        plugin.languageManager.reload()
+        val menuCount = plugin.menuManager.reload()
+        val commandCount = plugin.customCommandManager.registerCustomCommands()
+        UpdateChecker.reload(plugin)
+        return menuCount to commandCount
+    }
+
+    private fun loadInternalGuide(): YamlConfiguration? {
+        val inputStream = plugin.getResource("internal/guide.yml") ?: return null
+        return try {
+            inputStream.use { stream ->
+                InputStreamReader(stream, Charsets.UTF_8).use { reader ->
+                    YamlConfiguration.loadConfiguration(reader)
+                }
+            }
+        } catch (e: Exception) {
+            plugin.logger.warning(plugin.languageManager.getMessage("command.guide_load_failed", e.message ?: "Unknown error"))
+            null
+        }
+    }
+
     /**
      * 实现 Tab 补全功能
      */
@@ -361,10 +457,32 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         // 获取当前正在输入的关键字
         val keyword = args.lastOrNull() ?: ""
         
-        if (args.size == 1) return filterByKeyword(listOf("help", "open", "reload", "action", "list", "item"), keyword)
+        if (args.size == 1) return filterByKeyword(
+            listOf("help", "open", "guide", "language", "examples", "reload", "action", "list", "item"),
+            keyword
+        )
         if (args.size == 2 && args[0].equals("open", ignoreCase = true)) {
             // 这里动态获取所有已加载的菜单 ID，按输入关键字模糊匹配
             return filterByKeyword(plugin.menuManager.getAllMenuIds(), keyword)
+        }
+        if (args.size == 2 && (args[0].equals("language", ignoreCase = true) || args[0].equals("lang", ignoreCase = true))) {
+            return filterByKeyword(listOf("zh_CN", "en_US"), keyword)
+        }
+        if (args.size == 2 && (
+            args[0].equals("examples", ignoreCase = true) ||
+                args[0].equals("example", ignoreCase = true) ||
+                args[0].equals("release-examples", ignoreCase = true)
+            )
+        ) {
+            return filterByKeyword(listOf("zh_CN", "en_US", "overwrite"), keyword)
+        }
+        if (args.size == 3 && (
+            args[0].equals("examples", ignoreCase = true) ||
+                args[0].equals("example", ignoreCase = true) ||
+                args[0].equals("release-examples", ignoreCase = true)
+            )
+        ) {
+            return filterByKeyword(listOf("overwrite"), keyword)
         }
         if (args.size == 2 && args[0].equals("action", ignoreCase = true)) {
             // 返回在线玩家列表，按输入关键字模糊匹配
@@ -374,11 +492,15 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             // 返回常用动作前缀，按输入关键字模糊匹配
             return filterByKeyword(listOf(
                 "tell:", "actionbar:", "title:", "hovertext:",
-                "command:", "console:", "sound:",
+                "command:", "chat:", "console:", "sound:",
                 "open:", "force-open:", "close", "force-close", "reset",
-                "data:", "gdata:", "meta:",
+                "server:", "tppos:",
+                "data:", "gdata:", "list:", "glist:", "meta:",
                 "set-data:", "set-gdata:", "set-meta:",
-                "toast:", "money:", "tppos:"
+                "toast:", "money:", "stock-item:", "item:",
+                "js:", "actions:", "page:",
+                "run-task:", "stop-task:", "stop-current-task",
+                "wait:", "return"
             ), keyword)
         }
         if (args.size == 2 && args[0].equals("item", ignoreCase = true)) {

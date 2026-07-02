@@ -101,6 +101,134 @@ Bottom:
 | `tooltip` | List | 可选，按钮悬停提示（每行一个字符串），支持颜色代码和 MiniMessage |
 | `actions` | List | 可选，点击时执行的动作列表；如果不设置则点击时无反应 |
 
+### repeat - 动态按钮列表
+
+`multi.buttons` 中的按钮可以配置为 `type: repeat`，用于根据动态数据源生成一组真实按钮。适合玩家列表、传送点列表、好友列表、邮件列表等数量不固定的内容。
+
+```yaml
+JavaScript:
+  getWarpList: |
+    JSON.stringify([
+      { id: "home", name: "家", world: "world", x: 100, y: 64, z: 200 },
+      { id: "mine", name: "矿洞", world: "world", x: -30, y: 12, z: 80 }
+    ]);
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    warp_list:
+      type: repeat
+      source: "[getWarpList]"
+      page_size: 20
+      item:
+        text: "&a{item.name}"
+        width: 160
+        tooltip:
+          - "&7世界: &f{item.world}"
+          - "&7坐标: &f{item.x}, {item.y}, {item.z}"
+          - "&e点击传送"
+        actions:
+          - "actions: teleport_warp,{item.id}"
+      empty:
+        text: "&7暂无传送点"
+        actions:
+          - "toast: type=task;msg=暂无数据;icon=barrier"
+
+    prev:
+      text: "&e上一页"
+      show-condition: "{page:warp_list} > 1"
+      actions:
+        - "page: warp_list prev"
+        - "reset"
+
+    next:
+      text: "&e下一页"
+      show-condition: "{page:warp_list} < {pages:warp_list}"
+      actions:
+        - "page: warp_list next"
+        - "reset"
+```
+
+**repeat 配置项：**
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `type` | String | — | 固定为 `repeat` |
+| `source` | String | — | 数据源。推荐使用 `[函数名]` 调用 `JavaScript` 中返回 JSON 数组的函数 |
+| `split` | String | — | 可选，非 JSON 字符串列表的分隔符，例如 `","` |
+| `trim` | Boolean | `true` | 使用 `split` 时是否自动去除每项前后空格 |
+| `page_size` / `page-size` | Int | `20` | 每页生成的按钮数量，范围 `1-99` |
+| `item` | 节点 | — | 每个列表项生成按钮时使用的模板 |
+| `empty` | 节点 | — | 数据源为空时显示的按钮，可选 |
+
+`source` 可以返回 JSON 数组。数组元素可以是对象、字符串或数字。对象字段会变为 `{item.字段名}`，并可用于按钮文字、tooltip、show-condition 和 actions。
+
+内置列表变量 `{list:键名}` 和 `{glist:键名}` 会返回 JSON 数组字符串，可直接作为 `source` 使用：
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    friends:
+      type: repeat
+      source: "{list:friends}"
+      item:
+        text: "&a{item.value}"
+        actions:
+          - "tell: 你点击了 {item.value}"
+```
+
+如果数据源返回简单字符串列表，例如 `player1, player2, player3`，可以使用 `split` 拆分：
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    player_list:
+      type: repeat
+      source: "%kamenu_online_players%"
+      split: ","
+      trim: true
+      item:
+        text: "&a{item.value}"
+        actions:
+          - "tell: 你点击了 {item.value}"
+```
+
+内置 item 变量：
+
+| 变量 | 说明 |
+|------|------|
+| `{item.xxx}` | 当前项对象中的字段 |
+| `{item.value}` | 当前项是字符串或数字时的值 |
+| `{item.index}` | 当前项在完整列表中的下标，从 0 开始 |
+| `{item.number}` | 当前项在完整列表中的序号，从 1 开始 |
+| `{item.page_index}` | 当前项在当前页的下标，从 0 开始 |
+| `{item.page_number}` | 当前项在当前页的序号，从 1 开始 |
+
+分页变量可用于 `Bottom.multi.buttons` 的普通按钮和 repeat item 模板：
+
+| 变量 | 说明 |
+|------|------|
+| `{page:列表ID}` | 当前页码 |
+| `{pages:列表ID}` | 总页数 |
+| `{total:列表ID}` | 总项目数 |
+| `{start:列表ID}` | 当前页起始下标 |
+| `{end:列表ID}` | 当前页结束下标 |
+
+分页动作：
+
+```yaml
+- "page: warp_list next"
+- "page: warp_list prev"
+- "page: warp_list 1"
+- "page: warp_list +1"
+- "page: warp_list -1"
+```
+
+`page:` 动作只修改分页状态，不会自动刷新界面。通常需要紧跟 `reset`、`open` 或 `force-open`。
+
 **退出按钮配置项：**
 
 | 字段 | 类型 | 说明 |

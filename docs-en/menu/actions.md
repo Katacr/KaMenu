@@ -48,6 +48,8 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `copy`        | Copy text to clipboard (only works with single action)         | ❌                        | 
 | `data`        | Operate player data (supports set/add/take/delete)             | ✅                        | 
 | `gdata`       | Operate global data (supports set/add/take/delete)             | ✅                        | 
+| `list`        | Operate player list data (supports set/add/remove/take/clear/delete) | ✅                        | 
+| `glist`       | Operate global list data (supports set/add/remove/take/clear/delete) | ✅                        | 
 | `meta`        | Operate player metadata (supports set/add/take/delete)         | ✅                        | 
 | `set-data`    | Set player data (legacy format, use `data` instead)            | ✅                        | 
 | `set-gdata`   | Set global data (legacy format, use `gdata` instead)           | ✅                        | 
@@ -813,6 +815,88 @@ Operate global data (shared by all players), supporting set, add, subtract, and 
 
 ---
 
+### list / glist - List Data Operation
+
+Operate persistent list data. `list` belongs to the current player, while `glist` is shared globally. A list is stored under one database key as a JSON array, making it suitable for friend lists, warp lists, favorites, and direct `Bottom.multi.buttons.type: repeat` sources.
+
+**Format:**
+
+```yaml
+- 'list: type=operation_type;key=key;var=value'
+- 'glist: type=operation_type;key=key;var=value'
+```
+
+**Parameters:**
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| `type` | Operation type | ✅ |
+| `key` | List key | ✅ |
+| `var` / `value` | List item or list text | Required for `set/add/remove/take` |
+| `split` / `separator` | Optional separator used to split `var` into multiple items | ❌ |
+| `unique` | Whether `add` should skip existing items, supports `true/false`, default `true` | ❌ |
+
+**type Options:**
+
+- `set` / `create`: Create or overwrite the whole list
+- `add` / `append`: Append items to the list
+- `remove` / `take`: Remove matching items
+- `clear`: Clear the list while keeping the key
+- `delete`: Delete the key
+
+**Example:**
+
+```yaml
+# Set a player friend list
+- 'list: type=set;key=friends;var=`Steve,Alex`;split=,'
+
+# Add a friend. Existing items are skipped by default
+- 'list: type=add;key=friends;var=`Notch`'
+
+# Allow duplicates, suitable for logs and history records
+- 'list: type=add;key=history;var=`Notch`;unique=false'
+
+# Remove a friend
+- 'list: type=remove;key=friends;var=`Alex`'
+
+# Clear the player list
+- 'list: type=clear;key=friends'
+
+# Set a global server list
+- 'glist: type=set;key=servers;var=`survival,skyblock,resource`;split=,'
+```
+
+**Reading:**
+
+- `{list:key}`: Read the current player's list as a JSON array string
+- `{glist:key}`: Read the global list as a JSON array string
+- `%kamenu_list_key%` / `%kamenu_glist_key%`: Read list JSON through PlaceholderAPI
+- `%kamenu_list_size_key%` / `%kamenu_glist_size_key%`: Read list item counts through PlaceholderAPI
+
+**Using with dynamic buttons:**
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    friends:
+      type: repeat
+      source: "{list:friends}"
+      item:
+        text: "&a{item.value}"
+        actions:
+          - "tell: You clicked {item.value}"
+```
+
+**Note:**
+
+- `remove/take` removes all exact matches
+- `add` skips existing items by default; set `unique=false` when duplicates are required
+- `{list:*}` / `{glist:*}` returns a JSON array, so repeat sources do not need `split`
+- Lists are still SQL-backed persistent data, so avoid writing them on every render in high-frequency refresh flows
+
+---
+
 ### meta - Player Metadata Operation
 
 Operate the player's metadata (memory cache), supporting set, add, subtract, and delete values.
@@ -1210,7 +1294,7 @@ Execute an action list defined under `Events.Click`. This allows you to reuse de
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | Action list name | Action list key under `Events.Click` | `greet`, `vip_check`, `daily_reward` |
-| Arguments | Temporary arguments passed into the action list. Read them with `{arg:0}`, `{arg:1}`, or `$(arg:0)` inside the action list | `player`, `survival server` |
+| Arguments | Temporary arguments passed into the action list. Read them with `{arg:0}`, `{arg:1}` inside the action list | `player`, `survival server` |
 
 **Example:**
 

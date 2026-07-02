@@ -234,7 +234,8 @@ object MenuTaskManager {
             config = session.config,
             actions = task.actions,
             variables = emptyMap(),
-            taskRef = TaskExecutionRef(playerId, token, taskId)
+            taskRef = TaskExecutionRef(playerId, token, taskId),
+            contextId = session.contextId
         ).whenComplete { _, error ->
             task.running.set(false)
             if (error != null) {
@@ -284,7 +285,8 @@ object MenuTaskManager {
             player = player,
             config = session.config,
             actions = endActions,
-            variables = emptyMap()
+            variables = emptyMap(),
+            contextId = session.contextId
         ).whenComplete { _, error ->
             if (error != null) {
                 plugin.logger.severe("周期任务结束动作执行失败: contextId=${session.contextId}, task=${task.id}, 错误: ${error.message}")

@@ -36,6 +36,9 @@ command:
   help_description: "§7插件版本: §a{0}"
   help_open: "§a/km open <菜单名> [玩家] §7- 打开指定菜单"
   help_list: "§a/km list [页码] §7- 查看菜单列表"
+  help_guide: "§a/km guide §7- 打开入门向导菜单"
+  help_language: "§a/km language <zh_CN|en_US> §7- 设置语言并重载"
+  help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- 释放指定语言示例菜单"
   help_reload: "§a/km reload §7- 重载配置和菜单"
   help_action: "§a/km action <玩家> <动作> §7- 测试执行动作"
   help_help: "§a/km help §7- 显示帮助信息"
@@ -43,6 +46,13 @@ command:
   help_footer: "§7更多功能和帮助"
   help_footer_click_text: "[点击此处]"
   help_footer_hover: "查看文档"
+  guide_missing: "§c入门向导菜单资源不存在或无法加载: §f{0}"
+  guide_load_failed: "§c入门向导菜单加载失败: {0}"
+  guide_join_hint: "§e[KaMenu] §f当前没有加载任何菜单。<text='&a[打开入门向导]';hover='&7点击打开 KaMenu 入门向导';command='/km guide'>"
+  language_usage: "§c用法: /km language <zh_CN|en_US>"
+  language_unknown: "§c未知语言: {0}"
+  language_set_reload: "§a语言已设置为 {0}，并已重载菜单。当前加载 {1} 个菜单和 {2} 个自定义指令。"
+  examples_released: "§a已释放 {0} 示例菜单到 example：新增 {1} 个，跳过 {2} 个，失败 {3} 个。当前加载 {4} 个菜单。"
 
 # 物品管理
 item:

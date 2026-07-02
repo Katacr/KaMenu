@@ -32,20 +32,26 @@ Bottom:
   confirm:
     text: '&a[ Confirm Purchase ]'
     actions:
+      - condition: '$(enable) == true'
+        allow: []
+        deny:
+          - 'toast: type=task;msg=Check terms;icon=barrier'
+          - 'open: example/simple_shop'
+          - 'return'
       - 'tell: Processing your purchase request...'
       - 'wait: 1'
       - condition: 'hasMoney.%math_2_$(amount)*10%'
         allow:
           - 'tell: &aYou purchased &6$(amount) &aapples, costing &6%math_2_$(amount)*10% &agold coins.'
           - 'money: type=take;num=%math_2_$(amount)*10%'
-          - 'console: give %player_name% apple $(amount)'
+          - 'item: type=give;mats=APPLE;amount=$(amount)'
           - 'close'
 
         deny:
           - condition: 'hasMoney.%math_2_$(amount)*10%'
             deny:
               - 'tell: &cYou do not have enough money'
-              - 'open: exampleEN/simple_shop'
+              - 'open: example/simple_shop'
 
   deny:
     text: '&c[ Cancel ]'

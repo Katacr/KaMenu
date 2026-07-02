@@ -58,8 +58,8 @@ custom-commands:
 
 自定义指令动作可以读取玩家输入的指令参数：
 
-- `$(arg:0)` 或 `{arg:0}`：第 1 个参数
-- `$(arg:1)` 或 `{arg:1}`：第 2 个参数
+- `{arg:0}`：第 1 个参数
+- `{arg:1}`：第 2 个参数
 - `$(args)`：完整参数文本
 - `$(arg_count)`：参数数量
 - `$(command)`：实际触发的指令标签
@@ -68,7 +68,7 @@ custom-commands:
 custom-commands:
   greet:
     actions:
-      - "tell: &a你好 {arg:0}，欢迎来到 $(arg:1)"
+      - "tell: &a你好 {arg:0}，欢迎来到 {arg:1}"
 ```
 
 ## 示例：限制特定玩家访问

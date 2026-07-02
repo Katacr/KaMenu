@@ -58,8 +58,8 @@ custom-commands:
 
 Custom command actions can read command arguments:
 
-- `$(arg:0)` or `{arg:0}`: first argument
-- `$(arg:1)` or `{arg:1}`: second argument
+- `{arg:0}`: first argument
+- `{arg:1}`: second argument
 - `$(args)`: full argument text
 - `$(arg_count)`: argument count
 - `$(command)`: the command label that was used
@@ -68,7 +68,7 @@ Custom command actions can read command arguments:
 custom-commands:
   greet:
     actions:
-      - "tell: &aHello {arg:0}, welcome to $(arg:1)"
+      - "tell: &aHello {arg:0}, welcome to {arg:1}"
 ```
 
 ## Example: Restricting Access to Specific Players

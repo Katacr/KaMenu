@@ -51,6 +51,8 @@ object ConditionExpressionEngine {
             if (!value.startsWith("[") || !value.endsWith("]")) false
             else checkPlayerHasItem(player, value.substring(1, value.length - 1).trim())
         }
+        registerBuiltinPredicate("inList") { _, value -> checkValueInGroup(value) }
+        registerBuiltinPredicate("inGlist") { _, value -> checkValueInGroup(value) }
     }
 
     fun setPlugin(kamenu: KaMenu) {
@@ -409,6 +411,27 @@ object ConditionExpressionEngine {
             }
         }
         return getPlayerItemCount(player, paramsStr) >= requiredAmount
+    }
+
+    private fun checkValueInGroup(paramsStr: String): Boolean {
+        val parts = paramsStr.split(";", limit = 2)
+        if (parts.size != 2) return false
+
+        val target = parts[0].trim()
+        if (target.isEmpty()) return false
+
+        val group = decodeGroupValues(parts[1].trim())
+        return group.any { it.equals(target, ignoreCase = true) }
+    }
+
+    private fun decodeGroupValues(raw: String): List<String> {
+        if (raw.isBlank()) return emptyList()
+        return when {
+            raw.startsWith("[") && raw.endsWith("]") -> DatabaseManager.decodeStringList(raw)
+            raw.contains('\n') -> raw.lines().map { it.trim() }.filter { it.isNotEmpty() }
+            raw.contains(",") -> raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            else -> listOf(raw.trim())
+        }
     }
 
     fun getPlayerItemCount(player: Player, paramsStr: String): Int {

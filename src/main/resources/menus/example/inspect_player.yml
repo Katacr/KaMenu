@@ -1,0 +1,105 @@
+# ============================================
+# 玩家互动菜单示例
+# 通过 config.yml 的 listeners.player-click 打开
+# ============================================
+
+Title: '&e玩家互动 - {meta:player}'
+
+Settings:
+  can_escape: true
+  after_action: CLOSE
+  pause: false
+
+Body:
+  target:
+    type: message
+    width: 360
+    text:
+      - '&a你正在查看玩家: &f{meta:player}'
+      - '&e此菜单适合作为 Shift+右键玩家的互动模板。'
+      - '&f下方装备栏会读取被点击玩家当前穿戴的装备。'
+
+  helmet_display:
+    type: item
+    material: '[HEAD:{meta:player}]'
+    name: '&b{meta:player} 的头盔'
+    width: 32
+    height: 32
+
+  chest_display:
+    type: item
+    material: '[CHEST:{meta:player}]'
+    name: '&b{meta:player} 的胸甲'
+    width: 32
+    height: 32
+
+  leggings_display:
+    type: item
+    material: '[LEGGINGS:{meta:player}]'
+    name: '&b{meta:player} 的护腿'
+    width: 32
+    height: 32
+
+  boots_display:
+    type: item
+    material: '[BOOTS:{meta:player}]'
+    name: '&b{meta:player} 的靴子'
+    width: 32
+    height: 32
+
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    add_friend:
+      text: '&a[ 加为好友 ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=发送好友请求;icon=emerald'
+        - 'command: friend add {meta:player}'
+
+    teleport_to:
+      text: '&b[ 传送过去 ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=请求传送;icon=ender_pearl'
+        - 'command: tpa {meta:player}'
+
+    teleport_here:
+      text: '&d[ 请求传来 ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=请求传来;icon=ender_eye'
+        - 'command: tpahere {meta:player}'
+
+    private_message:
+      text: '&e[ 私聊玩家 ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=打开私聊;icon=paper'
+        - 'command: msg {meta:player} '
+
+    inspect_inventory:
+      text: '&6[ 查看背包 ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=查看背包;icon=chest'
+        - 'command: invsee {meta:player}'
+
+    kick_player:
+      text: '&c[ 踢出玩家 ]'
+      width: 140
+      actions:
+        - 'toast: type=task;msg=执行踢出;icon=barrier'
+        - 'command: kick {meta:player} 被管理员踢出'
+
+  exit:
+    text: '&8[ 关闭 ]'
+    width: 140
+    actions:
+      - 'close'
+
+# 使用说明：
+# - {meta:player} 来自 player-click 监听器，表示被右键点击的玩家名。
+# - [HEAD:{meta:player}] / [CHEST:{meta:player}] 等槽位引用会显示目标玩家装备。
+# - friend、tpa、tpahere、invsee 等指令需要对应服务器插件和权限支持。

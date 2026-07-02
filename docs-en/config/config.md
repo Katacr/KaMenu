@@ -31,7 +31,7 @@ listeners:
   swap-hand:
     enabled: true
     # Menu to open on trigger
-    menu: 'main_menu'
+    menu: 'example/main_menu'
     # Whether sneaking is required to trigger
     require-sneaking: true
 
@@ -40,7 +40,7 @@ listeners:
     # Enable this listener
     enabled: true
     # Menu to open on trigger
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     # Requires sneaking to trigger (Shift + right-click)
     require-sneaking: true 
     
@@ -53,7 +53,7 @@ listeners:
       # Target Lore text (triggers if item Lore contains this text)
       target-lore: 'Menu'
       # Menu to open on trigger
-      menu: 'main_menu'
+      menu: 'example/main_menu'
       # Whether sneaking is required to trigger
       require-sneaking: false
     # You can add more entries...
@@ -68,9 +68,9 @@ listeners:
 # Legacy form: command_name: menu_id
 # Action form: configure actions under command_name
 custom-commands:
-  zcd: 'main_menu'
+  zcd: 'example/main_menu'
   shop: 'server_shop'
-  menu: 'main_menu'
+  menu: 'example/main_menu'
   test:
     actions:
       - "tell: Hey, you ran /test"
@@ -312,7 +312,7 @@ Opens a menu when a player right-clicks another player. Supports both plain righ
 listeners:
   player-click:
     enabled: false              # Whether to enable this listener
-    menu: 'inspect_player'      # Menu ID to open on trigger
+    menu: 'example/inspect_player'      # Menu ID to open on trigger
     require-sneaking: false     # Whether sneaking is required to trigger
 ```
 
@@ -330,7 +330,7 @@ listeners:
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: false
 ```
 
@@ -340,7 +340,7 @@ listeners:
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: true   # Only triggers on Shift + right-click
 ```
 
@@ -359,10 +359,10 @@ When the `player-click` listener triggers, the system automatically sets a meta 
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: false
 
-# menus/inspect_player.yml
+# menus/example/inspect_player.yml
 Body:
   helmet:
     type: 'item'
@@ -424,6 +424,6 @@ custom-commands:
         deny:
           - "tell: &cYou do not have the test permission"
 ```
-Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}` / `$(arg:0)`, `$(args)`, and `$(arg_count)`.
+Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}`, `{arg:1}`, `$(args)`, and `$(arg_count)`.
 
 To learn more about custom commands and their advantages, see [⌨️ Custom Commands](customCommands.md)

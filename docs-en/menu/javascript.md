@@ -116,6 +116,46 @@ Gets a player by name
 
 ```javascript
 var target = getPlayer("Steve");
+```
+
+### `papi(placeholder, targetPlayer)`
+Resolves a PlaceholderAPI variable. `targetPlayer` is optional; if omitted, the current `player` is used.
+
+Both `%...%` and plain placeholder names are supported:
+
+```javascript
+var playerName = papi("player_name");
+var level = parseInt(papi("%player_level%"));
+var onlinePlayers = JSON.parse(papi("kamenu_online_players"));
+var targetLevel = papi("player_level", getPlayer("Steve"));
+```
+
+Returns an empty string if PlaceholderAPI is not installed or parsing fails.
+
+### `kvar(variable, targetPlayer)`
+Resolves KaMenu internal variables. `targetPlayer` is optional; if omitted, the current `player` is used.
+
+Both `{...}` and plain variable names are supported:
+
+```javascript
+var coins = data("coins");
+var serverStatus = gdata("server_status");
+var tempChoice = meta("temporary_choice");
+var friends = JSON.parse(list("friends"));
+var servers = JSON.parse(glist("servers"));
+var raw = kvar("{gdata:server_status}");
+```
+
+Convenience helpers:
+
+- `data(key, targetPlayer)`: same as `kvar("data:" + key, targetPlayer)`
+- `gdata(key, targetPlayer)`: same as `kvar("gdata:" + key, targetPlayer)`
+- `meta(key, targetPlayer)`: same as `kvar("meta:" + key, targetPlayer)`
+- `list(key, targetPlayer)`: same as `kvar("list:" + key, targetPlayer)`, returns a JSON array string
+- `glist(key, targetPlayer)`: same as `kvar("glist:" + key, targetPlayer)`, returns a JSON array string
+
+```javascript
+var target = getPlayer("Steve");
 if (target) {
     tell(target, "Hello!");
 }

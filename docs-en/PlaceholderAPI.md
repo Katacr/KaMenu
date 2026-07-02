@@ -16,6 +16,11 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 |--------------|--------|-------------|------------|-------------|
 | **Player Data** | `%kamenu_data_<key>%` | Database | ✅ Yes | Per-player persistent data |
 | **Global Data** | `%kamenu_gdata_<key>%` | Database | ✅ Yes | Server-wide shared data |
+| **Player List** | `%kamenu_list_<key>%` | Database | ✅ Yes | Per-player persistent string list, returned as a JSON array |
+| **Global List** | `%kamenu_glist_<key>%` | Database | ✅ Yes | Server-wide shared string list, returned as a JSON array |
+| **Player List Size** | `%kamenu_list_size_<key>%` | Database | ✅ Yes | Number of items in a player's list |
+| **Global List Size** | `%kamenu_glist_size_<key>%` | Database | ✅ Yes | Number of items in a global list |
+| **Online Player List** | `%kamenu_online_players%` | Online players | ❌ No | Current online player names, returned as a JSON array |
 | **Player Metadata** | `%kamenu_meta_<key>%` | Memory | ❌ No | Temporary cached player data |
 | **Inventory Items** | `%kamenu_hasitem_[item attributes]%` | Player Inventory | — | Count of matching items in player's inventory |
 | **Stock Items** | `%kamenu_hasstockitem_<itemName>%` | Player Inventory | — | Count of a saved stock item in player's inventory |
@@ -23,6 +28,8 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 **Quick Navigation:**
 - 📦 [Player Data Variables](#player-data-variables)
 - 🌐 [Global Data Variables](#global-data-variables)
+- 📋 [List Variables](#list-variables)
+- 👥 [Online Player List Variable](#online-player-list-variable)
 - 💾 [Player Metadata Variables](#player-metadata-variables)
 - 🎒 [Inventory Item Variables](#inventory-item-variables)
 - 📦 [Stock Item Variables](#stock-item-variables)
@@ -76,6 +83,77 @@ Reads server-wide shared data (written via the `set-gdata` action).
 announcements:
   - 'Current event status: %kamenu_gdata_server_event%'
   - 'Last event winner: %kamenu_gdata_event_winner%'
+```
+
+---
+
+### List Variables
+
+Reads KaMenu built-in list data and returns a JSON string array. This is suitable for dynamic button `repeat.source` and `inList` / `inGlist` condition list parameters.
+
+**Format:**
+
+- `%kamenu_list_<key>%`: read the current player's list
+- `%kamenu_glist_<key>%`: read a global list
+
+**Examples:**
+
+| Variable | Description |
+|----------|-------------|
+| `%kamenu_list_friends%` | Current player's `friends` list |
+| `%kamenu_glist_servers%` | Global `servers` list |
+| `%kamenu_list_size_friends%` | Item count of the current player's `friends` list |
+| `%kamenu_glist_size_servers%` | Item count of the global `servers` list |
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    friends:
+      type: repeat
+      source: "%kamenu_list_friends%"
+      item:
+        text: "&a{item.value}"
+```
+
+**Using in conditions:**
+
+```yaml
+condition: "%kamenu_list_size_friends% > 0"
+condition: "%kamenu_glist_size_servers% >= 3"
+```
+
+---
+
+### Online Player List Variable
+
+Reads current online player names and returns a JSON string array.
+
+**Format:** `%kamenu_online_players%`
+
+**Example return value:**
+
+```json
+["Steve","Alex","Notch"]
+```
+
+**Using with dynamic buttons:**
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    online_players:
+      type: repeat
+      source: "%kamenu_online_players%"
+      item:
+        text: "&a{item.value}"
+```
+
+**Using in conditions:**
+
+```yaml
+condition: "inGlist.$(target);%kamenu_online_players%"
 ```
 
 ---

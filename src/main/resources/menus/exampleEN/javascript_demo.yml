@@ -140,3 +140,9 @@ Bottom:
         - '&eClick to test parameter passing'
       actions:
         - 'js: [pass_args] %player_name% 50 {data:test} $(input)'
+
+  exit:
+    text: '&8[ Exit ]'
+    actions:
+      - 'actionbar: &7Menu closed'
+      - 'close'

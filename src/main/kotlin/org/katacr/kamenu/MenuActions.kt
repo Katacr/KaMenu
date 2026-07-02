@@ -50,6 +50,7 @@ object MenuActions {
         val config: YamlConfiguration?,
         val asyncDataOperations: Boolean,
         val taskRef: MenuTaskManager.TaskExecutionRef? = null,
+        val contextId: String? = null,
         val handledMenuLifecycle: AtomicBoolean = AtomicBoolean(false)
     )
 
@@ -162,6 +163,7 @@ object MenuActions {
             trimmedAction.startsWith("run-task:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("stop-task:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("stop-current-task") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("page:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("wait:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("return") -> ActionType.SINGLE_TARGET_ONLY
 
@@ -369,7 +371,9 @@ object MenuActions {
         inputTypes: Map<String, String>,
         checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit,
-        closesDialogAfterAction: Boolean = false
+        closesDialogAfterAction: Boolean = false,
+        initialVariables: Map<String, String> = emptyMap(),
+        contextId: String? = null
     ): DialogAction {
         // 只使用 actions（复数）键
         val actionList = config.getList(path)
@@ -409,7 +413,7 @@ object MenuActions {
         // (多行指令、变量、声音、条件判断等)
         return DialogAction.customClick({ response, _ ->
             val initialTaskToken = MenuTaskManager.currentToken(player)
-            val variables = mutableMapOf<String, String>()
+            val variables = initialVariables.toMutableMap()
             inputKeys.forEach { key ->
                 val value = when {
                     response.getFloat(key) != null -> {
@@ -447,6 +451,7 @@ object MenuActions {
                 variables,
                 menuOpener,
                 config = config,
+                contextId = contextId,
                 handledMenuLifecycle = handledMenuLifecycle
             )
                 .whenComplete { _, error ->
@@ -502,9 +507,10 @@ object MenuActions {
         config: YamlConfiguration? = null,
         asyncDataOperations: Boolean = true,
         taskRef: MenuTaskManager.TaskExecutionRef? = null,
+        contextId: String? = null,
         handledMenuLifecycle: AtomicBoolean = AtomicBoolean(false)
     ): CompletableFuture<Boolean> {
-        val context = ActionExecutionContext(player, variables, menuOpener, config, asyncDataOperations, taskRef, handledMenuLifecycle)
+        val context = ActionExecutionContext(player, variables, menuOpener, config, asyncDataOperations, taskRef, contextId, handledMenuLifecycle)
         val start = if (baseDelay > 0) delayTicks(baseDelay) else CompletableFuture.completedFuture(false)
         return start.thenCompose { executeActionSequence(context, actionList) }
             .exceptionally { error ->
@@ -520,7 +526,8 @@ object MenuActions {
         actions: List<*>,
         variables: Map<String, String> = emptyMap(),
         asyncDataOperations: Boolean = true,
-        taskRef: MenuTaskManager.TaskExecutionRef? = null
+        taskRef: MenuTaskManager.TaskExecutionRef? = null,
+        contextId: String? = null
     ): CompletableFuture<Boolean> {
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
             val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
@@ -538,7 +545,8 @@ object MenuActions {
             menuOpener,
             config = config,
             asyncDataOperations = asyncDataOperations,
-            taskRef = taskRef
+            taskRef = taskRef,
+            contextId = contextId
         )
     }
 
@@ -618,6 +626,10 @@ object MenuActions {
                 context.taskRef?.let { MenuTaskManager.stopTask(it) }
                 CompletableFuture.completedFuture(true)
             }
+            controlAction.startsWith("page:", ignoreCase = true) -> {
+                handlePageAction(context.player, controlAction, context.config, context.contextId)
+                CompletableFuture.completedFuture(false)
+            }
             controlAction.startsWith("actions:", ignoreCase = true) -> {
                 val actionCall = parseActionCall(controlAction.substringAfter(":", "").trim())
                 val config = context.config
@@ -642,6 +654,7 @@ object MenuActions {
                     context.menuOpener,
                     context.config,
                     context.asyncDataOperations,
+                    context.contextId,
                     context.handledMenuLifecycle
                 )
                 CompletableFuture.completedFuture(false)
@@ -662,6 +675,27 @@ object MenuActions {
         return future
     }
 
+    private fun handlePageAction(player: Player, action: String, config: YamlConfiguration?, contextId: String?) {
+        val currentPlugin = plugin ?: return
+        val currentConfig = config ?: return
+        val args = action.substringAfter(":", "").trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (args.size < 2) {
+            return
+        }
+
+        val listId = args[0]
+        val operation = args[1].lowercase()
+        val resolvedContextId = contextId ?: currentPlugin.menuManager.getMenuId(currentConfig) ?: "external:${System.identityHashCode(currentConfig)}"
+
+        when {
+            operation == "next" -> MenuListManager.movePage(player, resolvedContextId, listId, 1)
+            operation == "prev" || operation == "previous" -> MenuListManager.movePage(player, resolvedContextId, listId, -1)
+            operation.startsWith("+") -> MenuListManager.movePage(player, resolvedContextId, listId, operation.drop(1).toIntOrNull() ?: 0)
+            operation.startsWith("-") -> MenuListManager.movePage(player, resolvedContextId, listId, operation.toIntOrNull() ?: 0)
+            else -> operation.toIntOrNull()?.let { MenuListManager.setPage(player, resolvedContextId, listId, it) }
+        }
+    }
+
     /**
      * 执行事件动作（如 Open、Close 等）- 异步版本
      * 事件动作不支持 $(input) 变量，因为菜单还未打开
@@ -670,7 +704,7 @@ object MenuActions {
      * @param eventName 事件名称（如 "Open"、"Close" 等）
      * @return CompletableFuture 包含是否应该中断后续操作（true表示中断，例如Open事件中遇到return）
      */
-    fun executeEvent(player: Player, config: YamlConfiguration, eventName: String): CompletableFuture<Boolean> {
+    fun executeEvent(player: Player, config: YamlConfiguration, eventName: String, contextId: String? = null): CompletableFuture<Boolean> {
         val eventPath = "Events.$eventName"
         val eventActions = config.getList(eventPath) ?: return CompletableFuture.completedFuture(false)
 
@@ -692,7 +726,8 @@ object MenuActions {
             menuOpener,
             0L,
             config,
-            asyncDataOperations = true
+            asyncDataOperations = true,
+            contextId = contextId
         )
     }
 
@@ -704,7 +739,7 @@ object MenuActions {
      * @param eventName 事件名称（如 "Open"、"Close" 等）
      * @return 是否应该中断后续操作（true表示中断，例如Open事件中遇到return）
      */
-    fun executeEventSync(player: Player, config: YamlConfiguration, eventName: String): Boolean {
+    fun executeEventSync(player: Player, config: YamlConfiguration, eventName: String, contextId: String? = null): Boolean {
         val eventPath = "Events.$eventName"
         val eventActions = config.getList(eventPath) ?: return false
 
@@ -723,7 +758,8 @@ object MenuActions {
             eventActions.map { it ?: Any() },
             emptyMap(),
             menuOpener,
-            config = config
+            config = config,
+            contextId = contextId
         ).get()
     }
 
@@ -779,6 +815,7 @@ object MenuActions {
         menuOpener: (Player, String) -> Unit,
         config: YamlConfiguration? = null,
         asyncDataOperations: Boolean = true,
+        contextId: String? = null,
         handledMenuLifecycle: AtomicBoolean? = null
     ) {
         // 解析目标选择器
@@ -793,7 +830,7 @@ object MenuActions {
         when {
             // 不支持多目标的动作，只对当前玩家执行
             actionType == ActionType.SINGLE_TARGET_ONLY || selector == null -> {
-                executeActionForPlayer(player, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations, handledMenuLifecycle)
+                executeActionForPlayer(player, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations, contextId, handledMenuLifecycle)
             }
 
             // 支持多目标的动作，获取所有目标玩家并执行
@@ -806,7 +843,7 @@ object MenuActions {
 
                 // 对每个目标玩家执行动作
                 targetPlayers.forEach { targetPlayer ->
-                    executeActionForPlayer(targetPlayer, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations, handledMenuLifecycle)
+                    executeActionForPlayer(targetPlayer, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations, contextId, handledMenuLifecycle)
                 }
             }
         }
@@ -822,6 +859,7 @@ object MenuActions {
         menuOpener: (Player, String) -> Unit,
         config: YamlConfiguration? = null,
         asyncDataOperations: Boolean = true,
+        contextId: String? = null,
         handledMenuLifecycle: AtomicBoolean? = null
     ) {
         // 解析输入变量、动作包参数、内置变量、JavaScript 与 PAPI 变量
@@ -1066,10 +1104,11 @@ object MenuActions {
                                 executeActionList(
                                     player,
                                     actionList.map { it ?: Any() },
-                                    mapOf(),
+                                    variables,
                                     menuOpener,
                                     0L,
-                                    config
+                                    config,
+                                    contextId = contextId
                                 )
                             } else {
                                 player.sendMessage(TextParser.parseText(plugin!!.languageManager.getMessage("actions.action_list_not_found", actionKey)))
@@ -1138,6 +1177,61 @@ object MenuActions {
                 )
             }
 
+            // list: 玩家列表数据操作
+            finalCmd.startsWith("list:") -> {
+                val args = finalCmd.removePrefix("list:").trim()
+                ActionHandlers.parseAndExecuteListAction(
+                    args = args,
+                    player = player,
+                    dataType = "list",
+                    setAction = { key, values ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.setPlayerList(player.uniqueId, key, values)
+                            })
+                        } else {
+                            databaseManager?.setPlayerList(player.uniqueId, key, values)
+                        }
+                    },
+                    addAction = { key, values, unique ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.addPlayerListValues(player.uniqueId, key, values, unique)
+                            })
+                        } else {
+                            databaseManager?.addPlayerListValues(player.uniqueId, key, values, unique)
+                        }
+                    },
+                    removeAction = { key, values ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.removePlayerListValues(player.uniqueId, key, values)
+                            })
+                        } else {
+                            databaseManager?.removePlayerListValues(player.uniqueId, key, values)
+                        }
+                    },
+                    clearAction = { key ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.clearPlayerList(player.uniqueId, key)
+                            })
+                        } else {
+                            databaseManager?.clearPlayerList(player.uniqueId, key)
+                        }
+                    },
+                    deleteAction = { key ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.deletePlayerData(player.uniqueId, key)
+                            })
+                        } else {
+                            databaseManager?.deletePlayerData(player.uniqueId, key)
+                        }
+                    }
+                )
+            }
+
             // set-gdata: 设置全局数据
             finalCmd.startsWith("set-gdata:") -> {
                 val args = finalCmd.removePrefix("set-gdata:").trim()
@@ -1191,6 +1285,61 @@ object MenuActions {
                             })
                         } else {
                             // 同步执行数据库操作，确保数据在菜单渲染前完成
+                            databaseManager?.deleteGlobalData(key)
+                        }
+                    }
+                )
+            }
+
+            // glist: 全局列表数据操作
+            finalCmd.startsWith("glist:") -> {
+                val args = finalCmd.removePrefix("glist:").trim()
+                ActionHandlers.parseAndExecuteListAction(
+                    args = args,
+                    player = player,
+                    dataType = "glist",
+                    setAction = { key, values ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.setGlobalList(key, values)
+                            })
+                        } else {
+                            databaseManager?.setGlobalList(key, values)
+                        }
+                    },
+                    addAction = { key, values, unique ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.addGlobalListValues(key, values, unique)
+                            })
+                        } else {
+                            databaseManager?.addGlobalListValues(key, values, unique)
+                        }
+                    },
+                    removeAction = { key, values ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.removeGlobalListValues(key, values)
+                            })
+                        } else {
+                            databaseManager?.removeGlobalListValues(key, values)
+                        }
+                    },
+                    clearAction = { key ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.clearGlobalList(key)
+                            })
+                        } else {
+                            databaseManager?.clearGlobalList(key)
+                        }
+                    },
+                    deleteAction = { key ->
+                        if (asyncDataOperations) {
+                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                                databaseManager?.deleteGlobalData(key)
+                            })
+                        } else {
                             databaseManager?.deleteGlobalData(key)
                         }
                     }
@@ -1336,7 +1485,14 @@ object MenuActions {
                 })
             }
 
-            executeSingleAction(player, actionString, emptyMap(), menuOpener, null)
+            executeActionList(
+                player,
+                listOf(actionString),
+                emptyMap(),
+                menuOpener,
+                config = null,
+                asyncDataOperations = true
+            )
             return true
         } catch (e: Exception) {
             player.sendMessage(TextParser.parseText(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))

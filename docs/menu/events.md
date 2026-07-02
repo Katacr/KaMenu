@@ -187,13 +187,33 @@ Bottom:
       - 'actions: hello'  # 执行上面配置的`hello`待触发的动作列表
 ```
 
+### 动作列表传参
+
+`actions:` 可以在动作列表名称后追加参数，参数使用英文逗号分隔：
+
+```yaml
+Events:
+  Click:
+    greet:
+      - 'tell: &a你好，{arg:0}！欢迎来到 &e{arg:1}&a。'
+
+Bottom:
+  type: 'notice'
+  confirm:
+    text: '&a[ 问候 ]'
+    actions:
+      - 'actions: greet,玩家,生存服务器'
+```
+
+动作列表内部使用 `{arg:0}`、`{arg:1}` 读取参数。参数中需要包含逗号时，可以使用单引号、双引号或反引号包裹。
+
 **使用 `可点击文本` 激活：**
 
 ```yaml
 Body:
   text:
     type: 'message'
-    text: '请 <text="点击问候";actions=hello;hover=点击执行 hello 动作> 可以看到欢迎语'
+    text: '请 <text="点击问候";actions=hello,玩家,生存服务器;hover=点击执行 hello 动作> 可以看到欢迎语'
 ```
 
 ```yaml
@@ -202,7 +222,7 @@ Bottom:
   confirm:
     text: '&a[ 确定 ]'
     actions:
-      - 'hovertext: 请 <text="[点击问候]";actions=hello;hover=点击执行 hello 动作> 可以看到欢迎语'  
+      - 'hovertext: 请 <text="[点击问候]";actions=hello,玩家,生存服务器;hover=点击执行 hello 动作> 可以看到欢迎语'  
 ```
 ---
 

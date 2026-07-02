@@ -70,6 +70,7 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 
 ### 🌐 快捷打开方式
 
+* `/kamenu guide` — 首次使用时打开内置入门向导，引导设置语言和释放示例菜单
 * `/km open <菜单ID>` — 标准指令打开
 * **快捷键监听**：支持配置按 `F`（切换副手）触发打开指定菜单
 * **自定义指令注册**：一行配置将任意单词变为打开菜单的快捷指令
@@ -78,7 +79,7 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 ### 📊 PlaceholderAPI 支持
 
 * 完整支持 PAPI 变量解析（菜单标题、组件文本、动作中均可使用）
-* 提供 `%kamenu_data_<key>%` 和 `%kamenu_gdata_<key>%` 变量
+* 提供 `%kamenu_data_<key>%`、`%kamenu_gdata_<key>%`、`%kamenu_list_<key>%`、`%kamenu_glist_<key>%` 和 `%kamenu_online_players%` 变量
 
 ***
 

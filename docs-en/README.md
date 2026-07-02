@@ -70,6 +70,7 @@ Advanced action and text features:
 
 ### 🌐 Multiple Ways to Open Menus
 
+* `/kamenu guide` — open the built-in getting started guide for first-time setup, language selection, and example release
 * `/km open <menuId>` — standard command
 * **Hotkey listener:** configure pressing `F` (swap offhand) to open a specified menu
 * **Custom command registration:** map any word to a menu with a single line of config
@@ -78,7 +79,7 @@ Advanced action and text features:
 ### 📊 PlaceholderAPI Support
 
 * Full PAPI variable parsing (usable in menu titles, component text, and actions)
-* Provides `%kamenu_data_<key>%` and `%kamenu_gdata_<key>%` variables
+* Provides `%kamenu_data_<key>%`, `%kamenu_gdata_<key>%`, `%kamenu_list_<key>%`, `%kamenu_glist_<key>%`, and `%kamenu_online_players%` variables
 
 ***
 

@@ -190,6 +190,7 @@ method.value    # 正向判断
 | `hasMoney` | 判断玩家是否有足够的金币         | `hasMoney.100` | `!hasMoney.100` |
 | `hasItem` | 判断玩家背包中是否有指定材质、数量的物品 | `hasItem.[mats=DIAMOND;amount=10]` | `!hasItem.hasItem.[mats=DIAMOND;amount=10]` |
 | `hasStockItem`  | 判断玩家背包中是否有存储库的物品     | `hasStockItem.神秘果;16` | `!hasStockItem.神秘果;16` |
+| `inList` / `inGlist` | 判断某个值是否在玩家列表/全局列表内 | `inGlist.%player_name%;{glist:vip_players}` | `!inList.%player_name%;Steve,Alex` |
 
 **关于物品判断详细使用方法，请参阅 [ hasItem 和 hasStockItem 条件方法](conditions_item.md) 。**
 
@@ -228,6 +229,25 @@ actions:
     deny:
       - 'tell: &c余额不足，需要 100 金币'
 ```
+
+**判断某个值是否在列表中：**
+
+```yaml
+actions:
+  - condition: "inGlist.%player_name%;{glist:vip_players}"
+    allow:
+      - 'toast: type=task;msg=已在名单;icon=emerald'
+    deny:
+      - 'toast: type=error;msg=不在名单;icon=barrier'
+```
+
+`inList` 和 `inGlist` 功能相同，分别用于表达玩家列表和全局列表场景。参数格式为 `值;列表`，列表支持：
+
+- `{list:key}` / `{glist:key}` 返回的 JSON 字符串数组
+- JSON 字符串数组，例如 `["Steve","Alex"]`
+- 简易字符串列表，例如 `Steve,Alex,Notch`
+
+成员匹配为精确匹配，默认不区分大小写。
 
 **权限检查（正向）：**
 

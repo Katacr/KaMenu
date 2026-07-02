@@ -120,6 +120,85 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 ---
 
+### /km guide
+
+打开内置入门向导菜单。
+
+**格式：** `/km guide`
+
+**权限：** `kamenu.admin`
+
+**使用说明：**
+- 向导菜单从插件 jar 内部加载到内存，不会写入 `menus` 目录
+- 可用于首次配置语言、释放示例菜单、查看示例菜单说明
+- 当服务器没有加载任何菜单且 OP 玩家进入服务器时，KaMenu 会发送可点击文本引导打开该菜单
+
+**示例：**
+
+```bash
+/km guide
+/kamenu guide
+```
+
+---
+
+### /km language
+
+设置插件语言并立即重载配置和菜单。
+
+**格式：** `/km language <zh_CN|en_US>`
+
+**权限：** `kamenu.admin`
+
+**别名：** `/km lang <zh_CN|en_US>`
+
+**示例：**
+
+```bash
+# 切换为简体中文
+/km language zh_CN
+
+# 切换为英文
+/km language en_US
+```
+
+---
+
+### /km examples
+
+按指定语言释放内置示例菜单到 `plugins/KaMenu/menus/example/`。
+
+**格式：** `/km examples [zh_CN|en_US] [overwrite]`
+
+**权限：** `kamenu.admin`
+
+**别名：** `/km example`、`/km release-examples`
+
+**使用说明：**
+- 不填写语言时，使用当前 `config.yml` 中的 `language`
+- 中文示例和英文示例都会释放到 `menus/example/`，不会生成 `exampleEN` 目录
+- 默认不会覆盖已有文件
+- 添加 `overwrite` 参数会覆盖已存在的同名示例菜单
+- 释放完成后会自动重载菜单
+
+**示例：**
+
+```bash
+# 按当前语言释放示例
+/km examples
+
+# 释放中文示例
+/km examples zh_CN
+
+# 释放英文示例
+/km examples en_US
+
+# 覆盖释放中文示例
+/km examples zh_CN overwrite
+```
+
+---
+
 ### /km reload
 
 重新加载插件的所有配置文件和菜单文件，无需重启服务器。
@@ -226,18 +305,11 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 **使用说明：** 该指令支持玩家和控制台使用，必须指定目标玩家。
 
 **支持的动作类型：**
-- `tell:消息` - 发送聊天消息
-- `actionbar:消息` - 发送 ActionBar 消息
-- `title:参数` - 发送标题
-- `sound:参数` - 播放声音
-- `command:指令` - 玩家执行指令
-- `console:指令` - 控制台执行指令
-- `data:操作` - 玩家数据操作
-- `gdata:操作` - 全局数据操作
-- `meta:操作` - 元数据操作
+- 支持所有服务端执行的动作前缀，例如 `tell:`、`actionbar:`、`title:`、`hovertext:`、`command:`、`chat:`、`console:`、`sound:`、`open:`、`force-open:`、`close`、`force-close`、`reset`、`server:`、`tppos:`、`data:`、`gdata:`、`list:`、`glist:`、`meta:`、`toast:`、`money:`、`stock-item:`、`item:`、`js:` 等。
+- `wait`、`return`、`run-task:`、`stop-task:`、`stop-current-task`、`page:`、`actions:` 等动作链/菜单上下文动作可以输入，但部分效果依赖当前菜单配置或任务生命周期。
+- `url:` 和 `copy:` 是 Paper Dialog 按钮的静态点击事件，只在菜单按钮中作为单动作使用，不适合作为 `/km action` 测试目标。
 
-
-  详细动作类型请参阅 [🤖 动作 (Actions)](../menu/actions.md)。
+详细动作类型请参阅 [🤖 动作 (Actions)](../menu/actions.md)。
 
 ---
 
@@ -262,7 +334,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 **Tab 补全：**
 - 输入 `/km action ` 后按 Tab 键，会显示所有在线玩家
-- 输入玩家名后按 Tab 键，会显示常用动作前缀
+- 输入玩家名后按 Tab 键，会显示已支持的服务端动作前缀
 
 {% hint style="info" %}
 该指令支持所有内置变量（`{data:var}`、`{gdata:var}`、`{meta:var}`）和 PlaceholderAPI 变量（`%player_name%` 等）。

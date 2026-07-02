@@ -31,7 +31,7 @@ listeners:
   swap-hand:
     enabled: true
     # 触发时打开的菜单文件名
-    menu: 'main_menu'
+    menu: 'example/main_menu'
     # 是否需要潜行时才触发
     require-sneaking: true
 
@@ -40,7 +40,7 @@ listeners:
     # 启用此监听器
     enabled: true
     # 要打开的菜单文件路径
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     # 需要潜行才能触发（Shift+右键）
     require-sneaking: true 
     
@@ -53,7 +53,7 @@ listeners:
       # 目标 Lore 文本（包含该文本即匹配）
       target-lore: '菜单'
       # 触发时打开的菜单文件名
-      menu: 'main_menu'
+      menu: 'example/main_menu'
       # 是否需要潜行时才触发
       require-sneaking: false
     # 可以添加更多配置...
@@ -68,9 +68,9 @@ listeners:
 # 旧写法: 指令名: 菜单文件名
 # 新写法: 指令名下配置 actions 动作队列
 custom-commands:
-  zcd: 'main_menu'
+  zcd: 'example/main_menu'
   shop: 'server_shop'
-  menu: 'main_menu'
+  menu: 'example/main_menu'
   test:
     actions:
       - "tell: 嘿，你输入了/test指令"
@@ -312,7 +312,7 @@ listeners:
 listeners:
   player-click:
     enabled: false              # 是否启用此监听
-    menu: 'inspect_player'      # 触发时打开的菜单 ID
+    menu: 'example/inspect_player'      # 触发时打开的菜单 ID
     require-sneaking: false      # 是否需要潜行时才触发
 ```
 
@@ -330,7 +330,7 @@ listeners:
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: false
 ```
 
@@ -340,7 +340,7 @@ listeners:
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: true   # 只有 Shift + 右键才触发
 ```
 
@@ -359,10 +359,10 @@ listeners:
 listeners:
   player-click:
     enabled: true
-    menu: 'inspect_player'
+    menu: 'example/inspect_player'
     require-sneaking: false
 
-# menus/inspect_player.yml
+# menus/example/inspect_player.yml
 Body:
   helmet:
     type: 'item'
@@ -424,6 +424,6 @@ custom-commands:
         deny:
           - "tell: &c你没有测试权限"
 ```
-动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}` / `$(arg:0)`、`$(args)`、`$(arg_count)` 读取。
+动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}`、`{arg:1}`、`$(args)`、`$(arg_count)` 读取。
 
 想要了解自定义指令的用法和优势，点击此处 [⌨️ 自定义指令](customCommands.md)

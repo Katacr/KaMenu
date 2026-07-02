@@ -36,13 +36,19 @@ Bottom:
   confirm:
     text: '&a[ 确认购买 ]'
     actions:
+      - condition: '$(enable) == true'
+        allow: []
+        deny:
+          - 'toast: type=task;msg=请先勾选条款;icon=barrier'
+          - 'open: example/simple_shop'
+          - 'return'
       - 'tell: 正在开始处理的你的购买请求...'
       - 'wait: 1'
       - condition: 'hasMoney.%math_2_$(amount)*10%'
         allow:
           - 'tell: &a你购买了 &6$(amount) &a个苹果，消费了 &6%math_2_$(amount)*10% &a金币。'
           - 'money: type=take;num=%math_2_$(amount)*10%'
-          - 'console: give %player_name% apple $(amount)'
+          - 'item: type=give;mats=APPLE;amount=$(amount)'
           - 'close'
 
         deny:
