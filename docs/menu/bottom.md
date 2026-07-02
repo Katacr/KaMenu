@@ -1,6 +1,6 @@
 # 🔘 底部按钮 (Bottom)
 
-`Bottom` 节点定义菜单底部的交互按钮区域，共有三种布局模式。
+`Bottom` 节点定义菜单底部的交互按钮区域，共有三种布局模式：`notice`、`confirmation`、`multi`。在 `multi.buttons` 内还可以使用 `type: repeat` 动态生成按钮列表。
 
 ---
 
@@ -12,9 +12,13 @@ Bottom:
   # 模式专属配置...
 ```
 
+{% hint style="info" %}
+`repeat` 不是 `Bottom.type` 的布局模式，不能写成 `Bottom.type: repeat`。它是 `Bottom.type: multi` 下 `buttons.<按钮ID>.type: repeat` 的动态按钮模板。
+{% endhint %}
+
 ---
 
-## 三种布局模式
+## 布局模式与动态按钮
 
 ### notice - 单按钮模式
 
@@ -96,6 +100,7 @@ Bottom:
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `show-condition` | String | 可选，按钮显示条件；条件不满足时该按钮不显示 |
+| `type` | String | 可选。普通按钮无需填写；填写 `repeat` 时表示动态按钮列表 |
 | `text` | String/List | 按钮文字，支持颜色代码、条件判断和 MiniMessage 标签 |
 | `width` | Int | 可选，按钮宽度（1-1024），不设置则使用默认宽度 |
 | `tooltip` | List | 可选，按钮悬停提示（每行一个字符串），支持颜色代码和 MiniMessage |
@@ -103,7 +108,22 @@ Bottom:
 
 ### repeat - 动态按钮列表
 
-`multi.buttons` 中的按钮可以配置为 `type: repeat`，用于根据动态数据源生成一组真实按钮。适合玩家列表、传送点列表、好友列表、邮件列表等数量不固定的内容。
+`multi.buttons` 中的某个按钮可以配置为 `type: repeat`，用于根据动态数据源生成一组真实 Paper Dialog 按钮。适合在线玩家列表、传送点列表、好友列表、邮件列表等数量不固定的内容。
+
+**基本位置：**
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    列表ID:
+      type: repeat
+      source: "数据源"
+      item:
+        text: "&a{item.value}"
+        actions:
+          - "tell: 你点击了 {item.value}"
+```
 
 ```yaml
 JavaScript:
@@ -162,7 +182,7 @@ Bottom:
 | `item` | 节点 | — | 每个列表项生成按钮时使用的模板 |
 | `empty` | 节点 | — | 数据源为空时显示的按钮，可选 |
 
-`source` 可以返回 JSON 数组。数组元素可以是对象、字符串或数字。对象字段会变为 `{item.字段名}`，并可用于按钮文字、tooltip、show-condition 和 actions。
+`source` 会先解析 KaMenu 内置变量、PAPI、`{js:...}` 等文本变量。解析结果可以是 JSON 数组、换行文本，或配合 `split` 使用的简单字符串列表。数组元素可以是对象、字符串或数字；对象字段会变为 `{item.字段名}`，并可用于按钮文字、tooltip、show-condition 和 actions。
 
 内置列表变量 `{list:键名}` 和 `{glist:键名}` 会返回 JSON 数组字符串，可直接作为 `source` 使用：
 
@@ -182,12 +202,16 @@ Bottom:
 如果数据源返回简单字符串列表，例如 `player1, player2, player3`，可以使用 `split` 拆分：
 
 ```yaml
+Events:
+  Open:
+    - "data: type=set;key=recent_players_raw;var=`player1, player2, player3`"
+
 Bottom:
   type: multi
   buttons:
     player_list:
       type: repeat
-      source: "%kamenu_online_players%"
+      source: "{data:recent_players_raw}"
       split: ","
       trim: true
       item:

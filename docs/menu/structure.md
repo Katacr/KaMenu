@@ -240,6 +240,8 @@ Events:
 - `confirmation` - 确认类型（确认和取消按钮）
 - `multi` - 多按钮类型（自定义多个按钮）
 
+`multi.buttons` 下还支持 `type: repeat` 动态按钮模板，用于根据列表数据生成不固定数量的真实按钮。`repeat` 不是 `Bottom.type`，应写在具体按钮节点内。
+
 **详细说明和示例：** 详见 [📋 底部按钮 (Bottom)](bottom.md)
 
 ---

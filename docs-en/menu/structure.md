@@ -240,6 +240,8 @@ Configures the buttons at the bottom of the menu, supporting multiple layout typ
 - `confirmation` — Confirmation type (confirm and cancel buttons)
 - `multi` — Multi-button type (multiple custom buttons)
 
+Under `multi.buttons`, `type: repeat` is also supported as a dynamic button template for generating a variable number of real buttons from list data. `repeat` is not a `Bottom.type`; it belongs inside a specific button node.
+
 **Detailed description and examples:** See [📋 Bottom Buttons (Bottom)](bottom.md)
 
 ---

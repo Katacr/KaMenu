@@ -1,6 +1,6 @@
 # 🔘 Bottom Buttons (Bottom)
 
-The `Bottom` node defines the interactive button area at the bottom of the menu, with three layout modes available.
+The `Bottom` node defines the interactive button area at the bottom of the menu, with three layout modes available: `notice`, `confirmation`, and `multi`. Inside `multi.buttons`, you can also use `type: repeat` to generate dynamic button lists.
 
 ---
 
@@ -12,9 +12,13 @@ Bottom:
   # Mode-specific configuration...
 ```
 
+{% hint style="info" %}
+`repeat` is not a `Bottom.type` layout mode, so do not write `Bottom.type: repeat`. It is a dynamic button template written under `Bottom.type: multi` as `buttons.<buttonId>.type: repeat`.
+{% endhint %}
+
 ---
 
-## Three Layout Modes
+## Layout Modes And Dynamic Buttons
 
 ### notice - Single Button Mode
 
@@ -96,6 +100,7 @@ Supports multiple custom buttons arranged in a matrix, with an optional exit but
 | Field | Type | Description |
 |------|------|-------------|
 | `show-condition` | String | Optional, button display condition; button is hidden when condition is not met |
+| `type` | String | Optional. Omit for normal buttons; set to `repeat` for a dynamic button list |
 | `text` | String/List | Button text, supports color codes, conditions, and MiniMessage tags |
 | `width` | Int | Optional, button width (1-1024); uses default width if not set |
 | `tooltip` | List | Optional, button hover tooltip (one string per line), supports color codes and MiniMessage |
@@ -103,7 +108,22 @@ Supports multiple custom buttons arranged in a matrix, with an optional exit but
 
 ### repeat - Dynamic Button Lists
 
-Buttons under `multi.buttons` can use `type: repeat` to generate real action buttons from a dynamic data source. This is useful for player lists, warp lists, friend lists, mail lists, and other content with unknown item counts.
+A button under `multi.buttons` can use `type: repeat` to generate real Paper Dialog buttons from a dynamic data source. This is useful for online player lists, warp lists, friend lists, mail lists, and other content with unknown item counts.
+
+**Basic location:**
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    list_id:
+      type: repeat
+      source: "data source"
+      item:
+        text: "&a{item.value}"
+        actions:
+          - "tell: You clicked {item.value}"
+```
 
 ```yaml
 JavaScript:
@@ -162,7 +182,7 @@ Bottom:
 | `item` | Node | — | Button template for each list item |
 | `empty` | Node | — | Optional button shown when the source has no items |
 
-`source` can return a JSON array. Items may be objects, strings, or numbers. Object fields become `{item.fieldName}` and can be used in button text, tooltip, show-condition, and actions.
+`source` is resolved through KaMenu internal variables, PAPI, `{js:...}`, and other text variables first. The resolved result can be a JSON array, newline text, or a simple string list used with `split`. Items may be objects, strings, or numbers. Object fields become `{item.fieldName}` and can be used in button text, tooltip, show-condition, and actions.
 
 Built-in list variables `{list:key}` and `{glist:key}` return JSON array strings and can be used directly as `source`:
 
@@ -182,12 +202,16 @@ Bottom:
 If the data source returns a simple string list such as `player1, player2, player3`, use `split`:
 
 ```yaml
+Events:
+  Open:
+    - "data: type=set;key=recent_players_raw;var=`player1, player2, player3`"
+
 Bottom:
   type: multi
   buttons:
     player_list:
       type: repeat
-      source: "%kamenu_online_players%"
+      source: "{data:recent_players_raw}"
       split: ","
       trim: true
       item:
