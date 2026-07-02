@@ -90,7 +90,7 @@ Events:
 
 ### 6. 动作包参数传递
 
-`actions:` 动作包调用和可点击文本的 `actions=` 参数现在支持传参。动作包内部可通过 `{arg:0}`、`{arg:1}` 或 `$(arg:0)` 读取参数。
+`actions:` 动作包调用和可点击文本的 `actions=` 参数现在支持传参。动作包内部可通过 `{arg:0}`、`{arg:1}` 读取参数。
 
 ```yaml
 Body:
@@ -223,7 +223,7 @@ New task control actions can start and stop periodic tasks from any action list:
 
 ### 6. Action list arguments
 
-`actions:` action-list calls and clickable text `actions=` values now support arguments. Inside the action list, use `{arg:0}`, `{arg:1}`, or `$(arg:0)` to read them.
+`actions:` action-list calls and clickable text `actions=` values now support arguments. Inside the action list, use `{arg:0}` and `{arg:1}` to read them.
 
 ```yaml
 Body:

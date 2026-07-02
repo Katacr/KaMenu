@@ -51,9 +51,9 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `list`        | Operate player list data (supports set/add/remove/take/clear/delete) | ✅                        | 
 | `glist`       | Operate global list data (supports set/add/remove/take/clear/delete) | ✅                        | 
 | `meta`        | Operate player metadata (supports set/add/take/delete)         | ✅                        | 
-| `set-data`    | Set player data (legacy format, use `data` instead)            | ✅                        | 
-| `set-gdata`   | Set global data (legacy format, use `gdata` instead)           | ✅                        | 
-| `set-meta`    | Set player metadata (legacy format, use `meta` instead)        | ✅                        | 
+| `set-data`    | Short form for setting player data                             | ✅                        | 
+| `set-gdata`   | Short form for setting global data                             | ✅                        | 
+| `set-meta`    | Short form for setting player metadata                         | ✅                        | 
 | `js`          | Execute JavaScript code (supports predefined functions)        | ❌                        | 
 | `actions`     | Execute an action list defined under Events.Click              | ❌                        | 
 | `run-task`    | Start a periodic task defined under Events.Tasks               | ❌                        | 
@@ -650,7 +650,7 @@ actions:
 
 ---
 
-### set-data - Set Player Data (Legacy Format)
+### set-data - Set Player Data (Short Form)
 
 Save a key-value pair to the current player's persistent data.
 
@@ -666,13 +666,13 @@ Save a key-value pair to the current player's persistent data.
 
 **Reading:** Use `{data:key}` or PAPI variable `%kamenu_data_key%` anywhere in the menu.
 
-{% hint style="warning" %}
-This is a legacy format, **use the new `data` action instead**, which supports more operation types (add/take/delete).
+{% hint style="info" %}
+This is a short form for setting one value. Use the parameter form `data: type=...;key=...;var=...` when you need `add` / `take` / `delete`.
 {% endhint %}
 
 ---
 
-### set-gdata - Set Global Data (Legacy Format)
+### set-gdata - Set Global Data (Short Form)
 
 Save a key-value pair to global data (shared by all players).
 
@@ -687,13 +687,13 @@ Save a key-value pair to global data (shared by all players).
 
 **Reading:** Use `{gdata:key}` or PAPI variable `%kamenu_gdata_key%` anywhere in the menu.
 
-{% hint style="warning" %}
-This is a legacy format, **use the new `gdata` action instead**, which supports more operation types (add/take/delete).
+{% hint style="info" %}
+This is a short form for setting one global value. Use the parameter form `gdata: type=...;key=...;var=...` when you need `add` / `take` / `delete`.
 {% endhint %}
 
 ---
 
-### set-meta - Set Player Metadata (Legacy Format)
+### set-meta - Set Player Metadata (Short Form)
 
 Save a key-value pair to the player's metadata (memory cache, not persistent).
 
@@ -709,8 +709,8 @@ Save a key-value pair to the player's metadata (memory cache, not persistent).
 
 **Reading:** Use `{meta:key}` or PAPI variable `%kamenu_meta_key%` anywhere in the menu.
 
-{% hint style="warning" %}
-This is a legacy format, **use the new `meta` action instead**, which supports more operation types (add/take/delete).
+{% hint style="info" %}
+This is a short form for setting one temporary value. Use the parameter form `meta: type=...;key=...;var=...` when you need `add` / `take` / `delete`.
 {% endhint %}
 
 **Note:**
@@ -765,7 +765,7 @@ Operate the player's persistent data, supporting set, add, subtract, and delete 
 **Note:**
 - In `add` and `take` operations, if the current value or specified value is not a number, the operation fails and a warning is output in the console
 - In `delete` operation, if the key doesn't exist, the operation silently fails (no error)
-- Legacy format `set-data: <key> <value>` still works, but new format is recommended
+- Short form `set-data: <key> <value>` can be used for quick value setting
 
 ---
 
@@ -811,7 +811,7 @@ Operate global data (shared by all players), supporting set, add, subtract, and 
 - Global data is shared among all players
 - In `add` and `take` operations, if the current value or specified value is not a number, the operation fails and a warning is output in the console
 - In `delete` operation, if the key doesn't exist, the operation silently fails (no error)
-- Legacy format `set-gdata: <key> <value>` still works, but new format is recommended
+- Short form `set-gdata: <key> <value>` can be used for quick value setting
 
 ---
 
@@ -941,7 +941,7 @@ Operate the player's metadata (memory cache), supporting set, add, subtract, and
 - All metadata is cleared on plugin reload or server shutdown
 - In `add` and `take` operations, if the current value or specified value is not a number, the operation fails and a warning is output in the console
 - In `delete` operation, if the key doesn't exist, the operation silently fails (no error)
-- Legacy format `set-meta: <key> <value>` still works, but new format is recommended
+- Short form `set-meta: <key> <value>` can be used for quick value setting
 
 ---
 

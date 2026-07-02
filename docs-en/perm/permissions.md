@@ -47,7 +47,7 @@ Events:
           - 'tell: You have the user.vip permission. Access granted.'  # Allow menu to open
         deny:
           - 'tell: &cYou do not have the user.vip permission and cannot open this menu'
-          - 'cancel'    # Block menu from opening
+          - 'return'    # Block menu from opening
 ```
 
 **Advantages:**

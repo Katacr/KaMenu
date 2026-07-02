@@ -40,7 +40,7 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 
 ### Player Data Variables
 
-Reads persistent per-player data (written via the `set-data` action).
+Reads persistent per-player data (written via the `set-data` short form or the `data:` parameter action).
 
 **Format:** `%kamenu_data_<key>%`
 
@@ -65,7 +65,7 @@ scoreboard:
 
 ### Global Data Variables
 
-Reads server-wide shared data (written via the `set-gdata` action).
+Reads server-wide shared data (written via the `set-gdata` short form or the `gdata:` parameter action).
 
 **Format:** `%kamenu_gdata_<key>%`
 
@@ -160,7 +160,7 @@ condition: "inGlist.$(target);%kamenu_online_players%"
 
 ### Player Metadata Variables
 
-Reads temporary in-memory metadata for a player (written via the `set-meta` action).
+Reads temporary in-memory metadata for a player (written via the `set-meta` short form or the `meta:` parameter action).
 
 **Format:** `%kamenu_meta_<key>%`
 
@@ -469,8 +469,8 @@ Bottom:
 
 1. **PAPI Plugin Dependency**: PlaceholderAPI must be installed to use these variables
 2. **Data Persistence**:
-   - Data written by `set-data` and `set-gdata` is persisted to the database
-   - Data written by `set-meta` is stored in memory only and is not persisted
+   - Data written by `set-data` / `data:` and `set-gdata` / `gdata:` is persisted to the database
+   - Data written by `set-meta` / `meta:` is stored in memory only and is not persisted
 3. **Key Prefixes**: Player data, global data, and metadata use different prefixes (`data_`, `gdata_`, `meta_`) and have different storage locations and lifetimes
 4. **Type Limitation**: All data is stored as strings; type conversion must be handled as needed
 5. **Performance**: Reading large amounts of data frequently may impact performance — use wisely

@@ -44,11 +44,11 @@ custom-commands:
 
 自定义指令动作队列可以读取玩家输入的参数：
 
-- `{arg:0}` / `$(arg:0)`：第 1 个参数
-- `{arg:1}` / `$(arg:1)`：第 2 个参数
-- `$(args)`：完整参数文本
-- `$(arg_count)`：参数数量
-- `$(command)`：实际触发的指令标签
+- `{arg:0}`：第 1 个参数
+- `{arg:1}`：第 2 个参数
+- `{args}`：完整参数文本
+- `{arg_count}`：参数数量
+- `{command}`：实际触发的指令标签
 
 示例：
 
@@ -56,7 +56,7 @@ custom-commands:
 custom-commands:
   greet:
     actions:
-      - "tell: &a你好 {arg:0}，欢迎来到 $(arg:1)"
+      - "tell: &a你好 {arg:0}，欢迎来到 {arg:1}"
 ```
 
 ---
@@ -150,11 +150,11 @@ The action queue uses the same execution logic as button actions and supports:
 
 Custom command actions can read the arguments entered by the player:
 
-- `{arg:0}` / `$(arg:0)`: first argument
-- `{arg:1}` / `$(arg:1)`: second argument
-- `$(args)`: full argument text
-- `$(arg_count)`: argument count
-- `$(command)`: the command label used by the player
+- `{arg:0}`: first argument
+- `{arg:1}`: second argument
+- `{args}`: full argument text
+- `{arg_count}`: argument count
+- `{command}`: the command label used by the player
 
 Example:
 
@@ -162,7 +162,7 @@ Example:
 custom-commands:
   greet:
     actions:
-      - "tell: &aHello {arg:0}, welcome to $(arg:1)"
+      - "tell: &aHello {arg:0}, welcome to {arg:1}"
 ```
 
 ---

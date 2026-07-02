@@ -154,6 +154,42 @@ Convenience helpers:
 - `list(key, targetPlayer)`: same as `kvar("list:" + key, targetPlayer)`, returns a JSON array string
 - `glist(key, targetPlayer)`: same as `kvar("glist:" + key, targetPlayer)`, returns a JSON array string
 
+#### Reading Lists in JavaScript
+
+`list()` and `glist()` read KaMenu built-in list data:
+
+- `list("friends")`: reads the current player's `friends` list
+- `glist("servers")`: reads the global shared `servers` list
+- The second argument can be a target player object, for example `list("friends", getPlayer("Steve"))`
+- The return value is a JSON array string, so it is usually parsed with `JSON.parse(...)`
+
+```javascript
+var friends = JSON.parse(list("friends"));
+if (friends.indexOf("Steve") >= 0) {
+    tell(player, "Steve is already in your friend list");
+}
+
+var servers = JSON.parse(glist("servers"));
+for (var i = 0; i < servers.length; i++) {
+    log("Server: " + servers[i]);
+}
+```
+
+You can also use `{js:...}` to output list counts or boolean checks:
+
+```yaml
+Body:
+  info:
+    type: message
+    text:
+      - '&aFriend count: {js:JSON.parse(list("friends")).length}'
+      - '&eContains Steve: {js:JSON.parse(list("friends")).indexOf("Steve") >= 0}'
+```
+
+{% hint style="info" %}
+`list()` / `glist()` only read variables and do not modify lists. To write list data, use `list:` / `glist:` actions. For YAML condition membership checks, prefer `inList` / `inGlist`.
+{% endhint %}
+
 ```javascript
 var target = getPlayer("Steve");
 if (target) {

@@ -51,9 +51,9 @@ Bottom:
 | `list`        | 操作玩家列表数据（支持 set/add/remove/take/clear/delete） | ✅ |
 | `glist`       | 操作全局列表数据（支持 set/add/remove/take/clear/delete） | ✅ |
 | `meta`        | 操作玩家元数据（支持 set/add/take/delete） | ✅ |
-| `set-data`    | 设置玩家数据（旧格式，推荐使用 `data`）         | ✅ |
-| `set-gdata`   | 设置全局数据（旧格式，推荐使用 `gdata`）        | ✅ |
-| `set-meta`    | 设置玩家元数据（旧格式，推荐使用 `meta`）        | ✅ |
+| `set-data`    | 简写设置玩家数据                       | ✅ |
+| `set-gdata`   | 简写设置全局数据                       | ✅ |
+| `set-meta`    | 简写设置玩家元数据                      | ✅ |
 | `js`          | 执行 JavaScript 代码（支持预定义函数）       | ❌ |
 | `actions`     | 执行 Events.Click 下定义的动作列表        | ❌ |
 | `run-task`    | 启动 Events.Tasks 下定义的周期任务        | ❌ |
@@ -650,7 +650,7 @@ actions:
 
 ---
 
-### set-data - 设置玩家数据（旧格式）
+### set-data - 设置玩家数据（简写格式）
 
 将一个键值对保存到当前玩家的持久化数据中。
 
@@ -666,13 +666,13 @@ actions:
 
 **读取方式：** 在菜单任意文本位置使用 `{data:键名}` 或 PAPI 变量 `%kamenu_data_键名%`。
 
-{% hint style="warning" %}
-此为旧格式，**推荐使用新的 `data` 动作**，支持更多操作类型（add/take/delete）。
+{% hint style="info" %}
+这是简写格式，适合只需要设置一个值的场景。需要 `add` / `take` / `delete` 时使用 `data: type=...;key=...;var=...` 参数格式。
 {% endhint %}
 
 ---
 
-### set-gdata - 设置全局数据（旧格式）
+### set-gdata - 设置全局数据（简写格式）
 
 将一个键值对保存到全局数据中（所有玩家共享）。
 
@@ -687,13 +687,13 @@ actions:
 
 **读取方式：** 在菜单任意文本位置使用 `{gdata:键名}` 或 PAPI 变量 `%kamenu_gdata_键名%`。
 
-{% hint style="warning" %}
-此为旧格式，**推荐使用新的 `gdata` 动作**，支持更多操作类型（add/take/delete）。
+{% hint style="info" %}
+这是简写格式，适合只需要设置一个全局值的场景。需要 `add` / `take` / `delete` 时使用 `gdata: type=...;key=...;var=...` 参数格式。
 {% endhint %}
 
 ---
 
-### set-meta - 设置玩家元数据（旧格式）
+### set-meta - 设置玩家元数据（简写格式）
 
 将一个键值对保存到玩家的元数据中（内存缓存，无需持久化）。
 
@@ -709,8 +709,8 @@ actions:
 
 **读取方式：** 在菜单任意文本位置使用 `{meta:键名}` 或 PAPI 变量 `%kamenu_meta_键名%`。
 
-{% hint style="warning" %}
-此为旧格式，**推荐使用新的 `meta` 动作**，支持更多操作类型（add/take/delete）。
+{% hint style="info" %}
+这是简写格式，适合只需要设置一个临时值的场景。需要 `add` / `take` / `delete` 时使用 `meta: type=...;key=...;var=...` 参数格式。
 {% endhint %}
 
 **注意：**
@@ -765,7 +765,7 @@ actions:
 **注意：**
 - `add` 和 `take` 操作时，如果当前值或指定值不是数字，操作会失败并在后台输出警告
 - `delete` 操作时，如果键不存在，操作会静默失败（不会报错）
-- 旧格式 `set-data: <键名> <值>` 仍然可用，但推荐使用新格式
+- 简写格式 `set-data: <键名> <值>` 可用于快速设置值
 
 ---
 
@@ -811,7 +811,7 @@ actions:
 - 全局数据在所有玩家之间共享
 - `add` 和 `take` 操作时，如果当前值或指定值不是数字，操作会失败并在后台输出警告
 - `delete` 操作时，如果键不存在，操作会静默失败（不会报错）
-- 旧格式 `set-gdata: <键名> <值>` 仍然可用，但推荐使用新格式
+- 简写格式 `set-gdata: <键名> <值>` 可用于快速设置值
 
 ---
 
@@ -941,7 +941,7 @@ Bottom:
 - 插件重载或关服时清理全部元数据
 - `add` 和 `take` 操作时，如果当前值或指定值不是数字，操作会失败并在后台输出警告
 - `delete` 操作时，如果键不存在，操作会静默失败（不会报错）
-- 旧格式 `set-meta: <键名> <值>` 仍然可用，但推荐使用新格式
+- 简写格式 `set-meta: <键名> <值>` 可用于快速设置值
 
 ---
 

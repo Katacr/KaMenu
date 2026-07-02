@@ -45,7 +45,7 @@ Events:
           - 'tell: 你有 user.vip 权限，允许打开此菜单。'  # 允许打开菜单
         deny:
           - 'tell: &c你没有 user.vip 权限，无法打开此菜单'
-          - 'cancel'    # 阻止打开菜单
+          - 'return'    # 阻止打开菜单
 ```
 
 **优势：**

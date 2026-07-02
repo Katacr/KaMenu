@@ -154,6 +154,42 @@ var raw = kvar("{gdata:server_status}");
 - `list(key, targetPlayer)`：等价于 `kvar("list:" + key, targetPlayer)`，返回 JSON 数组字符串
 - `glist(key, targetPlayer)`：等价于 `kvar("glist:" + key, targetPlayer)`，返回 JSON 数组字符串
 
+#### 在 JavaScript 中读取列表
+
+`list()` 和 `glist()` 读取的是 KaMenu 的内置列表数据：
+
+- `list("friends")`：读取当前玩家的 `friends` 列表
+- `glist("servers")`：读取全局共享的 `servers` 列表
+- 第二个参数可传入目标玩家对象，例如 `list("friends", getPlayer("Steve"))`
+- 返回值是 JSON 数组字符串，通常需要用 `JSON.parse(...)` 转成 JavaScript 数组
+
+```javascript
+var friends = JSON.parse(list("friends"));
+if (friends.indexOf("Steve") >= 0) {
+    tell(player, "Steve 已在你的好友列表中");
+}
+
+var servers = JSON.parse(glist("servers"));
+for (var i = 0; i < servers.length; i++) {
+    log("服务器: " + servers[i]);
+}
+```
+
+也可以在 `{js:...}` 内输出列表数量或判断结果：
+
+```yaml
+Body:
+  info:
+    type: message
+    text:
+      - '&a好友数量: {js:JSON.parse(list("friends")).length}'
+      - '&e是否包含 Steve: {js:JSON.parse(list("friends")).indexOf("Steve") >= 0}'
+```
+
+{% hint style="info" %}
+`list()` / `glist()` 只负责读取变量，不会修改列表。要写入列表，请在 actions 中使用 `list:` / `glist:` 动作；要在 YAML 条件里判断成员关系，推荐使用 `inList` / `inGlist`。
+{% endhint %}
+
 ```javascript
 var target = getPlayer("Steve");
 if (target) {

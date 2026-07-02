@@ -60,9 +60,9 @@ custom-commands:
 
 - `{arg:0}`：第 1 个参数
 - `{arg:1}`：第 2 个参数
-- `$(args)`：完整参数文本
-- `$(arg_count)`：参数数量
-- `$(command)`：实际触发的指令标签
+- `{args}`：完整参数文本
+- `{arg_count}`：参数数量
+- `{command}`：实际触发的指令标签
 
 ```yaml
 custom-commands:

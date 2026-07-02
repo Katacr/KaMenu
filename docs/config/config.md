@@ -424,6 +424,6 @@ custom-commands:
         deny:
           - "tell: &c你没有测试权限"
 ```
-动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}`、`{arg:1}`、`$(args)`、`$(arg_count)` 读取。
+动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}`、`{arg:1}`、`{args}`、`{arg_count}`、`{command}` 读取。
 
 想要了解自定义指令的用法和优势，点击此处 [⌨️ 自定义指令](customCommands.md)

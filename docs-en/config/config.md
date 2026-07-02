@@ -424,6 +424,6 @@ custom-commands:
         deny:
           - "tell: &cYou do not have the test permission"
 ```
-Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}`, `{arg:1}`, `$(args)`, and `$(arg_count)`.
+Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}`, `{arg:1}`, `{args}`, `{arg_count}`, and `{command}`.
 
 To learn more about custom commands and their advantages, see [⌨️ Custom Commands](customCommands.md)
