@@ -284,8 +284,7 @@ object MenuUI {
 
             val showCondition = itemSection.getString("show-condition") ?: itemSection.getString("show_condition")
             if (showCondition != null) {
-                val resolvedCondition = resolveMenuText(player, showCondition, variables, contextId)
-                if (!ConditionUtils.checkCondition(player, resolvedCondition)) {
+                if (!ConditionUtils.checkCondition(player, showCondition, variables) { key -> dynamicVariable(player, contextId, key) }) {
                     return@forEachIndexed
                 }
             }
@@ -780,7 +779,7 @@ object MenuUI {
                         // 检查按钮显示条件（兼容 show-condition 和 show_condition 两种写法）
                         val showCondition = btnSection.getString("$btnKey.show-condition") ?: btnSection.getString("$btnKey.show_condition")
 
-                        if (showCondition != null && !ConditionUtils.checkCondition(player, resolveMenuText(player, showCondition, contextId = contextId))) {
+                        if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition, emptyMap()) { key -> dynamicVariable(player, contextId, key) }) {
                             // 条件不满足，不显示此按钮
                             continue
                         }

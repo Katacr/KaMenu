@@ -30,6 +30,9 @@ object ConditionExpressionEngine {
     private data class Token(val type: TokenType, val text: String)
 
     init {
+        registerBuiltinPredicate("isNull") { _, value -> isNullLikeValue(value) }
+        registerBuiltinPredicate("isPass") { _, value -> value.isEmpty() }
+        registerBuiltinPredicate("isTrue") { _, value -> parseBoolean(value) == true }
         registerBuiltinPredicate("isNum") { _, value -> value.toDoubleOrNull() != null }
         registerBuiltinPredicate("isPosNum") { _, value -> value.toDoubleOrNull()?.let { it > 0 } ?: false }
         registerBuiltinPredicate("isInt") { _, value -> value.toIntOrNull() != null }
@@ -64,8 +67,21 @@ object ConditionExpressionEngine {
     }
 
     fun checkCondition(player: Player, condition: String?): Boolean {
+        return checkCondition(player, condition, emptyMap())
+    }
+
+    fun checkCondition(player: Player, condition: String?, variables: Map<String, String>): Boolean {
+        return checkCondition(player, condition, variables) { null }
+    }
+
+    fun checkCondition(
+        player: Player,
+        condition: String?,
+        variables: Map<String, String>,
+        dynamicResolver: (String) -> String?
+    ): Boolean {
         if (condition == null || condition.isBlank()) return true
-        val processed = TextResolver.resolve(player, condition)
+        val processed = preserveDelimitedFunctionArguments(TextResolver.resolveForCondition(player, condition, variables, dynamicResolver))
         return try {
             evaluate(player, parse(processed))
         } catch (ex: IllegalArgumentException) {
@@ -82,7 +98,7 @@ object ConditionExpressionEngine {
             is Or -> evaluate(player, expr.left) || evaluate(player, expr.right)
             is BuiltinCall -> {
                 val predicate = builtinPredicates[expr.name] ?: return false
-                val result = predicate(player, expr.arg)
+                val result = predicate(player, TextResolver.decodeConditionArgumentMarkers(expr.arg))
                 if (expr.negated) !result else result
             }
             is Compare -> compare(player, expr.left, expr.op, expr.right)
@@ -90,8 +106,8 @@ object ConditionExpressionEngine {
     }
 
     private fun compare(player: Player, leftExpr: String, op: String, rightExpr: String): Boolean {
-        val left = leftExpr
-        val right = rightExpr
+        val left = resolveValueFunction(leftExpr)
+        val right = resolveValueFunction(rightExpr)
 
         return when (op) {
             "==" -> compareEquals(left, right)
@@ -161,21 +177,21 @@ object ConditionExpressionEngine {
         private fun parseAtom(): Expr {
             val left = parseOperandText()
 
-            if (peek().type == TokenType.DOT && isBuiltinPredicateName(left) && isBuiltinCallAhead()) {
+            if (peek().type == TokenType.DOT && isBuiltinPredicateName(left) && (isBuiltinCallAhead() || supportsEmptyArgument(left))) {
                 advance()
                 val name = left
-                val arg = parseDottedOperandText()
+                val arg = parseBuiltinArgument(name)
                 return BuiltinCall(false, name, arg)
             }
 
             if (peek().type == TokenType.DOT && left.startsWith("!") && isBuiltinPredicateName(left.removePrefix("!"))) {
                 val name = left.removePrefix("!")
                 advance()
-                val arg = parseDottedOperandText()
+                val arg = parseBuiltinArgument(name)
                 return BuiltinCall(true, name, arg)
             }
 
-            val fullLeft = parseRemainingDottedText(left)
+            val fullLeft = parseValueOperandText(left, stopAtComparison = true)
             val opToken = peek()
             if (opToken.type in comparisonTokens()) {
                 advance()
@@ -201,7 +217,46 @@ object ConditionExpressionEngine {
         }
 
         private fun parseDottedOperandText(): String {
-            return parseRemainingDottedText(parseOperandText())
+            return parseValueOperandText(parseOperandText(), stopAtComparison = false)
+        }
+
+        private fun parseValueOperandText(first: String, stopAtComparison: Boolean): String {
+            if (peek().type == TokenType.DOT && isValueFunctionName(first)) {
+                advance()
+                return "$first.${parseDelimitedArgument(stopAtComparison)}"
+            }
+            return parseRemainingDottedText(first)
+        }
+
+        private fun parseBuiltinArgument(name: String): String {
+            if (!supportsDelimitedArgument(name)) {
+                return parseDottedOperandText()
+            }
+
+            if (isExpressionBoundary(peek(), stopAtComparison = false)) {
+                return ""
+            }
+
+            return parseDelimitedArgument(stopAtComparison = false)
+        }
+
+        private fun parseDelimitedArgument(stopAtComparison: Boolean): String {
+            val builder = StringBuilder()
+            var previousWasDot = false
+            while (!isExpressionBoundary(peek(), stopAtComparison)) {
+                val token = advance()
+                if (token.type == TokenType.DOT) {
+                    builder.append('.')
+                    previousWasDot = true
+                } else {
+                    if (builder.isNotEmpty() && !previousWasDot) {
+                        builder.append(' ')
+                    }
+                    builder.append(token.text)
+                    previousWasDot = false
+                }
+            }
+            return builder.toString()
         }
 
         private fun parseRemainingDottedText(first: String): String {
@@ -223,6 +278,26 @@ object ConditionExpressionEngine {
 
         private fun isBuiltinPredicateName(name: String): Boolean {
             return builtinPredicates.containsKey(name)
+        }
+
+        private fun isValueFunctionName(name: String): Boolean {
+            return name == "getLength"
+        }
+
+        private fun supportsEmptyArgument(name: String): Boolean {
+            return isBuiltinPredicateName(name)
+        }
+
+        private fun supportsDelimitedArgument(name: String): Boolean {
+            return isBuiltinPredicateName(name)
+        }
+
+        private fun isExpressionBoundary(token: Token, stopAtComparison: Boolean): Boolean {
+            return token.type == TokenType.AND ||
+                token.type == TokenType.OR ||
+                token.type == TokenType.RPAREN ||
+                token.type == TokenType.EOF ||
+                (stopAtComparison && token.type in comparisonTokens())
         }
 
         private fun isBuiltinCallAhead(): Boolean {
@@ -499,6 +574,93 @@ object ConditionExpressionEngine {
         if (leftBool != null && rightBool != null) return leftBool == rightBool
 
         return left.equals(right, ignoreCase = true)
+    }
+
+    private fun isNullLikeValue(value: String): Boolean {
+        val normalized = value.trim()
+        return normalized.isEmpty() || normalized.equals("null", ignoreCase = true)
+    }
+
+    private fun resolveValueFunction(value: String): String {
+        return when {
+            value.startsWith("getLength.") -> TextResolver.decodeConditionArgumentMarkers(value.removePrefix("getLength.")).length.toString()
+            else -> value
+        }
+    }
+
+    private fun preserveDelimitedFunctionArguments(text: String): String {
+        val predicateNames = builtinPredicates.keys
+        val valueNames = setOf("getLength")
+        val functionNames = predicateNames + valueNames
+        val builder = StringBuilder()
+        var index = 0
+
+        while (index < text.length) {
+            val name = if (isFunctionBoundaryBefore(text, index)) {
+                functionNames.firstOrNull { text.startsWith("$it.", index) }
+            } else {
+                null
+            }
+            if (name == null) {
+                builder.append(text[index])
+                index++
+                continue
+            }
+
+            val argumentStart = index + name.length + 1
+            val argumentEnd = findDelimitedArgumentEnd(text, argumentStart, stopAtComparison = name in valueNames)
+            val argument = text.substring(argumentStart, argumentEnd)
+            builder.append(name)
+                .append(".\"")
+                .append(escapeConditionString(argument))
+                .append("\"")
+            index = argumentEnd
+        }
+
+        return builder.toString()
+    }
+
+    private fun isFunctionBoundaryBefore(text: String, index: Int): Boolean {
+        if (index == 0) return true
+        return when (text[index - 1]) {
+            '!', '(', ' ', '\t', '\n', '\r', '&', '|' -> true
+            else -> false
+        }
+    }
+
+    private fun findDelimitedArgumentEnd(text: String, start: Int, stopAtComparison: Boolean): Int {
+        var index = start
+        while (index < text.length) {
+            if (text.startsWith("&&", index) || text.startsWith("||", index) || text[index] == ')') {
+                return trimSyntaxWhitespaceBeforeBoundary(text, start, index)
+            }
+            if (stopAtComparison && isComparisonAt(text, index)) {
+                return trimSyntaxWhitespaceBeforeBoundary(text, start, index)
+            }
+            index++
+        }
+        return text.length
+    }
+
+    private fun trimSyntaxWhitespaceBeforeBoundary(text: String, start: Int, boundary: Int): Int {
+        var end = boundary
+        while (end > start && text[end - 1].isWhitespace()) {
+            end--
+        }
+        return end
+    }
+
+    private fun isComparisonAt(text: String, index: Int): Boolean {
+        return text.startsWith("==", index) ||
+            text.startsWith("!=", index) ||
+            text.startsWith(">=", index) ||
+            text.startsWith("<=", index) ||
+            text[index] == '>' ||
+            text[index] == '<'
+    }
+
+    private fun escapeConditionString(value: String): String {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"")
     }
 
     private fun parseBoolean(value: String): Boolean? = when (value.trim().lowercase()) {

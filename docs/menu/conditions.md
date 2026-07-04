@@ -40,6 +40,22 @@ allow: '&a等级足够'
 deny: '&c等级不足'
 ```
 
+### 变量解析顺序
+
+条件判断会先解析表达式中的变量，再把解析后的结果交给条件表达式引擎和内置条件方法判断。
+
+例如：
+
+```yaml
+condition: "isNull.{data:nickname}"
+condition: "isNull.%player_name%"
+condition: "isNull.$(nickname)"
+```
+
+执行时会先解析 `{data:nickname}`、`%player_name%` 或 `$(nickname)`，然后再将解析结果传给 `isNull` 判断。动作列表内的条件会额外携带当前按钮、输入组件和动作包参数上下文，因此 `$(input)`、`{arg:0}` 等也会先被替换后再判断。
+
+运行时变量值会作为一个完整字符串参与判断，不会被重新解释为条件表达式语法。也就是说，玩家输入中即使包含 `||`、`&&`、换行、引号或类似 YAML 的文本，也只会作为普通字符串值处理。
+
 ### 示例
 
 **菜单标题：**
@@ -182,6 +198,10 @@ method.value    # 正向判断
 
 | 方法        | 说明                   | 正向示例 | 反向示例 |
 |-----------|----------------------|----------|----------|
+| `isNull` | 判断值是否为空。空字符串、全空格字符串、`null` 都视为空 | `isNull.$(nickname)` | `!isNull.{data:nickname}` |
+| `isPass` | 判断值是否为绝对空字符串。只有长度为 0 时通过，空格字符串不通过 | `isPass.$(nickname)` | `!isPass.$(nickname)` |
+| `isTrue` | 判断值是否为真。接受 `true`、`yes`、`1`，其中 `true` / `yes` 不区分大小写 | `isTrue.$(agree)` | `!isTrue.{data:enabled}` |
+| `getLength` | 输出字符串长度，通常搭配比较运算符使用 | `getLength.%player_name% >= 3` | `getLength.$(nickname) == 0` |
 | `isNum`   | 判断是否为数字（整数或小数）       | `isNum.$(amount)` | `!isNum.$(amount)` |
 | `isPosNum` | 判断是否为正数（大于0）         | `isPosNum.{data:price}` | `!isPosNum.{data:price}` |
 | `isInt`   | 判断是否为整数              | `isInt.$(count)` | `!isInt.$(count)` |
@@ -206,6 +226,70 @@ actions:
     deny:
       - 'tell: &c请输入一个有效的整数！'
 ```
+
+**判断输入或数据是否为空：**
+
+```yaml
+actions:
+  - condition: "isNull.$(nickname)"
+    allow:
+      - 'toast: type=error;msg=请输入昵称;icon=barrier'
+      - 'return'
+
+  - condition: "!isNull.{data:nickname}"
+    allow:
+      - 'tell: &a已保存的昵称: {data:nickname}'
+```
+
+`isNull` 可用于 PAPI、KaMenu 内置变量和输入组件值：
+
+```yaml
+condition: "isNull.%some_placeholder%"
+condition: "isNull.{data:var}"
+condition: "isNull.$(input)"
+```
+
+**判断是否为绝对空字符串：**
+
+```yaml
+actions:
+  - condition: "isPass.$(nickname)"
+    allow:
+      - 'toast: type=error;msg=请输入昵称;icon=barrier'
+      - 'return'
+```
+
+`isPass` 只在值长度为 `0` 时通过。输入一个或多个空格不算通过；如果希望空格也算空，请使用 `isNull`。
+
+**判断值是否为 true：**
+
+```yaml
+actions:
+  - condition: "isTrue.$(agree)"
+    allow:
+      - 'toast: type=task;msg=已同意;icon=emerald'
+    deny:
+      - 'toast: type=error;msg=请先勾选;icon=barrier'
+      - 'return'
+```
+
+`isTrue` 接受 `true`、`yes`、数字 `1`；`true` 和 `yes` 不区分大小写。其他值、空值、空格字符串都视为 false。
+
+**判断字符串长度：**
+
+```yaml
+actions:
+  - condition: "getLength.%player_name% >= 3"
+    allow:
+      - 'tell: &a你的名字长度至少为 3'
+
+  - condition: "getLength.$(nickname) > 12"
+    allow:
+      - 'toast: type=error;msg=昵称过长;icon=barrier'
+      - 'return'
+```
+
+`getLength.xxx` 会先解析变量，再输出解析后字符串的长度。它是值函数，通常与 `==`、`!=`、`>`、`>=`、`<`、`<=` 一起使用。
 
 **判断是否为正整数：**
 

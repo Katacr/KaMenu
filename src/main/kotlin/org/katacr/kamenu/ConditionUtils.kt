@@ -25,6 +25,19 @@ object ConditionUtils {
         return ConditionExpressionEngine.checkCondition(player, condition)
     }
 
+    fun checkCondition(player: Player, condition: String?, variables: Map<String, String>): Boolean {
+        return ConditionExpressionEngine.checkCondition(player, condition, variables)
+    }
+
+    fun checkCondition(
+        player: Player,
+        condition: String?,
+        variables: Map<String, String>,
+        dynamicResolver: (String) -> String?
+    ): Boolean {
+        return ConditionExpressionEngine.checkCondition(player, condition, variables, dynamicResolver)
+    }
+
     fun getConditionString(
         player: Player,
         conditionMap: Map<*, *>,

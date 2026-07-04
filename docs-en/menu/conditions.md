@@ -40,6 +40,22 @@ allow: '&aLevel requirement met'
 deny: '&cLevel too low'
 ```
 
+### Variable Resolution Order
+
+Conditions resolve variables in the expression first, then pass the resolved expression to the condition engine and built-in condition methods.
+
+For example:
+
+```yaml
+condition: "isNull.{data:nickname}"
+condition: "isNull.%player_name%"
+condition: "isNull.$(nickname)"
+```
+
+At runtime, `{data:nickname}`, `%player_name%`, or `$(nickname)` is resolved first, then the resolved value is passed to `isNull`. Conditions inside action lists also include the current button, input component, and action-package argument context, so values such as `$(input)` and `{arg:0}` are replaced before evaluation.
+
+Runtime variable values are treated as complete string values, not reinterpreted as condition expression syntax. Even if player input contains `||`, `&&`, newlines, quotes, or YAML-like text, it is handled as ordinary string content.
+
 ### Examples
 
 **Menu Title:**
@@ -182,6 +198,10 @@ method.value    # Forward check
 
 | Method | Description | Forward Example | Reverse Example |
 |--------|-------------|----------------|-----------------|
+| `isNull` | Check whether a value is empty. Empty strings, whitespace-only strings, and `null` are treated as empty | `isNull.$(nickname)` | `!isNull.{data:nickname}` |
+| `isPass` | Check whether a value is an absolute empty string. Only length `0` passes; whitespace strings do not pass | `isPass.$(nickname)` | `!isPass.$(nickname)` |
+| `isTrue` | Check whether a value is true. Accepts `true`, `yes`, and `1`; `true` / `yes` are case-insensitive | `isTrue.$(agree)` | `!isTrue.{data:enabled}` |
+| `getLength` | Output string length, usually used with comparison operators | `getLength.%player_name% >= 3` | `getLength.$(nickname) == 0` |
 | `isNum` | Check if value is a number (integer or decimal) | `isNum.$(amount)` | `!isNum.$(amount)` |
 | `isPosNum` | Check if value is a positive number (>0) | `isPosNum.{data:price}` | `!isPosNum.{data:price}` |
 | `isInt` | Check if value is an integer | `isInt.$(count)` | `!isInt.$(count)` |
@@ -206,6 +226,70 @@ actions:
     deny:
       - 'tell: &cPlease enter a valid integer!'
 ```
+
+**Check whether input or data is empty:**
+
+```yaml
+actions:
+  - condition: "isNull.$(nickname)"
+    allow:
+      - 'toast: type=error;msg=Enter name;icon=barrier'
+      - 'return'
+
+  - condition: "!isNull.{data:nickname}"
+    allow:
+      - 'tell: &aSaved nickname: {data:nickname}'
+```
+
+`isNull` can be used with PAPI, KaMenu internal variables, and input component values:
+
+```yaml
+condition: "isNull.%some_placeholder%"
+condition: "isNull.{data:var}"
+condition: "isNull.$(input)"
+```
+
+**Check whether a value is an absolute empty string:**
+
+```yaml
+actions:
+  - condition: "isPass.$(nickname)"
+    allow:
+      - 'toast: type=error;msg=Enter name;icon=barrier'
+      - 'return'
+```
+
+`isPass` only passes when the value length is `0`. One or more spaces do not pass; use `isNull` if whitespace should count as empty.
+
+**Check whether a value is true:**
+
+```yaml
+actions:
+  - condition: "isTrue.$(agree)"
+    allow:
+      - 'toast: type=task;msg=Accepted;icon=emerald'
+    deny:
+      - 'toast: type=error;msg=Check first;icon=barrier'
+      - 'return'
+```
+
+`isTrue` accepts `true`, `yes`, and numeric `1`; `true` and `yes` are case-insensitive. Other values, empty values, and whitespace-only strings are treated as false.
+
+**Check string length:**
+
+```yaml
+actions:
+  - condition: "getLength.%player_name% >= 3"
+    allow:
+      - 'tell: &aYour name length is at least 3'
+
+  - condition: "getLength.$(nickname) > 12"
+    allow:
+      - 'toast: type=error;msg=Name long;icon=barrier'
+      - 'return'
+```
+
+`getLength.xxx` resolves variables first, then outputs the length of the resolved string. It is a value function and is usually used with `==`, `!=`, `>`, `>=`, `<`, or `<=`.
 
 **Check if value is a positive integer:**
 

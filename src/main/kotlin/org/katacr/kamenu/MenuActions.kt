@@ -345,9 +345,8 @@ object MenuActions {
         variables: Map<String, String>
     ): List<*> {
         val condition = group["condition"] as? String ?: ""
-        val resolvedCondition = TextResolver.resolve(player, condition, variables)
         val (successActions, denyActions) = getConditionalBranches(group)
-        return if (ConditionUtils.checkCondition(player, resolvedCondition)) {
+        return if (ConditionUtils.checkCondition(player, condition, variables)) {
             successActions
         } else {
             denyActions
