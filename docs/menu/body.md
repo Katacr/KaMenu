@@ -411,6 +411,8 @@ Body:
 | `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法                  |
 | `description_width` | `Int` | ❌ | `0` | description 文字框的宽度（1-1024，像素），不设置或设置为 0 则使用默认值 200                                  |
 | `item_model` | `String` | ❌ | — | 物品模型标识（格式：`namespace:key`），用于显示特殊材质物品（如 1.21.7+ 的命名空间物品模型） |
+| `skull_owner` | `String` | ❌ | — | 玩家名称，`material: PLAYER_HEAD` 时显示该玩家皮肤头颅，支持变量和 PAPI |
+| `skull_texture` | `String` | ❌ | — | Base64 头颅纹理值，`material: PLAYER_HEAD` 时显示自定义纹理头颅 |
 | `width` | `Int` | ❌ | `16` | 物品图标宽度（像素）                                                 |
 | `height` | `Int` | ❌ | `16` | 物品图标高度（像素）                                                 |
 | `show_overlays` | `Boolean` | ❌ | `true` | 是否显示物品叠加层（耐久条、冷却、数量等）                               |
@@ -587,6 +589,43 @@ Body:
 
 {% hint style="info" %}
 如果不提供 `name` 属性，系统会使用物品材质对应的默认中文名称。如果需要自定义显示名称，再设置 `name` 属性。
+{% endhint %}
+
+**头颅显示：**
+
+当 `material` 为 `PLAYER_HEAD` 时，可以通过 `skull_owner` 或 `skull_texture` 显示玩家头颅或自定义纹理头颅。
+
+```yaml
+Body:
+  self_head:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    skull_owner: '%player_name%'
+    name: '&a我的头像'
+    description: '&7当前玩家的皮肤头颅'
+    width: 24
+    height: 24
+
+  target_head:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    skull_owner: '{meta:player}'
+    name: '&e目标玩家'
+    description: '&7显示被检查玩家的头像'
+
+  custom_head:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    skull_texture: 'eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA...'
+    name: '&6自定义头颅'
+    description: '&7使用 Base64 纹理值显示固定外观'
+```
+
+{% hint style="info" %}
+- `skull_texture` 优先级高于 `skull_owner`，两者同时配置时会使用 `skull_texture`
+- `skull_owner` 支持变量和 PlaceholderAPI，例如 `%player_name%`、`{meta:player}`
+- `skull_texture` 需要填写完整的 Base64 纹理 `Value` 值，可从 Minecraft Heads 等头颅资源网站获取
+- 自定义纹理首次显示时客户端可能需要下载纹理，后续通常会使用客户端缓存
 {% endhint %}
 
 **物品材质名格式支持：**

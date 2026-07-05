@@ -411,6 +411,8 @@ Displays an item icon in the menu, optionally with a name, Lore, and description
 | `description` | `String` | ❌ | — | Extra description text shown below the item; supports color codes, PAPI variables, condition checks, and clickable text syntax |
 | `description_width` | `Int` | ❌ | `0` | Width of the description text box (1–1024 px); defaults to 200 if not set or set to 0 |
 | `item_model` | `String` | ❌ | — | Item model identifier (format: `namespace:key`); used to display items with special appearances (e.g., namespaced item models in 1.21.7+) |
+| `skull_owner` | `String` | ❌ | — | Player name; when `material: PLAYER_HEAD`, displays that player's skin head. Supports variables and PAPI |
+| `skull_texture` | `String` | ❌ | — | Base64 head texture value; when `material: PLAYER_HEAD`, displays a custom texture head |
 | `width` | `Int` | ❌ | `16` | Item icon width (px) |
 | `height` | `Int` | ❌ | `16` | Item icon height (px) |
 | `show_overlays` | `Boolean` | ❌ | `true` | Whether to show item overlays (durability bar, cooldown, count, etc.) |
@@ -587,6 +589,43 @@ Body:
 
 {% hint style="info" %}
 If the `name` property is not provided, the system uses the item material's default name. Set `name` only when you want a custom display name.
+{% endhint %}
+
+**Head display:**
+
+When `material` is `PLAYER_HEAD`, you can use `skull_owner` or `skull_texture` to display a player head or a custom texture head.
+
+```yaml
+Body:
+  self_head:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    skull_owner: '%player_name%'
+    name: '&aMy Head'
+    description: '&7Current player skin head'
+    width: 24
+    height: 24
+
+  target_head:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    skull_owner: '{meta:player}'
+    name: '&eTarget Player'
+    description: '&7Shows the inspected player head'
+
+  custom_head:
+    type: 'item'
+    material: 'PLAYER_HEAD'
+    skull_texture: 'eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA...'
+    name: '&6Custom Head'
+    description: '&7Uses a Base64 texture value for a fixed appearance'
+```
+
+{% hint style="info" %}
+- `skull_texture` has priority over `skull_owner`; if both are configured, `skull_texture` is used
+- `skull_owner` supports variables and PlaceholderAPI, such as `%player_name%` and `{meta:player}`
+- `skull_texture` must be the complete Base64 texture `Value`; it can be copied from Minecraft head resource websites
+- Custom textures may need to be downloaded by the client on first display; later displays usually use the client cache
 {% endhint %}
 
 **Material name format support:**
