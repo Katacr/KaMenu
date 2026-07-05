@@ -18,6 +18,17 @@ Body:
 
 ---
 
+## Type Overview
+
+| Type | Name | Purpose | Common Use Cases |
+|------|------|---------|------------------|
+| `message` | Plain text message | Displays one or more lines of text, supporting colors, variables, conditional text, and clickable text | Welcome text, descriptions, status display, clickable text entries |
+| `item` | Item display | Displays item icons, names, lore, models, or player equipment slots in the menu body | Shop items, reward previews, player info, item details |
+
+`Body` is for displaying main content. It does not directly handle button clicks. To execute actions, use `Bottom` buttons or clickable text inside a `message` component.
+
+---
+
 ## Component Types
 
 ### message — Plain Text Message

@@ -18,6 +18,16 @@ Bottom:
 
 ---
 
+## Type Overview
+
+| Type | Name | Purpose | Common Use Cases |
+|------|------|---------|------------------|
+| `notice` | Single button mode | Displays one confirm button | Information confirmation, reward claims, simple submit actions |
+| `confirmation` | Confirm/cancel dual button mode | Displays confirm and cancel buttons | Purchase confirmation, delete confirmation, dangerous-action confirmation |
+| `multi` | Multi-button matrix mode | Displays multiple buttons with configurable columns and optional exit button | Main menus, control panels, category entries, complex action menus |
+
+---
+
 ## Layout Modes And Dynamic Buttons
 
 ### notice - Single Button Mode

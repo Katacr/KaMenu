@@ -19,6 +19,19 @@ Inputs:
 
 ---
 
+## Type Overview
+
+| Type | Name | Returned Value | Common Use Cases |
+|------|------|----------------|------------------|
+| `input` | Text input field | Text entered by the player | Player names, amounts, search terms, messages, command arguments |
+| `slider` | Numeric slider | Number; integer values are returned as integers | Amounts, volume, levels, range choices |
+| `dropdown` | Single-option button | Selected option ID | Server selection, class selection, category filtering |
+| `checkbox` | Checkbox | Default `true` / `false`, customizable with `on_true` / `on_false` | Agreement toggles, option switches, two-state choices |
+
+Input values enter the action context only after the player submits the dialog by clicking a bottom button. Therefore, `$(key)` is mainly used in `Bottom` actions, conditions, close events, and other post-submit logic; `Events.Open` cannot read live input values.
+
+---
+
 ## Referencing Input Values
 
 In `Bottom` actions, you can reference the current value of an input field using `$(key)`:
@@ -203,20 +216,20 @@ Inputs:
 
 ---
 
-### dropdown - Dropdown Select Box
+### dropdown - Single-Option Button
 
-Allows players to select one option from a predefined list.
+Displays a clickable button. Each click cycles to the next predefined option.
 
 **Configuration:**
 
 | Field | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
 | `type` | `String` | ✅ | — | Fixed value `dropdown` |
-| `text` | `String` | ✅ | — | Dropdown label text, supports conditions |
-| `hide_text` | `Boolean` | ❌ | `false` | Whether to hide the dropdown's own label text |
+| `text` | `String` | ✅ | — | Single-option button label text, supports conditions |
+| `hide_text` | `Boolean` | ❌ | `false` | Whether to hide the single-option button's own label text |
 | `options` | `List<String>` | ✅ | — | Option list. Supports plain strings, `id => display` format, and conditional option lists |
 | `default_id` | `String` | ❌ | — | Default selected option ID |
-| `width` | `Int` | ❌ | `200` | Dropdown width (pixels) |
+| `width` | `Int` | ❌ | `200` | Single-option button width (pixels) |
 
 **Supported `options` formats:**
 

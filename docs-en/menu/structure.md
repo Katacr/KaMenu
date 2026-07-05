@@ -101,7 +101,7 @@ Events:
 Body:
   ...
 
-# Optional: input component area (text fields, sliders, dropdowns, checkboxes)
+# Optional: input component area (text fields, sliders, single-option buttons, checkboxes)
 Inputs:
   ...
 
@@ -221,12 +221,12 @@ Displays various content in the main body of the menu, such as plain text messag
 
 ### Inputs — Input Component Area
 
-Provides interactive input components such as text fields, sliders, dropdowns, and more.
+Provides interactive input components such as text fields, sliders, single-option buttons, and more.
 
 **Component types:**
 - `input` — Text input field
 - `slider` — Slider
-- `dropdown` — Dropdown selection box
+- `dropdown` — Single-option button
 - `checkbox` — Checkbox
 
 **Detailed description and examples:** See [⌨️ Input Components (Inputs)](inputs.md)

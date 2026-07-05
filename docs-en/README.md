@@ -6,7 +6,7 @@ description: KaMenu - A modern Dialog menu plugin for Minecraft Paper servers
 
 > The next-generation Minecraft GUI plugin powered by the Paper Dialog API — a fresh interactive experience beyond traditional chest menus
 
-**KaMenu** is a GUI plugin built for modern Minecraft Paper servers. It abandons the traditional Inventory (chest) menu pattern in favor of the **native Paper 1.21.7+ Dialog API**, providing players with a modern menu interface featuring rich interactive components such as text inputs, sliders, dropdowns, and checkboxes. Configuration is YAML-based — clean, intuitive, and ready to use out of the box.
+**KaMenu** is a GUI plugin built for modern Minecraft Paper servers. It abandons the traditional Inventory (chest) menu pattern in favor of the **native Paper 1.21.7+ Dialog API**, providing players with a modern menu interface featuring rich interactive components such as text inputs, sliders, single-option buttons, and checkboxes. Configuration is YAML-based — clean, intuitive, and ready to use out of the box.
 
 > **⚠️ Important:**
 > - **Minimum version:** Paper 1.21.7
@@ -24,7 +24,7 @@ description: KaMenu - A modern Dialog menu plugin for Minecraft Paper servers
 Say goodbye to chest menus and embrace native UI:
 
 * A brand-new Paper Dialog menu interface with a more modern look
-* Multiple rich interactive components: text inputs, numeric sliders, dropdown selects, checkboxes
+* Multiple rich interactive components: text inputs, numeric sliders, single-option buttons, checkboxes
 * Supports `Item` (item display) and `Message` (plain text) content components
 * Three bottom button layout modes: `notice`, `confirmation`, `multi`
 
