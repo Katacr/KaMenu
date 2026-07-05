@@ -54,6 +54,8 @@ object MenuActions {
         val handledMenuLifecycle: AtomicBoolean = AtomicBoolean(false)
     )
 
+    private const val INPUT_TRIM_EDGE_SPACES_PATH = "input-capture.trim-edge-spaces"
+
     /**
      * 动作类型枚举
      */
@@ -368,6 +370,7 @@ object MenuActions {
         path: String,
         inputKeys: List<String>,
         inputTypes: Map<String, String>,
+        inputRemoveChars: Map<String, String> = emptyMap(),
         checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit,
         closesDialogAfterAction: Boolean = false,
@@ -440,7 +443,7 @@ object MenuActions {
                     response.getBoolean(key) != null -> response.getBoolean(key).toString()
                     else -> ""
                 }
-                variables[key] = value ?: ""
+                variables[key] = sanitizeInputValue(key, value ?: "", inputTypes, inputRemoveChars)
             }
 
             val handledMenuLifecycle = AtomicBoolean(false)
@@ -463,6 +466,30 @@ object MenuActions {
                     }
                 }
         }, ClickCallback.Options.builder().lifetime(Duration.ofMinutes(5)).build())
+    }
+
+    private fun sanitizeInputValue(
+        key: String,
+        rawValue: String,
+        inputTypes: Map<String, String>,
+        inputRemoveChars: Map<String, String>
+    ): String {
+        if (inputTypes[key] != "text") {
+            return rawValue
+        }
+
+        var value = rawValue
+        if (plugin?.config?.getBoolean(INPUT_TRIM_EDGE_SPACES_PATH, false) == true) {
+            value = value.trim()
+        }
+
+        val removeChars = inputRemoveChars[key].orEmpty()
+        if (removeChars.isNotEmpty()) {
+            val removeSet = removeChars.toSet()
+            value = value.filterNot { it in removeSet }
+        }
+
+        return value
     }
 
     private fun completeDialogCloseLifecycle(

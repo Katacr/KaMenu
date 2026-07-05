@@ -32,6 +32,7 @@ object MenuUI {
     private lateinit var plugin: KaMenu
     private const val DEFAULT_REPEAT_PAGE_SIZE = 20
     private const val MAX_REPEAT_PAGE_SIZE = 99
+    private const val INPUT_REMOVE_CHAR_LISTS_PATH = "input-capture.remove-char-lists"
 
     private data class DropdownOption(
         val id: String,
@@ -59,6 +60,60 @@ object MenuUI {
         } else {
             DropdownOption(raw, raw)
         }
+    }
+
+    private fun getInputRemoveChars(section: ConfigurationSection, path: String): String {
+        val value = section.get(path) ?: return ""
+        return resolveRemoveChars(value)
+    }
+
+    private fun resolveRemoveChars(value: Any?, seenPresets: Set<String> = emptySet()): String {
+        return when (value) {
+            null -> ""
+            is String -> resolveRemoveCharsString(value, seenPresets)
+            is List<*> -> value.joinToString("") { resolveRemoveChars(it, seenPresets) }
+            else -> decodeRemoveChars(value.toString())
+        }
+    }
+
+    private fun resolveRemoveCharsString(value: String, seenPresets: Set<String>): String {
+        val presetName = value.trim()
+        val presetSection = plugin.config.getConfigurationSection(INPUT_REMOVE_CHAR_LISTS_PATH)
+        if (presetName.isNotEmpty() && presetSection?.contains(presetName) == true && presetName !in seenPresets) {
+            return resolveRemoveChars(presetSection.get(presetName), seenPresets + presetName)
+        }
+        return decodeRemoveChars(value)
+    }
+
+    private fun decodeRemoveChars(value: String): String {
+        if (value.isEmpty()) {
+            return value
+        }
+
+        val result = StringBuilder()
+        var index = 0
+        while (index < value.length) {
+            val char = value[index]
+            if (char == '\\' && index + 1 < value.length) {
+                val escaped = value[index + 1]
+                when (escaped) {
+                    's' -> result.append(' ')
+                    'n' -> result.append('\n')
+                    'r' -> result.append('\r')
+                    't' -> result.append('\t')
+                    '\\' -> result.append('\\')
+                    else -> {
+                        result.append(char)
+                        result.append(escaped)
+                    }
+                }
+                index += 2
+            } else {
+                result.append(char)
+                index++
+            }
+        }
+        return result.toString()
     }
 
     private fun dynamicVariable(player: Player, contextId: String, key: String): String? {
@@ -202,6 +257,7 @@ object MenuUI {
         contextId: String,
         inputKeys: List<String>,
         inputTypes: Map<String, String>,
+        inputRemoveChars: Map<String, String>,
         checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit,
         closesDialogAfterAction: Boolean
@@ -210,7 +266,7 @@ object MenuUI {
         val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
 
         val builder = ActionButton.builder(TextParser.parseText(btnText))
-            .action(MenuActions.buildActionFromConfig(player, config, "$path.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId))
+            .action(MenuActions.buildActionFromConfig(player, config, "$path.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId))
 
         val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
             .map { resolveMenuText(player, it, variables, contextId) }
@@ -235,6 +291,7 @@ object MenuUI {
         actionButtons: MutableList<ActionButton>,
         inputKeys: List<String>,
         inputTypes: Map<String, String>,
+        inputRemoveChars: Map<String, String>,
         checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit,
         closesDialogAfterAction: Boolean
@@ -264,6 +321,7 @@ object MenuUI {
                 contextId = contextId,
                 inputKeys = inputKeys,
                 inputTypes = inputTypes,
+                inputRemoveChars = inputRemoveChars,
                 checkboxMappings = checkboxMappings,
                 menuOpener = menuOpener,
                 closesDialogAfterAction = closesDialogAfterAction
@@ -300,6 +358,7 @@ object MenuUI {
                 contextId = contextId,
                 inputKeys = inputKeys,
                 inputTypes = inputTypes,
+                inputRemoveChars = inputRemoveChars,
                 checkboxMappings = checkboxMappings,
                 menuOpener = menuOpener,
                 closesDialogAfterAction = closesDialogAfterAction
@@ -477,6 +536,7 @@ object MenuUI {
         val inputList = mutableListOf<DialogInput>()
         val inputKeys = mutableListOf<String>()
         val inputTypes = mutableMapOf<String, String>()  // 记录输入类型
+        val inputRemoveChars = mutableMapOf<String, String>()  // 记录文本输入框需要删除的字符
         val checkboxMappings = mutableMapOf<String, Pair<String, String>>()  // 记录 checkbox 的 on_true/on_false 映射
 
         // 0. 解析设置
@@ -707,6 +767,10 @@ object MenuUI {
                     }
                     "input" -> {
                         inputTypes[key] = "text"  // 记录为文本类型
+                        val removeChars = getInputRemoveChars(section, "$key.remove_chars")
+                        if (removeChars.isNotEmpty()) {
+                            inputRemoveChars[key] = removeChars
+                        }
                         val builder = DialogInput.text(key, prompt)
                             .width(getInt(player, section, "$key.width", 250))
                             .labelVisible(!getBoolean(player, section, "$key.hide_text", false))
@@ -768,6 +832,7 @@ object MenuUI {
                                     actionButtons = actionButtons,
                                     inputKeys = inputKeys,
                                     inputTypes = inputTypes,
+                                    inputRemoveChars = inputRemoveChars,
                                     checkboxMappings = checkboxMappings,
                                     menuOpener = menuOpener,
                                     closesDialogAfterAction = closesDialogAfterAction
@@ -795,6 +860,7 @@ object MenuUI {
                             contextId = contextId,
                             inputKeys = inputKeys,
                             inputTypes = inputTypes,
+                            inputRemoveChars = inputRemoveChars,
                             checkboxMappings = checkboxMappings,
                             menuOpener = menuOpener,
                             closesDialogAfterAction = closesDialogAfterAction
@@ -808,7 +874,7 @@ object MenuUI {
                     if (exitText.isNotEmpty()) {
                         val exitWidth = getInt(player, section, "exit.width", 0)
                         val builder = ActionButton.builder(TextParser.parseText(exitText))
-                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
+                            .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
 
                         // 如果设置了宽度（width > 0），则应用宽度设置
                         if (exitWidth > 0) {
@@ -833,7 +899,7 @@ object MenuUI {
                 val denyWidth = bottomSection?.let { getInt(player, it, "deny.width", 0) } ?: 0
 
                 val confirmBuilder = ActionButton.builder(TextParser.parseText(confirmBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
                 
                 // 读取 confirm 按钮的 tooltip
                 val confirmTooltipList = bottomSection?.let { getStringList(player, it, "confirm.tooltip") }
@@ -850,7 +916,7 @@ object MenuUI {
                 val confirmBtn = confirmBuilder.build()
 
                 val denyBuilder = ActionButton.builder(TextParser.parseText(denyBtnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
+                    .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
                 
                 // 读取 deny 按钮的 tooltip
                 val denyTooltipList = bottomSection?.let { getStringList(player, it, "deny.tooltip") }
@@ -879,7 +945,7 @@ object MenuUI {
                 val btnWidth = getInt(player, config, widthPath, 0)
 
                 val builder = ActionButton.builder(TextParser.parseText(btnText))
-                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
+                    .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
 
                 // 读取 tooltip 配置
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"

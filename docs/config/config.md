@@ -15,6 +15,18 @@ language: 'zh_CN'
 # BungeeCord 支持（用于 server: 动作）
 bungeecord: true
 
+# 输入捕获配置
+input-capture:
+  # 动作和条件读取 $(input_key) 前，是否移除文本输入内容前后的空格
+  trim-edge-spaces: false
+  # 输入框 remove_chars 可引用的全局字符移除列表
+  remove-char-lists:
+    global:
+      - '&'
+      - '_'
+      - '\s'
+      - '\n'
+
 # 数据库配置
 storage:
   # 可选: sqlite, mysql
@@ -145,6 +157,44 @@ bungeecord: false
 - 如果是单服务器或使用其他跨服方案，设置为 `false` 即可
 - 启用 BungeeCord 模式后，`server:` 动作会自动使用插件消息系统
 {% endhint %}
+
+---
+
+### input-capture - 输入捕获配置
+
+控制玩家提交输入组件后，KaMenu 写入 `$(输入键名)` 前的全局处理行为。
+
+```yaml
+input-capture:
+  trim-edge-spaces: false
+  remove-char-lists:
+    global:
+      - '&'
+      - '_'
+      - '\s'
+      - '\n'
+```
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `trim-edge-spaces` | `Boolean` | `false` | 是否移除所有文本输入框内容前后的空格 |
+| `remove-char-lists` | `Node` | 见默认配置 | 定义可被 `Inputs.*.remove_chars` 引用的命名字符移除列表 |
+
+开启后，玩家在文本输入框中输入 ` Steve `，动作、条件和 JavaScript 中读取 `$(player_name)` 时会得到 `Steve`。
+
+该配置只处理前后空格，不会移除中间空格。若需要删除指定字符，请在具体 `Inputs` 文本输入框中配置 `remove_chars`。
+
+`remove-char-lists` 用于集中维护常用过滤规则。菜单内可以直接引用预设名：
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&a请输入参数'
+    remove_chars: global
+```
+
+如果 `remove_chars` 的字符串值匹配某个全局预设名，KaMenu 会使用该预设；如果没有匹配到预设名，则继续按旧规则将该字符串作为需要移除的字符集合处理。
 
 ---
 

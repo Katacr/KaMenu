@@ -5,13 +5,13 @@
 
 # Configuration file version (DO NOT MODIFY THIS VALUE)
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
-config-version: 4
+config-version: 5
 
 # Plugin language (must match filename in lang/ folder)
 # Supported values: zh_CN (Chinese), en_US (English)
 # 插件语言（对应 lang/ 文件夹下的文件名）
 # 支持的值: zh_CN (中文), en_US (英文)
-language: 'zh_CN'
+language: 'en_US'
 
 # ============================================
 # BungeeCord Configuration
@@ -22,6 +22,28 @@ language: 'zh_CN'
 # 启用蹦极支持用于 server: 动作
 # 仅在您的服务器运行在 BungeeCord/Velocity 代理后面时启用此项
 bungeecord: true
+
+# ============================================
+# Input Capture Configuration
+# 输入捕获配置
+# ============================================
+input-capture:
+  # Trim leading and trailing spaces from text input captures before actions and conditions read $(input_key)
+  # 在动作和条件读取 $(input_key) 前，移除文本输入内容前后的空格
+  # Disabled by default for backward compatibility; enable it if most of your inputs are command arguments, player names, IDs, or numbers.
+  # 为保持旧菜单兼容性默认关闭；若你的输入大多用于指令参数、玩家名、ID 或数字，建议开启。
+  trim-edge-spaces: true
+
+  # Named remove character lists for Inputs.*.remove_chars.
+  # Inputs can reference a preset by name, for example: remove_chars: global
+  # 输入框 remove_chars 的命名字符移除列表。
+  # 菜单内可直接引用预设名，例如：remove_chars: global
+  remove-char-lists:
+    global:
+      - '&'
+      - '_'
+      - '\s'
+      - '\n'
 
 # ============================================
 # Database Configuration

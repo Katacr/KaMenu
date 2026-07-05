@@ -70,6 +70,7 @@ Bottom:
 | `default` | `String` | ❌ | `""` | 默认填充文字 |
 | `max_length` | `Int` | ❌ | `256` | 最大输入字符数 |
 | `width` | `Int` | ❌ | `250` | 输入框宽度（像素）|
+| `remove_chars` | `String/List` | ❌ | `""` | 捕获输入后需要删除的字符，例如 `&`、`_` |
 | `multiline` | 节点 | ❌ | — | 启用多行输入模式 |
 
 **多行输入配置：**
@@ -88,6 +89,7 @@ Inputs:
     text: '&a请输入玩家名称'
     default: 'Steve'
     max_length: 16
+    remove_chars: '&_'
 
   feedback:
     type: 'input'
@@ -98,6 +100,59 @@ Inputs:
       max_lines: 5
       height: 80
 ```
+
+`remove_chars` 只对 `type: input` 文本输入框生效。玩家点击按钮后，KaMenu 会先捕获输入值，再按配置删除指定字符，之后动作、条件、JavaScript 参数中的 `$(player_name)` 都会读取处理后的值。
+
+也可以使用列表写法：
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&a请输入参数'
+    remove_chars:
+      - '&'
+      - '_'
+      - '"'
+```
+
+也可以引用 `config.yml` 中的全局字符移除列表：
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&a请输入参数'
+    remove_chars: global
+```
+
+如果 `remove_chars` 的字符串值匹配 `input-capture.remove-char-lists` 下的预设名，则会使用该全局列表；否则会按旧规则作为字面字符集合处理。
+
+`remove_chars` 支持特殊转义字符：
+
+| 写法 | 含义 |
+|------|------|
+| `\s` | 普通空格 |
+| `\n` | 换行 |
+| `\r` | 回车 |
+| `\t` | Tab |
+| `\\` | 反斜杠 `\` |
+
+例如移除颜色符号、下划线、空格和换行：
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&a请输入参数'
+    remove_chars:
+      - '&'
+      - '_'
+      - '\s'
+      - '\n'
+```
+
+如果需要统一移除所有文本输入内容前后的空格，可在 `config.yml` 中开启 `input-capture.trim-edge-spaces`。
 
 ---
 

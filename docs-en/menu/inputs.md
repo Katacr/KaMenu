@@ -70,6 +70,7 @@ Allows players to enter arbitrary text.
 | `default` | `String` | ❌ | `""` | Default placeholder text |
 | `max_length` | `Int` | ❌ | `256` | Maximum input character count |
 | `width` | `Int` | ❌ | `250` | Input field width (pixels) |
+| `remove_chars` | `String/List` | ❌ | `""` | Characters to remove after the input is captured, such as `&` or `_` |
 | `multiline` | Node | ❌ | — | Enable multiline input mode |
 
 **Multiline Configuration:**
@@ -88,6 +89,7 @@ Inputs:
     text: '&aPlease enter player name'
     default: 'Steve'
     max_length: 16
+    remove_chars: '&_'
 
   feedback:
     type: 'input'
@@ -98,6 +100,59 @@ Inputs:
       max_lines: 5
       height: 80
 ```
+
+`remove_chars` only applies to `type: input` text fields. After the player clicks a button, KaMenu captures the input value, removes the configured characters, and then actions, conditions, and JavaScript parameters read the processed value through `$(player_name)`.
+
+List form is also supported:
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&aEnter argument'
+    remove_chars:
+      - '&'
+      - '_'
+      - '"'
+```
+
+You can also reference a global character removal list from `config.yml`:
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&aEnter argument'
+    remove_chars: global
+```
+
+If the string value of `remove_chars` matches a preset under `input-capture.remove-char-lists`, KaMenu uses that global list. Otherwise, the value keeps the legacy behavior and is treated as the literal set of characters to remove.
+
+`remove_chars` supports special escape sequences:
+
+| Syntax | Meaning |
+|--------|---------|
+| `\s` | Normal space |
+| `\n` | Newline |
+| `\r` | Carriage return |
+| `\t` | Tab |
+| `\\` | Backslash `\` |
+
+Example: remove color symbols, underscores, spaces, and newlines:
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&aEnter argument'
+    remove_chars:
+      - '&'
+      - '_'
+      - '\s'
+      - '\n'
+```
+
+To trim leading and trailing spaces for all text inputs, enable `input-capture.trim-edge-spaces` in `config.yml`.
 
 ---
 

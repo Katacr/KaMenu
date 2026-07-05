@@ -15,6 +15,18 @@ language: 'zh_CN'
 # BungeeCord support (for the server: action)
 bungeecord: true
 
+# Input capture configuration
+input-capture:
+  # Whether to trim leading/trailing spaces before actions and conditions read $(input_key)
+  trim-edge-spaces: false
+  # Global character removal lists referenced by Inputs.*.remove_chars
+  remove-char-lists:
+    global:
+      - '&'
+      - '_'
+      - '\s'
+      - '\n'
+
 # Database configuration
 storage:
   # Options: sqlite, mysql
@@ -145,6 +157,44 @@ Suitable for single-server setups or when using another cross-server solution.
 - If you are running a standalone server or using another cross-server solution, `false` is fine
 - When BungeeCord mode is enabled, the `server:` action automatically uses the plugin messaging system
 {% endhint %}
+
+---
+
+### input-capture — Input Capture Configuration
+
+Controls global processing before KaMenu writes submitted text input values into `$(input_key)`.
+
+```yaml
+input-capture:
+  trim-edge-spaces: false
+  remove-char-lists:
+    global:
+      - '&'
+      - '_'
+      - '\s'
+      - '\n'
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `trim-edge-spaces` | `Boolean` | `false` | Whether to trim leading and trailing spaces from all text input values |
+| `remove-char-lists` | `Node` | See default config | Named character removal lists that can be referenced by `Inputs.*.remove_chars` |
+
+When enabled, if a player enters ` Steve ` in a text field, actions, conditions, and JavaScript reading `$(player_name)` receive `Steve`.
+
+This only removes leading and trailing spaces, not spaces in the middle. To remove specific characters, configure `remove_chars` on a specific `Inputs` text field.
+
+`remove-char-lists` centralizes commonly used filtering rules. Menus can reference a preset by name:
+
+```yaml
+Inputs:
+  command_arg:
+    type: 'input'
+    text: '&aEnter argument'
+    remove_chars: global
+```
+
+If the string value of `remove_chars` matches a global preset name, KaMenu uses that preset. If it does not match a preset, the value keeps the legacy behavior and is treated as the literal set of characters to remove.
 
 ---
 
