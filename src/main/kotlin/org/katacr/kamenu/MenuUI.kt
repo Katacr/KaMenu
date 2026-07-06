@@ -62,6 +62,17 @@ object MenuUI {
         }
     }
 
+    private fun joinTooltipLines(lines: List<String>): Component {
+        var component = Component.empty()
+        lines.forEachIndexed { index, line ->
+            if (index > 0) {
+                component = component.append(Component.newline())
+            }
+            component = component.append(TextParser.parseText(line))
+        }
+        return component
+    }
+
     private fun getInputRemoveChars(section: ConfigurationSection, path: String): String {
         val value = section.get(path) ?: return ""
         return resolveRemoveChars(value)
@@ -271,8 +282,7 @@ object MenuUI {
         val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
             .map { resolveMenuText(player, it, variables, contextId) }
         if (tooltipList.isNotEmpty()) {
-            val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { TextParser.parseText(it) }.toTypedArray())
-            builder.tooltip(tooltipComponent)
+            builder.tooltip(joinTooltipLines(tooltipList))
         }
 
         if (btnWidth > 0) {
@@ -905,8 +915,7 @@ object MenuUI {
                 val confirmTooltipList = bottomSection?.let { getStringList(player, it, "confirm.tooltip") }
                 confirmTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        val confirmTooltipComponent = Component.join(Component.newline(), *confirmTooltipList.map { TextParser.parseText(it) }.toTypedArray())
-                        confirmBuilder.tooltip(confirmTooltipComponent)
+                        confirmBuilder.tooltip(joinTooltipLines(confirmTooltipList))
                     }
                 }
                 
@@ -922,8 +931,7 @@ object MenuUI {
                 val denyTooltipList = bottomSection?.let { getStringList(player, it, "deny.tooltip") }
                 denyTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        val denyTooltipComponent = Component.join(Component.newline(), *denyTooltipList.map { TextParser.parseText(it) }.toTypedArray())
-                        denyBuilder.tooltip(denyTooltipComponent)
+                        denyBuilder.tooltip(joinTooltipLines(denyTooltipList))
                     }
                 }
                 
@@ -951,8 +959,7 @@ object MenuUI {
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"
                 val tooltipList = getStringList(player, config, tooltipPath)
                 if (tooltipList.isNotEmpty()) {
-                    val tooltipComponent = Component.join(Component.newline(), *tooltipList.map { TextParser.parseText(it) }.toTypedArray())
-                    builder.tooltip(tooltipComponent)
+                    builder.tooltip(joinTooltipLines(tooltipList))
                 }
 
                 if (btnWidth > 0) {
