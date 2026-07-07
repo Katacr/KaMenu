@@ -3,21 +3,45 @@ package org.katacr.kamenu
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * 全局 JavaScript 包管理器。
+ *
+ * 递归扫描 `plugins/KaMenu/js` 下的 js 文件，每个文件代表一个可复用脚本包，
+ * 文件相对路径去掉 `.js` 后作为包 ID，例如 `example/message.js` -> `example/message`。
+ *
+ * 包调用使用 `{js:[packageId],arg1,arg2}` 或动作 `js: [packageId],arg1,arg2`。
+ */
 class JavaScriptPackageManager(private val plugin: KaMenu) {
     private val packages = ConcurrentHashMap<String, String>()
     private val jsDir = File(plugin.dataFolder, "js")
     private val defaultPackageResource = "js/example/message.js"
 
+    /**
+     * 包加载结果。
+     *
+     * 用于 reload 指令反馈和后续诊断。
+     */
     data class LoadResult(
         val total: Int = 0,
         val success: Int = 0,
         val failed: Int = 0
     )
 
+    /**
+     * 重载所有 JavaScript 包并返回成功加载的数量。
+     *
+     * 兼容旧调用点；需要总数/失败数时使用 [loadPackagesWithResult]。
+     */
     fun loadPackages(): Int {
         return loadPackagesWithResult().success
     }
 
+    /**
+     * 扫描 JS 包目录并替换内存缓存。
+     *
+     * 加载时会校验包 ID、文件大小、重复 ID，并通过 Nashorn 做语法校验。
+     * 语法错误的脚本不会进入缓存，避免运行时才暴露基础语法问题。
+     */
     fun loadPackagesWithResult(): LoadResult {
         val shouldReleaseDefaultPackage = !jsDir.exists()
         if (!jsDir.exists() && !jsDir.mkdirs()) {
@@ -82,6 +106,9 @@ class JavaScriptPackageManager(private val plugin: KaMenu) {
         return loadPackagesWithResult()
     }
 
+    /**
+     * 获取已加载脚本源码。
+     */
     fun getScript(packageId: String): String? {
         return packages[packageId]
     }

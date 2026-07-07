@@ -3,8 +3,10 @@ package org.katacr.kamenu
 import org.bukkit.inventory.ItemStack
 
 /**
- * 物品管理器
- * 用于管理保存的物品
+ * 保存物品管理器。
+ *
+ * 提供 `stock-item` / `item` 等动作需要的命名物品模板。
+ * 物品会序列化为 Base64 存入 `saved_items` 表，保存时数量固定为 1，实际给予数量由动作参数决定。
  */
 class ItemManager(private val plugin: KaMenu) {
 

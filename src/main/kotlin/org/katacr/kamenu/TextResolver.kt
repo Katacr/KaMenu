@@ -7,8 +7,10 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 /**
- * 统一文本解析入口
- * 负责输入变量、内置变量与 PAPI 变量的串联解析。
+ * 统一文本解析入口。
+ *
+ * 普通文本解析顺序大致为：动作变量 `{arg:*}` / 输入变量、KaMenu 内置变量、
+ * `{js:...}`、PlaceholderAPI。条件解析会额外对替换值做转义和包裹，保证表达式结构安全。
  */
 object TextResolver {
     private var plugin: KaMenu? = null
@@ -30,6 +32,11 @@ object TextResolver {
         languageManager = manager
     }
 
+    /**
+     * 解析普通展示文本或动作文本。
+     *
+     * 该方法不会为条件表达式自动加引号；条件判断必须使用 [resolveForCondition]。
+     */
     fun resolve(player: Player, text: String?, variables: Map<String, String> = emptyMap(), menuConfig: YamlConfiguration? = null): String {
         var result = text ?: return ""
 
@@ -103,6 +110,12 @@ object TextResolver {
         return result
     }
 
+    /**
+     * 解析条件表达式中的变量。
+     *
+     * 替换值会根据所在位置自动编码：普通值会被引号包裹，内置函数参数会被临时 marker 包裹，
+     * 字符串字面量内部会转义特殊字符。
+     */
     fun resolveForCondition(player: Player, text: String?, variables: Map<String, String> = emptyMap(), menuConfig: YamlConfiguration? = null): String {
         return resolveForCondition(player, text, variables, menuConfig) { null }
     }
@@ -208,6 +221,11 @@ object TextResolver {
         return result
     }
 
+    /**
+     * 解析普通文本，并允许调用方提供额外动态变量。
+     *
+     * repeat 分页信息等不适合进入数据库/配置的变量通过 dynamicResolver 注入。
+     */
     fun resolve(
         player: Player,
         text: String?,
@@ -365,6 +383,9 @@ object TextResolver {
         return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "\\'")
     }
 
+    /**
+     * 将内置条件函数参数编码为不可被词法解析拆分的 marker。
+     */
     fun encodeConditionArgumentValue(value: String): String {
         val encoded = Base64.getUrlEncoder()
             .withoutPadding()
@@ -372,6 +393,9 @@ object TextResolver {
         return "__KAMENU_COND_ARG_${encoded}__"
     }
 
+    /**
+     * 还原内置条件函数参数 marker。
+     */
     fun decodeConditionArgumentMarkers(value: String): String {
         return Regex("__KAMENU_COND_ARG_([A-Za-z0-9_-]*)__").replace(value) { match ->
             val encoded = match.groupValues[1]

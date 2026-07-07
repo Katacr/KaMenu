@@ -17,8 +17,13 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 菜单动作处理器
- * 负责解析和执行菜单中的各种动作
+ * 菜单动作执行中心。
+ *
+ * 负责把 YAML 中的动作节点解析为实际行为，支持普通字符串动作、条件 Map、
+ * 嵌套动作列表、动作包调用、目标选择器、wait 延迟、return 中断和外部插件动作。
+ *
+ * 动作执行是“异步串行”的：每个节点按顺序执行，遇到 `wait:` 会返回一个 future，
+ * 后续动作会在等待完成后继续，因此变量和条件会在真正执行到该节点时才解析。
  */
 object MenuActions {
     private var languageManager: LanguageManager? = null
@@ -39,6 +44,11 @@ object MenuActions {
         val targetSelector: String?
     )
 
+    /**
+     * 单次动作列表执行上下文。
+     *
+     * 这里集中保存玩家、变量、菜单配置和生命周期标记，避免在递归执行 wait/条件/actions 包时丢失上下文。
+     */
     private data class ActionExecutionContext(
         val player: Player,
         val variables: Map<String, String>,
@@ -51,6 +61,11 @@ object MenuActions {
         val handledMenuLifecycle: AtomicBoolean = AtomicBoolean(false)
     )
 
+    /**
+     * 已解析的动作包或菜单内动作组。
+     *
+     * id 用于阻止动作组直接调用自身，避免无限递归。
+     */
     private data class ResolvedActionList(
         val actions: List<Any>,
         val id: String
@@ -217,6 +232,12 @@ object MenuActions {
         }
     }
 
+    /**
+     * 注册外部动作命名空间。
+     *
+     * 外部动作会在内置动作前尝试执行，适合其他插件扩展 `namespace:payload`。
+     * namespace 只能是冒号前缀，不包含冒号本身。
+     */
     fun registerExternalActionHandler(namespace: String, handler: KaMenuActionHandler): Boolean {
         val normalized = namespace.trim().lowercase()
         if (normalized.isEmpty() || normalized.contains(":")) {
@@ -226,6 +247,9 @@ object MenuActions {
         return true
     }
 
+    /**
+     * 注销外部动作命名空间。
+     */
     fun unregisterExternalActionHandler(namespace: String) {
         val normalized = namespace.trim().lowercase()
         if (normalized.isNotEmpty()) {
@@ -259,13 +283,6 @@ object MenuActions {
 
 
     /**
-     * 解析变量（完整顺序：$(var) -> {data:var} -> %papi_var%）
-     * @param player 玩家对象
-     * @param text 原始文本
-     * @param variables 输入变量映射（$(var)）
-     * @return 解析后的文本
-     */
-    /**
      * 解析变量（内置变量 + PAPI）
      * @param player 玩家对象
      * @param text 原始文本
@@ -279,6 +296,12 @@ object MenuActions {
         return ActionArgumentParser.parseCall(raw)
     }
 
+    /**
+     * 查找动作组。
+     *
+     * 查找顺序固定为：当前菜单 `Events.Click.<name>` 优先，全局 actions 包其次。
+     * 这样菜单可以覆盖同名全局包，便于局部定制。
+     */
     private fun findActionList(config: YamlConfiguration?, actionName: String): ResolvedActionList? {
         if (actionName.isEmpty()) {
             return null
@@ -313,6 +336,11 @@ object MenuActions {
             ?: key
     }
 
+    /**
+     * 把 actions 调用参数合并到变量表。
+     *
+     * 例如 `actions: hello,玩家,生存服` 会生成 `{arg:0}=玩家`、`{arg:1}=生存服`。
+     */
     private fun mergeActionArguments(variables: Map<String, String>, args: List<String>): Map<String, String> {
         if (args.isEmpty()) {
             return variables
@@ -351,7 +379,13 @@ object MenuActions {
     }
 
     /**
-     * 从配置文件中构建一个 DialogAction 对象
+     * 从配置文件中构建 Paper Dialog 的点击动作。
+     *
+     * 该方法是按钮点击进入 KaMenu 动作系统的入口，会收集输入组件值，
+     * 处理输入清洗规则，再把动作列表交给异步串行执行器。
+     *
+     * `closesDialogAfterAction` 用于补偿 Paper 的 after_action 关闭行为：
+     * 当客户端点击后会关闭 Dialog 时，KaMenu 需要在动作完成后补发 Close 生命周期。
      */
     fun buildActionFromConfig(
         player: Player,
@@ -512,6 +546,8 @@ object MenuActions {
     /**
      * 按顺序执行动作列表。
      * wait 是序列中的暂停节点；条件和普通动作都会在真正轮到该节点时解析变量。
+     *
+     * 返回值含义：`true` 表示动作列表遇到 return 或等价中断，调用方应停止后续流程。
      */
     private fun executeActionList(
         player: Player,
@@ -546,6 +582,12 @@ object MenuActions {
             }
     }
 
+    /**
+     * 执行菜单或周期任务传入的一组动作。
+     *
+     * 与 [executeStandaloneActions] 不同，这里有菜单配置，因此支持菜单本地 actions 包、
+     * reset、Close 生命周期、Events.Tasks 上下文等菜单相关能力。
+     */
     fun executeActionGroup(
         player: Player,
         config: YamlConfiguration,
@@ -576,6 +618,12 @@ object MenuActions {
         )
     }
 
+    /**
+     * 执行脱离菜单配置的动作列表。
+     *
+     * 用于自定义指令等场景。由于没有菜单配置，菜单本地 actions、reset 和 Close 事件不可用，
+     * 但全局 actions 包、内置动作、外部动作和变量仍可使用。
+     */
     fun executeStandaloneActions(
         player: Player,
         actions: List<*>,
@@ -601,6 +649,11 @@ object MenuActions {
         )
     }
 
+    /**
+     * 递归执行动作序列。
+     *
+     * 这里不用简单 for 循环，是因为 `wait:` 会异步完成；递归链可以保证等待后继续下一个节点。
+     */
     private fun executeActionSequence(
         context: ActionExecutionContext,
         actionList: List<Any>,
@@ -619,6 +672,11 @@ object MenuActions {
         }
     }
 
+    /**
+     * 执行单个 YAML 动作节点。
+     *
+     * Map 表示条件分支，List 表示嵌套动作列表，String 表示普通动作文本。
+     */
     private fun executeActionNode(
         context: ActionExecutionContext,
         action: Any
@@ -634,6 +692,12 @@ object MenuActions {
         }
     }
 
+    /**
+     * 执行字符串动作中的控制指令。
+     *
+     * `wait`、`return`、`actions`、`page`、`stop-current-task` 会影响执行序列本身，
+     * 其他动作会交给 [executeSingleAction] 执行。
+     */
     private fun executeActionString(
         context: ActionExecutionContext,
         action: String
@@ -706,6 +770,11 @@ object MenuActions {
         return future
     }
 
+    /**
+     * 处理 repeat 按钮分页动作。
+     *
+     * 语法：`page: <listId> next|prev|+N|-N|pageNumber`。
+     */
     private fun handlePageAction(player: Player, action: String, config: YamlConfiguration?, contextId: String?) {
         val currentPlugin = plugin ?: return
         val currentConfig = config ?: return
@@ -729,7 +798,10 @@ object MenuActions {
 
     /**
      * 执行事件动作（如 Open、Close 等）- 异步版本
-     * 事件动作不支持 $(input) 变量，因为菜单还未打开
+     *
+     * Open 事件必须等待整个动作列表完成；如果中途遇到 `return`，调用方应停止打开菜单。
+     * 事件动作没有输入组件响应，因此不能读取输入捕获变量。
+     *
      * @param player 玩家对象
      * @param config 菜单配置
      * @param eventName 事件名称（如 "Open"、"Close" 等）
@@ -764,7 +836,9 @@ object MenuActions {
 
     /**
      * 执行事件动作（如 Open、Close 等）- 同步版本
-     * 用于不包含 wait 动作的情况
+     *
+     * 用于调用方明确需要同步结果的场景。若动作内包含 wait，仍会通过 future 链等待完成。
+     *
      * @param player 玩家对象
      * @param config 菜单配置
      * @param eventName 事件名称（如 "Open"、"Close" 等）
@@ -795,7 +869,9 @@ object MenuActions {
     }
 
     /**
-     * 检查动作列表中是否包含 wait 动作（公开方法）
+     * 检查动作列表中是否包含 wait 动作。
+     *
+     * 主要用于旧逻辑兼容和判断是否需要异步等待事件结果。
      */
     fun hasWaitActionInList(actionList: List<*>): Boolean {
         return hasWaitAction(actionList)
@@ -837,7 +913,9 @@ object MenuActions {
     }
 
     /**
-     * 执行单个动作（支持目标选择器）
+     * 执行单个动作（支持目标选择器）。
+     *
+     * 目标选择器形如 `{player:*}` 或 `{player:condition}`，只有多目标安全的动作会扩散到多个玩家。
      */
     private fun executeSingleAction(
         player: Player,
@@ -881,7 +959,10 @@ object MenuActions {
     }
 
     /**
-     * 对单个玩家执行动作
+     * 对单个玩家执行动作。
+     *
+     * 这里是内置动作分发表。进入此方法前会完成变量解析；若命中外部 namespace handler，
+     * 外部 handler 会优先消费动作，返回后不再执行内置逻辑。
      */
     private fun executeActionForPlayer(
         player: Player,

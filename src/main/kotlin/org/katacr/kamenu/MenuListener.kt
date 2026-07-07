@@ -13,6 +13,12 @@ import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
 import org.bukkit.inventory.EquipmentSlot
 
+/**
+ * Bukkit 事件监听器。
+ *
+ * 根据 config.yml 中的 listeners 配置，把交换副手、右键物品 lore、右键玩家等入口映射为打开菜单。
+ * 同时负责玩家进服向导提示、更新提示，以及退出时清理菜单周期任务和临时元数据。
+ */
 class MenuListener(private val plugin: KaMenu) : Listener {
 
     @EventHandler
@@ -107,7 +113,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
         // 判断潜行条件（普通右键不潜行，Shift右键需要潜行）
         if (requireSneaking && !player.isSneaking) return
 
-        // 设置meta数据：player为被点击的玩家
+        // 设置 meta 数据：player 为被点击的玩家，供菜单内 {meta:player} 或后续动作读取。
         plugin.metaDataManager.setPlayerMeta(player.uniqueId, "player", targetPlayer.name)
 
         // 取消事件，打开菜单

@@ -8,8 +8,12 @@ import javax.script.ScriptEngine
 import javax.script.ScriptException
 
 /**
- * JavaScript 支持管理器
- * 内嵌 Nashorn JavaScript 引擎
+ * JavaScript 支持管理器。
+ *
+ * 内嵌 Nashorn 引擎，负责执行菜单内 `JavaScript` 代码块、全局 js 文件包和 `{js:...}` 内联表达式。
+ *
+ * 线程模型：Nashorn 引擎实例共享，但每次执行都会创建独立 Bindings，并通过锁串行进入引擎。
+ * 这样可以避免两个玩家同时执行脚本时覆盖 `player`、`args` 等上下文变量。
  */
 object JavaScriptManager {
     private var scriptEngine: ScriptEngine? = null
@@ -17,6 +21,11 @@ object JavaScriptManager {
     private var plugin: JavaPlugin? = null
     private var packageManager: JavaScriptPackageManager? = null
     private val scriptLock = Any()
+    /**
+     * 注入到每次脚本执行上下文的辅助函数。
+     *
+     * 这些函数是菜单作者可直接调用的 JS API，例如 `papi()`、`kvar()`、`data()`、`gdata()`。
+     */
     private val helperScript = """
         var Bukkit = Java.type("org.bukkit.Bukkit");
 
@@ -85,13 +94,20 @@ object JavaScriptManager {
         }
     """.trimIndent()
 
+    /**
+     * JS 源码来源。
+     *
+     * label 用于错误日志，让用户能区分菜单内脚本和全局 js 包。
+     */
     private data class ScriptSource(
         val code: String,
         val label: String
     )
 
     /**
-     * 初始化 JavaScript 支持
+     * 初始化 JavaScript 支持。
+     *
+     * 只在插件启动或 reinitialize 时调用。这里会反射加载 Nashorn，避免服务器缺少库时直接类加载失败。
      */
     fun initialize(plugin: JavaPlugin) {
         this.plugin = plugin
@@ -138,6 +154,9 @@ object JavaScriptManager {
      */
     fun isAvailable(): Boolean = available
 
+    /**
+     * 绑定全局 JS 包管理器。
+     */
     fun setPackageManager(manager: JavaScriptPackageManager) {
         packageManager = manager
     }
@@ -167,7 +186,10 @@ object JavaScriptManager {
     }
 
     /**
-     * 执行 JavaScript 代码
+     * 执行不带玩家上下文的 JavaScript 代码。
+     *
+     * 一般只用于调试或兼容旧调用；菜单动作更常用 [evaluateWithContext]。
+     *
      * @return 执行结果，如果失败返回 null
      */
     fun evaluate(script: String): Any? {
@@ -202,6 +224,11 @@ object JavaScriptManager {
         return scriptEngine?.get(name)
     }
 
+    /**
+     * JS 辅助 API：解析 PAPI 变量。
+     *
+     * 脚本内可写 `papi("player_name")` 或 `papi("%player_name%")`。
+     */
     fun resolvePapi(player: org.bukkit.entity.Player?, placeholder: String?): String {
         if (player == null || placeholder.isNullOrBlank()) {
             return ""
@@ -221,6 +248,11 @@ object JavaScriptManager {
         }
     }
 
+    /**
+     * JS 辅助 API：解析 KaMenu 内置变量。
+     *
+     * 脚本内可写 `kvar("gdata:key")`、`data("coins")`、`glist("players")`。
+     */
     fun resolveKaMenuVariable(player: org.bukkit.entity.Player?, variable: String?): String {
         if (player == null || variable.isNullOrBlank()) {
             return ""
@@ -240,6 +272,11 @@ object JavaScriptManager {
         }
     }
 
+    /**
+     * 将 JSON 文本转成 Nashorn/Java 可遍历对象。
+     *
+     * repeat source 会用它把 JS 或变量返回的 JSON 数组转换为按钮列表。
+     */
     fun parseJsonCompatible(json: String): Any? {
         if (!available || scriptEngine == null || json.isBlank()) {
             return null
@@ -317,6 +354,12 @@ object JavaScriptManager {
         )
     }
 
+    /**
+     * 执行预定义 JavaScript 代码块。
+     *
+     * 查找顺序固定为：菜单内 `JavaScript.<name>` 优先，全局 `js/<name>.js` 其次。
+     * 参数会注入为 JS 数组 `args`。
+     */
     fun executePredefinedFunctionWithArgs(
         player: org.bukkit.entity.Player,
         functionName: String,
@@ -375,6 +418,11 @@ object JavaScriptManager {
         }
     }
 
+    /**
+     * 创建单次脚本执行的独立变量表。
+     *
+     * 不复用全局 Bindings，避免不同玩家同时执行脚本时互相覆盖上下文。
+     */
     private fun createBindings(player: org.bukkit.entity.Player? = null): Bindings {
         val bindings = scriptEngine!!.createBindings()
         bindings["server"] = Bukkit.getServer()

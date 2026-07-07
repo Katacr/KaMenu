@@ -15,8 +15,12 @@ import com.google.common.io.ByteArrayDataOutput
 import java.time.Duration
 
 /**
- * 动作处理器
- * 负责解析并执行各类具体动作（sound, title, toast, money, stock-item, item, server 等）
+ * 具体动作处理工具。
+ *
+ * [MenuActions] 负责动作序列和生命周期，本对象只处理某一类动作的参数解析与落地执行，
+ * 例如 sound、title、toast、money、stock-item、item、server、data/list 参数等。
+ *
+ * 新增动作时优先判断是否需要影响动作序列；若只是单个行为，通常应放在这里。
  */
 object ActionHandlers {
 
@@ -61,14 +65,16 @@ object ActionHandlers {
     // ==================== 变量解析 ====================
 
     /**
-     * 解析变量（完整顺序：$(var) -> {data:var} -> %papi_var%）
+     * 解析带输入变量的文本。
+     *
+     * 兼容旧入口，实际委托给 [TextResolver]。
      */
     fun resolveVariablesWithInput(player: Player, text: String, variables: Map<String, String> = emptyMap()): String {
         return TextResolver.resolve(player, text, variables)
     }
 
     /**
-     * 解析变量（内置变量 + PAPI）
+     * 解析普通动作文本中的内置变量和 PAPI。
      */
     fun resolveVariables(player: Player, text: String): String {
         return resolveVariablesWithInput(player, text, emptyMap())
@@ -77,7 +83,9 @@ object ActionHandlers {
     // ==================== 具体动作处理器 ====================
 
     /**
-     * 解析并播放声音
+     * 解析并播放声音。
+     *
+     * 参数格式：`sound_name;volume=1.0;pitch=1.0;category=master`。
      */
     fun parseAndPlaySound(player: Player, args: String) {
         var soundName = ""
@@ -130,7 +138,9 @@ object ActionHandlers {
     }
 
     /**
-     * 解析并发送标题
+     * 解析并发送标题。
+     *
+     * 参数格式：`title=主标题;subtitle=副标题;in=10;keep=60;out=20`，时间单位为 tick。
      */
     fun parseAndSendTitle(player: Player, args: String) {
         var title = ""

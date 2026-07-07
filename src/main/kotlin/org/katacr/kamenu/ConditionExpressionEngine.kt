@@ -6,14 +6,26 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 
 /**
- * 条件表达式求值引擎
- * 使用 AST 解析表达式，保留现有条件语法。
+ * 条件表达式求值引擎。
+ *
+ * 使用简单 AST 解析 `&&`、`||`、`!`、括号、比较表达式和内置判断函数。
+ * 变量会先经 [TextResolver.resolveForCondition] 安全替换，再进入词法解析，避免用户输入中的空格、
+ * 换行或 YAML 片段破坏表达式结构。
+ *
+ * 支持示例：
+ * `hasPerm.kamenu.admin && %player_level% >= 10`
+ * `isNull.{data:nickname} || inGlist.{player_name};allowed_players`
  */
 object ConditionExpressionEngine {
     private var plugin: KaMenu? = null
 
     private val builtinPredicates = mutableMapOf<String, (Player, String) -> Boolean>()
 
+    /**
+     * AST 节点。
+     *
+     * 这里保持私有，外部只通过 checkCondition 使用条件系统，避免暴露解析细节。
+     */
     private sealed interface Expr
     private data class Literal(val value: Boolean) : Expr
     private data class Compare(val left: String, val op: String, val right: String) : Expr
@@ -63,18 +75,38 @@ object ConditionExpressionEngine {
         plugin = kamenu
     }
 
+    /**
+     * 注册内置判断函数。
+     *
+     * 函数语法为 `name.argument`，参数在进入 predicate 前会被解码为原始字符串。
+     */
     fun registerBuiltinPredicate(name: String, predicate: (Player, String) -> Boolean) {
         builtinPredicates[name] = predicate
     }
 
+    /**
+     * 检查条件是否成立。
+     *
+     * 空条件视为通过。非法表达式会记录 warning 并返回 false，避免配置错误误放行。
+     */
     fun checkCondition(player: Player, condition: String?): Boolean {
         return checkCondition(player, condition, emptyMap())
     }
 
+    /**
+     * 检查条件是否成立，并携带动作/按钮上下文变量。
+     *
+     * variables 支持 `{arg:0}`、`{item.value}`、输入捕获等调用方注入的值。
+     */
     fun checkCondition(player: Player, condition: String?, variables: Map<String, String>): Boolean {
         return checkCondition(player, condition, variables) { null }
     }
 
+    /**
+     * 检查条件是否成立，并支持动态变量解析。
+     *
+     * repeat 分页等运行态变量会通过 dynamicResolver 注入。
+     */
     fun checkCondition(
         player: Player,
         condition: String?,
@@ -101,6 +133,11 @@ object ConditionExpressionEngine {
         }
     }
 
+    /**
+     * 递归求值 AST。
+     *
+     * And/Or 保持短路语义，避免不必要的右侧条件计算。
+     */
     private fun evaluate(player: Player, expr: Expr): Boolean {
         return when (expr) {
             is Literal -> expr.value
@@ -137,6 +174,11 @@ object ConditionExpressionEngine {
         return parser.parse()
     }
 
+    /**
+     * 表达式解析器。
+     *
+     * 优先级从低到高为：OR、AND、NOT、括号/原子表达式。
+     */
     private class Parser(private val tokens: List<Token>) {
         private var index = 0
 

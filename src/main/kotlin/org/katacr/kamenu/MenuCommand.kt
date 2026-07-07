@@ -9,8 +9,19 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import java.io.InputStreamReader
 
+/**
+ * `/km` / `/kamenu` 主命令处理器。
+ *
+ * 负责管理员入口：打开菜单、重载指定模块、释放示例、打开向导、测试动作和切换语言。
+ * reload 支持第三层目标：all/menu/actions/js/lang/config；不传目标时等同 all。
+ */
 class MenuCommand(private val plugin: KaMenu) : TabExecutor {
 
+    /**
+     * 可重载的运行时模块。
+     *
+     * CONFIG 包含 config.yml 及依赖它的自定义指令注册。
+     */
     private enum class ReloadTarget(val id: String) {
         ALL("all"),
         MENU("menu"),
@@ -31,6 +42,9 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         }
     }
 
+    /**
+     * 单个 reload 目标的执行结果。
+     */
     private data class ReloadResult(
         val target: ReloadTarget,
         val total: Int,

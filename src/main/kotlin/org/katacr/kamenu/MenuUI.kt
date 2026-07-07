@@ -28,6 +28,12 @@ import org.katacr.kamenu.ConditionUtils.getType
 import org.bukkit.inventory.meta.SkullMeta
 import com.destroystokyo.paper.profile.ProfileProperty
 
+/**
+ * Paper Dialog 菜单渲染器。
+ *
+ * 负责把 KaMenu YAML 转换为 Paper Dialog：Title、Body、Inputs、Bottom、按钮动作和生命周期事件。
+ * 这里不保存菜单文件状态，只根据传入的 YamlConfiguration 即时渲染，因此也支持外部 API 的内存菜单。
+ */
 object MenuUI {
     private lateinit var plugin: KaMenu
     private const val DEFAULT_REPEAT_PAGE_SIZE = 20
@@ -39,6 +45,11 @@ object MenuUI {
         val display: String
     )
 
+    /**
+     * repeat 按钮源数据的统一结构。
+     *
+     * values 中的键会直接暴露为模板变量，例如 `{item.value}`、`{item.index}`。
+     */
     private data class RepeatItem(
         val values: Map<String, String>
     )
@@ -150,6 +161,11 @@ object MenuUI {
         }
     }
 
+    /**
+     * 解析菜单文本。
+     *
+     * contextId 存在时会额外支持 repeat 分页动态变量，例如 `{page:listId}`、`{pages:listId}`。
+     */
     private fun resolveMenuText(
         player: Player,
         text: String?,
@@ -166,6 +182,12 @@ object MenuUI {
         }
     }
 
+    /**
+     * 解析 repeat 按钮的数据源。
+     *
+     * source 可以是 JS 包 `[name]`、PAPI/KaMenu 变量、JSON 数组或简单字符串列表。
+     * split 非空时会按指定分隔符拆分简单字符串。
+     */
     private fun resolveRepeatSource(
         player: Player,
         config: YamlConfiguration,
@@ -193,6 +215,11 @@ object MenuUI {
         return functionName.matches(Regex("[A-Za-z_$][A-Za-z0-9_$]*"))
     }
 
+    /**
+     * 将任意数据源标准化为 repeat item。
+     *
+     * 支持 Iterable、Array、JSON 文本、按行文本和普通标量值。
+     */
     private fun repeatItemsFromAny(value: Any?, split: String? = null, trimItems: Boolean = true): List<RepeatItem> {
         return when (value) {
             null -> emptyList()
@@ -258,6 +285,11 @@ object MenuUI {
         }
     }
 
+    /**
+     * 创建一个 Paper ActionButton。
+     *
+     * 按钮文本、tooltip 和 actions 都会带入当前变量表，因此 repeat item 和动作参数可直接使用。
+     */
     private fun createActionButton(
         player: Player,
         config: YamlConfiguration,
@@ -293,6 +325,11 @@ object MenuUI {
         return builder.build()
     }
 
+    /**
+     * 根据 repeat 配置批量生成按钮。
+     *
+     * 每次渲染都会刷新 [MenuListManager] 的分页信息；同一 contextId/listId 的页码会被保留。
+     */
     private fun addRepeatButtons(
         player: Player,
         config: YamlConfiguration,
@@ -385,7 +422,8 @@ object MenuUI {
     }
 
     /**
-     * 创建带有点击和悬停事件的消息组件
+     * 创建带有点击和悬停事件的消息组件。
+     *
      * 支持多种模式：
      * 1. 纯文本列表模式：每行一个字符串
      * 2. 条件判断模式：支持 allow/deny 分支（字符串或列表）
@@ -438,6 +476,11 @@ object MenuUI {
     }
 
 
+    /**
+     * 打开已加载的文件菜单。
+     *
+     * 会先通过 MenuManager 查找配置，再进入 [openConfig] 执行完整 Open 生命周期。
+     */
     fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
@@ -448,6 +491,12 @@ object MenuUI {
         openConfig(player, config, plugin, menuId)
     }
 
+    /**
+     * 打开任意 YamlConfiguration 菜单。
+     *
+     * 这是文件菜单和外部内存菜单的统一入口。若配置了 `Events.Open`，
+     * 必须等待动作列表完全执行；只有没有 `return` 时才真正渲染 Dialog。
+     */
     fun openConfig(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
         val openActions = config.getList("Events.Open")
         if (openActions.isNullOrEmpty()) {
@@ -474,6 +523,8 @@ object MenuUI {
 
     /**
      * 强制打开菜单（不执行 Events.Open 动作列表）
+     *
+     * 主要给 reset/force-open 使用，避免刷新当前菜单时重复触发 Open 逻辑。
      */
     fun forceOpenMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)

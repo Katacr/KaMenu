@@ -5,8 +5,12 @@ import java.io.File
 import java.io.InputStream
 
 /**
- * 语言管理器
- * 负责加载和管理多语言文本
+ * 语言管理器。
+ *
+ * 加载 `plugins/KaMenu/lang/<language>.yml`，并以内置 `zh_CN` / `en_US` 作为回退来源。
+ * 当用户语言文件缺少某个键时，会从 jar 内默认语言补齐到用户文件，减少升级后的缺 key 问题。
+ *
+ * 服务器管理员可以额外添加自定义语言文件，只要文件名符合语言 ID 规则即可。
  */
 class LanguageManager(private val plugin: KaMenu) {
 

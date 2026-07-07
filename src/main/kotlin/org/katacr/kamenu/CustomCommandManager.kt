@@ -10,11 +10,20 @@ import org.bukkit.configuration.ConfigurationSection
 import java.lang.reflect.Field
 
 /**
- * 自定义指令管理器
- * 负责注册和取消注册 config.yml 中配置的自定义指令
+ * 自定义指令注册管理器。
+ *
+ * 读取 config.yml 的 `custom-commands`，通过 Bukkit CommandMap 动态注册命令。
+ * 支持旧格式 `cmd: menu/id`，也支持新格式 `cmd.actions` 动作列表和 `cmd.args` 动态补全。
+ *
+ * 注销时只移除本管理器记录过的 Command 实例，避免 reload 时误删其他插件的同名命令。
  */
 class CustomCommandManager(private val plugin: KaMenu) {
 
+    /**
+     * 自定义指令注册统计。
+     *
+     * 用于 `/kamenu reload config` 显示总数、成功数和失败数。
+     */
     data class RegistrationResult(
         val total: Int = 0,
         val success: Int = 0,
@@ -49,13 +58,21 @@ class CustomCommandManager(private val plugin: KaMenu) {
     }
 
     /**
-     * 从配置文件加载并注册自定义指令
+     * 从配置文件加载并注册自定义指令。
+     *
+     * 兼容旧调用点；需要详细统计时使用 [registerCustomCommandsWithResult]。
+     *
      * @return 成功注册的指令数量
      */
     fun registerCustomCommands(): Int {
         return registerCustomCommandsWithResult().success
     }
 
+    /**
+     * 重新注册全部自定义指令并返回统计。
+     *
+     * 会先注销本插件上一次注册的命令，再按当前 config.yml 重新解析。
+     */
     fun registerCustomCommandsWithResult(): RegistrationResult {
         // 先清除所有已注册的自定义指令
         unregisterAllCustomCommands()
@@ -90,6 +107,14 @@ class CustomCommandManager(private val plugin: KaMenu) {
         return RegistrationResult(total = commands.size, success = successCount, failed = failedCount)
     }
 
+    /**
+     * 解析单条自定义指令配置。
+     *
+     * 支持三种形态：
+     * 1. 字符串：直接打开菜单；
+     * 2. `menu:`：打开菜单并可附带 args 补全；
+     * 3. `actions:`：执行动作列表并可读取 `{arg:0}` 等命令参数。
+     */
     private fun parseCommandDefinition(
         customCommandsSection: ConfigurationSection,
         commandName: String
@@ -128,6 +153,11 @@ class CustomCommandManager(private val plugin: KaMenu) {
         return CustomCommandDefinition.RunActions(actions.map { it ?: Any() }, argSuggestions)
     }
 
+    /**
+     * 解析命令参数补全配置。
+     *
+     * key 是从 0 开始的参数下标，value 可以是字符串、列表或变量表达式。
+     */
     private fun parseArgSuggestions(
         commandSection: ConfigurationSection,
         commandName: String
@@ -156,7 +186,10 @@ class CustomCommandManager(private val plugin: KaMenu) {
     }
 
     /**
-     * 注册单个自定义指令
+     * 注册单个自定义指令。
+     *
+     * CommandMap 会以 `kamenu` 作为 fallback prefix 注册，因此实际可能同时存在
+     * `commandName` 和 `kamenu:commandName` 两个入口。
      */
     private fun registerCommand(commandName: String, definition: CustomCommandDefinition) {
         val commandMap = this.commandMap ?: throw RuntimeException("CommandMap not initialized")
@@ -172,7 +205,9 @@ class CustomCommandManager(private val plugin: KaMenu) {
     }
 
     /**
-     * 取消注册所有自定义指令
+     * 取消注册所有自定义指令。
+     *
+     * 只移除 value 与本管理器保存的 Command 实例相同的映射，防止同名指令被其他插件接管后被误删。
      */
     fun unregisterAllCustomCommands() {
         if (registeredCommands.isEmpty()) {

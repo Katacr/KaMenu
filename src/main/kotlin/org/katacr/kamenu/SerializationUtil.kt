@@ -10,8 +10,10 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 /**
- * 序列化工具类
- * 用于将物品序列化为Base64存储
+ * 序列化工具类。
+ *
+ * 用 BukkitObjectStream 将 ItemStack/背包数组转成 Base64，供数据库保存；
+ * 同时提供 Location 的轻量字符串序列化。
  */
 object SerializationUtil {
 

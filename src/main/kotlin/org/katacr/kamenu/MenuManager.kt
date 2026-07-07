@@ -6,9 +6,20 @@ import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.net.JarURLConnection
 
+/**
+ * 菜单文件管理器。
+ *
+ * 负责递归扫描 `plugins/KaMenu/menus` 下的 yml 文件，并以相对路径作为菜单 ID 缓存到内存。
+ * 例如 `menus/example/main_menu.yml` 会注册为 `example/main_menu`。
+ *
+ * 此类只管理文件菜单；外部插件通过 API 打开的内存菜单不会写入这里。
+ */
 class MenuManager(private val plugin: KaMenu) {
     private val menus = mutableMapOf<String, YamlConfiguration>()
 
+    /**
+     * 菜单加载统计。
+     */
     data class LoadResult(
         val total: Int = 0,
         val success: Int = 0,
@@ -23,6 +34,9 @@ class MenuManager(private val plugin: KaMenu) {
         }
     }
 
+    /**
+     * 示例菜单释放统计。
+     */
     data class ReleaseResult(
         val saved: Int = 0,
         val skipped: Int = 0,
@@ -37,6 +51,11 @@ class MenuManager(private val plugin: KaMenu) {
         }
     }
 
+    /**
+     * 加载所有菜单文件。
+     *
+     * 用于插件启动时的快速加载；reload 指令需要详细统计时使用 [reloadWithResult]。
+     */
     fun loadMenus() {
         val folder = File(plugin.dataFolder, "menus")
         if (!folder.exists()) folder.mkdirs()
@@ -45,6 +64,12 @@ class MenuManager(private val plugin: KaMenu) {
         loadMenusRecursively(folder, "")
     }
 
+    /**
+     * 释放内置示例菜单到 `menus/example`。
+     *
+     * @param language `zh_CN` 使用中文示例，`en_US` 使用英文示例。
+     * @param overwrite 是否覆盖已有示例文件。
+     */
     fun releaseExampleMenus(language: String = plugin.config.getString("language", "zh_CN") ?: "zh_CN", overwrite: Boolean = false): ReleaseResult {
         val folder = File(plugin.dataFolder, "menus")
         if (!folder.exists()) folder.mkdirs()
@@ -210,6 +235,9 @@ class MenuManager(private val plugin: KaMenu) {
         return result
     }
 
+    /**
+     * 取得已加载菜单配置。
+     */
     fun getMenuConfig(id: String): YamlConfiguration? {
         return menus[id]
     }

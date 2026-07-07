@@ -4,7 +4,11 @@ import me.clip.placeholderapi.expansion.PlaceholderExpansion
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 /**
- * KaMenu PlaceholderAPI 扩展
+ * KaMenu PlaceholderAPI 扩展。
+ *
+ * 对外暴露 KaMenu 的 data/gdata/list/glist/meta 和物品检测能力。
+ * list/glist 以 JSON 数组字符串返回，方便 repeat source 或其他插件继续解析。
+ *
  * 支持的变量格式：
  * - %kamenu_data_key% - 获取玩家数据
  * - %kamenu_gdata_key% - 获取全局数据
@@ -29,7 +33,11 @@ class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
     // 必须返回 true，PAPI 才会加载这个扩展
     override fun persist(): Boolean = true
 
-    // 核心逻辑：处理变量请求
+    /**
+     * 处理 `%kamenu_<params>%` 请求。
+     *
+     * PAPI 会把 identifier 后面的内容传入 params；这里按前缀分派到对应数据源。
+     */
     override fun onRequest(player: OfflinePlayer?, params: String): String? {
         val paramsLower = params.lowercase()
 

@@ -6,15 +6,19 @@ import java.sql.Connection
 import java.util.*
 
 /**
- * 数据库管理器
- * 用于管理玩家数据和全局数据
+ * 数据库管理器。
+ *
+ * 负责 KaMenu 内置持久化：玩家 data/list、全局 gdata/glist、以及保存的物品。
+ * SQLite 使用单连接池以降低锁冲突，MySQL 使用较大的连接池。
+ *
+ * 菜单动作默认会异步执行写操作，避免主线程等待数据库。
  */
 class DatabaseManager(val plugin: KaMenu) {
     var dataSource: HikariDataSource? = null
     private val listMutationLock = Any()
 
     /**
-     * 初始化数据库
+     * 初始化数据库连接池并创建表结构。
      */
     fun setup() {
         val config = HikariConfig()
@@ -39,7 +43,9 @@ class DatabaseManager(val plugin: KaMenu) {
     }
 
     /**
-     * 获取数据库连接
+     * 获取数据库连接。
+     *
+     * 调用方必须使用 `use` 关闭连接，避免连接池泄漏。
      */
     val connection: Connection
         get() = dataSource!!.connection

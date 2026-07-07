@@ -3,8 +3,10 @@ package org.katacr.kamenu
 import org.bukkit.Material
 
 /**
- * 物品材质工具类
- * 用于处理材质名称的规范化匹配
+ * 物品材质工具类。
+ *
+ * 统一把用户输入的材质名规范化为 Bukkit Material 可识别的格式，
+ * 并提供 Paper Dialog 文本中使用的 sprite 标签转换。
  */
 object MaterialUtils {
 

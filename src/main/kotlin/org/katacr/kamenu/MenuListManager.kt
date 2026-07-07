@@ -6,13 +6,27 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * repeat 按钮分页状态管理器。
+ *
+ * 状态按 `玩家 + contextId + listId` 隔离，同一个玩家同时打开不同来源的菜单不会共用页码。
+ * 菜单关闭或玩家退出时应清理状态，避免长期缓存无效分页信息。
+ */
 object MenuListManager {
+    /**
+     * 分页状态键。
+     */
     private data class ListKey(
         val playerId: UUID,
         val contextId: String,
         val listId: String
     )
 
+    /**
+     * 当前页的计算结果。
+     *
+     * start/end 是当前页在完整列表中的半开区间 `[start, end)`。
+     */
     data class PageInfo(
         val page: Int,
         val pages: Int,
@@ -42,6 +56,11 @@ object MenuListManager {
         return next
     }
 
+    /**
+     * 根据列表总数刷新分页信息。
+     *
+     * 如果之前记录的页码超过最大页，会自动夹到最后一页。
+     */
     fun updatePageInfo(
         player: Player,
         contextId: String,

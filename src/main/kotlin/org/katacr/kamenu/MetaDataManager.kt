@@ -4,9 +4,10 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 元数据管理器
- * 用于管理临时的内存缓存数据，无需持久化到数据库
- * 玩家退出时自动清理该玩家缓存，插件重载/关服时清理全部缓存
+ * 玩家临时元数据管理器。
+ *
+ * 用于保存无需持久化到数据库的运行时上下文，例如“当前被右键的玩家”。
+ * 菜单内可通过 `{meta:key}` 读取。玩家退出时自动清理该玩家缓存，插件关闭时清理全部缓存。
  */
 class MetaDataManager {
     // 玩家元数据缓存: UUID -> (key -> value)

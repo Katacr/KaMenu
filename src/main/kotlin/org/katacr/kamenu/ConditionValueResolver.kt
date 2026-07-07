@@ -4,10 +4,23 @@ import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Player
 
 /**
- * 条件值解析器
- * 负责 condition/allow/deny 和 ConfigurationSection 的条件化读取。
+ * 条件值解析器。
+ *
+ * 用于读取 YAML 中既可以是普通值、列表，也可以是条件分支的配置项。
+ * 典型结构：
+ *
+ * `condition: hasPerm.vip`
+ * `allow: "&aVIP"`
+ * `deny: "&7普通玩家"`
+ *
+ * MenuUI 读取 Title、Body、Bottom 等配置时会通过这里统一处理条件化值。
  */
 object ConditionValueResolver {
+    /**
+     * 读取值时的期望类型。
+     *
+     * AUTO 用于兼容“字符串或列表都允许”的老配置。
+     */
     enum class ValueType { STRING, LIST, AUTO }
 
     private fun <T> getConditionValue(

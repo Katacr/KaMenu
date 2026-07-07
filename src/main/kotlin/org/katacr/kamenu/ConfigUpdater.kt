@@ -9,8 +9,12 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 /**
- * 配置文件更新管理器
- * 用于处理配置文件的版本升级、合并和备份
+ * 配置文件更新管理器。
+ *
+ * 当 `config-version` 落后于当前资源文件时，会备份旧配置、释放新版 config.yml，
+ * 再把用户已有的同名键写回新文件。这样能新增配置项，同时尽量保留用户设置。
+ *
+ * 注意：只迁移新版配置中仍存在的键；已废弃键不会写回。
  */
 object ConfigUpdater {
 
@@ -59,6 +63,7 @@ object ConfigUpdater {
     /**
      * 检查并更新配置文件
      * 流程：记录用户配置 → 备份 → 覆盖新配置 → 写入用户值
+     *
      * @param plugin 插件实例
      * @param configFile 配置文件
      * @return 是否进行了更新

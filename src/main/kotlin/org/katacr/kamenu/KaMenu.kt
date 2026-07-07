@@ -11,6 +11,15 @@ import org.bukkit.plugin.RegisteredServiceProvider
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 
+/**
+ * KaMenu 插件主类。
+ *
+ * 负责插件生命周期编排：依赖库加载、配置/语言初始化、菜单与包管理器加载、
+ * 动作/条件/变量模块注入，以及 PlaceholderAPI、Vault、bStats 等外部能力挂钩。
+ *
+ * 业务模块多数通过 `lateinit` 属性从这里取得共享管理器，因此新增初始化步骤时要注意顺序：
+ * 语言和 TextResolver 必须早于需要 i18n 的模块，数据库必须早于 data/list 变量解析。
+ */
 class KaMenu : JavaPlugin() {
 
     lateinit var menuManager: MenuManager
@@ -25,7 +34,10 @@ class KaMenu : JavaPlugin() {
     var bungeeCordEnabled: Boolean = false
 
     /**
-     * 在插件加载时优先处理依赖下载
+     * 在 Bukkit 启用插件前下载并挂载运行时依赖。
+     *
+     * KaMenu 使用 Libby 将 Kotlin、数据库驱动、连接池和 Nashorn 放到服务器共享 libraries 目录。
+     * 这里不要访问依赖这些库的业务类，避免类加载顺序早于依赖注入。
      */
     override fun onLoad() {
         // 创建共享的库目录（服务器根目录下的libraries文件夹）
