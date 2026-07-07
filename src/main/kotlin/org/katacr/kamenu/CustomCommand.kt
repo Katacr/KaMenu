@@ -5,10 +5,20 @@ package org.katacr.kamenu
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import java.util.Locale
 
 sealed interface CustomCommandDefinition {
-    data class OpenMenu(val menuId: String) : CustomCommandDefinition
-    data class RunActions(val actions: List<Any>) : CustomCommandDefinition
+    val argSuggestions: Map<Int, Any>
+
+    data class OpenMenu(
+        val menuId: String,
+        override val argSuggestions: Map<Int, Any> = emptyMap()
+    ) : CustomCommandDefinition
+
+    data class RunActions(
+        val actions: List<Any>,
+        override val argSuggestions: Map<Int, Any> = emptyMap()
+    ) : CustomCommandDefinition
 }
 
 /**
@@ -39,7 +49,13 @@ class CustomCommand(
                     buildCommandVariables(commandLabel, args)
                 ).whenComplete { _, error ->
                     if (error != null) {
-                        plugin.logger.severe("Custom command /$commandLabel action execution failed: ${error.message}")
+                        plugin.logger.severe(
+                            plugin.languageManager.getMessage(
+                                "custom_commands.action_execution_failed",
+                                commandLabel,
+                                error.message ?: error.javaClass.simpleName
+                            )
+                        )
                         error.printStackTrace()
                     }
                 }
@@ -64,7 +80,49 @@ class CustomCommand(
         alias: String,
         args: Array<out String>
     ): List<String> {
-        // 自定义指令不需要 tab 补全
-        return emptyList()
+        if (sender !is Player) {
+            return emptyList()
+        }
+
+        val argumentIndex = (args.size - 1).coerceAtLeast(0)
+        val source = definition.argSuggestions[argumentIndex] ?: return emptyList()
+        val variables = buildCommandVariables(alias, args)
+        val prefix = args.lastOrNull().orEmpty()
+
+        return resolveSuggestions(sender, source, variables)
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .filter { it.lowercase(Locale.ROOT).startsWith(prefix.lowercase(Locale.ROOT)) }
+            .toList()
+    }
+
+    private fun resolveSuggestions(player: Player, source: Any, variables: Map<String, String>): List<String> {
+        return when (source) {
+            is Iterable<*> -> source.flatMap { item ->
+                if (item == null) {
+                    emptyList()
+                } else {
+                    resolveSuggestions(player, item, variables)
+                }
+            }
+            is Array<*> -> source.flatMap { item ->
+                if (item == null) {
+                    emptyList()
+                } else {
+                    resolveSuggestions(player, item, variables)
+                }
+            }
+            else -> resolveSuggestionText(player, source.toString(), variables)
+        }
+    }
+
+    private fun resolveSuggestionText(player: Player, text: String, variables: Map<String, String>): List<String> {
+        val resolved = TextResolver.resolve(player, text, variables).trim()
+        if (resolved.isEmpty()) {
+            return emptyList()
+        }
+        return DatabaseManager.decodeStringList(resolved)
     }
 }

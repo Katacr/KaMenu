@@ -1,0 +1,21 @@
+# KaMenu built-in global actions package example.
+# KaMenu 内置全局 actions 动作包示例。
+#
+# Runtime path: plugins/KaMenu/actions/example/welcome.yml
+# 运行时路径：plugins/KaMenu/actions/example/welcome.yml
+#
+# Package ID: example/welcome
+# 包 ID：example/welcome
+#
+# Usage:
+# 用法：
+#   - 'actions: example/welcome'
+
+actions:
+  # Show a short toast in dialog-heavy workflows.
+  # 在对话框菜单中优先使用 toast 进行简短反馈。
+  - 'toast: type=task;msg=KaMenu actions;icon=paper'
+
+  # Play a lightweight feedback sound.
+  # 播放一个轻量级反馈音效。
+  - 'sound: entity.experience_orb.pickup;volume=1.0;pitch=1.2'

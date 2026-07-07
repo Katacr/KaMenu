@@ -22,13 +22,15 @@ logo:
   hook_false: "§c未挂钩"
   menu_count: "§b已加载菜单: §a{0}个"
   command_count: "§b已注册指令: §a{0}个"
+  action_package_count: "§b已加载动作包: §a{0}个"
+  javascript_package_count: "§b已加载 JavaScript 包: §a{0}个"
 
 # 命令消息
 command:
   player_only: "§c只有玩家可以执行此指令！"
   player_not_found: "§c玩家 '{0}' 不在线"
   player_required: "§c控制台必须指定玩家！"
-  usage: "§e用法: /km open <菜单名> 或 /km reload"
+  usage: "§e用法: /km open <菜单名> 或 /km reload [all|menu|actions|js|lang|config]"
   no_permission: "§c你没有权限执行此指令！"
   reloaded: "§a[KaMenu] 配置与菜单已重载成功！"
   no_menu_name: "§c请输入菜单名！"
@@ -37,9 +39,9 @@ command:
   help_open: "§a/km open <菜单名> [玩家] §7- 打开指定菜单"
   help_list: "§a/km list [页码] §7- 查看菜单列表"
   help_guide: "§a/km guide §7- 打开入门向导菜单"
-  help_language: "§a/km language <zh_CN|en_US> §7- 设置语言并重载"
+  help_language: "§a/km language <语言ID> §7- 设置语言并重载"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- 释放指定语言示例菜单"
-  help_reload: "§a/km reload §7- 重载配置和菜单"
+  help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- 重载全部或指定模块"
   help_action: "§a/km action <玩家> <动作> §7- 测试执行动作"
   help_help: "§a/km help §7- 显示帮助信息"
   help_item: "§a/km item <子指令> §7- 管理保存的物品"
@@ -49,10 +51,28 @@ command:
   guide_missing: "§c入门向导菜单资源不存在或无法加载: §f{0}"
   guide_load_failed: "§c入门向导菜单加载失败: {0}"
   guide_join_hint: "§e[KaMenu] §f当前没有加载任何菜单。<text='&a[打开入门向导]';hover='&7点击打开 KaMenu 入门向导';command='/km guide'>"
-  language_usage: "§c用法: /km language <zh_CN|en_US>"
+  language_usage: "§c用法: /km language <语言ID>"
   language_unknown: "§c未知语言: {0}"
+  language_available: "§e可用语言: {0}"
   language_set_reload: "§a语言已设置为 {0}，并已重载菜单。当前加载 {1} 个菜单和 {2} 个自定义指令。"
   examples_released: "§a已释放 {0} 示例菜单到 example：新增 {1} 个，跳过 {2} 个，失败 {3} 个。当前加载 {4} 个菜单。"
+  reload_usage: "§e用法: /km reload [all|menu|actions|js|lang|config]"
+  reload_unknown_target: "§c未知的重载目标: {0}"
+  reload_all_success: "§a[KaMenu] 已重载全部模块。"
+  reload_menu_success: "§a[KaMenu] 菜单重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+  reload_actions_success: "§a[KaMenu] 动作包重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+  reload_js_success: "§a[KaMenu] JavaScript 包重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+  reload_lang_success: "§a[KaMenu] 语言文件重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms，当前语言 {4}。"
+  reload_config_success: "§a[KaMenu] config 重载完成：自定义指令总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+
+# 自定义指令
+custom_commands:
+  manager_initialize_failed: "[KaMenu] 自定义指令管理器初始化失败: {0}"
+  invalid_config: "[KaMenu] 自定义指令配置无效: {0}"
+  register_failed: "[KaMenu] 注册自定义指令 /{0} 失败: {1}"
+  menu_not_found: "[KaMenu] 自定义指令 /{0} 已跳过: 找不到菜单 '{1}'"
+  invalid_args_key: "[KaMenu] 自定义指令 /{0} 已忽略无效 args 键: {1}"
+  action_execution_failed: "[KaMenu] 自定义指令 /{0} 的动作队列执行失败: {1}"
 
 # 物品管理
 item:
@@ -84,6 +104,7 @@ manager:
   unsupported_protocol: "不支持的协议: {0}"
   save_error: "释放默认菜单文件时出错: {0}"
   jar_extract_error: "从 jar 包提取文件失败: {0}"
+  menu_load_failed: "加载菜单文件失败: {0}，错误: {1}"
 
 # 菜单UI
 ui:
@@ -119,6 +140,51 @@ actions:
   item_invalid_material: "[KaMenu] item 材质无效: {0}。玩家: {1}"
   inventory_full_actionbar: "§c背包已满，{0}个物品掉在了地上"
   action_list_not_found: "§c错误: 找不到动作列表 '{0}'"
+  action_list_not_found_with_global: "§c错误: 找不到动作列表 '{0}'（已检查当前菜单 Events.Click.{0} 和全局 actions/{0}.yml）"
+  action_list_not_found_global: "§c错误: 找不到全局动作包 '{0}'（请检查 plugins/KaMenu/actions/{0}.yml）"
+  action_list_self_call: "§c错误: 动作列表 '{0}' 不能直接调用自身"
+
+# 包管理
+packages:
+  invalid_id_empty: "[KaMenu] 包已跳过: 包 ID 为空。文件: {1}"
+  invalid_id_characters: "[KaMenu] 包 '{0}' 已跳过: 包 ID 包含非法字符。仅允许英文、数字、_、-、.、/。文件: {1}"
+  invalid_id_parent_path: "[KaMenu] 包 '{0}' 已跳过: 包 ID 不能包含 '..'。文件: {1}"
+  invalid_id_leading_slash: "[KaMenu] 包 '{0}' 已跳过: 包 ID 不能以 '/' 开头。文件: {1}"
+  invalid_id_trailing_slash: "[KaMenu] 包 '{0}' 已跳过: 包 ID 不能以 '/' 结尾。文件: {1}"
+  invalid_id_double_slash: "[KaMenu] 包 '{0}' 已跳过: 包 ID 不能包含连续的 '//'。文件: {1}"
+  action_folder_create_failed: "[KaMenu] 创建 actions 包文件夹失败: {0}"
+  action_package_too_large: "[KaMenu] 动作包 '{0}' 已跳过: 文件过大 ({2} bytes)，上限 {3}。文件: {1}"
+  action_duplicate_id: "[KaMenu] 动作包 '{0}' 已跳过: 包 ID 重复。文件: {1}"
+  action_missing_actions: "[KaMenu] 动作包 '{0}' 已跳过: 缺少或为空的根 actions 列表。文件: {1}"
+  action_load_failed: "[KaMenu] 加载动作包 '{0}' 失败。文件: {1}，错误: {2}"
+  action_loaded: "[KaMenu] 已加载 {0} 个动作包"
+  action_default_released: "[KaMenu] 已释放默认动作包: {0}"
+  action_default_release_failed: "[KaMenu] 释放默认动作包 '{0}' 失败: {1}"
+  javascript_folder_create_failed: "[KaMenu] 创建 JavaScript 包文件夹失败: {0}"
+  javascript_package_too_large: "[KaMenu] JavaScript 包 '{0}' 已跳过: 文件过大 ({2} bytes)，上限 {3}。文件: {1}"
+  javascript_duplicate_id: "[KaMenu] JavaScript 包 '{0}' 已跳过: 包 ID 重复。文件: {1}"
+  javascript_load_failed: "[KaMenu] 加载 JavaScript 包 '{0}' 失败。文件: {1}，错误: {2}"
+  javascript_loaded: "[KaMenu] 已加载 {0} 个 JavaScript 包"
+  javascript_default_released: "[KaMenu] 已释放默认 JavaScript 包: {0}"
+  javascript_default_release_failed: "[KaMenu] 释放默认 JavaScript 包 '{0}' 失败: {1}"
+
+# JavaScript
+javascript:
+  package_not_found: "[KaMenu] 找不到 JavaScript 包 '{0}'（已检查 {1}）"
+  nashorn_engine_not_found: "[KaMenu] 找不到 Nashorn 引擎，JavaScript 功能暂不可用"
+  wait_library_download: "[KaMenu] 请等待 Nashorn 依赖库下载完成..."
+  nashorn_library_not_loaded: "[KaMenu] Nashorn 依赖库尚未加载，JavaScript 功能暂不可用"
+  restart_after_setup: "[KaMenu] 首次安装完成后请重启服务器"
+  initialize_failed: "[KaMenu] 初始化 JavaScript 支持失败: {0}"
+  execution_error: "[KaMenu] JavaScript 执行错误: {0}"
+  error: "[KaMenu] JavaScript 错误: {0}"
+  execution_error_player: "[KaMenu] 玩家 {0} 执行 JavaScript 时出错: {1}"
+  error_player: "[KaMenu] 玩家 {0} 运行 JavaScript 时出错: {1}"
+  execution_error_source_player: "[KaMenu] 玩家 {1} 执行 {0} 时出现 JavaScript 错误: {2}"
+  error_source_player: "[KaMenu] 玩家 {1} 运行 {0} 时出现 JavaScript 错误: {2}"
+  json_parse_error: "[KaMenu] JSON 解析错误: {0}"
+  execution_failed_user: "§cJavaScript 执行失败: {0}"
+  unavailable: "§cJavaScript 功能暂不可用，请重启服务器完成初始化。"
 
 # 菜单列表
 menu_list:

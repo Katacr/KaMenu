@@ -5,6 +5,8 @@
 * [⚙️ 配置插件](config/README.md)
   * [⛳ 配置文件: config.yml](config/config.md)
   * [⌨️ 自定义指令](config/customCommands.md)
+  * [📦 actions 文件夹](config/actions-packages.md)
+  * [📦 js 文件夹](config/javascript-packages.md)
 * [🤵 指令和权限](perm/README.md)
   * [🔐 权限列表](perm/permissions.md)
   * [⌨️ 指令列表](perm/commands.md)
@@ -25,4 +27,3 @@
   * [📊 玩家数据与全局数据](data/storage.md)
 * [🔖 PlaceholderAPI](PlaceholderAPI.md)
 * [🔌 API 接口](API.md)
-

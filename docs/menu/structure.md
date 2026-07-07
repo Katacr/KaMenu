@@ -43,7 +43,7 @@ plugins/KaMenu/menus/
 
 1. 在 `plugins/KaMenu/menus/` 下创建 `.yml` 文件（可以按需创建子文件夹）
 2. 按照菜单配置格式编写内容（参见后续章节）
-3. 执行 `/km reload` 重新加载
+3. 执行 `/km reload menu` 重新加载菜单
 
 **文件命名说明：**
 - ✅ 支持中文文件名和文件夹名
@@ -79,7 +79,7 @@ Settings:
   can_escape: true      # 是否允许按 ESC 关闭
   after_action: CLOSE   # 按钮动作执行后的行为
   
-# 可选：JavaScript预定义函数 
+# 可选：菜单内 JavaScript 包
 JavaScript:
   test: |
     player.sendMessage("§aHello, " + name + "!");
@@ -151,9 +151,9 @@ Title:
 
 **详细说明和示例：** 详见 [⚙️ 全局设置 (Settings)](setting.md)
 
-### JavaScript - 预定义函数
+### JavaScript - 菜单 JavaScript 包
 
-预定于JavaScript代码函数，可在动作中调用。
+定义当前菜单内可复用的 JavaScript 代码包，可在动作、条件和文本中调用。若同名全局 JavaScript 包存在，菜单内定义优先。
 
 **示例：**
 
@@ -172,7 +172,9 @@ actions:
   - 'js: [show_health]'
 ```
 
-**详细说明和示例：** 详见 [🔧 JavaScript 预定义函数 (JavaScript)](javascript.md)
+也可以将通用代码放到 `plugins/KaMenu/js/<包名>.js` 作为全局 JavaScript 包。
+
+**详细说明和示例：** 详见 [🔧 JavaScript 功能 (JavaScript)](javascript.md)
 
 
 ### Events - 菜单事件

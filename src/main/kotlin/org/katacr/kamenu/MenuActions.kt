@@ -27,6 +27,7 @@ object MenuActions {
     private var economy: Economy? = null
     private var plugin: KaMenu? = null
     private var itemManager: ItemManager? = null
+    private var actionPackageManager: ActionPackageManager? = null
     private var bungeeCordEnabled: Boolean = false
     private val externalActionHandlers = ConcurrentHashMap<String, KaMenuActionHandler>()
 
@@ -38,11 +39,6 @@ object MenuActions {
         val targetSelector: String?
     )
 
-    private data class ParsedActionCall(
-        val name: String,
-        val arguments: List<String>
-    )
-
     private data class ActionExecutionContext(
         val player: Player,
         val variables: Map<String, String>,
@@ -51,7 +47,13 @@ object MenuActions {
         val asyncDataOperations: Boolean,
         val taskRef: MenuTaskManager.TaskExecutionRef? = null,
         val contextId: String? = null,
+        val actionListId: String? = null,
         val handledMenuLifecycle: AtomicBoolean = AtomicBoolean(false)
+    )
+
+    private data class ResolvedActionList(
+        val actions: List<Any>,
+        val id: String
     )
 
     private const val INPUT_TRIM_EDGE_SPACES_PATH = "input-capture.trim-edge-spaces"
@@ -76,6 +78,10 @@ object MenuActions {
      */
     fun setDatabaseManager(manager: DatabaseManager) {
         databaseManager = manager
+    }
+
+    fun setActionPackageManager(manager: ActionPackageManager) {
+        actionPackageManager = manager
     }
 
     /**
@@ -269,60 +275,42 @@ object MenuActions {
         return ActionHandlers.resolveVariables(player, text)
     }
 
-    private fun parseActionCall(raw: String): ParsedActionCall {
-        val parts = splitActionCallArguments(raw)
-        val name = parts.firstOrNull()?.trim().orEmpty()
-        val args = if (parts.size > 1) parts.drop(1).map { stripArgumentQuotes(it.trim()) } else emptyList()
-        return ParsedActionCall(name, args)
+    private fun parseActionCall(raw: String): ActionArgumentParser.Call {
+        return ActionArgumentParser.parseCall(raw)
     }
 
-    private fun splitActionCallArguments(raw: String): List<String> {
-        val result = mutableListOf<String>()
-        val current = StringBuilder()
-        var quote: Char? = null
-        var escaping = false
-
-        for (ch in raw) {
-            if (escaping) {
-                current.append(ch)
-                escaping = false
-                continue
-            }
-
-            if (ch == '\\') {
-                escaping = true
-                continue
-            }
-
-            if (quote != null) {
-                if (ch == quote) {
-                    quote = null
-                } else {
-                    current.append(ch)
-                }
-                continue
-            }
-
-            when (ch) {
-                '\'', '"', '`' -> quote = ch
-                ',' -> {
-                    result.add(current.toString().trim())
-                    current.clear()
-                }
-                else -> current.append(ch)
-            }
+    private fun findActionList(config: YamlConfiguration?, actionName: String): ResolvedActionList? {
+        if (actionName.isEmpty()) {
+            return null
         }
 
-        if (escaping) {
-            current.append('\\')
+        val localActions = config
+            ?.getList("Events.Click.$actionName")
+            ?.takeIf { it.isNotEmpty() }
+            ?.map { it ?: Any() }
+        if (localActions != null) {
+            return ResolvedActionList(localActions, "menu:$actionName")
         }
 
-        result.add(current.toString().trim())
-        return result
+        val packageActions = actionPackageManager?.getActions(actionName) ?: return null
+        return ResolvedActionList(packageActions, "package:$actionName")
     }
 
-    private fun stripArgumentQuotes(value: String): String {
-        return value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+    private fun actionListNotFoundMessage(actionName: String, config: YamlConfiguration?): String {
+        val key = if (config == null) {
+            "actions.action_list_not_found_global"
+        } else {
+            "actions.action_list_not_found_with_global"
+        }
+        return plugin?.languageManager?.getMessage(key, actionName)
+            ?: plugin?.languageManager?.getMessage("actions.action_list_not_found", actionName)
+            ?: "§cError: Action list '$actionName' not found"
+    }
+
+    private fun message(key: String, vararg args: Any): String {
+        return plugin?.languageManager?.getMessage(key, *args)
+            ?: languageManager?.getMessage(key, *args)
+            ?: key
     }
 
     private fun mergeActionArguments(variables: Map<String, String>, args: List<String>): Map<String, String> {
@@ -344,11 +332,12 @@ object MenuActions {
     private fun selectConditionalActions(
         player: Player,
         group: Map<*, *>,
-        variables: Map<String, String>
+        variables: Map<String, String>,
+        config: YamlConfiguration?
     ): List<*> {
         val condition = group["condition"] as? String ?: ""
         val (successActions, denyActions) = getConditionalBranches(group)
-        return if (ConditionUtils.checkCondition(player, condition, variables)) {
+        return if (ConditionUtils.checkCondition(player, condition, variables, config) { null }) {
             successActions
         } else {
             denyActions
@@ -534,9 +523,20 @@ object MenuActions {
         asyncDataOperations: Boolean = true,
         taskRef: MenuTaskManager.TaskExecutionRef? = null,
         contextId: String? = null,
+        actionListId: String? = null,
         handledMenuLifecycle: AtomicBoolean = AtomicBoolean(false)
     ): CompletableFuture<Boolean> {
-        val context = ActionExecutionContext(player, variables, menuOpener, config, asyncDataOperations, taskRef, contextId, handledMenuLifecycle)
+        val context = ActionExecutionContext(
+            player = player,
+            variables = variables,
+            menuOpener = menuOpener,
+            config = config,
+            asyncDataOperations = asyncDataOperations,
+            taskRef = taskRef,
+            contextId = contextId,
+            actionListId = actionListId,
+            handledMenuLifecycle = handledMenuLifecycle
+        )
         val start = if (baseDelay > 0) delayTicks(baseDelay) else CompletableFuture.completedFuture(false)
         return start.thenCompose { executeActionSequence(context, actionList) }
             .exceptionally { error ->
@@ -625,7 +625,7 @@ object MenuActions {
     ): CompletableFuture<Boolean> {
         return when (action) {
             is Map<*, *> -> {
-                val actionsToUse = selectConditionalActions(context.player, action, context.variables)
+                val actionsToUse = selectConditionalActions(context.player, action, context.variables, context.config)
                 executeActionSequence(context, actionsToUse.map { it ?: Any() })
             }
             is List<*> -> executeActionSequence(context, action.map { it ?: Any() })
@@ -638,7 +638,7 @@ object MenuActions {
         context: ActionExecutionContext,
         action: String
     ): CompletableFuture<Boolean> {
-        val controlAction = TextResolver.resolve(context.player, action, context.variables).trim()
+        val controlAction = TextResolver.resolve(context.player, action, context.variables, context.config).trim()
 
         return when {
             controlAction.startsWith("wait:", ignoreCase = true) -> {
@@ -658,17 +658,22 @@ object MenuActions {
             }
             controlAction.startsWith("actions:", ignoreCase = true) -> {
                 val actionCall = parseActionCall(controlAction.substringAfter(":", "").trim())
-                val config = context.config
-                if (config == null || actionCall.name.isEmpty()) {
+                if (actionCall.name.isEmpty()) {
                     CompletableFuture.completedFuture(false)
                 } else {
-                    val subActionList = config.getList("Events.Click.${actionCall.name}")
-                    if (subActionList.isNullOrEmpty()) {
-                        context.player.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actionCall.name)))
+                    val subActionList = findActionList(context.config, actionCall.name)
+                    if (subActionList == null) {
+                        context.player.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, context.config)))
+                        CompletableFuture.completedFuture(false)
+                    } else if (subActionList.id == context.actionListId) {
+                        context.player.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_self_call", actionCall.name)))
                         CompletableFuture.completedFuture(false)
                     } else {
-                        val childContext = context.copy(variables = mergeActionArguments(context.variables, actionCall.arguments))
-                        executeActionSequence(childContext, subActionList.map { it ?: Any() })
+                        val childContext = context.copy(
+                            variables = mergeActionArguments(context.variables, actionCall.arguments),
+                            actionListId = subActionList.id
+                        )
+                        executeActionSequence(childContext, subActionList.actions)
                     }
                 }
             }
@@ -889,7 +894,7 @@ object MenuActions {
         handledMenuLifecycle: AtomicBoolean? = null
     ) {
         // 解析输入变量、动作包参数、内置变量、JavaScript 与 PAPI 变量
-        val finalCmd = TextResolver.resolve(player, action, variables)
+        val finalCmd = TextResolver.resolve(player, action, variables, config)
 
         if (dispatchExternalAction(player, finalCmd, variables, config)) {
             return
@@ -900,64 +905,25 @@ object MenuActions {
             finalCmd.startsWith("tell:") ->
                 player.sendMessage(TextParser.parseText(finalCmd.removePrefix("tell:").trim()))
 
-            // js: 执行 JavaScript 代码或预定义函数
+            // js: 执行 JavaScript 代码或 JavaScript 包
             finalCmd.startsWith("js:") -> {
                 if (JavaScriptManager.isAvailable()) {
                     val jsCode = finalCmd.removePrefix("js:").trim()
 
                     try {
-                        // 检查是否是预定义函数格式 [function_name]
-                        if (jsCode.startsWith("[") && config != null) {
-                            // 预处理：提取函数名和参数
-                            val trimmed = jsCode.trim()
-                            val closeBracketIndex = trimmed.indexOf(']')
-
-                            if (closeBracketIndex > 0) {
-                                // 提取函数名（在 [ 和 ] 之间）
-                                val functionName = trimmed.substring(1, closeBracketIndex)
-
-                                // 提取参数（在 ] 之后）
-                                var firstSpaceIndex = -1
-                                for (i in (closeBracketIndex + 1) until trimmed.length) {
-                                    if (trimmed[i].isWhitespace()) {
-                                        firstSpaceIndex = i
-                                        break
-                                    }
-                                }
-
-                                val argsString = if (firstSpaceIndex > closeBracketIndex) {
-                                    trimmed.substring(firstSpaceIndex).trim()
-                                } else {
-                                    ""
-                                }
-
-                                // 执行预定义函数并传递参数
-                                val result = JavaScriptManager.executePredefinedFunctionWithArgs(player, functionName, argsString, config)
-                                if (result != null && result != "") {
-                                    // 如果有返回值，显示给玩家（可选）
-                                    player.sendMessage(TextParser.parseText("§aJS Result: $result"))
-                                }
-                            } else {
-                                // 格式错误，直接当作代码执行
-                                val result = JavaScriptManager.evaluateWithContext(player, jsCode)
-                                if (result != null && result != "") {
-                                    player.sendMessage(TextParser.parseText("§aJS Result: $result"))
-                                }
-                            }
+                        val jsCall = ActionArgumentParser.parseBracketCall(jsCode)
+                        if (jsCall != null) {
+                            JavaScriptManager.executePredefinedFunctionWithArgs(player, jsCall.name, jsCall.arguments, config)
                         } else {
-                            // 直接执行 JavaScript 代码
-                            val result = JavaScriptManager.evaluateWithContext(player, jsCode)
-                            if (result != null && result != "") {
-                                // 如果有返回值，显示给玩家（可选）
-                                player.sendMessage(TextParser.parseText("§aJS Result: $result"))
-                            }
+                            JavaScriptManager.evaluateWithContext(player, jsCode)
                         }
                     } catch (e: Exception) {
-                        plugin?.logger?.warning("JavaScript execution error for player ${player.name}: ${e.message}")
-                        player.sendMessage(TextParser.parseText("§cJavaScript execution failed: ${e.message}"))
+                        val error = e.message ?: e.javaClass.simpleName
+                        plugin?.logger?.warning(message("javascript.execution_error_player", player.name, error))
+                        player.sendMessage(TextParser.parseText(message("javascript.execution_failed_user", error)))
                     }
                 } else {
-                    player.sendMessage(TextParser.parseText("§cJavaScript feature is not available. Please restart the server to complete the initial setup."))
+                    player.sendMessage(TextParser.parseText(message("javascript.unavailable")))
                 }
             }
 
@@ -1119,25 +1085,25 @@ object MenuActions {
             // actions: 执行 Events.Click 下的动作列表
             finalCmd.startsWith("actions:") -> {
                 if (config != null) {
-                    val actionKey = finalCmd.removePrefix("actions:").trim()
-                    if (actionKey.isNotEmpty()) {
+                    val actionCall = parseActionCall(finalCmd.removePrefix("actions:").trim())
+                    if (actionCall.name.isNotEmpty()) {
                         // 异步执行动作列表
                         Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return, Runnable {
-                            val actionPath = "Events.Click.$actionKey"
-                            val actionList = config.getList(actionPath)
+                            val actionList = findActionList(config, actionCall.name)
 
-                            if (actionList != null && actionList.isNotEmpty()) {
+                            if (actionList != null) {
                                 executeActionList(
                                     player,
-                                    actionList.map { it ?: Any() },
-                                    variables,
+                                    actionList.actions,
+                                    mergeActionArguments(variables, actionCall.arguments),
                                     menuOpener,
                                     0L,
                                     config,
-                                    contextId = contextId
+                                    contextId = contextId,
+                                    actionListId = actionList.id
                                 )
                             } else {
-                                player.sendMessage(TextParser.parseText(plugin!!.languageManager.getMessage("actions.action_list_not_found", actionKey)))
+                                player.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
                             }
                         })
                     }
@@ -1714,26 +1680,25 @@ object MenuActions {
                 component = component.clickEvent(ClickEvent.callback({ audience ->
                     if (audience is Player) {
                         val actionCall = parseActionCall(actions)
-                        // 从 Events.Click 加载动作列表
-                        val actionPath = "Events.Click.${actionCall.name}"
-                        val actionList = config.getList(actionPath)
+                        val actionList = findActionList(config, actionCall.name)
 
-                        if (actionList != null && actionList.isNotEmpty()) {
+                        if (actionList != null) {
                             // 异步执行动作列表
                             plugin?.let {
                                 Bukkit.getScheduler().runTaskAsynchronously(it, Runnable {
                                     executeActionList(
                                         audience,
-                                        actionList.map { it ?: Any() },
+                                        actionList.actions,
                                         mergeActionArguments(emptyMap(), actionCall.arguments),
                                         menuOpener,
                                         0L,
-                                        config
+                                        config,
+                                        actionListId = actionList.id
                                     )
                                 })
                             }
                         } else {
-                            audience.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_not_found", actionCall.name)))
+                            audience.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
                         }
                     }
                 }, ClickCallback.Options.builder()

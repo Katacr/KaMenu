@@ -144,13 +144,13 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 ### /km language
 
-设置插件语言并立即重载配置和菜单。
+设置插件语言并立即重载配置和菜单。语言 ID 对应 `plugins/KaMenu/lang/` 下的 `.yml` 文件名，不含扩展名。
 
-**格式：** `/km language <zh_CN|en_US>`
+**格式：** `/km language <语言ID>`
 
 **权限：** `kamenu.admin`
 
-**别名：** `/km lang <zh_CN|en_US>`
+**别名：** `/km lang <语言ID>`
 
 **示例：**
 
@@ -201,27 +201,38 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 ### /km reload
 
-重新加载插件的所有配置文件和菜单文件，无需重启服务器。
+重新加载插件配置、菜单或资源包，无需重启服务器。不填写目标时默认重载全部。
 
-**格式：** `/km reload`
+**格式：** `/km reload [all|menu|actions|js|lang|config]`
 
 **权限：** `kamenu.admin`
 
-**重载内容：**
-1. `config.yml` 全局配置
-2. 语言文件（`lang/` 目录）
-3. `menus/` 目录下的所有菜单文件（包括子文件夹）
-4. 自定义指令注册
+**目标：**
+
+| 目标 | 说明 |
+|------|------|
+| `all` | 重载全部模块，等同于不填写目标 |
+| `menu` | 仅重载 `menus/` 目录下的菜单文件 |
+| `actions` | 仅重载 `plugins/KaMenu/actions/` 全局动作包 |
+| `js` | 仅重载 `plugins/KaMenu/js/` 全局 JavaScript 包 |
+| `lang` | 仅重载当前语言文件 |
+| `config` | 重载 `config.yml`、语言文件和自定义指令 |
+
+每个目标都会返回独立统计：总数、成功、失败、耗时 ms。`config` 的统计对象是 `custom-commands` 中的自定义指令；不填写目标或使用 `all` 时，会依次输出各模块的重载结果。
 
 **示例：**
 
 ```bash
 /km reload
-# 输出: [KaMenu] 菜单已重载，共加载 12 个菜单和 3 个自定义指令。
+/km reload menu
+/km reload actions
+/km reload js
+/km reload lang
+/km reload config
 ```
 
 {% hint style="info" %}
-修改菜单文件后，只需执行 `/km reload` 即可立即生效，无需重启服务器。
+仅修改菜单文件时，推荐执行 `/km reload menu`；需要同时重载全部模块时再使用 `/km reload`。
 {% endhint %}
 
 ---

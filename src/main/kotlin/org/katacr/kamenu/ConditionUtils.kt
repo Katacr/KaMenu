@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 
 /**
@@ -36,6 +37,16 @@ object ConditionUtils {
         dynamicResolver: (String) -> String?
     ): Boolean {
         return ConditionExpressionEngine.checkCondition(player, condition, variables, dynamicResolver)
+    }
+
+    fun checkCondition(
+        player: Player,
+        condition: String?,
+        variables: Map<String, String>,
+        menuConfig: YamlConfiguration?,
+        dynamicResolver: (String) -> String?
+    ): Boolean {
+        return ConditionExpressionEngine.checkCondition(player, condition, variables, menuConfig, dynamicResolver)
     }
 
     fun getConditionString(

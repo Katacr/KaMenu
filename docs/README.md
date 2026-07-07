@@ -50,7 +50,7 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 
 此外还支持：
 
-* `{js:...}` — 在任意文本位置使用 JavaScript 表达式返回值
+* `{js:...}` — 在任意文本位置使用 JavaScript 表达式或 JavaScript 包返回值；无返回值时为空
 * `Events.Open` — 会等待整条动作链完成后再打开菜单
 * `Events.Tasks` — 菜单打开期间按固定间隔周期执行动作组
 

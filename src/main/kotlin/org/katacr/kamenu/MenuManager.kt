@@ -9,6 +9,20 @@ import java.net.JarURLConnection
 class MenuManager(private val plugin: KaMenu) {
     private val menus = mutableMapOf<String, YamlConfiguration>()
 
+    data class LoadResult(
+        val total: Int = 0,
+        val success: Int = 0,
+        val failed: Int = 0
+    ) {
+        operator fun plus(other: LoadResult): LoadResult {
+            return LoadResult(
+                total = total + other.total,
+                success = success + other.success,
+                failed = failed + other.failed
+            )
+        }
+    }
+
     data class ReleaseResult(
         val saved: Int = 0,
         val skipped: Int = 0,
@@ -174,6 +188,28 @@ class MenuManager(private val plugin: KaMenu) {
         }
     }
 
+    private fun loadMenusRecursivelyWithResult(folder: File, prefix: String): LoadResult {
+        var result = LoadResult()
+        folder.listFiles()?.forEach { file ->
+            if (file.isDirectory) {
+                val newPrefix = if (prefix.isEmpty()) file.name else "$prefix/${file.name}"
+                result += loadMenusRecursivelyWithResult(file, newPrefix)
+            } else if (file.extension.equals("yml", ignoreCase = true)) {
+                result += LoadResult(total = 1)
+                val menuId = if (prefix.isEmpty()) file.nameWithoutExtension else "$prefix/${file.nameWithoutExtension}"
+                try {
+                    val config = YamlConfiguration.loadConfiguration(file)
+                    menus[menuId] = config
+                    result += LoadResult(success = 1)
+                } catch (e: Exception) {
+                    plugin.logger.warning(plugin.languageManager.getMessage("manager.menu_load_failed", file.absolutePath, e.message ?: e.javaClass.simpleName))
+                    result += LoadResult(failed = 1)
+                }
+            }
+        }
+        return result
+    }
+
     fun getMenuConfig(id: String): YamlConfiguration? {
         return menus[id]
     }
@@ -192,6 +228,14 @@ class MenuManager(private val plugin: KaMenu) {
         loadMenus()
         return getAllMenuIds().size
     }
+
+    fun reloadWithResult(): LoadResult {
+        menus.clear()
+        val folder = File(plugin.dataFolder, "menus")
+        if (!folder.exists()) folder.mkdirs()
+        return loadMenusRecursivelyWithResult(folder, "")
+    }
+
     fun clear() {
         menus.clear()
     }

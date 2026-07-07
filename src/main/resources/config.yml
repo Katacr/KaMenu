@@ -7,10 +7,12 @@
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
 config-version: 5
 
-# Plugin language (must match filename in lang/ folder)
-# Supported values: zh_CN (Chinese), en_US (English)
+# Plugin language (must match a filename in the lang/ folder, without .yml)
+# Built-in languages: zh_CN (Chinese), en_US (English)
+# You may add your own language file, for example: lang/de_DE.yml -> language: 'de_DE'
 # 插件语言（对应 lang/ 文件夹下的文件名）
-# 支持的值: zh_CN (中文), en_US (英文)
+# 内置语言: zh_CN (中文), en_US (英文)
+# 你可以自行添加语言文件，例如：lang/de_DE.yml -> language: 'de_DE'
 language: 'en_US'
 
 # ============================================
@@ -126,8 +128,12 @@ custom-commands:
   actions: 'example/actions_demo'  # /actions command / actions指令
   menu: 'example/main_menu'      # /menu command / menu指令
   test:
+    args:
+      0: "[hello, info]"
+      1: "%kamenu_online_players%"
     actions:
       - "tell: 嘿，你输入了/test指令"
+      - "tell: 参数：{args}"
       - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
       - "tell: 你想测试什么内容呢？"
 

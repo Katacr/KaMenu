@@ -34,8 +34,12 @@ custom-commands:
 
   # 新写法：执行 actions 动作队列
   test:
+    args:
+      0: "[hello, info]"
+      1: "%kamenu_online_players%"
     actions:
       - "tell: 嘿，你输入了/test指令"
+      - "tell: 参数：{args}"
       - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
       - "tell: 你想测试什么内容呢？"
 ```
@@ -70,6 +74,52 @@ custom-commands:
     actions:
       - "tell: &a你好 {arg:0}，欢迎来到 {arg:1}"
 ```
+
+## 参数 Tab 补全
+
+对象写法的自定义指令可以配置 `args`，用于给指令参数提供 Tab 补全候选项。`args` 的索引从 `0` 开始，与动作中的 `{arg:0}`、`{arg:1}` 保持一致。
+
+```yaml
+custom-commands:
+  test2:
+    args:
+      0: "[tp, tphere]"
+      1: "%kamenu_online_players%"
+    actions:
+      - condition: "{arg:0} == tp"
+        allow:
+          - "tell: 你将传送到 {arg:1}"
+      - condition: "{arg:0} == tphere"
+        allow:
+          - "tell: 你将把 {arg:1} 传送到你身边"
+```
+
+候选项支持以下写法：
+
+```yaml
+args:
+  0: "[tp, tphere]"              # 简易列表
+  1: "Steve, Alex, Katacr"       # 逗号分隔
+  2:
+    - spawn
+    - home
+    - shop
+  3: "%kamenu_online_players%"   # PAPI，按下 Tab 时实时解析
+  4: "{list:friends}"            # KaMenu 玩家列表，按下 Tab 时实时解析
+  5: "{glist:warps}"             # KaMenu 全局列表，按下 Tab 时实时解析
+```
+
+也可以给打开菜单的对象写法配置参数补全：
+
+```yaml
+custom-commands:
+  profile:
+    menu: example/player_profile
+    args:
+      0: "%kamenu_online_players%"
+```
+
+Tab 补全不会缓存候选项，每次玩家按下 Tab 时都会根据当前玩家实时解析 PAPI 和 KaMenu 内置变量。
 
 ## 示例：限制特定玩家访问
 
@@ -190,7 +240,7 @@ Events:
 修改 `config.yml` 后，执行以下指令重载：
 
 ```
-/kamenu reload
+/kamenu reload config
 ```
 
 系统会自动注册所有自定义指令，无需重启服务器。
@@ -198,7 +248,7 @@ Events:
 ## 技术细节
 
 - 自定义指令在服务器启动时自动注册
-- 支持 `/kamenu reload` 热重载，无需重启服务器
+- 支持 `/kamenu reload config` 热重载，无需重启服务器
 - 指令名称不区分大小写（`/menu` 和 `/MENU` 效果相同）
 - 自定义指令与主指令独立，互不影响
 - 字符串写法会直接打开菜单；配置段中存在 `actions` 列表时会执行动作队列

@@ -144,13 +144,13 @@ Opens the built-in getting started guide menu.
 
 ### /km language
 
-Sets the plugin language and immediately reloads configuration and menus.
+Sets the plugin language and immediately reloads configuration and menus. The language ID is the `.yml` filename under `plugins/KaMenu/lang/`, without the extension.
 
-**Format:** `/km language <zh_CN|en_US>`
+**Format:** `/km language <language_id>`
 
 **Permission:** `kamenu.admin`
 
-**Alias:** `/km lang <zh_CN|en_US>`
+**Alias:** `/km lang <language_id>`
 
 **Examples:**
 
@@ -201,27 +201,38 @@ Releases built-in sample menus for the selected language to `plugins/KaMenu/menu
 
 ### /km reload
 
-Reloads all plugin configuration files and menu files without restarting the server.
+Reloads plugin configuration, menus, or package folders without restarting the server. If no target is provided, KaMenu reloads everything.
 
-**Format:** `/km reload`
+**Format:** `/km reload [all|menu|actions|js|lang|config]`
 
 **Permission:** `kamenu.admin`
 
-**Reloaded items:**
-1. `config.yml` global configuration
-2. Language files (`lang/` directory)
-3. All menu files in the `menus/` directory (including subfolders)
-4. Custom command registrations
+**Targets:**
+
+| Target | Description |
+|--------|-------------|
+| `all` | Reload all modules. Same as omitting the target |
+| `menu` | Reload only menu files under `menus/` |
+| `actions` | Reload only global action packages under `plugins/KaMenu/actions/` |
+| `js` | Reload only global JavaScript packages under `plugins/KaMenu/js/` |
+| `lang` | Reload only the current language file |
+| `config` | Reload `config.yml`, language files, and custom commands |
+
+Each target returns its own statistics: total, success, failed, and elapsed ms. For `config`, the counted items are custom commands under `custom-commands`. When no target is provided, or when `all` is used, KaMenu prints each module's reload result in sequence.
 
 **Example:**
 
 ```bash
 /km reload
-# Output: [KaMenu] Menus reloaded. Loaded 12 menus and 3 custom commands.
+/km reload menu
+/km reload actions
+/km reload js
+/km reload lang
+/km reload config
 ```
 
 {% hint style="info" %}
-After modifying menu files, simply run `/km reload` to apply changes immediately — no server restart required.
+After modifying menu files only, prefer `/km reload menu`. Use `/km reload` when all modules should be reloaded.
 {% endhint %}
 
 ---

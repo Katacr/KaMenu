@@ -5,6 +5,8 @@
 * [⚙️ Configuration](config/README.md)
   * [⛳ Config File: config.yml](config/config.md)
   * [⌨️ Custom Commands](config/customCommands.md)
+  * [📦 actions Folder](config/actions-packages.md)
+  * [📦 js Folder](config/javascript-packages.md)
 * [🤵 Commands & Permissions](perm/README.md)
   * [🔐 Permission List](perm/permissions.md)
   * [⌨️ Command List](perm/commands.md)

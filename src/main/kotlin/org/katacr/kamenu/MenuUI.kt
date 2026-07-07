@@ -154,14 +154,15 @@ object MenuUI {
         player: Player,
         text: String?,
         variables: Map<String, String> = emptyMap(),
-        contextId: String? = null
+        contextId: String? = null,
+        config: YamlConfiguration? = null
     ): String {
         return if (contextId == null) {
-            TextResolver.resolve(player, text, variables)
+            TextResolver.resolve(player, text, variables, config)
         } else {
-            TextResolver.resolve(player, text, variables) { key ->
+            TextResolver.resolve(player, text, variables, { key ->
                 dynamicVariable(player, contextId, key)
-            }
+            }, config)
         }
     }
 
@@ -178,7 +179,7 @@ object MenuUI {
                 val functionName = source.substring(1, source.length - 1).trim()
                 JavaScriptManager.executePredefinedFunctionWithArgs(player, functionName, "", config)
             }
-            else -> resolveMenuText(player, source)
+            else -> resolveMenuText(player, source, config = config)
         } ?: return emptyList()
 
         return repeatItemsFromAny(result, split, trimItems)
@@ -273,14 +274,14 @@ object MenuUI {
         menuOpener: (Player, String) -> Unit,
         closesDialogAfterAction: Boolean
     ): ActionButton {
-        val btnText = resolveMenuText(player, getString(player, btnSection, "$btnKey.text", defaultText), variables, contextId)
+        val btnText = resolveMenuText(player, getString(player, btnSection, "$btnKey.text", defaultText), variables, contextId, config)
         val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
 
         val builder = ActionButton.builder(TextParser.parseText(btnText))
             .action(MenuActions.buildActionFromConfig(player, config, "$path.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId))
 
         val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
-            .map { resolveMenuText(player, it, variables, contextId) }
+            .map { resolveMenuText(player, it, variables, contextId, config) }
         if (tooltipList.isNotEmpty()) {
             builder.tooltip(joinTooltipLines(tooltipList))
         }
@@ -352,7 +353,7 @@ object MenuUI {
 
             val showCondition = itemSection.getString("show-condition") ?: itemSection.getString("show_condition")
             if (showCondition != null) {
-                if (!ConditionUtils.checkCondition(player, showCondition, variables) { key -> dynamicVariable(player, contextId, key) }) {
+                if (!ConditionUtils.checkCondition(player, showCondition, variables, config) { key -> dynamicVariable(player, contextId, key) }) {
                     return@forEachIndexed
                 }
             }
@@ -540,7 +541,7 @@ object MenuUI {
         }
 
         val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
-        val title = TextParser.parseText(TextResolver.resolve(player, rawTitle))
+        val title = TextParser.parseText(TextResolver.resolve(player, rawTitle, menuConfig = config))
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -854,7 +855,7 @@ object MenuUI {
                         // 检查按钮显示条件（兼容 show-condition 和 show_condition 两种写法）
                         val showCondition = btnSection.getString("$btnKey.show-condition") ?: btnSection.getString("$btnKey.show_condition")
 
-                        if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition, emptyMap()) { key -> dynamicVariable(player, contextId, key) }) {
+                        if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition, emptyMap(), config) { key -> dynamicVariable(player, contextId, key) }) {
                             // 条件不满足，不显示此按钮
                             continue
                         }

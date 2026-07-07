@@ -10,8 +10,8 @@ KaMenu has a built-in powerful JavaScript engine (based on OpenJDK Nashorn 15.3)
 - ✅ **Auto-download**: Required dependencies are downloaded automatically on first startup
 - ✅ **Bukkit API integration**: Direct access to the Bukkit API
 - ✅ **Variable bindings**: Player-related variables are automatically bound
-- ✅ **Pre-defined functions**: Supports defining reusable JavaScript functions within a menu
-- ✅ **Parameter passing**: Supports passing multiple types of parameters to pre-defined functions
+- ✅ **JavaScript packages**: Supports reusable scripts in menu `JavaScript` and global `plugins/KaMenu/js/`
+- ✅ **Parameter passing**: Supports passing multiple parameter types to JavaScript packages
 
 ---
 
@@ -28,8 +28,7 @@ Bottom:
     text: '&aTest JS'
     actions:
       - 'js: player.sendMessage("Hello from JavaScript!");'
-      - 'js: var random = Math.floor(Math.random() * 100);'
-      - 'js: player.sendMessage("Random number: " + random);'
+      - 'js: var random = Math.floor(Math.random() * 100); player.sendMessage("Random number: " + random);'
 ```
 
 ### Using `{js:...}` as a text placeholder
@@ -199,16 +198,16 @@ if (target) {
 
 ---
 
-## 📝 Pre-defined Functions
+## 📝 JavaScript Packages
 
-### Defining Pre-defined Functions
+### Defining Menu-local JavaScript Packages
 
 Add a `JavaScript` node at the top level of the menu configuration file to define reusable JavaScript code blocks:
 
 ```yaml
 Title: '&6JavaScript Example Menu'
 
-# Pre-defined function area
+# Menu-local JavaScript package area
 JavaScript:
   show_health: |
     var health = player.getHealth();
@@ -234,21 +233,26 @@ Body:
 ```
 
 {% hint style="info" %}
-Each key inside the `JavaScript` node is a function name, and the value is the JavaScript code (use `|` for multi-line strings).
+Each key inside the `JavaScript` node is a menu-local package name, and the value is the JavaScript code (use `|` for multi-line strings). Calls resolve the current menu package first, then global packages under `plugins/KaMenu/js/`.
 {% endhint %}
 
-### Calling Pre-defined Functions
+### Calling JavaScript Packages
 
 #### Method 1: Direct Call (No Arguments)
 
-Call a pre-defined function using the `[function_name]` format:
+Use the `[package_name]` format to call a code block in the current menu's `JavaScript` section, or a global `.js` file under `plugins/KaMenu/js/`.
+
+Lookup priority:
+
+1. Current menu `JavaScript.<package_name>`
+2. Global JavaScript package `plugins/KaMenu/js/<package_name>.js`
 
 ```yaml
 Bottom:
   type: 'multi'
   buttons:
     test-functions:
-      text: '&aTest Pre-defined Functions'
+      text: '&aTest JavaScript Packages'
       actions:
         - 'js: [show_health]'
         - 'js: [greet]'
@@ -256,7 +260,7 @@ Bottom:
 
 #### Method 2: Passing Arguments
 
-Add space-separated arguments after the function name:
+Add arguments after the package name. Both comma-separated and space-separated arguments are supported:
 
 ```yaml
 Bottom:
@@ -265,9 +269,54 @@ Bottom:
     pass-args:
       text: '&cPass Arguments'
       actions:
-        # Format: [function_name] arg1 arg2 arg3 ...
+        - 'js: [pass_args],%player_name%,50,{data:test},default_value'
         - 'js: [pass_args] %player_name% 50 {data:test} default_value'
 ```
+
+When an argument needs to contain a space or comma, wrap it with single quotes, double quotes, or backticks:
+
+```yaml
+- 'js: [reward/message],"100 coins",`Steve,Alex`'
+```
+
+#### Global JavaScript Packages
+
+Global JavaScript packages are stored under `plugins/KaMenu/js/`. One `.js` file is one package. The package ID is the relative path without the `.js` suffix, using `/` as the path separator.
+
+For the full folder structure, execution context, and troubleshooting notes, see [js Folder](../config/javascript-packages.md).
+
+```text
+plugins/KaMenu/js/reward/message.js -> reward/message
+```
+
+When the server starts and `plugins/KaMenu/js/` does not exist yet, KaMenu releases a built-in example package:
+
+```text
+plugins/KaMenu/js/example/message.js -> example/message
+```
+
+Use `{js:[example/message],Steve}` to quickly test whether global JavaScript packages are loaded correctly.
+
+File content:
+
+```javascript
+var amount = args[0] || "0";
+var target = args[1] || name;
+"Congratulations, " + target + " received " + amount + " coins";
+```
+
+Call it with:
+
+```yaml
+- 'js: [reward/message],100,Steve'
+text: 'Message: {js:[reward/message],100,Steve}'
+```
+
+Global package IDs may only use letters, numbers, `_`, `-`, `.`, and `/`. Global packages are loaded on server startup, `/km reload`, or `/km reload js`.
+
+{% hint style="info" %}
+Neither `js:` actions nor `{js:...}` require JavaScript to return a value. If there is no return value, `js:` simply executes the code, while `{js:...}` resolves to an empty string.
+{% endhint %}
 
 ### Supported Parameter Types
 
@@ -301,7 +350,7 @@ var count = args.length;
 ```
 
 {% hint style="warning" %}
-- Arguments are separated by spaces; arguments cannot contain spaces
+- Arguments may be separated by commas or spaces; wrap an argument with single quotes, double quotes, or backticks when it contains a space or comma
 - Use `args[0]`, `args[1]`, etc. to access arguments (zero-indexed)
 - `args` is a JavaScript array and supports all array methods
 - Accessing a non-existent argument returns `undefined`
@@ -333,10 +382,7 @@ Bottom:
   confirm:
     text: '&bCalculate Result'
     actions:
-      - 'js: var num1 = 42;'
-      - 'js: var num2 = 17;'
-      - 'js: var sum = num1 + num2;'
-      - 'js: player.sendMessage("§b" + num1 + " + " + num2 + " = §f" + sum);'
+      - 'js: var num1 = 42; var num2 = 17; var sum = num1 + num2; player.sendMessage("§b" + num1 + " + " + num2 + " = §f" + sum);'
 ```
 
 ### Example 3: Random Numbers
@@ -347,8 +393,7 @@ Bottom:
   confirm:
     text: '&eGenerate Random Number'
     actions:
-      - 'js: var random = Math.floor(Math.random() * 100);'
-      - 'js: player.sendMessage("§eRandom number: §f" + random);'
+      - 'js: var random = Math.floor(Math.random() * 100); player.sendMessage("§eRandom number: §f" + random);'
 ```
 
 ### Example 4: Conditional Logic
@@ -359,10 +404,7 @@ Bottom:
   confirm:
     text: '&cCheck Health'
     actions:
-      - 'js: var health = player.getHealth();'
-      - 'js: if (health > 15) { player.sendMessage("§aYou are in great health!"); }'
-      - 'js: else if (health > 5) { player.sendMessage("§eYour health is decent."); }'
-      - 'js: else { player.sendMessage("§cYou need to heal!"); }'
+      - 'js: var health = player.getHealth(); if (health > 15) { player.sendMessage("§aYou are in great health!"); } else if (health > 5) { player.sendMessage("§eYour health is decent."); } else { player.sendMessage("§cYou need to heal!"); }'
 ```
 
 ### Example 5: Accessing the Bukkit API
@@ -373,9 +415,7 @@ Bottom:
   confirm:
     text: '&dServer Info'
     actions:
-      - 'js: var onlinePlayers = Bukkit.getOnlinePlayers().size();'
-      - 'js: var maxPlayers = Bukkit.getMaxPlayers();'
-      - 'js: player.sendMessage("§dOnline players: §f" + onlinePlayers + "/" + maxPlayers);'
+      - 'js: var onlinePlayers = Bukkit.getOnlinePlayers().size(); var maxPlayers = Bukkit.getMaxPlayers(); player.sendMessage("§dOnline players: §f" + onlinePlayers + "/" + maxPlayers);'
 ```
 
 ### Example 6: Delayed Execution
@@ -386,18 +426,19 @@ Bottom:
   confirm:
     text: '&eCountdown'
     actions:
-      - 'js: for (var i = 5; i >= 1; i--) {'
-      - 'js:   var delayTicks = (5 - i) * 20;'
-      - 'js:   (function(num) {'
-      - 'js:     delay(delayTicks, function() {'
-      - 'js:       player.sendMessage("§e" + num + "...");'
-      - 'js:     });'
-      - 'js:   })(i);'
-      - 'js: }'
-      - 'js: delay(100, function() { player.sendMessage("§aGo!"); });'
+      - |-
+        js: for (var i = 5; i >= 1; i--) {
+              var delayTicks = (5 - i) * 20;
+              (function(num) {
+                delay(delayTicks, function() {
+                  player.sendMessage("§e" + num + "...");
+                });
+              })(i);
+            }
+            delay(100, function() { player.sendMessage("§aGo!"); });
 ```
 
-### Example 7: Using Pre-defined Functions (No Arguments)
+### Example 7: Using JavaScript Packages (No Arguments)
 
 ```yaml
 Title: '&6Health Check Menu'
@@ -425,7 +466,7 @@ Bottom:
         - 'js: [greet]'
 ```
 
-### Example 8: Using Pre-defined Functions (With Arguments)
+### Example 8: Using JavaScript Packages (With Arguments)
 
 ```yaml
 Title: '&6Argument Test'
@@ -467,24 +508,25 @@ Bottom:
 
 ## 🎯 Advanced Tips
 
-### Creating Custom Functions
+### Creating Reusable Functions
 
-Define custom functions in events, then call them in buttons:
+Put reusable logic in a menu `JavaScript` package or global JS package, then call it from buttons:
 
 ```yaml
-Events:
-  Open:
-    - 'js: function getRandomItem(items) {'
-    - 'js:   return items[Math.floor(Math.random() * items.length)];'
-    - 'js: }'
+JavaScript:
+  random_loot: |
+    function getRandomItem(items) {
+      return items[Math.floor(Math.random() * items.length)];
+    }
+    var item = getRandomItem(["Diamond", "Gold", "Iron", "Coal"]);
+    player.sendMessage("You found: §e" + item);
 
 Bottom:
   type: 'notice'
   confirm:
     text: '&6Random Loot'
     actions:
-      - 'js: var item = getRandomItem(["Diamond", "Gold", "Iron", "Coal"]);'
-      - 'js: player.sendMessage("You found: §e" + item);'
+      - 'js: [random_loot]'
 ```
 
 ### Using Delayed Execution
@@ -543,7 +585,7 @@ JavaScript execution error: SyntaxError: Unexpected token
 
 Avoid writing overly complex JavaScript code in menus. For complex logic, consider:
 
-- Splitting it into multiple pre-defined functions
+- Splitting it into multiple JavaScript packages
 - Using clearly named function names
 - Adding appropriate comments
 
@@ -599,8 +641,8 @@ The example menu includes:
 - Random numbers and math calculations
 - Conditional logic
 - Bukkit API access
-- Pre-defined functions (no arguments)
-- Pre-defined functions (with arguments)
+- JavaScript packages (no arguments)
+- JavaScript packages (with arguments)
 - Delayed execution
 
 ---
@@ -609,6 +651,7 @@ The example menu includes:
 
 - JavaScript code executes **server-side**
 - Each player's click has an **independent** execution context
+- Each `js:` / `{js:...}` / JavaScript package call uses an isolated execution context; do not rely on variables or functions defined by a previous `js:` action
 - Complex JavaScript code may impact server performance
 - Thoroughly test in a development environment **before deploying to production**
 - The Nashorn engine is based on ECMAScript 5.1 and does not support ES6+ syntax

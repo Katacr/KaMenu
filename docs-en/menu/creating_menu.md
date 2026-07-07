@@ -305,10 +305,10 @@ Bottom:
 
 ## 🚀 Test Your Menu
 
-### 7.1 Reload the Plugin
+### 7.1 Reload Menus
 
 ```bash
-/km reload
+/km reload menu
 ```
 
 ### 7.2 Open the Menu

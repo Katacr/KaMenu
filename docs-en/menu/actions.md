@@ -54,8 +54,8 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `set-data`    | Short form for setting player data                             | ✅                        | 
 | `set-gdata`   | Short form for setting global data                             | ✅                        | 
 | `set-meta`    | Short form for setting player metadata                         | ✅                        | 
-| `js`          | Execute JavaScript code (supports predefined functions)        | ❌                        | 
-| `actions`     | Execute an action list defined under Events.Click              | ❌                        | 
+| `js`          | Execute JavaScript code (supports menu/global JS packages)     | ❌                        | 
+| `actions`     | Execute an Events.Click list or global actions package         | ❌                        | 
 | `run-task`    | Start a periodic task defined under Events.Tasks               | ❌                        | 
 | `stop-task`   | Stop a specified periodic task                                 | ❌                        | 
 | `stop-current-task` | Stop the current periodic task and interrupt the current round | ❌                        | 
@@ -1193,7 +1193,7 @@ Insert an interrupt in the action list; subsequent actions will not be executed.
 
 ### js - Execute JavaScript Code
 
-Execute JavaScript code, supporting direct code execution or calling predefined functions.
+Execute JavaScript code, supporting direct code execution or calling JavaScript packages from the current menu's `JavaScript` section or from global files under `plugins/KaMenu/js/`.
 
 **Format:** `js: <JavaScript code>`
 
@@ -1208,7 +1208,7 @@ actions:
   - 'js: player.sendMessage("Random number: " + random);'
 ```
 
-2. **Call predefined function (no parameters)**
+2. **Call JavaScript package (no parameters)**
 
 ```yaml
 JavaScript:
@@ -1225,7 +1225,7 @@ Bottom:
       - 'js: [show_health]'
 ```
 
-3. **Call predefined function (with parameters)**
+3. **Call JavaScript package (with parameters)**
 
 ```yaml
 JavaScript:
@@ -1243,7 +1243,19 @@ Bottom:
   confirm:
     text: '&eProcess Data'
     actions:
-      - 'js: [process_data] %player_name% $(level) {data:money}'
+      - 'js: [process_data],%player_name%,$(level),{data:money}'
+```
+
+Lookup priority:
+
+1. Current menu `JavaScript.<package_name>`
+2. Global JavaScript package `plugins/KaMenu/js/<package_name>.js`
+
+For example, `plugins/KaMenu/js/reward/message.js` uses the package ID `reward/message`:
+
+```yaml
+actions:
+  - 'js: [reward/message],100,Steve'
 ```
 
 **Supported Variables:**
@@ -1255,9 +1267,9 @@ Bottom:
 - `inventory` - Player inventory
 - `world` - Player's world
 - `server` - Server instance
-- `args` - Predefined function parameter array (only available when calling predefined functions)
+- `args` - JavaScript package argument array (only available when calling `[package_name]`)
 
-**Supported Parameter Types (for predefined functions):**
+**Supported Parameter Types (for JavaScript packages):**
 
 - String: passed directly
 - PAPI variable: `%player_name%`
@@ -1272,29 +1284,38 @@ JavaScript functionality is very powerful, supporting access to Bukkit API, math
 
 **Note:**
 - JavaScript code is executed on the server side
-- Predefined functions must be defined in the menu's `JavaScript` node
-- Parameters are separated by spaces; parameters cannot contain spaces
+- Package-call parsing is used only when the content starts with a valid `[package_name]`; otherwise the whole content is executed as plain JavaScript
+- Arguments may be separated by commas or spaces; wrap an argument with single quotes, double quotes, or backticks when it contains a space or comma
+- `js:` actions do not require a return value and do not automatically display the result to the player
 - Nashorn engine is based on ECMAScript 5.1 standard, does not support ES6+ syntax
 
 ---
 
 ### actions - Execute Action List
 
-Execute an action list defined under `Events.Click`. This allows you to reuse defined action lists in actions, avoiding duplicate code.
+Execute an action list defined under `Events.Click`, or call a global actions package under `plugins/KaMenu/actions/`. This allows you to reuse defined action lists in actions, avoiding duplicate code.
 
 **Format:**
 
 ```yaml
 - 'actions: <action_list_name>'
 - 'actions: <action_list_name>,<arg0>,<arg1>'
+- 'actions: <action_list_name> <arg0> <arg1>'
 ```
 
 **Parameters:**
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| Action list name | Action list key under `Events.Click` | `greet`, `vip_check`, `daily_reward` |
+| Action list name | Action list key under `Events.Click`, or a global actions package ID | `greet`, `vip_check`, `reward/daily` |
 | Arguments | Temporary arguments passed into the action list. Read them with `{arg:0}`, `{arg:1}` inside the action list | `player`, `survival server` |
+
+Lookup priority:
+
+1. `Events.Click.<action_list_name>` in the current menu
+2. Global actions package `plugins/KaMenu/actions/<action_list_name>.yml`
+
+If a menu action list and a global package use the same name, the menu's `Events.Click` entry has priority.
 
 **Example:**
 
@@ -1373,12 +1394,72 @@ Events:
 
 In this example, `{arg:0}` is `player` and `{arg:1}` is `survival server`. Arguments are separated by commas. Use single quotes, double quotes, or backticks around an argument when it needs to contain a comma.
 
+Arguments may also be separated by spaces:
+
+```yaml
+- 'actions: hello player survival'
+```
+
+Use single quotes, double quotes, or backticks around an argument when it needs to contain a space or comma:
+
+```yaml
+- 'actions: hello,"player name",`survival,server`'
+```
+
+**Global actions packages:**
+
+Global actions packages are stored under `plugins/KaMenu/actions/`. One `.yml` file is one package. The package ID is the relative path without the `.yml` suffix, using `/` as the path separator.
+
+For the full folder structure, loading rules, and troubleshooting notes, see [actions Folder](../config/actions-packages.md).
+
+```text
+plugins/KaMenu/actions/reward/daily.yml -> reward/daily
+```
+
+When the server starts and `plugins/KaMenu/actions/` does not exist yet, KaMenu releases a built-in example package:
+
+```text
+plugins/KaMenu/actions/example/welcome.yml -> example/welcome
+```
+
+Use `actions: example/welcome` to quickly test whether global actions packages are loaded correctly.
+
+File content:
+
+```yaml
+actions:
+  - 'toast: type=task;msg=Claimed;icon=emerald'
+  - 'money: type=add;num={arg:0}'
+```
+
+Call it with:
+
+```yaml
+- 'actions: reward/daily,100'
+```
+
+Global package IDs may only use letters, numbers, `_`, `-`, `.`, and `/`. Global packages are loaded on server startup, `/km reload`, or `/km reload actions`.
+
+To avoid recursion, an action list cannot directly call itself:
+
+```yaml
+# Do not write this inside Events.Click.test:
+- 'actions: test'
+
+# Do not write this inside actions/test.yml either:
+- 'actions: test'
+```
+
+When a direct self-call is detected, KaMenu skips that `actions:` call and continues with the following actions.
+
 **Error Handling:**
 
 If the referenced action list doesn't exist, the player receives an error message:
 ```
 &cError: Action list 'xxx' not found
 ```
+
+In a menu context, the error message states that both the current menu's `Events.Click.xxx` and global `actions/xxx.yml` were checked. In custom command actions or other no-menu contexts, the error message states that only the global actions package was checked.
 
 **Comparison with Other Methods:**
 

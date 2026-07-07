@@ -116,10 +116,20 @@ If the guide opens, the installation is working correctly. After releasing the e
 
 ## 🔄 Hot Reload
 
-After modifying configuration or menu files, reload without restarting the server:
+After modifying configuration or menu files, reload without restarting the server. If no target is provided, all modules are reloaded:
 
 ```
 /km reload
+```
+
+Common targeted reloads:
+
+```bash
+/km reload menu      # Reload menus only
+/km reload config    # Reload config.yml, language files, and custom commands
+/km reload actions   # Reload global action packages only
+/km reload js        # Reload global JavaScript packages only
+/km reload lang      # Reload the current language file only
 ```
 
 Requires the `kamenu.admin` permission.

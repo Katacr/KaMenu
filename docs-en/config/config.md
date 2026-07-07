@@ -100,12 +100,20 @@ Sets the display language of the plugin. Corresponds to a filename (without `.ym
 
 **Type:** `String`
 
-**Built-in Options:**
+**Built-in Languages:**
 
 | Value | Language |
 |-------|---------|
 | `zh_CN` | Simplified Chinese (default) |
 | `en_US` | English |
+
+You may also add your own language file, for example:
+
+```text
+plugins/KaMenu/lang/de_DE.yml -> language: 'de_DE'
+```
+
+Language IDs may only use letters, numbers, `_`, and `-`, and must match a `.yml` filename under the `lang` folder.
 
 **Example:**
 
@@ -456,6 +464,7 @@ Registers short custom commands as shortcuts to open specified menus, or to run 
 
 - `command_name: menu_id`
 - configure `actions: action list` under `command_name:`
+- object-form commands may also configure `args` for argument Tab completion
 
 **Example:**
 
@@ -464,9 +473,17 @@ custom-commands:
   shop: 'server_shop'       # /shop -> opens server_shop menu
   menu: 'main_menu'         # /menu -> opens main_menu menu
   hub: 'hub/main'           # /hub  -> opens hub/main menu (subdirectory)
+  profile:
+    menu: 'player/profile'
+    args:
+      0: '%kamenu_online_players%'
   test:
+    args:
+      0: '[hello, info]'
+      1: '{list:friends}'
     actions:
       - "tell: Hey, you ran /test"
+      - "tell: Arguments: {args}"
       - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
       - condition: "hasPerm.test.admin"
         allow:
@@ -475,5 +492,6 @@ custom-commands:
           - "tell: &cYou do not have the test permission"
 ```
 Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}`, `{arg:1}`, `{args}`, `{arg_count}`, and `{command}`.
+`args` indexes also start at `0` and support YAML lists, comma-separated strings, PAPI placeholders, and KaMenu built-in variables. PAPI and built-in variables are resolved in real time when the player presses Tab.
 
 To learn more about custom commands and their advantages, see [⌨️ Custom Commands](customCommands.md)

@@ -43,7 +43,7 @@ A menu's ID is determined by its file path:
 
 1. Create a `.yml` file under `plugins/KaMenu/menus/` (create subfolders as needed)
 2. Write the menu configuration following the menu format (see the following sections)
-3. Run `/km reload` to reload
+3. Run `/km reload menu` to reload menus
 
 **File naming notes:**
 - ✅ Supports Unicode file names and folder names
@@ -79,7 +79,7 @@ Settings:
   can_escape: true      # Whether pressing ESC closes the menu
   after_action: CLOSE   # Client behavior after a button action is executed
   
-# Optional: pre-defined JavaScript functions
+# Optional: menu-local JavaScript packages
 JavaScript:
   test: |
     player.sendMessage("§aHello, " + name + "!");
@@ -151,9 +151,9 @@ Configures the menu's global behaviour.
 
 **Detailed description and examples:** See [⚙️ Global Settings (Settings)](setting.md)
 
-### JavaScript — Pre-defined Functions
+### JavaScript — Menu JavaScript Packages
 
-Define JavaScript code functions that can be called from actions.
+Define reusable JavaScript code packages for the current menu. They can be called from actions, conditions, and text. If a global JavaScript package uses the same name, the menu-local definition has priority.
 
 **Example:**
 
@@ -172,7 +172,9 @@ actions:
   - 'js: [show_health]'
 ```
 
-**Detailed description and examples:** See [🔧 JavaScript Pre-defined Functions (JavaScript)](javascript.md)
+Reusable code can also be placed under `plugins/KaMenu/js/<package>.js` as a global JavaScript package.
+
+**Detailed description and examples:** See [🔧 JavaScript Features](javascript.md)
 
 
 ### Events — Menu Events

@@ -19,6 +19,8 @@ class KaMenu : JavaPlugin() {
     lateinit var metaDataManager: MetaDataManager
     lateinit var customCommandManager: CustomCommandManager
     lateinit var itemManager: ItemManager
+    lateinit var actionPackageManager: ActionPackageManager
+    lateinit var javaScriptPackageManager: JavaScriptPackageManager
     var economy: Economy? = null
     var bungeeCordEnabled: Boolean = false
 
@@ -154,6 +156,16 @@ class KaMenu : JavaPlugin() {
         menuManager = MenuManager(this)
         menuManager.loadMenus()
 
+        // 3.3 初始化全局 actions 包管理器
+        actionPackageManager = ActionPackageManager(this)
+        actionPackageManager.loadPackages()
+        MenuActions.setActionPackageManager(actionPackageManager)
+
+        // 3.4 初始化全局 JavaScript 包管理器
+        javaScriptPackageManager = JavaScriptPackageManager(this)
+        javaScriptPackageManager.loadPackages()
+        JavaScriptManager.setPackageManager(javaScriptPackageManager)
+
         // 3.5 初始化自定义指令管理器
         customCommandManager = CustomCommandManager(this)
         customCommandManager.registerCustomCommands()
@@ -253,6 +265,8 @@ class KaMenu : JavaPlugin() {
         val vaultStatus = economy != null
         val menuCount = menuManager.getAllMenuIds().size
         val commandCount = customCommandManager.getRegisteredCommandCount()
+        val actionPackageCount = actionPackageManager.getPackageIds().size
+        val javaScriptPackageCount = javaScriptPackageManager.getPackageIds().size
         val currentLang = languageManager.getCurrentLanguage()
         val dbType = config.getString("storage.type", "SQLite") ?: "SQLite"
 
@@ -280,6 +294,8 @@ class KaMenu : JavaPlugin() {
             §7${languageManager.getMessage("logo.placeholderapi", papiText)}
             §7${languageManager.getMessage("logo.menu_count", menuCount.toString())}
             §7${languageManager.getMessage("logo.command_count", commandCount.toString())}
+            §7${languageManager.getMessage("logo.action_package_count", actionPackageCount.toString())}
+            §7${languageManager.getMessage("logo.javascript_package_count", javaScriptPackageCount.toString())}
             §e________________________________________________________
         """.trimIndent()
 

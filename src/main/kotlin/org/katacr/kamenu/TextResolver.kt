@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import org.bukkit.Bukkit
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -29,7 +30,7 @@ object TextResolver {
         languageManager = manager
     }
 
-    fun resolve(player: Player, text: String?, variables: Map<String, String> = emptyMap()): String {
+    fun resolve(player: Player, text: String?, variables: Map<String, String> = emptyMap(), menuConfig: YamlConfiguration? = null): String {
         var result = text ?: return ""
 
         variables.forEach { (key, value) ->
@@ -81,7 +82,13 @@ object TextResolver {
             if (script.isEmpty() || !JavaScriptManager.isAvailable()) {
                 ""
             } else {
-                JavaScriptManager.evaluateWithContext(player, script)?.toString() ?: ""
+                val jsCall = ActionArgumentParser.parseBracketCall(script)
+                val result = if (jsCall != null) {
+                    JavaScriptManager.executePredefinedFunctionWithArgs(player, jsCall.name, jsCall.arguments, menuConfig)
+                } else {
+                    JavaScriptManager.evaluateWithContext(player, script)
+                }
+                result?.toString() ?: ""
             }
         }
 
@@ -96,14 +103,24 @@ object TextResolver {
         return result
     }
 
-    fun resolveForCondition(player: Player, text: String?, variables: Map<String, String> = emptyMap()): String {
-        return resolveForCondition(player, text, variables) { null }
+    fun resolveForCondition(player: Player, text: String?, variables: Map<String, String> = emptyMap(), menuConfig: YamlConfiguration? = null): String {
+        return resolveForCondition(player, text, variables, menuConfig) { null }
     }
 
     fun resolveForCondition(
         player: Player,
         text: String?,
         variables: Map<String, String> = emptyMap(),
+        dynamicResolver: (String) -> String?
+    ): String {
+        return resolveForCondition(player, text, variables, null, dynamicResolver)
+    }
+
+    fun resolveForCondition(
+        player: Player,
+        text: String?,
+        variables: Map<String, String> = emptyMap(),
+        menuConfig: YamlConfiguration? = null,
         dynamicResolver: (String) -> String?
     ): String {
         var result = text ?: return ""
@@ -154,7 +171,13 @@ object TextResolver {
             if (script.isEmpty() || !JavaScriptManager.isAvailable()) {
                 ""
             } else {
-                JavaScriptManager.evaluateWithContext(player, script)?.toString() ?: ""
+                val jsCall = ActionArgumentParser.parseBracketCall(script)
+                val result = if (jsCall != null) {
+                    JavaScriptManager.executePredefinedFunctionWithArgs(player, jsCall.name, jsCall.arguments, menuConfig)
+                } else {
+                    JavaScriptManager.evaluateWithContext(player, script)
+                }
+                result?.toString() ?: ""
             }
         }
 
@@ -189,9 +212,10 @@ object TextResolver {
         player: Player,
         text: String?,
         variables: Map<String, String> = emptyMap(),
-        dynamicResolver: (String) -> String?
+        dynamicResolver: (String) -> String?,
+        menuConfig: YamlConfiguration? = null
     ): String {
-        var result = resolve(player, text, variables)
+        var result = resolve(player, text, variables, menuConfig)
         result = result.replace(Regex("\\{([^{}]+)}")) { match ->
             dynamicResolver(match.groupValues[1]) ?: match.value
         }

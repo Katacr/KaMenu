@@ -50,7 +50,7 @@ Supports a wide range of button click actions:
 
 Advanced action and text features:
 
-* `{js:...}` — use JavaScript expression results in any text position
+* `{js:...}` — use JavaScript expression or JavaScript package results in any text position; no return value resolves to empty text
 * `Events.Open` — waits for the full action chain before opening the menu
 * `Events.Tasks` — run action groups periodically while the menu is open
 

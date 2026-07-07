@@ -2,6 +2,7 @@ package org.katacr.kamenu
 
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.Bukkit
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 
 /**
@@ -80,8 +81,18 @@ object ConditionExpressionEngine {
         variables: Map<String, String>,
         dynamicResolver: (String) -> String?
     ): Boolean {
+        return checkCondition(player, condition, variables, null, dynamicResolver)
+    }
+
+    fun checkCondition(
+        player: Player,
+        condition: String?,
+        variables: Map<String, String>,
+        menuConfig: YamlConfiguration?,
+        dynamicResolver: (String) -> String?
+    ): Boolean {
         if (condition == null || condition.isBlank()) return true
-        val processed = preserveDelimitedFunctionArguments(TextResolver.resolveForCondition(player, condition, variables, dynamicResolver))
+        val processed = preserveDelimitedFunctionArguments(TextResolver.resolveForCondition(player, condition, variables, menuConfig, dynamicResolver))
         return try {
             evaluate(player, parse(processed))
         } catch (ex: IllegalArgumentException) {

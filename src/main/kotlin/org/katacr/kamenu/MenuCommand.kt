@@ -11,6 +11,34 @@ import java.io.InputStreamReader
 
 class MenuCommand(private val plugin: KaMenu) : TabExecutor {
 
+    private enum class ReloadTarget(val id: String) {
+        ALL("all"),
+        MENU("menu"),
+        ACTIONS("actions"),
+        JS("js"),
+        LANG("lang"),
+        CONFIG("config");
+
+        companion object {
+            fun parse(raw: String?): ReloadTarget? {
+                if (raw.isNullOrBlank()) {
+                    return ALL
+                }
+                return entries.firstOrNull { it.id.equals(raw, ignoreCase = true) }
+            }
+
+            fun ids(): List<String> = entries.map { it.id }
+        }
+    }
+
+    private data class ReloadResult(
+        val target: ReloadTarget,
+        val total: Int,
+        val success: Int,
+        val failed: Int,
+        val durationMs: Long
+    )
+
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
 
         if (args.isEmpty() || args[0].equals("help", ignoreCase = true)) {
@@ -23,9 +51,15 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
                 return true
             }
-            val (menuCount, commandCount) = reloadRuntime()
-
-            sender.sendMessage(plugin.languageManager.getMessage("menu.reloaded", menuCount.toString(), commandCount.toString()))
+            val target = ReloadTarget.parse(args.getOrNull(1))
+            if (target == null) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.reload_unknown_target", args[1]))
+                sender.sendMessage(plugin.languageManager.getMessage("command.reload_usage"))
+                return true
+            }
+            reloadRuntime(target).forEach { result ->
+                sender.sendMessage(reloadMessage(result))
+            }
             return true
         }
 
@@ -57,15 +91,19 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 return true
             }
             val language = args[1]
-            if (language !in listOf("zh_CN", "en_US")) {
+            if (!plugin.languageManager.isLanguageAvailable(language)) {
                 sender.sendMessage(plugin.languageManager.getMessage("command.language_unknown", language))
+                sender.sendMessage(plugin.languageManager.getMessage("command.language_available", plugin.languageManager.getAvailableLanguages().joinToString(", ")))
                 sender.sendMessage(plugin.languageManager.getMessage("command.language_usage"))
                 return true
             }
 
             plugin.config.set("language", language)
             plugin.saveConfig()
-            val (menuCount, commandCount) = reloadRuntime()
+            val results = reloadRuntime(ReloadTarget.ALL)
+            val menuCount = results.firstOrNull { it.target == ReloadTarget.MENU }?.success
+                ?: plugin.menuManager.getAllMenuIds().size
+            val commandCount = results.firstOrNull { it.target == ReloadTarget.CONFIG }?.success ?: 0
             sender.sendMessage(plugin.languageManager.getMessage("command.language_set_reload", language, menuCount.toString(), commandCount.toString()))
             return true
         }
@@ -426,14 +464,119 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         player.sendMessage("")
     }
 
-    private fun reloadRuntime(): Pair<Int, Int> {
-        MenuTaskManager.cancelAll()
+    private fun reloadRuntime(target: ReloadTarget): List<ReloadResult> {
+        return when (target) {
+            ReloadTarget.ALL -> {
+                MenuTaskManager.cancelAll()
+                val configStart = System.nanoTime()
+                plugin.reloadConfig()
+                plugin.languageManager.reload()
+                UpdateChecker.reload(plugin)
+                val langDurationMs = elapsedMs(configStart)
+                val configReloadDurationMs = langDurationMs
+                val menuResult = reloadMenu(cancelTasks = false)
+                val actionsResult = reloadActions()
+                val jsResult = reloadJs()
+                val commandStart = System.nanoTime()
+                val commandResult = plugin.customCommandManager.registerCustomCommandsWithResult()
+                val configResult = ReloadResult(
+                    ReloadTarget.CONFIG,
+                    commandResult.total,
+                    commandResult.success,
+                    commandResult.failed,
+                    configReloadDurationMs + elapsedMs(commandStart)
+                )
+                val langResult = ReloadResult(ReloadTarget.LANG, 1, 1, 0, langDurationMs)
+                listOf(configResult, menuResult, actionsResult, jsResult, langResult)
+            }
+            ReloadTarget.MENU -> listOf(reloadMenu(cancelTasks = true))
+            ReloadTarget.ACTIONS -> listOf(reloadActions())
+            ReloadTarget.JS -> listOf(reloadJs())
+            ReloadTarget.LANG -> listOf(reloadLang())
+            ReloadTarget.CONFIG -> listOf(reloadConfig())
+        }
+    }
+
+    private fun reloadMessage(result: ReloadResult): String {
+        return when (result.target) {
+            ReloadTarget.ALL -> ""
+            ReloadTarget.MENU -> plugin.languageManager.getMessage(
+                "command.reload_menu_success",
+                result.total.toString(),
+                result.success.toString(),
+                result.failed.toString(),
+                result.durationMs.toString()
+            )
+            ReloadTarget.ACTIONS -> plugin.languageManager.getMessage(
+                "command.reload_actions_success",
+                result.total.toString(),
+                result.success.toString(),
+                result.failed.toString(),
+                result.durationMs.toString()
+            )
+            ReloadTarget.JS -> plugin.languageManager.getMessage(
+                "command.reload_js_success",
+                result.total.toString(),
+                result.success.toString(),
+                result.failed.toString(),
+                result.durationMs.toString()
+            )
+            ReloadTarget.LANG -> plugin.languageManager.getMessage(
+                "command.reload_lang_success",
+                result.total.toString(),
+                result.success.toString(),
+                result.failed.toString(),
+                result.durationMs.toString(),
+                plugin.languageManager.getCurrentLanguage()
+            )
+            ReloadTarget.CONFIG -> plugin.languageManager.getMessage(
+                "command.reload_config_success",
+                result.total.toString(),
+                result.success.toString(),
+                result.failed.toString(),
+                result.durationMs.toString()
+            )
+        }
+    }
+
+    private fun reloadMenu(cancelTasks: Boolean): ReloadResult {
+        val start = System.nanoTime()
+        if (cancelTasks) {
+            MenuTaskManager.cancelAll()
+        }
+        val result = plugin.menuManager.reloadWithResult()
+        return ReloadResult(ReloadTarget.MENU, result.total, result.success, result.failed, elapsedMs(start))
+    }
+
+    private fun reloadActions(): ReloadResult {
+        val start = System.nanoTime()
+        val result = plugin.actionPackageManager.reloadWithResult()
+        return ReloadResult(ReloadTarget.ACTIONS, result.total, result.success, result.failed, elapsedMs(start))
+    }
+
+    private fun reloadJs(): ReloadResult {
+        val start = System.nanoTime()
+        val result = plugin.javaScriptPackageManager.reloadWithResult()
+        return ReloadResult(ReloadTarget.JS, result.total, result.success, result.failed, elapsedMs(start))
+    }
+
+    private fun reloadLang(): ReloadResult {
+        val start = System.nanoTime()
+        plugin.languageManager.reload()
+        return ReloadResult(ReloadTarget.LANG, 1, 1, 0, elapsedMs(start))
+    }
+
+    private fun reloadConfig(): ReloadResult {
+        val start = System.nanoTime()
         plugin.reloadConfig()
         plugin.languageManager.reload()
-        val menuCount = plugin.menuManager.reload()
-        val commandCount = plugin.customCommandManager.registerCustomCommands()
+        val result = plugin.customCommandManager.registerCustomCommandsWithResult()
         UpdateChecker.reload(plugin)
-        return menuCount to commandCount
+        return ReloadResult(ReloadTarget.CONFIG, result.total, result.success, result.failed, elapsedMs(start))
+    }
+
+    private fun elapsedMs(startNanos: Long): Long {
+        return (System.nanoTime() - startNanos) / 1_000_000
     }
 
     private fun loadInternalGuide(): YamlConfiguration? {
@@ -466,7 +609,10 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             return filterByKeyword(plugin.menuManager.getAllMenuIds(), keyword)
         }
         if (args.size == 2 && (args[0].equals("language", ignoreCase = true) || args[0].equals("lang", ignoreCase = true))) {
-            return filterByKeyword(listOf("zh_CN", "en_US"), keyword)
+            return filterByKeyword(plugin.languageManager.getAvailableLanguages(), keyword)
+        }
+        if (args.size == 2 && args[0].equals("reload", ignoreCase = true)) {
+            return filterByKeyword(ReloadTarget.ids(), keyword)
         }
         if (args.size == 2 && (
             args[0].equals("examples", ignoreCase = true) ||

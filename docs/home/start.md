@@ -117,10 +117,20 @@ plugins/KaMenu/menus/example/
 
 ## 🔄 热重载
 
-修改配置文件或菜单文件后，无需重启服务器，执行以下指令即可重新加载：
+修改配置文件或菜单文件后，无需重启服务器即可重新加载。未指定目标时会重载全部模块：
 
 ```
 /km reload
+```
+
+常用的定向重载：
+
+```bash
+/km reload menu      # 仅重载菜单
+/km reload config    # 重载 config.yml、语言文件和自定义指令
+/km reload actions   # 仅重载全局动作包
+/km reload js        # 仅重载全局 JavaScript 包
+/km reload lang      # 仅重载当前语言文件
 ```
 
 需要 `kamenu.admin` 权限。

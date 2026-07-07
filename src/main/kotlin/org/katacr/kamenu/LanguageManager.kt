@@ -12,6 +12,8 @@ class LanguageManager(private val plugin: KaMenu) {
 
     private val defaultLanguage = "zh_CN"
     private val fallbackLanguage = "en_US"
+    private val bundledLanguages = listOf(defaultLanguage, fallbackLanguage)
+    private val languageIdPattern = Regex("[A-Za-z0-9_-]+")
     private var currentLanguage = defaultLanguage
     private val messages = mutableMapOf<String, String>()
 
@@ -23,7 +25,7 @@ class LanguageManager(private val plugin: KaMenu) {
      */
     fun init() {
         // 从配置文件读取语言设置
-        currentLanguage = plugin.config.getString("language") ?: defaultLanguage
+        currentLanguage = normalizeLanguageId(plugin.config.getString("language")) ?: defaultLanguage
 
         // 保存默认语言文件
         saveDefaultMessages()
@@ -46,8 +48,7 @@ class LanguageManager(private val plugin: KaMenu) {
             langFolder.mkdirs()
         }
 
-        val languages = listOf("zh_CN", "en_US")
-        languages.forEach { lang ->
+        bundledLanguages.forEach { lang ->
             val file = File(langFolder, "${lang}.yml")
             if (!file.exists()) {
                 plugin.saveResource("lang/${lang}.yml", false)
@@ -60,8 +61,8 @@ class LanguageManager(private val plugin: KaMenu) {
      * 加载插件内部的默认语言文件到内存
      */
     private fun loadInternalMessages() {
-        val languages = listOf("zh_CN", "en_US")
-        languages.forEach { lang ->
+        internalMessages.clear()
+        bundledLanguages.forEach { lang ->
             val inputStream: InputStream? = plugin.getResource("lang/${lang}.yml")
             if (inputStream != null) {
                 try {
@@ -82,17 +83,20 @@ class LanguageManager(private val plugin: KaMenu) {
      * 加载指定语言的消息文件
      */
     private fun loadMessages(language: String) {
+        val normalizedLanguage = normalizeLanguageId(language) ?: defaultLanguage
         val langFolder = File(plugin.dataFolder, "lang")
-        val file = File(langFolder, "${language}.yml")
+        val file = File(langFolder, "${normalizedLanguage}.yml")
         if (!file.exists()) {
-            plugin.logger.warning("语言文件不存在: lang/${language}.yml，使用默认语言")
-            if (language != defaultLanguage) {
+            plugin.logger.warning("语言文件不存在: lang/${normalizedLanguage}.yml，使用默认语言")
+            if (normalizedLanguage != defaultLanguage) {
+                currentLanguage = defaultLanguage
                 loadMessages(defaultLanguage)
             }
             return
         }
 
         val config = YamlConfiguration.loadConfiguration(file)
+        currentLanguage = normalizedLanguage
         messages.clear()
 
         // 递归加载所有键值对
@@ -216,7 +220,7 @@ class LanguageManager(private val plugin: KaMenu) {
      * 重新加载语言文件
      */
     fun reload() {
-        currentLanguage = plugin.config.getString("language") ?: defaultLanguage
+        currentLanguage = normalizeLanguageId(plugin.config.getString("language")) ?: defaultLanguage
         saveDefaultMessages()
         loadMessages(currentLanguage)
     }
@@ -225,5 +229,33 @@ class LanguageManager(private val plugin: KaMenu) {
      * 获取当前语言
      */
     fun getCurrentLanguage(): String = currentLanguage
+
+    /**
+     * 获取当前可用语言列表。
+     * 用户可以在 plugins/KaMenu/lang/ 下添加额外的 .yml 语言文件。
+     */
+    fun getAvailableLanguages(): List<String> {
+        val langFolder = File(plugin.dataFolder, "lang")
+        if (!langFolder.exists()) {
+            langFolder.mkdirs()
+        }
+
+        val fileLanguages = langFolder
+            .listFiles { file -> file.isFile && file.extension.equals("yml", ignoreCase = true) }
+            ?.mapNotNull { normalizeLanguageId(it.nameWithoutExtension) }
+            ?: emptyList()
+
+        return (bundledLanguages + fileLanguages).distinct().sorted()
+    }
+
+    fun isLanguageAvailable(language: String): Boolean {
+        val normalized = normalizeLanguageId(language) ?: return false
+        return getAvailableLanguages().any { it.equals(normalized, ignoreCase = true) }
+    }
+
+    private fun normalizeLanguageId(language: String?): String? {
+        val normalized = language?.trim()?.removeSuffix(".yml") ?: return null
+        return normalized.takeIf { it.isNotEmpty() && languageIdPattern.matches(it) }
+    }
 
 }

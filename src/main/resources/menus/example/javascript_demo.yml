@@ -50,8 +50,7 @@ Bottom:
         - ''
         - '&e点击尝试'
       actions:
-        - 'js: var random = Math.floor(Math.random() * 100);'
-        - 'js: player.sendMessage("§e随机数: §f" + random);'
+        - 'js: var random = Math.floor(Math.random() * 100); player.sendMessage("§e随机数: §f" + random);'
 
     math:
       text: '&b数学运算'
@@ -60,10 +59,7 @@ Bottom:
         - ''
         - '&e点击计算'
       actions:
-        - 'js: var num1 = 42;'
-        - 'js: var num2 = 17;'
-        - 'js: var sum = num1 + num2;'
-        - 'js: player.sendMessage("§b" + num1 + " + " + num2 + " = §f" + sum);'
+        - 'js: var num1 = 42; var num2 = 17; var sum = num1 + num2; player.sendMessage("§b" + num1 + " + " + num2 + " = §f" + sum);'
 
     conditional:
       text: '&c条件逻辑'
@@ -72,8 +68,7 @@ Bottom:
         - ''
         - '&e点击测试'
       actions:
-        - 'js: var health = player.getHealth();'
-        - 'js: if (health > 15) { player.sendMessage("§a你很健康！"); } else if (health > 5) { player.sendMessage("§e你的生命值还不错。"); } else { player.sendMessage("§c你需要治疗！"); }'
+        - 'js: var health = player.getHealth(); if (health > 15) { player.sendMessage("§a你很健康！"); } else if (health > 5) { player.sendMessage("§e你的生命值还不错。"); } else { player.sendMessage("§c你需要治疗！"); }'
 
     objects:
       text: '&dBukkit 对象'
@@ -82,10 +77,7 @@ Bottom:
         - ''
         - '&e点击探索'
       actions:
-        - 'js: var world = player.getWorld();'
-        - 'js: var players = Bukkit.getOnlinePlayers().size();'
-        - 'js: player.sendMessage("§d世界: §f" + world.getName());'
-        - 'js: player.sendMessage("§d在线玩家: §f" + players);'
+        - 'js: var world = player.getWorld(); var players = Bukkit.getOnlinePlayers().size(); player.sendMessage("§d世界: §f" + world.getName()); player.sendMessage("§d在线玩家: §f" + players);'
 
     functions:
       text: '&f自定义函数'
@@ -117,10 +109,7 @@ Bottom:
         - ''
         - '&e点击探索'
       actions:
-        - 'js: var items = ["钻石", "金子", "铁"];'
-        - 'js: var randomItem = items[Math.floor(Math.random() * items.length)];'
-        - 'js: player.sendMessage("§5随机物品: §f" + randomItem);'
-        - 'js: player.sendMessage("§5大写: §f" + randomItem.toUpperCase());'
+        - 'js: var items = ["钻石", "金子", "铁"]; var randomItem = items[Math.floor(Math.random() * items.length)]; player.sendMessage("§5随机物品: §f" + randomItem); player.sendMessage("§5大写: §f" + randomItem.toUpperCase());'
 
     predefined:
       text: '&d预定义函数'

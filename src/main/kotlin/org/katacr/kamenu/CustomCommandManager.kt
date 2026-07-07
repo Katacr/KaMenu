@@ -15,6 +15,12 @@ import java.lang.reflect.Field
  */
 class CustomCommandManager(private val plugin: KaMenu) {
 
+    data class RegistrationResult(
+        val total: Int = 0,
+        val success: Int = 0,
+        val failed: Int = 0
+    )
+
     private val registeredCommands = mutableMapOf<String, Command>()
     private var commandMap: CommandMap? = null
     private var knownCommandsField: Field? = null
@@ -28,7 +34,7 @@ class CustomCommandManager(private val plugin: KaMenu) {
             knownCommandsField!!.isAccessible = true
             knownCommands = knownCommandsField!!.get(commandMap) as MutableMap<String, Command>
         } catch (e: Exception) {
-            plugin.logger.warning("Failed to initialize CustomCommandManager: ${e.message}")
+            warn("custom_commands.manager_initialize_failed", e.message ?: e.javaClass.simpleName)
         }
     }
 
@@ -47,22 +53,28 @@ class CustomCommandManager(private val plugin: KaMenu) {
      * @return 成功注册的指令数量
      */
     fun registerCustomCommands(): Int {
+        return registerCustomCommandsWithResult().success
+    }
+
+    fun registerCustomCommandsWithResult(): RegistrationResult {
         // 先清除所有已注册的自定义指令
         unregisterAllCustomCommands()
 
-        val customCommandsSection = plugin.config.getConfigurationSection("custom-commands") ?: return 0
+        val customCommandsSection = plugin.config.getConfigurationSection("custom-commands") ?: return RegistrationResult()
 
         // 获取所有自定义指令配置
         val commands = customCommandsSection.getKeys(false)
         if (commands.isEmpty()) {
-            return 0
+            return RegistrationResult()
         }
 
         var successCount = 0
+        var failedCount = 0
 
         commands.forEach { commandName ->
             val definition = parseCommandDefinition(customCommandsSection, commandName) ?: run {
-                plugin.logger.warning("Invalid custom command config: $commandName")
+                warn("custom_commands.invalid_config", commandName)
+                failedCount++
                 return@forEach
             }
 
@@ -70,11 +82,12 @@ class CustomCommandManager(private val plugin: KaMenu) {
                 registerCommand(commandName, definition)
                 successCount++
             } catch (e: Exception) {
-                plugin.logger.warning("Failed to register custom command /$commandName: ${e.message}")
+                warn("custom_commands.register_failed", commandName, e.message ?: e.javaClass.simpleName)
+                failedCount++
             }
         }
 
-        return successCount
+        return RegistrationResult(total = commands.size, success = successCount, failed = failedCount)
     }
 
     private fun parseCommandDefinition(
@@ -89,19 +102,57 @@ class CustomCommandManager(private val plugin: KaMenu) {
                 return null
             }
             if (plugin.menuManager.getMenuConfig(menuId) == null) {
-                plugin.logger.warning("Custom command /$commandName skipped: menu '$menuId' not found")
+                warn("custom_commands.menu_not_found", commandName, menuId)
                 return null
             }
             return CustomCommandDefinition.OpenMenu(menuId)
         }
 
         val commandSection = customCommandsSection.getConfigurationSection(commandName) ?: return null
+        val argSuggestions = parseArgSuggestions(commandSection, commandName)
+
+        val menuId = commandSection.getString("menu")?.trim()
+        if (!menuId.isNullOrEmpty()) {
+            if (plugin.menuManager.getMenuConfig(menuId) == null) {
+                warn("custom_commands.menu_not_found", commandName, menuId)
+                return null
+            }
+            return CustomCommandDefinition.OpenMenu(menuId, argSuggestions)
+        }
+
         val actions = commandSection.getList("actions") ?: return null
         if (actions.isEmpty()) {
             return null
         }
 
-        return CustomCommandDefinition.RunActions(actions.map { it ?: Any() })
+        return CustomCommandDefinition.RunActions(actions.map { it ?: Any() }, argSuggestions)
+    }
+
+    private fun parseArgSuggestions(
+        commandSection: ConfigurationSection,
+        commandName: String
+    ): Map<Int, Any> {
+        val argsSection = commandSection.getConfigurationSection("args") ?: return emptyMap()
+        val suggestions = linkedMapOf<Int, Any>()
+
+        argsSection.getKeys(false).forEach { key ->
+            val index = key.toIntOrNull()
+            if (index == null || index < 0) {
+                warn("custom_commands.invalid_args_key", commandName, key)
+                return@forEach
+            }
+
+            val value = argsSection.get(key)
+            if (value != null) {
+                suggestions[index] = value
+            }
+        }
+
+        return suggestions
+    }
+
+    private fun warn(key: String, vararg args: String) {
+        plugin.logger.warning(plugin.languageManager.getMessage(key, *args))
     }
 
     /**
@@ -129,11 +180,20 @@ class CustomCommandManager(private val plugin: KaMenu) {
         }
 
         val knownCommands = this.knownCommands ?: return
+        val commandMap = this.commandMap
 
-        registeredCommands.forEach { (commandName, _) ->
-            // 移除指令
-            knownCommands.remove(commandName)
-            knownCommands.remove("kamenu:$commandName")
+        registeredCommands.forEach { (_, command) ->
+            val iterator = knownCommands.entries.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (entry.value === command) {
+                    iterator.remove()
+                }
+            }
+
+            if (commandMap != null) {
+                command.unregister(commandMap)
+            }
         }
 
         registeredCommands.clear()

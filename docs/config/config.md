@@ -100,12 +100,20 @@ custom-commands:
 
 **类型：** `String`
 
-**内置可选值：**
+**内置语言：**
 
 | 值 | 语言 |
 |----|------|
 | `zh_CN` | 简体中文（默认）|
 | `en_US` | English |
+
+你也可以自行添加语言文件，例如：
+
+```text
+plugins/KaMenu/lang/de_DE.yml -> language: 'de_DE'
+```
+
+语言 ID 只能使用英文、数字、`_`、`-`，并且必须对应 `lang` 目录下的 `.yml` 文件名。
 
 **示例：**
 
@@ -456,6 +464,7 @@ Body:
 
 - `指令名: 菜单ID`
 - `指令名:` 下配置 `actions: 动作队列`
+- 对象写法可额外配置 `args`，为参数提供 Tab 补全
 
 **示例：**
 
@@ -464,9 +473,17 @@ custom-commands:
   shop: 'server_shop'       # /shop -> 打开 server_shop 菜单
   menu: 'main_menu'         # /menu -> 打开 main_menu 菜单
   hub: 'hub/main'           # /hub  -> 打开 hub/main 菜单（子文件夹）
+  profile:
+    menu: 'player/profile'
+    args:
+      0: '%kamenu_online_players%'
   test:
+    args:
+      0: '[hello, info]'
+      1: '{list:friends}'
     actions:
       - "tell: 嘿，你输入了/test指令"
+      - "tell: 参数：{args}"
       - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
       - condition: "hasPerm.test.admin"
         allow:
@@ -475,5 +492,6 @@ custom-commands:
           - "tell: &c你没有测试权限"
 ```
 动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}`、`{arg:1}`、`{args}`、`{arg_count}`、`{command}` 读取。
+`args` 的索引同样从 `0` 开始，并支持 YAML 列表、逗号分隔字符串、PAPI 和 KaMenu 内置变量；PAPI 与内置变量会在玩家按下 Tab 时实时解析。
 
 想要了解自定义指令的用法和优势，点击此处 [⌨️ 自定义指令](customCommands.md)

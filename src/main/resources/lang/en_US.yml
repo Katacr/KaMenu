@@ -22,13 +22,15 @@ logo:
   hook_false: "§cNot Hooked"
   menu_count: "§bLoaded Menus: §a{0}"
   command_count: "§bRegistered Commands: §a{0}"
+  action_package_count: "§bLoaded Action Packages: §a{0}"
+  javascript_package_count: "§bLoaded JavaScript Packages: §a{0}"
 
 # Command Messages
 command:
   player_only: "§cOnly players can execute this command!"
   player_not_found: "§cPlayer '{0}' is not online"
   player_required: "§cConsole must specify a player!"
-  usage: "§eUsage: /km open <menu_name> or /km reload"
+  usage: "§eUsage: /km open <menu_name> or /km reload [all|menu|actions|js|lang|config]"
   no_permission: "§cYou don't have permission to execute this command!"
   reloaded: "§a[KaMenu] Configuration and menus have been reloaded successfully!"
   no_menu_name: "§cPlease enter a menu name!"
@@ -37,9 +39,9 @@ command:
   help_open: "§a/km open <menu_name> [player] §7- Open a menu"
   help_list: "§a/km list [page] §7- View menu list"
   help_guide: "§a/km guide §7- Open the getting started guide menu"
-  help_language: "§a/km language <zh_CN|en_US> §7- Set language and reload"
+  help_language: "§a/km language <language_id> §7- Set language and reload"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- Release examples in a language"
-  help_reload: "§a/km reload §7- Reload configuration and menus"
+  help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- Reload all modules or a selected module"
   help_action: "§a/km action <player> <action> §7- Test execute action"
   help_help: "§a/km help §7- Show help information"
   help_item: "§a/km item <subcommand> §7- Manage saved items"
@@ -49,10 +51,28 @@ command:
   guide_missing: "§cThe guide menu resource does not exist or cannot be loaded: §f{0}"
   guide_load_failed: "§cFailed to load guide menu: {0}"
   guide_join_hint: "§e[KaMenu] §fNo menus are currently loaded. <text='&a[Open Guide]';hover='&7Click to open the KaMenu guide';command='/km guide'>"
-  language_usage: "§cUsage: /km language <zh_CN|en_US>"
+  language_usage: "§cUsage: /km language <language_id>"
   language_unknown: "§cUnknown language: {0}"
+  language_available: "§eAvailable languages: {0}"
   language_set_reload: "§aLanguage set to {0}, and menus have been reloaded. Loaded {1} menus and {2} custom commands."
   examples_released: "§aReleased {0} examples to example: {1} saved, {2} skipped, {3} failed. Currently loaded {4} menus."
+  reload_usage: "§eUsage: /km reload [all|menu|actions|js|lang|config]"
+  reload_unknown_target: "§cUnknown reload target: {0}"
+  reload_all_success: "§a[KaMenu] Reloaded all modules."
+  reload_menu_success: "§a[KaMenu] Menu reload complete: total {0}, success {1}, failed {2}, took {3}ms."
+  reload_actions_success: "§a[KaMenu] Action package reload complete: total {0}, success {1}, failed {2}, took {3}ms."
+  reload_js_success: "§a[KaMenu] JavaScript package reload complete: total {0}, success {1}, failed {2}, took {3}ms."
+  reload_lang_success: "§a[KaMenu] Language reload complete: total {0}, success {1}, failed {2}, took {3}ms, current language {4}."
+  reload_config_success: "§a[KaMenu] Config reload complete: custom commands total {0}, success {1}, failed {2}, took {3}ms."
+
+# Custom Commands
+custom_commands:
+  manager_initialize_failed: "[KaMenu] Failed to initialize CustomCommandManager: {0}"
+  invalid_config: "[KaMenu] Invalid custom command config: {0}"
+  register_failed: "[KaMenu] Failed to register custom command /{0}: {1}"
+  menu_not_found: "[KaMenu] Custom command /{0} skipped: menu '{1}' not found"
+  invalid_args_key: "[KaMenu] Custom command /{0} ignored invalid args key: {1}"
+  action_execution_failed: "[KaMenu] Custom command /{0} action execution failed: {1}"
 
 # Item Management
 item:
@@ -86,6 +106,7 @@ manager:
   folder_created: "Created folder: {0}/{1}"
   file_saved: "Saved default menu file: {0}/{1}"
   jar_extract_error: "Failed to extract files from jar: {0}"
+  menu_load_failed: "Failed to load menu file: {0}, error: {1}"
 
 # Menu UI
 ui:
@@ -121,6 +142,51 @@ actions:
   item_invalid_material: "[KaMenu] item invalid material: {0}. Player: {1}"
   inventory_full_actionbar: "§cInventory full, {0} items dropped on the ground"
   action_list_not_found: "§cError: Action list '{0}' not found"
+  action_list_not_found_with_global: "§cError: Action list '{0}' not found (checked current menu Events.Click.{0} and global actions/{0}.yml)"
+  action_list_not_found_global: "§cError: Global action package '{0}' not found (check plugins/KaMenu/actions/{0}.yml)"
+  action_list_self_call: "§cError: Action list '{0}' cannot directly call itself"
+
+# Package Management
+packages:
+  invalid_id_empty: "[KaMenu] Package skipped: package ID is empty. File: {1}"
+  invalid_id_characters: "[KaMenu] Package '{0}' skipped: package ID contains invalid characters. Allowed characters: letters, numbers, _, -, ., /. File: {1}"
+  invalid_id_parent_path: "[KaMenu] Package '{0}' skipped: package ID cannot contain '..'. File: {1}"
+  invalid_id_leading_slash: "[KaMenu] Package '{0}' skipped: package ID cannot start with '/'. File: {1}"
+  invalid_id_trailing_slash: "[KaMenu] Package '{0}' skipped: package ID cannot end with '/'. File: {1}"
+  invalid_id_double_slash: "[KaMenu] Package '{0}' skipped: package ID cannot contain consecutive '//'. File: {1}"
+  action_folder_create_failed: "[KaMenu] Failed to create actions package folder: {0}"
+  action_package_too_large: "[KaMenu] Action package '{0}' skipped: file is too large ({2} bytes), limit {3}. File: {1}"
+  action_duplicate_id: "[KaMenu] Action package '{0}' skipped: duplicate package ID. File: {1}"
+  action_missing_actions: "[KaMenu] Action package '{0}' skipped: missing or empty root actions list. File: {1}"
+  action_load_failed: "[KaMenu] Failed to load action package '{0}'. File: {1}, error: {2}"
+  action_loaded: "[KaMenu] Loaded {0} action packages"
+  action_default_released: "[KaMenu] Released default action package: {0}"
+  action_default_release_failed: "[KaMenu] Failed to release default action package '{0}': {1}"
+  javascript_folder_create_failed: "[KaMenu] Failed to create JavaScript package folder: {0}"
+  javascript_package_too_large: "[KaMenu] JavaScript package '{0}' skipped: file is too large ({2} bytes), limit {3}. File: {1}"
+  javascript_duplicate_id: "[KaMenu] JavaScript package '{0}' skipped: duplicate package ID. File: {1}"
+  javascript_load_failed: "[KaMenu] Failed to load JavaScript package '{0}'. File: {1}, error: {2}"
+  javascript_loaded: "[KaMenu] Loaded {0} JavaScript packages"
+  javascript_default_released: "[KaMenu] Released default JavaScript package: {0}"
+  javascript_default_release_failed: "[KaMenu] Failed to release default JavaScript package '{0}': {1}"
+
+# JavaScript
+javascript:
+  package_not_found: "[KaMenu] JavaScript package '{0}' not found (checked {1})"
+  nashorn_engine_not_found: "[KaMenu] Nashorn engine not found, JavaScript features will be unavailable"
+  wait_library_download: "[KaMenu] Please wait for the Nashorn library to download..."
+  nashorn_library_not_loaded: "[KaMenu] Nashorn library is not loaded yet, JavaScript features will be unavailable"
+  restart_after_setup: "[KaMenu] Please restart the server after the initial setup completes"
+  initialize_failed: "[KaMenu] Failed to initialize JavaScript support: {0}"
+  execution_error: "[KaMenu] JavaScript execution error: {0}"
+  error: "[KaMenu] JavaScript error: {0}"
+  execution_error_player: "[KaMenu] JavaScript execution error for player {0}: {1}"
+  error_player: "[KaMenu] JavaScript error for player {0}: {1}"
+  execution_error_source_player: "[KaMenu] JavaScript execution error in {0} for player {1}: {2}"
+  error_source_player: "[KaMenu] JavaScript error in {0} for player {1}: {2}"
+  json_parse_error: "[KaMenu] JSON parse error: {0}"
+  execution_failed_user: "§cJavaScript execution failed: {0}"
+  unavailable: "§cJavaScript feature is not available. Please restart the server to complete the initial setup."
 
 # Menu List
 menu_list:
