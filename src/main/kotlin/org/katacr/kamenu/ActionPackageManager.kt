@@ -72,7 +72,6 @@ class ActionPackageManager(private val plugin: KaMenu) {
 
         packages.clear()
         packages.putAll(loaded)
-        info("packages.action_loaded", packages.size.toString())
         return LoadResult(total = total, success = packages.size, failed = failed)
     }
 
@@ -102,14 +101,9 @@ class ActionPackageManager(private val plugin: KaMenu) {
     private fun releaseDefaultPackage() {
         try {
             plugin.saveResource(defaultPackageResource, false)
-            info("packages.action_default_released", "plugins/KaMenu/$defaultPackageResource")
         } catch (e: Exception) {
             warn("packages.action_default_release_failed", defaultPackageResource, e.message ?: e.javaClass.simpleName)
         }
-    }
-
-    private fun info(key: String, vararg args: String) {
-        plugin.logger.info(plugin.languageManager.getMessage(key, *args))
     }
 
     private fun warn(key: String, vararg args: String) {

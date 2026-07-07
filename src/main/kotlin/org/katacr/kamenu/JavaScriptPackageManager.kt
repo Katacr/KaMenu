@@ -55,7 +55,14 @@ class JavaScriptPackageManager(private val plugin: KaMenu) {
                 }
 
                 try {
-                    loaded[packageId] = file.readText(Charsets.UTF_8)
+                    val script = file.readText(Charsets.UTF_8)
+                    val syntaxError = JavaScriptManager.validateSyntax(script)
+                    if (syntaxError != null) {
+                        warn("packages.javascript_syntax_invalid", packageId, file.absolutePath, syntaxError)
+                        failed++
+                        return@forEach
+                    }
+                    loaded[packageId] = script
                 } catch (e: Exception) {
                     warn("packages.javascript_load_failed", packageId, file.absolutePath, e.message ?: e.javaClass.simpleName)
                     failed++
@@ -64,7 +71,6 @@ class JavaScriptPackageManager(private val plugin: KaMenu) {
 
         packages.clear()
         packages.putAll(loaded)
-        info("packages.javascript_loaded", packages.size.toString())
         return LoadResult(total = total, success = packages.size, failed = failed)
     }
 
@@ -94,14 +100,9 @@ class JavaScriptPackageManager(private val plugin: KaMenu) {
     private fun releaseDefaultPackage() {
         try {
             plugin.saveResource(defaultPackageResource, false)
-            info("packages.javascript_default_released", "plugins/KaMenu/$defaultPackageResource")
         } catch (e: Exception) {
             warn("packages.javascript_default_release_failed", defaultPackageResource, e.message ?: e.javaClass.simpleName)
         }
-    }
-
-    private fun info(key: String, vararg args: String) {
-        plugin.logger.info(plugin.languageManager.getMessage(key, *args))
     }
 
     private fun warn(key: String, vararg args: String) {

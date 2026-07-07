@@ -504,28 +504,28 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 "command.reload_menu_success",
                 result.total.toString(),
                 result.success.toString(),
-                result.failed.toString(),
+                reloadFailedSegment(result.failed),
                 result.durationMs.toString()
             )
             ReloadTarget.ACTIONS -> plugin.languageManager.getMessage(
                 "command.reload_actions_success",
                 result.total.toString(),
                 result.success.toString(),
-                result.failed.toString(),
+                reloadFailedSegment(result.failed),
                 result.durationMs.toString()
             )
             ReloadTarget.JS -> plugin.languageManager.getMessage(
                 "command.reload_js_success",
                 result.total.toString(),
                 result.success.toString(),
-                result.failed.toString(),
+                reloadFailedSegment(result.failed),
                 result.durationMs.toString()
             )
             ReloadTarget.LANG -> plugin.languageManager.getMessage(
                 "command.reload_lang_success",
                 result.total.toString(),
                 result.success.toString(),
-                result.failed.toString(),
+                reloadFailedSegment(result.failed),
                 result.durationMs.toString(),
                 plugin.languageManager.getCurrentLanguage()
             )
@@ -533,10 +533,19 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 "command.reload_config_success",
                 result.total.toString(),
                 result.success.toString(),
-                result.failed.toString(),
+                reloadFailedSegment(result.failed),
                 result.durationMs.toString()
             )
         }
+    }
+
+    private fun reloadFailedSegment(failed: Int): String {
+        val key = if (failed > 0) {
+            "command.reload_failed_segment_warning"
+        } else {
+            "command.reload_failed_segment_normal"
+        }
+        return plugin.languageManager.getMessage(key, failed.toString())
     }
 
     private fun reloadMenu(cancelTasks: Boolean): ReloadResult {

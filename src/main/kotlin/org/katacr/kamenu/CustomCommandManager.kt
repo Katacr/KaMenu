@@ -183,12 +183,13 @@ class CustomCommandManager(private val plugin: KaMenu) {
         val commandMap = this.commandMap
 
         registeredCommands.forEach { (_, command) ->
-            val iterator = knownCommands.entries.iterator()
-            while (iterator.hasNext()) {
-                val entry = iterator.next()
-                if (entry.value === command) {
-                    iterator.remove()
-                }
+            val keysToRemove = knownCommands
+                .filterValues { it === command }
+                .keys
+                .toList()
+
+            keysToRemove.forEach { key ->
+                knownCommands.remove(key, command)
             }
 
             if (commandMap != null) {

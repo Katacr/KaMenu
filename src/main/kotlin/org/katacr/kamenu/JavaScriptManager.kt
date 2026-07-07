@@ -3,6 +3,7 @@ package org.katacr.kamenu
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 import javax.script.Bindings
+import javax.script.Compilable
 import javax.script.ScriptEngine
 import javax.script.ScriptException
 
@@ -139,6 +140,30 @@ object JavaScriptManager {
 
     fun setPackageManager(manager: JavaScriptPackageManager) {
         packageManager = manager
+    }
+
+    /**
+     * 校验 JavaScript 语法，不执行脚本，避免包加载阶段触发副作用。
+     * @return null 表示语法可编译；非 null 为错误原因。
+     */
+    fun validateSyntax(script: String): String? {
+        if (!available || scriptEngine == null) {
+            return "JavaScript engine is not available"
+        }
+
+        val compilable = scriptEngine as? Compilable
+            ?: return "JavaScript engine does not support syntax compilation"
+
+        return synchronized(scriptLock) {
+            try {
+                compilable.compile(buildScript(script))
+                null
+            } catch (e: ScriptException) {
+                e.message ?: e.javaClass.simpleName
+            } catch (e: Exception) {
+                e.message ?: e.javaClass.simpleName
+            }
+        }
     }
 
     /**

@@ -194,6 +194,7 @@ Only `.js` files are loaded.
 - Check that the suffix is `.js`
 - Check that the package ID only uses letters, numbers, `_`, `-`, `.`, and `/`
 - Check that the file size is no more than `1 MiB`
+- Check that the script syntax can be compiled by the JavaScript engine; syntax errors count as failures during `/km reload js` and print console warnings
 - Check that the call uses `[package_name]`
 - Run `/km reload js`
 

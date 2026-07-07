@@ -2,7 +2,7 @@
 
 ## 📋 版本信息
 - **版本号**: 1.6.0
-- **发布日期**: 2026年7月7日
+- **发布日期**: 2026年7月8日
 
 ---
 
@@ -205,6 +205,8 @@ plugins/KaMenu/js/example/message.js -> example/message
 其中 `lang` 可单独重载当前语言文件；`config` 会重载 `config.yml`、语言文件和自定义指令；`actions` 与 `js` 可分别只重载全局动作包和全局 JavaScript 包。
 
 每个重载目标都会返回总数、成功数、失败数和耗时 ms；不填写目标或使用 `all` 时会依次输出各模块的重载结果。
+
+`/km reload js` 会对 JavaScript 包进行语法编译校验。只有通过校验的 `.js` 文件才计入成功；语法错误会计入失败并在控制台输出具体文件和错误信息。该校验不会执行脚本，因此不会触发脚本副作用。
 
 ### 11. 放开自定义语言文件
 
@@ -465,6 +467,8 @@ Global actions packages and JavaScript packages now use unified package ID and f
 `lang` reloads only the current language file. `config` reloads `config.yml`, language files, and custom commands. `actions` and `js` reload only global action packages and global JavaScript packages.
 
 Each reload target returns total, success, failed, and elapsed ms. When no target is provided, or when `all` is used, KaMenu prints each module's reload result in sequence.
+
+`/km reload js` now validates JavaScript package syntax by compiling scripts without executing them. Only `.js` files that pass validation count as successful; syntax errors count as failures and print the file path and error to the console.
 
 ### 11. Custom language files
 
