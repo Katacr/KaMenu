@@ -420,22 +420,27 @@ Bottom:
 
 ### 示例 6：延迟执行
 
+多行 JavaScript 应放在菜单 `JavaScript` 包或全局 JS 包中，然后用 `js: [包名]` 调用。每次 `js:` 动作都会使用独立执行上下文，不要把同一段逻辑拆成多条 `js:` 动作共享变量。
+
 ```yaml
+JavaScript:
+  countdown: |
+    for (var i = 5; i >= 1; i--) {
+      var delayTicks = (5 - i) * 20;
+      (function(num) {
+        delay(delayTicks, function() {
+          player.sendMessage("§e" + num + "...");
+        });
+      })(i);
+    }
+    delay(100, function() { player.sendMessage("§a开始！"); });
+
 Bottom:
   type: 'notice'
   confirm:
     text: '&e倒计时'
     actions:
-      - |-
-        js: for (var i = 5; i >= 1; i--) {
-              var delayTicks = (5 - i) * 20;
-              (function(num) {
-                delay(delayTicks, function() {
-                  player.sendMessage("§e" + num + "...");
-                });
-              })(i);
-            }
-            delay(100, function() { player.sendMessage("§a开始！"); });
+      - 'js: [countdown]'
 ```
 
 ### 示例 7：使用 JavaScript 包（无参数）

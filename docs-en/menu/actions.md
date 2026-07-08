@@ -486,7 +486,7 @@ Teleport the player to specified coordinates.
 
 ### sound - Play Sound
 
-Play a sound at the player's location, supporting volume, pitch, and sound category.
+Play a sound at the player's location, supporting volume, pitch, sound category, vanilla sound IDs, and custom sound keys defined in a resource pack `sounds.json`.
 
 **Format:** `sound: <sound_name>;volume=volume;pitch=pitch;category=category`
 
@@ -494,7 +494,7 @@ Play a sound at the player's location, supporting volume, pitch, and sound categ
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| Sound name | Minecraft sound ID (use `_` or `.`) | — |
+| Sound name | Vanilla sound ID or resource-pack custom sound key (vanilla IDs may use `_` or `.`) | — |
 | `volume` | Volume (float) | `1.0` |
 | `pitch` | Pitch (float) | `1.0` |
 | `category` | Sound category | `master` |
@@ -521,6 +521,7 @@ Play a sound at the player's location, supporting volume, pitch, and sound categ
 - 'sound: entity.experience_orb.pickup'
 - 'sound: entity.player.levelup;volume=1.5;pitch=1.2'
 - 'sound: block.note_block.pling;volume=1.0;pitch=2.0;category=ui'
+- 'sound: mypack:ui.click;volume=1.0;pitch=1.0;category=ui'
 ```
 
 ---

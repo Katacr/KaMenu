@@ -486,7 +486,7 @@ Events:
 
 ### sound - 播放声音
 
-在玩家位置播放一个声音，支持音量、音调和声音分类。
+在玩家位置播放一个声音，支持音量、音调和声音分类。声音名称可以是原版 Minecraft 声音 ID，也可以是资源包 `sounds.json` 中定义的自定义声音 key。
 
 **格式：** `sound: <声音名称>;volume=音量;pitch=音调;category=分类`
 
@@ -494,7 +494,7 @@ Events:
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| 声音名称 | Minecraft 声音 ID（使用 `_` 或 `.` 均可）| — |
+| 声音名称 | 原版声音 ID 或资源包自定义声音 key（原版声音使用 `_` 或 `.` 均可）| — |
 | `volume` | 音量（浮点数）| `1.0` |
 | `pitch` | 音调（浮点数）| `1.0` |
 | `category` | 声音分类 | `master` |
@@ -521,6 +521,7 @@ Events:
 - 'sound: entity.experience_orb.pickup'
 - 'sound: entity.player.levelup;volume=1.5;pitch=1.2'
 - 'sound: block.note_block.pling;volume=1.0;pitch=2.0;category=ui'
+- 'sound: mypack:ui.click;volume=1.0;pitch=1.0;category=ui'
 ```
 
 ---

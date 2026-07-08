@@ -28,9 +28,28 @@ object JavaScriptManager {
      */
     private val helperScript = """
         var Bukkit = Java.type("org.bukkit.Bukkit");
+        var JavaLong = Java.type("java.lang.Long");
+        var JavaRunnable = Java.type("java.lang.Runnable");
 
         function __kamenu_target_player(targetPlayer) {
             return targetPlayer || (typeof player !== "undefined" ? player : null);
+        }
+
+        function __kamenu_delay_ticks(ticks) {
+            var value = Number(ticks);
+            if (isNaN(value) || value < 0) {
+                value = 0;
+            }
+            return JavaLong.valueOf(Math.floor(value));
+        }
+
+        function __kamenu_runnable(callback) {
+            var RunnableAdapter = Java.extend(JavaRunnable, {
+                run: function() {
+                    callback();
+                }
+            });
+            return new RunnableAdapter();
         }
 
         function tell(targetPlayer, message) {
@@ -44,21 +63,11 @@ object JavaScriptManager {
         }
 
         function delay(ticks, callback) {
-            var runnable = {
-                run: function() {
-                    callback();
-                }
-            };
-            return Bukkit.getScheduler().runTaskLater(__kamenu_plugin, runnable, ticks);
+            return Bukkit.getScheduler().runTaskLater(__kamenu_plugin, __kamenu_runnable(callback), __kamenu_delay_ticks(ticks));
         }
 
         function asyncDelay(ticks, callback) {
-            var runnable = {
-                run: function() {
-                    callback();
-                }
-            };
-            return Bukkit.getScheduler().runTaskLaterAsynchronously(__kamenu_plugin, runnable, ticks);
+            return Bukkit.getScheduler().runTaskLaterAsynchronously(__kamenu_plugin, __kamenu_runnable(callback), __kamenu_delay_ticks(ticks));
         }
 
         function getPlayer(name) {

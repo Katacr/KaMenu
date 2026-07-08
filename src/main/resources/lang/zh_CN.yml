@@ -75,6 +75,7 @@ custom_commands:
   menu_not_found: "[KaMenu] 自定义指令 /{0} 已跳过: 找不到菜单 '{1}'"
   invalid_args_key: "[KaMenu] 自定义指令 /{0} 已忽略无效 args 键: {1}"
   action_execution_failed: "[KaMenu] 自定义指令 /{0} 的动作队列执行失败: {1}"
+  update_commands_failed: "[KaMenu] 刷新玩家 {0} 的客户端命令补全失败: {1}"
 
 # 物品管理
 item:

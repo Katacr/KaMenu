@@ -236,6 +236,30 @@ class CustomCommandManager(private val plugin: KaMenu) {
     }
 
     /**
+     * 刷新在线玩家客户端命令树。
+     *
+     * Bukkit 动态注册或注销命令后，在线玩家客户端不会自动获得新的 Brigadier 命令树。
+     * 自定义指令重载完成后调用该方法，可让玩家不重进服务器也能立刻获得 TAB 补全。
+     */
+    fun refreshOnlinePlayerCommands() {
+        val refreshTask = Runnable {
+            Bukkit.getOnlinePlayers().forEach { player ->
+                try {
+                    player.updateCommands()
+                } catch (e: Exception) {
+                    warn("custom_commands.update_commands_failed", player.name, e.message ?: e.javaClass.simpleName)
+                }
+            }
+        }
+
+        if (Bukkit.isPrimaryThread()) {
+            refreshTask.run()
+        } else {
+            Bukkit.getScheduler().runTask(plugin, refreshTask)
+        }
+    }
+
+    /**
      * 清空管理器
      */
     fun clear() {

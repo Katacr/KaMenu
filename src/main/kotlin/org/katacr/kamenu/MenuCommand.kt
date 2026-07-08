@@ -493,6 +493,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 val jsResult = reloadJs()
                 val commandStart = System.nanoTime()
                 val commandResult = plugin.customCommandManager.registerCustomCommandsWithResult()
+                plugin.customCommandManager.refreshOnlinePlayerCommands()
                 val configResult = ReloadResult(
                     ReloadTarget.CONFIG,
                     commandResult.total,
@@ -594,6 +595,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         plugin.reloadConfig()
         plugin.languageManager.reload()
         val result = plugin.customCommandManager.registerCustomCommandsWithResult()
+        plugin.customCommandManager.refreshOnlinePlayerCommands()
         UpdateChecker.reload(plugin)
         return ReloadResult(ReloadTarget.CONFIG, result.total, result.success, result.failed, elapsedMs(start))
     }

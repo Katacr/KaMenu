@@ -75,6 +75,7 @@ custom_commands:
   menu_not_found: "[KaMenu] Custom command /{0} skipped: menu '{1}' not found"
   invalid_args_key: "[KaMenu] Custom command /{0} ignored invalid args key: {1}"
   action_execution_failed: "[KaMenu] Custom command /{0} action execution failed: {1}"
+  update_commands_failed: "[KaMenu] Failed to refresh client command completions for player {0}: {1}"
 
 # Item Management
 item:

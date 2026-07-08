@@ -420,22 +420,27 @@ Bottom:
 
 ### Example 6: Delayed Execution
 
+Put multi-line JavaScript in a menu `JavaScript` package or a global JS package, then call it with `js: [package]`. Each `js:` action uses an isolated execution context, so do not split one logic flow across multiple `js:` actions expecting shared variables.
+
 ```yaml
+JavaScript:
+  countdown: |
+    for (var i = 5; i >= 1; i--) {
+      var delayTicks = (5 - i) * 20;
+      (function(num) {
+        delay(delayTicks, function() {
+          player.sendMessage("§e" + num + "...");
+        });
+      })(i);
+    }
+    delay(100, function() { player.sendMessage("§aGo!"); });
+
 Bottom:
   type: 'notice'
   confirm:
     text: '&eCountdown'
     actions:
-      - |-
-        js: for (var i = 5; i >= 1; i--) {
-              var delayTicks = (5 - i) * 20;
-              (function(num) {
-                delay(delayTicks, function() {
-                  player.sendMessage("§e" + num + "...");
-                });
-              })(i);
-            }
-            delay(100, function() { player.sendMessage("§aGo!"); });
+      - 'js: [countdown]'
 ```
 
 ### Example 7: Using JavaScript Packages (No Arguments)

@@ -129,11 +129,39 @@ object ActionHandlers {
         }
 
         if (soundName.isNotEmpty()) {
-            val soundKey = NamespacedKey.minecraft(soundName.lowercase())
-            val sound = org.bukkit.Registry.SOUND_EVENT.get(soundKey)
+            val normalizedSoundName = soundName.lowercase()
+            val sound = listOf(
+                normalizedSoundName,
+                normalizedSoundName.replace('_', '.')
+            ).asSequence()
+                .distinct()
+                .mapNotNull { key -> parseSoundKey(key)?.let { org.bukkit.Registry.SOUND_EVENT.get(it) } }
+                .firstOrNull()
+
             if (sound != null) {
                 player.playSound(player.location, sound, category, volume, pitch)
+            } else {
+                // Registry 中不存在的声音可能来自资源包 sounds.json，字符串 API 可直接转发给客户端播放。
+                player.playSound(player.location, normalizedSoundName, category, volume, pitch)
             }
+        }
+    }
+
+    /**
+     * 解析原版或带命名空间的声音 Key。
+     *
+     * 原版声音使用 minecraft namespace；资源包自定义声音可能是 `namespace:path`，
+     * 这类声音通常不会存在于服务端 Registry 中，但解析时也不能让非法 Key 中断动作执行。
+     */
+    private fun parseSoundKey(soundName: String): NamespacedKey? {
+        return try {
+            if (soundName.contains(":")) {
+                NamespacedKey.fromString(soundName)
+            } else {
+                NamespacedKey.minecraft(soundName)
+            }
+        } catch (_: IllegalArgumentException) {
+            null
         }
     }
 
