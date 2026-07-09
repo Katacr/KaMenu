@@ -482,13 +482,23 @@ object MenuUI {
      * 会先通过 MenuManager 查找配置，再进入 [openConfig] 执行完整 Open 生命周期。
      */
     fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
+        if (KaScheduler.folia) {
+            KaScheduler.runPlayer(player, Runnable {
+                openMenuDirect(player, menuId, manager, plugin)
+            })
+            return
+        }
+        openMenuDirect(player, menuId, manager, plugin)
+    }
+
+    private fun openMenuDirect(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
             player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
             return
         }
 
-        openConfig(player, config, plugin, menuId)
+        openConfigDirect(player, config, plugin, menuId)
     }
 
     /**
@@ -498,6 +508,16 @@ object MenuUI {
      * 必须等待动作列表完全执行；只有没有 `return` 时才真正渲染 Dialog。
      */
     fun openConfig(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
+        if (KaScheduler.folia) {
+            KaScheduler.runPlayer(player, Runnable {
+                openConfigDirect(player, config, plugin, contextId)
+            })
+            return
+        }
+        openConfigDirect(player, config, plugin, contextId)
+    }
+
+    private fun openConfigDirect(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
         val openActions = config.getList("Events.Open")
         if (openActions.isNullOrEmpty()) {
             openMenuInternal(player, config, plugin, contextId)
@@ -515,7 +535,7 @@ object MenuUI {
                 return@whenComplete
             }
 
-            Bukkit.getScheduler().runTask(plugin, Runnable {
+            KaScheduler.runPlayer(player, Runnable {
                 openMenuInternal(player, config, plugin, contextId)
             })
         }
@@ -527,6 +547,16 @@ object MenuUI {
      * 主要给 reset/force-open 使用，避免刷新当前菜单时重复触发 Open 逻辑。
      */
     fun forceOpenMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
+        if (KaScheduler.folia) {
+            KaScheduler.runPlayer(player, Runnable {
+                forceOpenMenuDirect(player, menuId, manager, plugin)
+            })
+            return
+        }
+        forceOpenMenuDirect(player, menuId, manager, plugin)
+    }
+
+    private fun forceOpenMenuDirect(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
         val config = manager.getMenuConfig(menuId)
         if (config == null) {
             player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
@@ -617,7 +647,7 @@ object MenuUI {
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
             val pluginRef = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
             if (pluginRef != null) {
-                Bukkit.getScheduler().runTask(pluginRef, Runnable {
+                KaScheduler.runPlayer(p, Runnable {
                     openMenu(p, menuName, pluginRef.menuManager, pluginRef)
                 })
             }

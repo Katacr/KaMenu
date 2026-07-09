@@ -573,7 +573,7 @@ object MenuActions {
             actionListId = actionListId,
             handledMenuLifecycle = handledMenuLifecycle
         )
-        val start = if (baseDelay > 0) delayTicks(baseDelay) else CompletableFuture.completedFuture(false)
+        val start = if (baseDelay > 0) delayTicks(player, baseDelay) else CompletableFuture.completedFuture(false)
         return start.thenCompose { executeActionSequence(context, actionList) }
             .exceptionally { error ->
                 plugin?.logger?.severe("动作执行失败: ${error.message}")
@@ -600,7 +600,7 @@ object MenuActions {
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
             val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
             if (kaMenu != null) {
-                Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                KaScheduler.runPlayer(p, Runnable {
                     MenuUI.openMenu(p, menuName, kaMenu.menuManager, kaMenu)
                 })
             }
@@ -633,7 +633,7 @@ object MenuActions {
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
             val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
             if (kaMenu != null) {
-                Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                KaScheduler.runPlayer(p, Runnable {
                     MenuUI.openMenu(p, menuName, kaMenu.menuManager, kaMenu)
                 })
             }
@@ -707,7 +707,7 @@ object MenuActions {
         return when {
             controlAction.startsWith("wait:", ignoreCase = true) -> {
                 val ticks = controlAction.substringAfter(":", "").trim().toLongOrNull() ?: 0L
-                delayTicks(ticks).thenApply { false }
+                delayTicks(context.player, ticks).thenApply { false }
             }
             controlAction.equals("return", ignoreCase = true) -> {
                 CompletableFuture.completedFuture(true)
@@ -757,16 +757,15 @@ object MenuActions {
         }
     }
 
-    private fun delayTicks(ticks: Long): CompletableFuture<Boolean> {
+    private fun delayTicks(player: Player, ticks: Long): CompletableFuture<Boolean> {
         if (ticks <= 0) {
             return CompletableFuture.completedFuture(false)
         }
 
-        val currentPlugin = plugin ?: return CompletableFuture.completedFuture(false)
         val future = CompletableFuture<Boolean>()
-        Bukkit.getScheduler().runTaskLater(currentPlugin, Runnable {
+        KaScheduler.runPlayerLater(player, ticks, Runnable {
             future.complete(false)
-        }, ticks)
+        })
         return future
     }
 
@@ -815,7 +814,7 @@ object MenuActions {
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
             val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
             if (kaMenu != null) {
-                Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                KaScheduler.runPlayer(p, Runnable {
                     MenuUI.openMenu(p, menuName, kaMenu.menuManager, kaMenu)
                 })
             }
@@ -852,7 +851,7 @@ object MenuActions {
         val menuOpener: (Player, String) -> Unit = { p, menuName ->
             val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
             if (kaMenu != null) {
-                Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                KaScheduler.runPlayer(p, Runnable {
                     MenuUI.openMenu(p, menuName, kaMenu.menuManager, kaMenu)
                 })
             }
@@ -1017,7 +1016,7 @@ object MenuActions {
             // title: 发送标题
             finalCmd.startsWith("title:") -> {
                 val args = finalCmd.removePrefix("title:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndSendTitle(player, args)
                 })
             }
@@ -1032,7 +1031,7 @@ object MenuActions {
             // command: 玩家执行指令
             finalCmd.startsWith("command:") -> {
                 val cmd = finalCmd.removePrefix("command:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     player.performCommand(cmd)
                 })
             }
@@ -1040,7 +1039,7 @@ object MenuActions {
             // chat: 玩家执行指令
             finalCmd.startsWith("chat:") -> {
                 val cmd = finalCmd.removePrefix("chat:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     player.chat(cmd)
                 })
             }
@@ -1048,7 +1047,7 @@ object MenuActions {
             // console: 控制台执行指令
             finalCmd.startsWith("console:") -> {
                 val cmd = finalCmd.removePrefix("console:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runGlobal(Runnable {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd)
                 })
             }
@@ -1056,7 +1055,7 @@ object MenuActions {
             // sound: 播放声音 (支持音量和音调参数)
             finalCmd.startsWith("sound:") -> {
                 val args = finalCmd.removePrefix("sound:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndPlaySound(player, args)
                 })
             }
@@ -1099,7 +1098,7 @@ object MenuActions {
                 val menuName = finalCmd.removePrefix("force-open:").trim()
                 val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
                 if (kaMenu != null) {
-                    Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                    KaScheduler.runPlayer(player, Runnable {
                         handledMenuLifecycle?.set(true)
                         MenuUI.forceOpenMenu(player, menuName, kaMenu.menuManager, kaMenu)
                     })
@@ -1113,7 +1112,7 @@ object MenuActions {
                     if (kaMenu != null) {
                         val currentMenuId = kaMenu.menuManager.getMenuId(config)
                         if (currentMenuId != null) {
-                            Bukkit.getScheduler().runTask(kaMenu, Runnable {
+                            KaScheduler.runPlayer(player, Runnable {
                                 handledMenuLifecycle?.set(true)
                                 MenuUI.forceOpenMenu(player, currentMenuId, kaMenu.menuManager, kaMenu)
                             })
@@ -1125,7 +1124,7 @@ object MenuActions {
             // force-close: 强制关闭菜单（不执行 Events.Close）
             finalCmd.trim() == "force-close" -> {
                 handledMenuLifecycle?.set(true)
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     MenuTaskManager.cancel(player)
                     player.closeInventory()
                 })
@@ -1146,7 +1145,7 @@ object MenuActions {
                                 error.printStackTrace()
                             } else if (!result) {
                                 // Close 事件中没有 return，关闭菜单
-                                Bukkit.getScheduler().runTask(plugin ?: return@whenComplete, Runnable {
+                                KaScheduler.runPlayer(player, Runnable {
                                     MenuTaskManager.cancel(player)
                                     player.closeInventory()
                                 })
@@ -1157,7 +1156,7 @@ object MenuActions {
                     }
                 }
                 // 没有 Close 事件，直接关闭菜单
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     MenuTaskManager.cancel(player)
                     player.closeInventory()
                 })
@@ -1168,25 +1167,22 @@ object MenuActions {
                 if (config != null) {
                     val actionCall = parseActionCall(finalCmd.removePrefix("actions:").trim())
                     if (actionCall.name.isNotEmpty()) {
-                        // 异步执行动作列表
-                        Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return, Runnable {
-                            val actionList = findActionList(config, actionCall.name)
+                        val actionList = findActionList(config, actionCall.name)
 
-                            if (actionList != null) {
-                                executeActionList(
-                                    player,
-                                    actionList.actions,
-                                    mergeActionArguments(variables, actionCall.arguments),
-                                    menuOpener,
-                                    0L,
-                                    config,
-                                    contextId = contextId,
-                                    actionListId = actionList.id
-                                )
-                            } else {
-                                player.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
-                            }
-                        })
+                        if (actionList != null) {
+                            executeActionList(
+                                player,
+                                actionList.actions,
+                                mergeActionArguments(variables, actionCall.arguments),
+                                menuOpener,
+                                0L,
+                                config,
+                                contextId = contextId,
+                                actionListId = actionList.id
+                            )
+                        } else {
+                            player.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
+                        }
                     }
                 }
             }
@@ -1197,7 +1193,7 @@ object MenuActions {
                 ActionHandlers.parseDataAction(args, player.uniqueId.toString(), "data") { uuid, key, value ->
                     if (asyncDataOperations) {
                         // 异步执行数据库操作，避免阻塞主线程
-                        Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseDataAction, Runnable {
+                        KaScheduler.runAsync(Runnable {
                             databaseManager?.setPlayerData(java.util.UUID.fromString(uuid), key, value)
                         })
                     } else {
@@ -1217,7 +1213,7 @@ object MenuActions {
                     setAction = { key, value ->
                         if (asyncDataOperations) {
                             // 异步执行数据库操作，避免阻塞主线程
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.setPlayerData(player.uniqueId, key, value)
                             })
                         } else {
@@ -1228,7 +1224,7 @@ object MenuActions {
                     modifyAction = { key, delta ->
                         if (asyncDataOperations) {
                             // 异步执行数据库操作，避免阻塞主线程
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.modifyPlayerData(player.uniqueId, key, delta)
                             })
                         } else {
@@ -1239,7 +1235,7 @@ object MenuActions {
                     deleteAction = { key ->
                         if (asyncDataOperations) {
                             // 异步执行数据库操作，避免阻塞主线程
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.deletePlayerData(player.uniqueId, key)
                             })
                         } else {
@@ -1259,7 +1255,7 @@ object MenuActions {
                     dataType = "list",
                     setAction = { key, values ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.setPlayerList(player.uniqueId, key, values)
                             })
                         } else {
@@ -1268,7 +1264,7 @@ object MenuActions {
                     },
                     addAction = { key, values, unique ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.addPlayerListValues(player.uniqueId, key, values, unique)
                             })
                         } else {
@@ -1277,7 +1273,7 @@ object MenuActions {
                     },
                     removeAction = { key, values ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.removePlayerListValues(player.uniqueId, key, values)
                             })
                         } else {
@@ -1286,7 +1282,7 @@ object MenuActions {
                     },
                     clearAction = { key ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.clearPlayerList(player.uniqueId, key)
                             })
                         } else {
@@ -1295,7 +1291,7 @@ object MenuActions {
                     },
                     deleteAction = { key ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.deletePlayerData(player.uniqueId, key)
                             })
                         } else {
@@ -1311,9 +1307,9 @@ object MenuActions {
                 ActionHandlers.parseDataAction(args, "", "gdata") { _, key, value ->
                     if (asyncDataOperations) {
                         // 异步执行数据库操作，避免阻塞主线程
-                        Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseDataAction, Runnable {
-                            databaseManager?.setGlobalData(key, value)
-                        })
+                            KaScheduler.runAsync(Runnable {
+                                databaseManager?.setGlobalData(key, value)
+                            })
                     } else {
                         // 同步执行数据库操作，确保数据在菜单渲染前完成
                         databaseManager?.setGlobalData(key, value)
@@ -1331,7 +1327,7 @@ object MenuActions {
                     setAction = { key, value ->
                         if (asyncDataOperations) {
                             // 异步执行数据库操作，避免阻塞主线程
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.setGlobalData(key, value)
                             })
                         } else {
@@ -1342,7 +1338,7 @@ object MenuActions {
                     modifyAction = { key, delta ->
                         if (asyncDataOperations) {
                             // 异步执行数据库操作，避免阻塞主线程
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.modifyGlobalData(key, delta)
                             })
                         } else {
@@ -1353,7 +1349,7 @@ object MenuActions {
                     deleteAction = { key ->
                         if (asyncDataOperations) {
                             // 异步执行数据库操作，避免阻塞主线程
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteDataAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.deleteGlobalData(key)
                             })
                         } else {
@@ -1373,7 +1369,7 @@ object MenuActions {
                     dataType = "glist",
                     setAction = { key, values ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.setGlobalList(key, values)
                             })
                         } else {
@@ -1382,7 +1378,7 @@ object MenuActions {
                     },
                     addAction = { key, values, unique ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.addGlobalListValues(key, values, unique)
                             })
                         } else {
@@ -1391,7 +1387,7 @@ object MenuActions {
                     },
                     removeAction = { key, values ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.removeGlobalListValues(key, values)
                             })
                         } else {
@@ -1400,7 +1396,7 @@ object MenuActions {
                     },
                     clearAction = { key ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.clearGlobalList(key)
                             })
                         } else {
@@ -1409,7 +1405,7 @@ object MenuActions {
                     },
                     deleteAction = { key ->
                         if (asyncDataOperations) {
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin ?: return@parseAndExecuteListAction, Runnable {
+                            KaScheduler.runAsync(Runnable {
                                 databaseManager?.deleteGlobalData(key)
                             })
                         } else {
@@ -1469,9 +1465,9 @@ object MenuActions {
                     val value = args[1]
                     if (asyncDataOperations) {
                         // 异步执行数据库操作，避免阻塞主线程
-                        plugin?.let { Bukkit.getScheduler().runTaskAsynchronously(it, Runnable {
+                        KaScheduler.runAsync(Runnable {
                             databaseManager?.setGlobalData(key, value)
-                        })}
+                        })
                     } else {
                         // 同步执行数据库操作，确保数据在菜单渲染前完成
                         databaseManager?.setGlobalData(key, value)
@@ -1492,7 +1488,7 @@ object MenuActions {
             // toast: 显示 Toast 通知
             finalCmd.startsWith("toast:") -> {
                 val args = finalCmd.removePrefix("toast:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndSendToast(player, args)
                 })
             }
@@ -1500,7 +1496,7 @@ object MenuActions {
             // money: 操作玩家金币
             finalCmd.startsWith("money:") -> {
                 val args = finalCmd.removePrefix("money:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndHandleMoney(player, args, variables)
                 })
             }
@@ -1508,7 +1504,7 @@ object MenuActions {
             // stock-item: 物品给予/扣除
             finalCmd.startsWith("stock-item:") -> {
                 val args = finalCmd.removePrefix("stock-item:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndHandleStockItem(player, args, variables)
                 })
             }
@@ -1516,7 +1512,7 @@ object MenuActions {
             // item: 普通物品给予/扣除
             finalCmd.startsWith("item:") -> {
                 val args = finalCmd.removePrefix("item:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndHandleItem(player, args, variables)
                 })
             }
@@ -1524,7 +1520,7 @@ object MenuActions {
             // server: 传送到指定服务器（支持 BungeeCord/Velocity）
             finalCmd.startsWith("server:") -> {
                 val serverName = finalCmd.removePrefix("server:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndHandleServer(player, serverName)
                 })
             }
@@ -1532,7 +1528,7 @@ object MenuActions {
             // tppos: 传送到指定坐标
             finalCmd.startsWith("tppos:") -> {
                 val args = finalCmd.removePrefix("tppos:").trim()
-                Bukkit.getScheduler().runTask(plugin ?: return, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndHandleTppos(player, args)
                 })
             }
@@ -1553,7 +1549,7 @@ object MenuActions {
 
         try {
             val menuOpener: (Player, String) -> Unit = { p, menuName ->
-                Bukkit.getScheduler().runTask(plugin!!, Runnable {
+                KaScheduler.runPlayer(p, Runnable {
                     MenuUI.openMenu(p, menuName, plugin!!.menuManager, plugin!!)
                 })
             }
@@ -1764,20 +1760,17 @@ object MenuActions {
                         val actionList = findActionList(config, actionCall.name)
 
                         if (actionList != null) {
-                            // 异步执行动作列表
-                            plugin?.let {
-                                Bukkit.getScheduler().runTaskAsynchronously(it, Runnable {
-                                    executeActionList(
-                                        audience,
-                                        actionList.actions,
-                                        mergeActionArguments(emptyMap(), actionCall.arguments),
-                                        menuOpener,
-                                        0L,
-                                        config,
-                                        actionListId = actionList.id
-                                    )
-                                })
-                            }
+                            KaScheduler.runPlayer(audience, Runnable {
+                                executeActionList(
+                                    audience,
+                                    actionList.actions,
+                                    mergeActionArguments(emptyMap(), actionCall.arguments),
+                                    menuOpener,
+                                    0L,
+                                    config,
+                                    actionListId = actionList.id
+                                )
+                            })
                         } else {
                             audience.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
                         }

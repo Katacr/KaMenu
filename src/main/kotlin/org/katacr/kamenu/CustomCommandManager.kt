@@ -242,20 +242,14 @@ class CustomCommandManager(private val plugin: KaMenu) {
      * 自定义指令重载完成后调用该方法，可让玩家不重进服务器也能立刻获得 TAB 补全。
      */
     fun refreshOnlinePlayerCommands() {
-        val refreshTask = Runnable {
-            Bukkit.getOnlinePlayers().forEach { player ->
+        Bukkit.getOnlinePlayers().forEach { player ->
+            KaScheduler.runPlayer(player, Runnable {
                 try {
                     player.updateCommands()
                 } catch (e: Exception) {
                     warn("custom_commands.update_commands_failed", player.name, e.message ?: e.javaClass.simpleName)
                 }
-            }
-        }
-
-        if (Bukkit.isPrimaryThread()) {
-            refreshTask.run()
-        } else {
-            Bukkit.getScheduler().runTask(plugin, refreshTask)
+            })
         }
     }
 

@@ -262,14 +262,12 @@ object ActionHandlers {
             val progress = player.getAdvancementProgress(advancement)
             progress.awardCriteria("impossible")
 
-            plugin?.let {
-                Bukkit.getScheduler().runTaskLater(it, Runnable {
-                    if (player.isOnline) {
-                        progress.revokeCriteria("impossible")
-                        Bukkit.getUnsafe().removeAdvancement(randomKey)
-                    }
-                }, 10L)
-            }
+            KaScheduler.runPlayerLater(player, 10L, Runnable {
+                if (player.isOnline) {
+                    progress.revokeCriteria("impossible")
+                    Bukkit.getUnsafe().removeAdvancement(randomKey)
+                }
+            })
         } catch (e: Exception) {
             plugin?.logger?.warning("Toast 通知发送失败: ${e.message}")
         }
@@ -799,6 +797,10 @@ object ActionHandlers {
             if (parts.size <= 4) location.yaw = player.location.yaw
             if (parts.size <= 5) location.pitch = player.location.pitch
         }
-        player.teleport(location)
+        if (KaScheduler.folia) {
+            player.teleportAsync(location)
+        } else {
+            player.teleport(location)
+        }
     }
 }

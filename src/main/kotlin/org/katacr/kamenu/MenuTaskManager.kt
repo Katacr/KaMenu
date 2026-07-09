@@ -4,7 +4,6 @@ import org.bukkit.Bukkit
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
-import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -51,7 +50,7 @@ object MenuTaskManager {
         val skipIfRunning: Boolean,
         val remainingRuns: AtomicInteger,
         val running: AtomicBoolean = AtomicBoolean(false),
-        @Volatile var bukkitTask: BukkitTask? = null,
+        @Volatile var taskHandle: KaTaskHandle? = null,
         val stopping: AtomicBoolean = AtomicBoolean(false)
     )
 
@@ -166,9 +165,9 @@ object MenuTaskManager {
             return true
         }
 
-        task.bukkitTask = Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
+        task.taskHandle = KaScheduler.runPlayerTimer(player, interval, interval, Runnable {
             executeTaskRound(player.uniqueId, session.token, taskId)
-        }, interval, interval)
+        })
         return true
     }
 
@@ -322,7 +321,7 @@ object MenuTaskManager {
             return true
         }
 
-        task.bukkitTask?.cancel()
+        task.taskHandle?.cancel()
         if (runEndActions) {
             runEndActions(playerId, session, task)
         }

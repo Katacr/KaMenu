@@ -58,7 +58,7 @@ object UpdateChecker {
         languageManager = plugin.languageManager
         latestVersion = null
         checkComplete = false
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
+        KaScheduler.runAsync(Runnable {
             try {
                 val request = HttpRequest.newBuilder()
                     .uri(URI.create(PLUGIN_YML_URL))

@@ -141,6 +141,7 @@ class KaMenu : JavaPlugin() {
         ConfigUpdater.setLanguageManager(languageManager)
 
         // 初始化 MenuUI
+        KaScheduler.init(this)
         MenuUI.init(this)
         MenuTaskManager.init(this)
 

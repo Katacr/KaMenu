@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import org.bukkit.Bukkit
+import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import javax.script.Bindings
 import javax.script.Compilable
@@ -63,11 +64,11 @@ object JavaScriptManager {
         }
 
         function delay(ticks, callback) {
-            return Bukkit.getScheduler().runTaskLater(__kamenu_plugin, __kamenu_runnable(callback), __kamenu_delay_ticks(ticks));
+            return __kamenu_js_manager.delay(__kamenu_target_player(null), __kamenu_delay_ticks(ticks), __kamenu_runnable(callback));
         }
 
         function asyncDelay(ticks, callback) {
-            return Bukkit.getScheduler().runTaskLaterAsynchronously(__kamenu_plugin, __kamenu_runnable(callback), __kamenu_delay_ticks(ticks));
+            return __kamenu_js_manager.asyncDelay(__kamenu_delay_ticks(ticks), __kamenu_runnable(callback));
         }
 
         function getPlayer(name) {
@@ -162,6 +163,26 @@ object JavaScriptManager {
      * 检查 JavaScript 是否可用
      */
     fun isAvailable(): Boolean = available
+
+    /**
+     * JavaScript `delay()` 的调度实现。
+     *
+     * 有玩家上下文时在玩家 EntityScheduler 中延迟执行；无玩家上下文时退回全局调度。
+     */
+    fun delay(targetPlayer: Player?, ticks: Long, callback: Runnable): KaTaskHandle {
+        return if (targetPlayer != null) {
+            KaScheduler.runPlayerLater(targetPlayer, ticks, callback)
+        } else {
+            KaScheduler.runGlobalLater(ticks, callback)
+        }
+    }
+
+    /**
+     * JavaScript `asyncDelay()` 的调度实现。
+     */
+    fun asyncDelay(ticks: Long, callback: Runnable): KaTaskHandle {
+        return KaScheduler.runAsyncLater(ticks, callback)
+    }
 
     /**
      * 绑定全局 JS 包管理器。

@@ -3,6 +3,7 @@ package org.katacr.kamenu.api
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
+import org.katacr.kamenu.KaScheduler
 import org.katacr.kamenu.MenuActions
 import org.katacr.kamenu.MenuUI
 
@@ -78,10 +79,14 @@ object KaMenuAPI {
     fun openConfig(player: Player, config: YamlConfiguration, contextId: String = "external"): Boolean {
         val currentPlugin = plugin ?: return false
         return try {
-            if (Bukkit.isPrimaryThread()) {
+            if (KaScheduler.folia) {
+                KaScheduler.runPlayer(player, Runnable {
+                    MenuUI.openConfig(player, config, currentPlugin, contextId)
+                })
+            } else if (Bukkit.isPrimaryThread()) {
                 MenuUI.openConfig(player, config, currentPlugin, contextId)
             } else {
-                Bukkit.getScheduler().runTask(currentPlugin, Runnable {
+                KaScheduler.runPlayer(player, Runnable {
                     MenuUI.openConfig(player, config, currentPlugin, contextId)
                 })
             }

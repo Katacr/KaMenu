@@ -125,19 +125,19 @@ class MenuListener(private val plugin: KaMenu) : Listener {
     fun onPlayerJoin(event: PlayerJoinEvent) {
         val player = event.player
         if (player.isOp && plugin.menuManager.getAllMenuIds().isEmpty()) {
-            Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+            KaScheduler.runPlayerLater(player, 80L, Runnable {
                 if (!player.isOnline || !player.isOp || plugin.menuManager.getAllMenuIds().isNotEmpty()) {
                     return@Runnable
                 }
                 val message = plugin.languageManager.getMessage("command.guide_join_hint")
                 player.sendMessage(MenuActions.parseClickableText(message))
-            }, 80L)
+            })
         }
 
         if (plugin.config.getBoolean("check-update", true)) {
-            Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+            KaScheduler.runPlayerLater(player, 100L, Runnable {
                 UpdateChecker.notifyIfUpdateAvailable(player)
-            }, 100L) // 5秒延迟，避免被进服消息冲掉
+            }) // 5秒延迟，避免被进服消息冲掉
         }
     }
 
