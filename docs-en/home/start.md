@@ -10,7 +10,7 @@ This guide will help you quickly install and configure the KaMenu plugin.
 |------|---------|
 | Minecraft Version | 1.21.7+ |
 | Java Version | Java 21+ |
-| Server Type | **Paper** and its forks (Purpur, etc.) |
+| Server Type | **Paper**, **Folia**, and forks with a compatible Paper Dialog API |
 | Database | SQLite (default), MySQL 5.7+ |
 
 {% hint style="info" %}
@@ -19,6 +19,11 @@ This guide will help you quickly install and configure the KaMenu plugin.
 - ✅ Paper 1.21.7+: Full basic functionality
 - ✨ Paper 1.21.8+: Recommended — more stable API
 - 🎨 Paper 1.21.9+: Full features (sprite item icons, player head avatars, and more)
+- ⚡ Folia 1.21.7+: Region-threaded scheduling support; use a current build matching the target Minecraft version
+{% endhint %}
+
+{% hint style="info" %}
+**Folia compatibility:** KaMenu detects Folia automatically and schedules player menus, `wait`, `Events.Tasks`, JavaScript `delay()`, and menu API calls on the appropriate player or global scheduler. Custom JavaScript, external action handlers, PlaceholderAPI expansions, and commands from other plugins invoked through `console:` must also be Folia-compatible.
 {% endhint %}
 
 {% hint style="warning" %}
@@ -27,7 +32,7 @@ KaMenu depends on the Paper Dialog API and does **not support**:
 - Paper 1.21.6 or below (API not fully implemented)
 - Spigot, CraftBukkit, or other non-Paper server software
 
-Please ensure your server runs **Paper 1.21.7 or higher**!
+Make sure the server is based on **Paper/Folia 1.21.7 or newer** and provides the matching Dialog API.
 {% endhint %}
 
 ---

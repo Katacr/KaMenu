@@ -10,7 +10,7 @@
 |------|----------------------------|
 | Minecraft 版本 | 1.21.7+                    |
 | Java 版本 | Java 21+                   |
-| 服务器类型 | **Paper** 及其衍生核心（Purpur 等） |
+| 服务器类型 | **Paper**、**Folia** 及兼容 Paper Dialog API 的衍生核心 |
 | 数据库 | SQLite（默认）、MySQL 5.7+      |
 
 {% hint style="info" %}
@@ -19,6 +19,11 @@
 - ✅ Paper 1.21.7+：基础功能完整支持
 - ✨ Paper 1.21.8+：推荐版本，API 更加稳定
 - 🎨 Paper 1.21.9+：完整功能（支持 sprite 物品图标、player head 头像等高级特性）
+- ⚡ Folia 1.21.7+：支持区域线程调度；建议使用与目标 Minecraft 版本匹配的最新构建
+{% endhint %}
+
+{% hint style="info" %}
+**Folia 兼容说明**：KaMenu 会自动识别 Folia，并将玩家菜单、`wait`、`Events.Tasks`、JavaScript `delay()`、菜单 API 等任务调度到正确的玩家或全局线程。自定义 JavaScript、外部 action handler、PlaceholderAPI 扩展及由 `console:` 调用的其他插件指令，仍取决于对应代码或插件自身是否兼容 Folia。
 {% endhint %}
 
 {% hint style="warning" %}
@@ -27,7 +32,7 @@ KaMenu 依赖 Paper Dialog API，**不支持**：
 - Paper 1.21.6 及以下版本（API 尚未完全实现）
 - Spigot、CraftBukkit 等非 Paper 服务端
 
-请确保服务器版本为 **Paper 1.21.7 或更高版本**！
+请确保服务器基于 **Paper/Folia 1.21.7 或更高版本**，并提供对应版本的 Dialog API！
 {% endhint %}
 
 ---

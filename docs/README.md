@@ -12,8 +12,11 @@ description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 
 > - **最低版本**：Paper 1.21.7
 > - **推荐版本**：Paper 1.21.8+
 > - **完整功能版本**：Paper 1.21.9+ （支持 sprite 物品图标、player head 头像等高级特性）
+> - **支持核心**：Paper、Folia，以及提供兼容 Paper Dialog API 的衍生核心
 >
 > KaMenu **不支持** Paper 1.21.6 及以下版本。请确保服务器版本符合要求！
+
+KaMenu 已适配 Folia 的区域线程模型。菜单打开、动作延迟、周期任务、JavaScript 延迟辅助方法和外部菜单 API 会根据运行核心使用 Paper 或 Folia 调度器。菜单中的自定义 JavaScript、外部 action handler 和第三方 PlaceholderAPI 扩展仍需自行遵守 Folia 的线程规则。
 
 ***
 

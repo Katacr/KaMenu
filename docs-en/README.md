@@ -12,8 +12,11 @@ description: KaMenu - A modern Dialog menu plugin for Minecraft Paper servers
 > - **Minimum version:** Paper 1.21.7
 > - **Recommended version:** Paper 1.21.8+
 > - **Full feature version:** Paper 1.21.9+ (supports sprite item icons, player head avatars, and other advanced features)
+> - **Supported server software:** Paper, Folia, and forks that provide a compatible Paper Dialog API
 >
 > KaMenu **does not support** Paper 1.21.6 or earlier. Make sure your server meets the version requirements!
+
+KaMenu supports Folia's region-threaded execution model. Menu opening, delayed actions, periodic tasks, JavaScript delay helpers, and the external menu API automatically use the appropriate Paper or Folia scheduler. Custom JavaScript, external action handlers, and third-party PlaceholderAPI expansions must still follow Folia's threading rules.
 
 ***
 
