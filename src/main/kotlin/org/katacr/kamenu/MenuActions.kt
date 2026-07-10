@@ -405,7 +405,7 @@ object MenuActions {
         if (actionList == null || actionList.isEmpty()) {
             return DialogAction.customClick({ _, _ ->
                 completeDialogCloseLifecycle(player, config, MenuTaskManager.currentToken(player), closesDialogAfterAction)
-            }, ClickCallback.Options.builder().build())
+            }, buildCallbackOptions(config))
         }
 
         // 1. 优先处理不需要服务器参与的静态动作 (url, copy)
@@ -426,11 +426,11 @@ object MenuActions {
                     // 条件格式动作，继续执行下面的复杂逻辑
                 } else {
                     // 未知类型的Map，返回无操作
-                    return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.builder().build())
+                    return DialogAction.customClick({ _, _ -> }, buildCallbackOptions(config))
                 }
             } else if (firstAction !is String) {
                 // 其他非String、非condition的Map类型，返回无操作
-                return DialogAction.customClick({ _, _ -> }, ClickCallback.Options.builder().build())
+                return DialogAction.customClick({ _, _ -> }, buildCallbackOptions(config))
             }
         }
 
@@ -488,7 +488,19 @@ object MenuActions {
                         completeDialogCloseLifecycle(player, config, initialTaskToken, closesDialogAfterAction)
                     }
                 }
-        }, ClickCallback.Options.builder().lifetime(Duration.ofMinutes(5)).build())
+        }, buildCallbackOptions(config))
+    }
+
+    /**
+     * 根据菜单 Settings 创建 Paper callback 生命周期配置。
+     *
+     * uses 固定为 1，确保每个 callback 只能触发一次。
+     */
+    private fun buildCallbackOptions(config: YamlConfiguration): ClickCallback.Options {
+        return ClickCallback.Options.builder()
+            .uses(1)
+            .lifetime(Duration.ofSeconds(DialogSessionManager.lifetimeSeconds(config)))
+            .build()
     }
 
     private fun sanitizeInputValue(
@@ -521,7 +533,11 @@ object MenuActions {
         initialTaskToken: Long?,
         closesDialogAfterAction: Boolean
     ) {
-        if (!closesDialogAfterAction || initialTaskToken == null) {
+        if (!closesDialogAfterAction) {
+            return
+        }
+        DialogSessionManager.cancel(player)
+        if (initialTaskToken == null) {
             return
         }
         if (MenuTaskManager.currentToken(player) != initialTaskToken) {
@@ -1125,8 +1141,9 @@ object MenuActions {
             finalCmd.trim() == "force-close" -> {
                 handledMenuLifecycle?.set(true)
                 KaScheduler.runPlayer(player, Runnable {
+                    DialogSessionManager.cancel(player)
                     MenuTaskManager.cancel(player)
-                    player.closeInventory()
+                    player.closeDialog()
                 })
             }
 
@@ -1146,8 +1163,9 @@ object MenuActions {
                             } else if (!result) {
                                 // Close 事件中没有 return，关闭菜单
                                 KaScheduler.runPlayer(player, Runnable {
+                                    DialogSessionManager.cancel(player)
                                     MenuTaskManager.cancel(player)
-                                    player.closeInventory()
+                                    player.closeDialog()
                                 })
                             }
                             // 如果 result 为 true（Close 事件中遇到 return），不关闭菜单
@@ -1157,8 +1175,9 @@ object MenuActions {
                 }
                 // 没有 Close 事件，直接关闭菜单
                 KaScheduler.runPlayer(player, Runnable {
+                    DialogSessionManager.cancel(player)
                     MenuTaskManager.cancel(player)
-                    player.closeInventory()
+                    player.closeDialog()
                 })
             }
 
@@ -1775,9 +1794,7 @@ object MenuActions {
                             audience.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
                         }
                     }
-                }, ClickCallback.Options.builder()
-                    .lifetime(Duration.ofMinutes(5))
-                    .build()))
+                }, buildCallbackOptions(config)))
             }
         } else if (url.isNotEmpty()) {
             component = component.clickEvent(ClickEvent.openUrl(url))

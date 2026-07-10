@@ -142,6 +142,7 @@ class KaMenu : JavaPlugin() {
 
         // 初始化 MenuUI
         KaScheduler.init(this)
+        DialogSessionManager.init(this)
         MenuUI.init(this)
         MenuTaskManager.init(this)
 
@@ -247,6 +248,7 @@ class KaMenu : JavaPlugin() {
         }
 
         MenuTaskManager.cancelAll()
+        DialogSessionManager.clearAll()
         MenuListManager.clearAll()
         if (::menuManager.isInitialized) {
             menuManager.clear()

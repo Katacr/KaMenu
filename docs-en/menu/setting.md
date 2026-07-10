@@ -10,6 +10,7 @@ The `Settings` node configures the menu's global behaviour, including how it can
 |--------|------|---------|-------------|
 | `can_escape` | `Boolean` | `true` | Whether players can close the menu using the ESC key |
 | `after_action` | `String` | `CLOSE` | Client-side behaviour after a button action is executed |
+| `lifetime` | `Long` | `300` | Maximum time the menu may remain open, in seconds |
 | `need_placeholder` | `List<String>` | `null` | List of PlaceholderAPI expansions required by the menu |
 
 ---
@@ -76,6 +77,31 @@ Bottom:
       - 'tell: &cYou chose to cancel'
       - 'close'
 ```
+
+---
+
+## lifetime
+
+### lifetime - Menu lifetime limit
+
+`lifetime` is measured in seconds and defaults to `300` (5 minutes). It controls both the Paper callback lifetime and KaMenu's server-side menu timeout.
+
+When the limit is reached, KaMenu:
+
+1. Verifies that the player is still in the original menu session, so an old timeout cannot close a newer menu;
+2. Actively closes the Dialog;
+3. Stops the menu's `Events.Tasks`;
+4. Clears repeat pagination state;
+5. Runs `Events.Close` for timeout cleanup.
+
+The timeout is a hard limit, so `return` inside `Events.Close` cannot prevent the Dialog from closing. Values less than or equal to `0` are invalid and fall back to 300 seconds.
+
+```yaml
+Settings:
+  lifetime: 300
+```
+
+All server callbacks remain single-use. Resetting or opening another menu creates new callbacks and restarts `lifetime`. The lifetime limit can close menus or waiting overlays that remain open for too long, but it does not replace proper close or refresh actions.
 
 ---
 
@@ -163,12 +189,14 @@ After clicking a button, the client takes no local action; all logic is controll
 {% hint style="warning" %}
 **Important:**
 
-When `after_action: NONE` is used, the client does not automatically close the menu after a button click. Paper Dialog button callbacks are one-shot: after the clicked button's action chain finishes, later clicks on the old dialog will not trigger another server callback. If the action list does not end with `close`, `reset`, `open` / `force-open`, or another action that closes or re-renders the dialog, the client can be left with a cached menu that appears clickable but no longer responds.
+When `after_action: NONE` is used, the client does not automatically close the menu, but server callbacks for regular buttons and clickable body text are always single-use. If an action finishes without closing or rebuilding the menu, later clicks no longer reach the server and the client retains an unresponsive cached Dialog.
 
-Therefore, when using `after_action: NONE`, make sure **every button and every conditional branch** eventually runs one of:
+With `after_action: NONE`, **every button and every conditional branch** must eventually run one of:
 - `close` / `force-close`: close the menu
 - `reset`: refresh the current menu and rebuild button callbacks
 - `open` / `force-open`: open another menu
+
+KaMenu actively closes the menu when `lifetime` expires so an invalid Dialog cannot remain indefinitely, but this is only a fallback.
 {% endhint %}
 
 **Example:**

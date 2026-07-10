@@ -449,7 +449,7 @@ object MenuUI {
 
         // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
         return MenuActions.parseClickableText(
-            TextResolver.resolve(player, rawText),
+            TextResolver.resolve(player, rawText, menuConfig = config),
             player,
             config,
             menuOpener
@@ -468,7 +468,7 @@ object MenuUI {
         // 检查该路径下是否为列表格式（条件判断）
         if (config.isList(path)) {
             val conditions = config.getList(path) ?: return defaultValue
-            return getFirstConditionString(player, conditions, defaultValue)
+            return getFirstConditionString(player, conditions, defaultValue, config)
         } else {
             // 简单字符串值
             return config.getString(path, defaultValue) ?: defaultValue
@@ -1062,6 +1062,7 @@ object MenuUI {
             .afterAction(afterAction)
             .build()
         player.showDialog(Dialog.create { it.empty().base(base).type(dialogType) })
+        DialogSessionManager.attach(player, config, menuId)
         MenuTaskManager.attachMenu(player, config, menuId)
     }
 }

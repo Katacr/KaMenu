@@ -143,6 +143,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
+        DialogSessionManager.cancel(event.player)
         MenuTaskManager.cancel(event.player)
         MenuListManager.clear(event.player)
         // 清理该玩家的元数据缓存

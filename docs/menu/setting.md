@@ -10,6 +10,7 @@
 |--------|------|--------|------|
 | `can_escape` | `Boolean` | `true` | 是否允许玩家通过 ESC 键关闭菜单 |
 | `after_action` | `String` | `CLOSE` | 点击按钮执行动作后的客户端行为 |
+| `lifetime` | `Long` | `300` | 菜单最大存在时间，单位为秒 |
 | `need_placeholder` | `List<String>` | `null` | 菜单所需的 PlaceholderAPI 扩展列表 |
 
 ---
@@ -76,6 +77,31 @@ Bottom:
       - 'tell: &c你选择了取消'
       - 'close'
 ```
+
+---
+
+## lifetime 参数
+
+### lifetime - 菜单存在时间上限
+
+`lifetime` 的单位为秒，默认值为 `300`（5 分钟）。该值同时决定 Paper callback 的有效期和 KaMenu 服务端的菜单关闭定时器。
+
+达到上限后，KaMenu 会：
+
+1. 确认该玩家当前仍处于原菜单会话，避免旧定时器误关后来打开的新菜单；
+2. 主动关闭 Dialog；
+3. 停止该菜单的 `Events.Tasks`；
+4. 清理 repeat 分页状态；
+5. 执行 `Events.Close` 作为超时清理动作。
+
+超时属于硬性上限，`Events.Close` 中的 `return` 不会阻止菜单关闭。小于或等于 `0` 的无效配置会回退到默认的 300 秒。
+
+```yaml
+Settings:
+  lifetime: 300
+```
+
+所有服务端 callback 始终保持一次性。`reset` 或打开新菜单会重新创建 callback，并重新计算 `lifetime`。`lifetime` 可用于关闭长时间停留的菜单或等待遮罩，但不能代替按钮动作中的正常关闭或刷新逻辑。
 
 ---
 
@@ -163,12 +189,14 @@ Bottom:
 {% hint style="warning" %}
 **重要提示：**
 
-当 `after_action: NONE` 时，客户端点击按钮后不会自动关闭菜单。由于 Paper Dialog 的按钮回调是一次性的，该次点击执行完对应动作后，原界面中后续按钮点击不会再触发服务器回调。也就是说，若动作列表最后没有 `close`、`reset`、`open` / `force-open` 等能关闭或重新渲染菜单的动作，客户端会留下一个看似仍可点击、但实际不会再响应的缓存界面。
+当 `after_action: NONE` 时，客户端点击按钮后不会自动关闭菜单，但普通按钮和正文可点击文本的服务端 callback 均固定只能触发一次。若动作完成后没有关闭或重建菜单，后续点击将不会再产生服务器回调，客户端会留下无法响应的缓存界面。
 
-因此，使用 `after_action: NONE` 时，请确保**每个按钮的每条条件分支**最终都会执行以下动作之一：
+使用 `after_action: NONE` 时，必须确保**每个按钮的每条条件分支**最终执行以下动作之一：
 - `close` / `force-close`：关闭菜单
 - `reset`：刷新当前菜单，重新建立按钮回调
 - `open` / `force-open`：打开其它菜单
+
+`lifetime` 到期时会主动关闭菜单，避免失效界面长期残留，但它只是一项兜底措施。
 {% endhint %}
 
 **示例：**
