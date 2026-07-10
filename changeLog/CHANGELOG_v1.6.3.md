@@ -90,6 +90,12 @@ JavaScript package 'player_name' not found (checked global js/player_name.js)
 
 条件值解析接口保留原有三参数 JVM 方法，同时新增携带菜单配置的上下文重载，避免外部已编译调用者因方法签名变化出现 `NoSuchMethodError`。
 
+### 3. 修复 Body 消息末尾出现多余 LF
+
+修复 `Body` 的 `type: message` 使用 YAML 块文本时，文本末尾可能显示额外 LF 换行的问题。
+
+KaMenu 现在仅对单个字符串或 YAML 块文本移除最多一个由块格式保留的末尾换行，正文内部的正常换行保持不变。`text` 列表中显式配置的尾部空项会完整保留；当列表以空项结尾时，KaMenu 会在最后一行追加空格占位，使 LF 成为内部换行，避免客户端显示末尾 LF 控制符。JavaScript 返回值的通用解析规则不受影响。
+
 ---
 
 ## 📝 文档更新
@@ -214,6 +220,12 @@ Existing `{js:[name]}` syntax requires no changes.
 ### 2. Preserved binary compatibility for conditional value APIs
 
 The original three-argument JVM methods remain available. New context-aware overloads carry the menu configuration without causing `NoSuchMethodError` for already compiled external callers.
+
+### 3. Fixed an extra trailing LF in Body messages
+
+Fixed an issue where a `Body` component using `type: message` and YAML block text could display an extra trailing LF.
+
+For scalar strings and YAML block text, KaMenu now removes at most one final line break retained by the block format. Normal line breaks inside the message remain unchanged. Explicit trailing empty entries in a `text` list are fully preserved for layout spacing. When a list ends with an empty entry, KaMenu appends a space to the final line so the LF remains internal instead of being displayed by the client as a trailing control symbol. General JavaScript return-value handling is unaffected.
 
 ---
 

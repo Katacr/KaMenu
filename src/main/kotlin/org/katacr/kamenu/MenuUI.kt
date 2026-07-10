@@ -447,9 +447,21 @@ object MenuUI {
         // 获取文本内容（支持列表和字符串）
         val rawText = getString(player, section, path, defaultText)
 
-        // 先解析变量，再使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
+        val resolved = TextResolver.resolve(player, rawText, menuConfig = config)
+        // 列表中的空项是布局占位；尾部追加空格可保留高度，并避免客户端显示末尾 LF 控制符。
+        val resolvedText = if (section.isList(path)) {
+            if (resolved.endsWith('\n') || resolved.endsWith('\r')) "$resolved " else resolved
+        } else {
+            when {
+                resolved.endsWith("\r\n") -> resolved.dropLast(2)
+                resolved.endsWith('\n') || resolved.endsWith('\r') -> resolved.dropLast(1)
+                else -> resolved
+            }
+        }
+
+        // 解析变量后使用 parseClickableText 支持 hovertext 和 MiniMessage 语法
         return MenuActions.parseClickableText(
-            TextResolver.resolve(player, rawText, menuConfig = config),
+            resolvedText,
             player,
             config,
             menuOpener
