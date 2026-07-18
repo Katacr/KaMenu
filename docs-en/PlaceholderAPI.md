@@ -22,6 +22,7 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 | **Global List Size** | `%kamenu_glist_size_<key>%` | Database | ✅ Yes | Number of items in a global list |
 | **Online Player List** | `%kamenu_online_players%` | Online players | ❌ No | Current online player names, returned as a JSON array |
 | **Player Metadata** | `%kamenu_meta_<key>%` | Memory | ❌ No | Temporary cached player data |
+| **Item Properties** | `%kamenu_checkitem_[source;property]%` | Player Inventory / Memory | ❌ No | Read common properties from held, slotted, or saved items |
 | **Inventory Items** | `%kamenu_hasitem_[item attributes]%` | Player Inventory | — | Count of matching items in player's inventory |
 | **Stock Items** | `%kamenu_hasstockitem_<itemName>%` | Player Inventory | — | Count of a saved stock item in player's inventory |
 
@@ -31,6 +32,7 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 - 📋 [List Variables](#list-variables)
 - 👥 [Online Player List Variable](#online-player-list-variable)
 - 💾 [Player Metadata Variables](#player-metadata-variables)
+- 🧰 [Item Property Variables](#item-property-variables)
 - 🎒 [Inventory Item Variables](#inventory-item-variables)
 - 📦 [Stock Item Variables](#stock-item-variables)
 
@@ -189,11 +191,117 @@ scoreboard:
 
 ---
 
+### Item Property Variables
+
+KaMenu can read common item properties. Prefer the built-in brace variable in menus because it does not require PlaceholderAPI; use PAPI when another plugin needs the value:
+
+```text
+{checkitem:[hand;name]}
+%kamenu_checkitem_[hand;name]%
+```
+
+Both forms use the same sources, properties, and return values.
+
+**Parameter structure:**
+
+```text
+{checkitem:[<item location>;<output property>;<optional format>]}
+%kamenu_checkitem_[<item location>;<output property>;<optional format>]%
+```
+
+`checkitem` accepts up to three parameters separated by English semicolons (`;`):
+
+| Order | Parameter | Required | Purpose |
+|-------|-----------|----------|---------|
+| First | Item location/source | ✅ | Locates the item to read, such as `hand`, `offhand`, `slot:0`, or `stock:Magic Sword` |
+| Second | Output property | ✅ | Selects the exact value to return, such as `name`, `lore:1`, `ench:sharpness`, or `dura_pct` |
+| Third | Text format | ❌ | Uses `fmt:plain`, `fmt:legacy`, or `fmt:mini`; defaults to `fmt:plain` when omitted |
+
+For example, `{checkitem:[slot:0;lore:1;fmt:mini]}` consists of:
+
+1. `slot:0`: locate slot `0` in the player's inventory.
+2. `lore:1`: return lore line `1` from that item; lore line numbers start at `1`.
+3. `fmt:mini`: convert that line to MiniMessage format.
+
+Semicolons (`;`) separate the three top-level parameters, while colons (`:`) assign values inside a parameter. Therefore `slot:0`, `lore:1`, and `fmt:mini` are each one complete parameter. Inventory slots start at `0`, while lore line numbers start at `1`.
+
+**Item sources:**
+
+| Source | Description |
+|--------|-------------|
+| `hand` | Current player's main-hand item |
+| `offhand` | Current player's off-hand item |
+| `slot:<index>` | A Bukkit player inventory slot |
+| `stock:<name>` | KaMenu saved-item storage; reads the memory cache without querying SQL |
+
+**Properties:**
+
+| Property | Return value |
+|----------|--------------|
+| `type` | Full material ID, such as `minecraft:diamond_sword` |
+| `amt` | Stack amount |
+| `name` | Effective item display name |
+| `lore` | Lore as a JSON string array |
+| `lore:<line>` | One lore line, starting at `1`; `lore:1` means the first line |
+| `enchants` | A JSON array such as `[ {"key":"minecraft:sharpness","level":5} ]` |
+| `ench:<enchantment ID>` | Enchantment level; returns `0` when absent |
+| `model` / `item_model` | Item-model NamespacedKey |
+| `cmd` / `custom_model_data` / `custom_model_id` | Custom model ID, returned as an integer by default; empty when absent |
+| `dmg` | Consumed durability |
+| `dura` | Remaining durability |
+| `dura_pct` | Remaining durability from `0` to `100`, without `%` |
+
+Names and lore use plain text by default. The format option uses `fmt:<format>` as the third semicolon-separated argument:
+
+| Format option | Returned content |
+|---------------|------------------|
+| `fmt:plain` | Plain text and the default; removes colors and events |
+| `fmt:legacy` | Preserves `&` Legacy color formatting |
+| `fmt:mini` | Converts to MiniMessage format |
+
+`fmt` only affects `name`, `lore`, and `lore:<line>`. Material, model, enchantment, and numeric properties are unaffected.
+
+Each line below is an independent example for its corresponding menu field. Do not place multiple duplicate `text` keys in the same YAML node:
+
+```yaml
+# Return the effective display name of the main-hand item; plain text is used because fmt is omitted
+text: '&fMain hand: {checkitem:[hand;name]}'
+
+# Return remaining main-hand durability as a percentage; the placeholder does not include the percent sign
+text: '&7Durability: {checkitem:[hand;dura_pct]}%'
+
+# Check whether the main-hand item has Sharpness level 5 or higher
+condition: '{checkitem:[hand;ench:sharpness]} >= 5'
+
+# Return all enchantments from the saved “Legendary Sword” as JSON for use as a repeat source
+source: '{checkitem:[stock:Legendary Sword;enchants]}'
+
+# Return lore line 1 from the saved “Legendary Sword” and convert it to MiniMessage format
+text: '{checkitem:[stock:Legendary Sword;lore:1;fmt:mini]}'
+
+# Return both the main-hand ItemModel NamespacedKey and integer CustomModelData
+text: 'Model: {checkitem:[hand;item_model]} / ID: {checkitem:[hand;custom_model_id]}'
+```
+
+Vanilla enchantments may omit `minecraft:`, such as `ench:sharpness`. Custom enchantments require their full namespace, such as `ench:myplugin:lifesteal`.
+
+When a saved-item name contains semicolons, wrap the item name in backticks to avoid conflicts with YAML single- or double-quoted strings:
+
+```yaml
+text: '{checkitem:[stock:`Event;Sword`;name]}'
+```
+
+The outer YAML value may still use single or double quotes. Only backticks delimit the inner item name; `checkitem` does not treat single or double quotes as argument delimiters.
+
+Missing strings return an empty string, missing numbers return `0`, and missing lists return `[]`. Player inventory sources can only be read on the Paper main thread or the player's current Folia region thread. Asynchronous third-party PAPI requests do not block across threads and therefore receive empty player-item values. The `stock:` source is not subject to this restriction.
+
+---
+
 ### Inventory Item Variables
 
 Counts matching items (by material, lore, model) in the player's inventory.
 
-**Format:** `%kamenu_hasitem_[mats=material;lore=description;model=model]%`
+**Format:** `%kamenu_hasitem_[mats=material;lore=description;model=item-model;custom_model_id=integer-ID]%`
 
 **Parameter Description:**
 
@@ -201,7 +309,8 @@ Counts matching items (by material, lore, model) in the player's inventory.
 |-----------|----------|-------------|---------|
 | `mats` | ✅ Yes | Item material type | `DIAMOND`, `GOLD_INGOT`, `IRON_INGOT` |
 | `lore` | ❌ No | Item lore text (fuzzy match) | `artifact`, `crafting material` |
-| `model` | ❌ No | Item model (namespace:key format) | `minecraft:custom_item` |
+| `model` / `item_model` | ❌ No | ItemModel (namespace:key format) | `minecraft:custom_item` |
+| `cmd` / `custom_model_data` / `custom_model_id` | ❌ No | Integer CustomModelData | `10001` |
 
 **Examples:**
 
@@ -211,6 +320,7 @@ Counts matching items (by material, lore, model) in the player's inventory.
 | `%kamenu_hasitem_[mats=GOLD_INGOT]%` | Returns the count of gold ingots in the player's inventory |
 | `%kamenu_hasitem_[mats=DIAMOND;lore=artifact]%` | Returns the count of diamonds with "artifact" in their lore |
 | `%kamenu_hasitem_[mats=IRON_INGOT;lore=crafting material;model=custom:iron]%` | Returns the count of iron ingots matching material, lore, and model |
+| `%kamenu_hasitem_[mats=PAPER;custom_model_id=10001]%` | Returns the number of paper items with custom model ID `10001` |
 
 **Usage in menus:**
 
@@ -484,7 +594,7 @@ Bottom:
    - All metadata is cleared on plugin reload or server shutdown
    - Suitable for storing temporary short-lived data
 8. **Item Variable Features**:
-   - `hasitem` variables support multi-condition matching (material, lore, model)
+   - `hasitem` variables support multi-condition matching (material, lore, ItemModel, integer CustomModelData)
    - `hasstockitem` variables use the saved stock item for exact matching
    - Returns `0` if the item does not exist
    - Item count is calculated in real time as the sum of all matching items

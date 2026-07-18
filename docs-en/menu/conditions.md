@@ -393,11 +393,12 @@ The following variable formats are supported in condition expressions:
 | `{data:key}` | Player personal data (persistent) | `{data:vip_level}` |
 | `{gdata:key}` | Global shared data (persistent) | `{gdata:server_status}` |
 | `{meta:key}` | Player metadata (memory cache) | `{meta:last_visit}` |
+| `{checkitem:[source;property]}` | Current-player or saved-item property | `{checkitem:[hand;dura_pct]}` |
 | `$(key)` | Dialog input variable (only supported in Actions and Inputs, **not in Body**) | `$(amount)` |
 
 **Body Area Special Notes:**
 - Text in the Body area is rendered before dialog and button inputs, so **does not support** `$(key)` input variables
-- Body area supports `{data:key}`, `{gdata:key}`, and `{meta:key}` internal variables
+- Body area supports `{data:key}`, `{gdata:key}`, `{meta:key}`, and `{checkitem:[source;property]}` internal variables
 - Inputs and Actions areas support all variable formats
 
 **Metadata Notes:**

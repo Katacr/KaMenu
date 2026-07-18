@@ -513,16 +513,9 @@ object ConditionExpressionEngine {
         val currentPlugin = plugin ?: return 0
         val savedItem = currentPlugin.itemManager.getItem(itemName) ?: return 0
 
-        val inventory = player.inventory
         var totalCount = 0
-        val allItems = buildList {
-            addAll(inventory.storageContents.filterNotNull())
-            addAll(inventory.armorContents.filterNotNull())
-            add(inventory.itemInOffHand)
-            add(inventory.itemInMainHand)
-        }
 
-        for (item in allItems) {
+        for (item in getUniqueInventoryItems(player)) {
             if (!item.isEmpty && item.isSimilar(savedItem)) {
                 totalCount += item.amount
             }
@@ -566,6 +559,7 @@ object ConditionExpressionEngine {
         var materialName = ""
         var loreText: String? = null
         var itemModel: String? = null
+        var customModelIdText: String? = null
 
         paramsStr.split(";").forEach { param ->
             val parts = param.split("=", limit = 2)
@@ -573,28 +567,24 @@ object ConditionExpressionEngine {
                 when (parts[0].trim().lowercase()) {
                     "mats" -> materialName = parts[1].trim()
                     "lore" -> loreText = parts[1].trim()
-                    "model" -> itemModel = parts[1].trim()
+                    "model", "item_model" -> itemModel = parts[1].trim()
+                    "cmd", "custom_model_data", "custom_model_id" -> customModelIdText = parts[1].trim()
                 }
             }
         }
 
         if (materialName.isEmpty()) return 0
         val material = MaterialUtils.matchMaterial(materialName) ?: return 0
+        val customModelId = customModelIdText?.toIntOrNull()
+        if (customModelIdText != null && customModelId == null) return 0
 
-        val inventory = player.inventory
         var totalCount = 0
-        val allItems = buildList {
-            addAll(inventory.storageContents.filterNotNull())
-            addAll(inventory.armorContents.filterNotNull())
-            add(inventory.itemInOffHand)
-            add(inventory.itemInMainHand)
-        }
 
-        for (item in allItems) {
+        for (item in getUniqueInventoryItems(player)) {
             if (!item.isEmpty && item.type == material) {
+                val itemMeta = item.itemMeta
                 if (loreText != null) {
-                    val itemMeta = item.itemMeta
-                    if (itemMeta?.hasLore() != true) continue
+                    if (!itemMeta.hasLore()) continue
                     val loreMatched = itemMeta.lore()?.any { line ->
                         val plainText = LegacyComponentSerializer.legacySection().serialize(line)
                         plainText.contains(loreText, ignoreCase = true)
@@ -603,11 +593,12 @@ object ConditionExpressionEngine {
                 }
 
                 if (itemModel != null) {
-                    val itemMeta = item.itemMeta
-                    if (itemMeta?.hasItemModel() != true) continue
-                    val modelKey = itemMeta.itemModel ?: continue
-                    val modelStr = "${modelKey.namespace()}:${modelKey.value()}"
-                    if (!modelStr.equals(itemModel, ignoreCase = true)) continue
+                    val actualItemModel = ItemPropertyReader.getItemModel(itemMeta) ?: continue
+                    if (!actualItemModel.equals(itemModel, ignoreCase = true)) continue
+                }
+
+                if (customModelId != null) {
+                    if (ItemPropertyReader.getCustomModelId(itemMeta) != customModelId) continue
                 }
 
                 totalCount += item.amount
@@ -615,6 +606,21 @@ object ConditionExpressionEngine {
         }
 
         return totalCount
+    }
+
+    /**
+     * 获取玩家背包中参与条件计数的唯一物品堆。
+     *
+     * storageContents 已包含当前主手所在的快捷栏槽位，因此这里只额外加入护甲和副手，
+     * 避免 hasItem / hasStockItem 对主手物品重复计数。
+     */
+    private fun getUniqueInventoryItems(player: Player): List<org.bukkit.inventory.ItemStack> {
+        val inventory = player.inventory
+        return buildList {
+            addAll(inventory.storageContents.filterNotNull())
+            addAll(inventory.armorContents.filterNotNull())
+            add(inventory.itemInOffHand)
+        }
     }
 
     private fun compareEquals(left: String, right: String): Boolean {

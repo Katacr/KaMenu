@@ -392,11 +392,12 @@ actions:
 | `{data:key}` | 玩家个人数据（持久化）| `{data:vip_level}` |
 | `{gdata:key}` | 全局共享数据（持久化）| `{gdata:server_status}` |
 | `{meta:key}` | 玩家元数据（内存缓存）| `{meta:last_visit}` |
+| `{checkitem:[来源;属性]}` | 当前玩家或保存物品的属性 | `{checkitem:[hand;dura_pct]}` |
 | `$(key)` | 对话框输入变量（仅在动作和 Inputs 区域支持，**Body 区域不支持**） | `$(amount)` |
 
 **Body 区域特殊说明：**
 - Body 区域的文本在对话框和按钮输入前渲染，因此**不支持** `$(key)` 输入变量
-- Body 区域支持 `{data:key}`、`{gdata:key}` 和 `{meta:key}` 内置变量
+- Body 区域支持 `{data:key}`、`{gdata:key}`、`{meta:key}` 和 `{checkitem:[来源;属性]}` 内置变量
 - Inputs 和 Actions 区域支持所有变量格式
 
 **元数据说明：**

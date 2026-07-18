@@ -28,6 +28,7 @@ class KaMenu : JavaPlugin() {
     lateinit var metaDataManager: MetaDataManager
     lateinit var customCommandManager: CustomCommandManager
     lateinit var itemManager: ItemManager
+    lateinit var itemPlaceholderService: ItemPlaceholderService
     lateinit var actionPackageManager: ActionPackageManager
     lateinit var javaScriptPackageManager: JavaScriptPackageManager
     var economy: Economy? = null
@@ -207,6 +208,7 @@ class KaMenu : JavaPlugin() {
 
         // 6.6 初始化物品管理器
         itemManager = ItemManager(this)
+        itemPlaceholderService = ItemPlaceholderService(itemManager)
         MenuActions.setItemManager(itemManager)
         ActionHandlers.setItemManager(itemManager)
 

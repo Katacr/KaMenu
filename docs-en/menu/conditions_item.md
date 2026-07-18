@@ -7,7 +7,7 @@ Checks if the player inventory contains items of a specified material, quantity 
 ### Format
 
 ```
-hasItem.[mats=material;amount=quantity;lore=description;model=model]
+hasItem.[mats=material;amount=quantity;lore=description;model=item-model;custom_model_id=integer-ID]
 ```
 
 ### Parameters
@@ -17,7 +17,8 @@ hasItem.[mats=material;amount=quantity;lore=description;model=model]
 | `mats` | Minecraft material name (supports multiple formats) | ✅ |
 | `amount` | Required quantity | ✅ |
 | `lore` | Text that must be contained in item description (case-insensitive) | ❌ |
-| `model` | Item's item_model (format: namespace:key) | ❌ |
+| `model` / `item_model` | ItemModel (format: namespace:key) | ❌ |
+| `cmd` / `custom_model_data` / `custom_model_id` | Integer CustomModelData | ❌ |
 
 ### Matching Rules
 
@@ -25,6 +26,7 @@ hasItem.[mats=material;amount=quantity;lore=description;model=model]
 - Total quantity of all matching items must be greater than or equal to the specified quantity
 - If `lore` is specified, the item's description must contain that string (case-insensitive)
 - If `model` is specified, the item's item_model must match (format: `namespace:key`)
+- If `custom_model_id` is specified, the integer CustomModelData must match exactly
 
 ### Material Name Format Support
 
@@ -82,6 +84,16 @@ The system automatically ignores case, replaces hyphens and spaces with undersco
     - 'tell: &cYou need 16 Magic Crystals!'
 ```
 
+**Check for paper with custom model ID 10001:**
+
+```yaml
+- condition: 'hasItem.[mats=PAPER;amount=1;custom_model_id=10001]'
+  allow:
+    - 'tell: &aFound the requested model item!'
+  deny:
+    - 'tell: &cThe requested model item was not found!'
+```
+
 **Combine with item action:**
 
 ```yaml
@@ -113,6 +125,8 @@ actions:
   - `minecraft:book` (vanilla item model)
   - `oraxen:mana_crystal` (Oraxen custom items)
   - `itemsadder:test_item` (ItemsAdder custom items)
+- Custom model IDs use integer matching and accept `cmd`, `custom_model_data`, or `custom_model_id`
+- `model` and `custom_model_id` may be combined; both must match
 - Supports reverse checks, e.g., `!hasItem.[...]` means condition is met when the item is absent
 - Traverses all inventory slots (main inventory, armor slots, offhand, main hand)
 

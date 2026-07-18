@@ -340,7 +340,7 @@ Body:
 **hovertext syntax format:**
 
 ```
-<text=display-text;hover=hover-text;command=command;url=url;actions=action-list-name;newline=false>
+<text=display-text;hover=hover-text;hover_item=item-source;command=command;url=url;actions=action-list-name;newline=false>
 ```
 
 **Parameter descriptions:**
@@ -349,6 +349,7 @@ Body:
 |-----------|-------------|----------|
 | `text` | The clickable display text | ✅ |
 | `hover` | Tooltip text shown on hover | ❌ |
+| `hover_item` | Full ItemStack shown on hover | ❌ |
 | `command` | Command executed by the player on click | ❌ |
 | `url` | URL opened on click | ❌ |
 | `actions` | Action list to execute on click (key under Events.Click) | ❌ |
@@ -358,11 +359,29 @@ Body:
 - Commands in `command` are executed as the player (no `/` prefix needed)
 - `url` opens a webpage link
 - `actions` executes action lists defined under Events.Click
+- `hover_item` supports `hand`, `offhand`, `slot:index`, `armor:helmet`, `armor:chestplate`, `armor:leggings`, `armor:boots`, `stock:saved-item-name`, and `material:material-id`
+- `hover_item` does not use an `amount` parameter; hand, slot, and armor sources preserve the actual ItemStack, while `material:` creates one basic item
+- A valid `hover_item` takes priority over `hover`; if the item does not exist or the slot is empty, the regular `hover` text remains as fallback
 - Clickable areas are wrapped in `< >`
 - Parameter values can be wrapped in backticks `` ` ``, single quotes `'`, or double quotes `"`
 - Plain text and clickable text can be mixed
 - Color codes and PAPI variables are supported
 - All fields support condition checks
+
+**ItemStack hover examples:**
+
+```yaml
+Body:
+  weapon:
+    type: message
+    text:
+      - 'Current weapon: <text="&6[ Main hand ]";hover_item=hand>'
+      - 'Chestplate: <text="&b[ View chestplate ]";hover_item=armor:chestplate;hover="&7No chestplate equipped">'
+      - 'Reward: <text="&d[ Magic Sword ]";hover_item="stock:Magic Sword";actions=claim_reward>'
+      - 'Material: <text="&a[ Diamond ]";hover_item=material:minecraft:diamond>'
+```
+
+`stock:` displays all properties stored in KaMenu's saved-item library, including the name, lore, enchantments, model, and data components. Saved items are loaded into memory when the plugin starts, so menu rendering does not query the database. Saving or deleting an item through KaMenu updates the cache immediately.
 
 **Click event priority:**
 

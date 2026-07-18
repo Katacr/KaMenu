@@ -142,6 +142,8 @@ var serverStatus = gdata("server_status");
 var tempChoice = meta("temporary_choice");
 var friends = JSON.parse(list("friends"));
 var servers = JSON.parse(glist("servers"));
+var handType = kvar("checkitem:[hand;type]");
+var enchants = JSON.parse(kvar("checkitem:[hand;enchants]"));
 var raw = kvar("{gdata:server_status}");
 ```
 

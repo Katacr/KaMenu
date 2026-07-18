@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import org.bukkit.inventory.ItemStack
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 保存物品管理器。
@@ -9,6 +10,37 @@ import org.bukkit.inventory.ItemStack
  * 物品会序列化为 Base64 存入 `saved_items` 表，保存时数量固定为 1，实际给予数量由动作参数决定。
  */
 class ItemManager(private val plugin: KaMenu) {
+    private val itemCache = ConcurrentHashMap<String, ItemStack>()
+
+    init {
+        reloadCache()
+    }
+
+    /**
+     * 从数据库重建保存物品缓存。
+     *
+     * 插件启动时集中读取一次，避免菜单渲染 `hover_item=stock:*` 时同步查询数据库。
+     */
+    fun reloadCache() {
+        val loadedItems = mutableMapOf<String, ItemStack>()
+        plugin.databaseManager.connection.use { conn ->
+            conn.prepareStatement("SELECT item_name, item_data FROM saved_items").use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        val itemName = rs.getString("item_name")
+                        val item = runCatching {
+                            SerializationUtil.itemFromBase64(rs.getString("item_data"))
+                        }.getOrNull()
+                        if (itemName.isNotBlank() && item != null) {
+                            loadedItems[itemName] = item
+                        }
+                    }
+                }
+            }
+        }
+        itemCache.clear()
+        itemCache.putAll(loadedItems)
+    }
 
     /**
      * 保存物品到数据库
@@ -28,7 +60,7 @@ class ItemManager(private val plugin: KaMenu) {
         }
         val itemBase64 = SerializationUtil.itemToBase64(itemToSave)
 
-        plugin.databaseManager.connection.use { conn ->
+        val saved = plugin.databaseManager.connection.use { conn ->
             val dbType = plugin.config.getString("storage.type", "sqlite") ?: "sqlite"
             val isMySQL = dbType.equals("mysql", ignoreCase = true)
 
@@ -57,31 +89,22 @@ class ItemManager(private val plugin: KaMenu) {
                 stmt.setString(2, itemBase64)
                 stmt.setString(3, playerUuid)
                 stmt.setLong(4, System.currentTimeMillis())
-                return stmt.executeUpdate() > 0
+                stmt.executeUpdate() > 0
             }
         }
+        if (saved) {
+            itemCache[itemName] = itemToSave.clone()
+        }
+        return saved
     }
 
     /**
-     * 从数据库获取物品
+     * 从内存缓存获取物品
      * @param itemName 物品名称
      * @return 物品，如果不存在返回null
      */
     fun getItem(itemName: String): ItemStack? {
-        plugin.databaseManager.connection.use { conn ->
-            val sql = "SELECT item_data FROM saved_items WHERE item_name = ?"
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setString(1, itemName)
-                stmt.executeQuery().use { rs ->
-                    return if (rs.next()) {
-                        val itemData = rs.getString("item_data")
-                        SerializationUtil.itemFromBase64(itemData)
-                    } else {
-                        null
-                    }
-                }
-            }
-        }
+        return itemCache[itemName]?.clone()
     }
 
     /**
@@ -90,19 +113,7 @@ class ItemManager(private val plugin: KaMenu) {
      * @return 是否存在
      */
     fun itemExists(itemName: String): Boolean {
-        plugin.databaseManager.connection.use { conn ->
-            val sql = "SELECT COUNT(*) as count FROM saved_items WHERE item_name = ?"
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.setString(1, itemName)
-                stmt.executeQuery().use { rs ->
-                    return if (rs.next()) {
-                        rs.getInt("count") > 0
-                    } else {
-                        false
-                    }
-                }
-            }
-        }
+        return itemCache.containsKey(itemName)
     }
 
     /**
@@ -111,13 +122,17 @@ class ItemManager(private val plugin: KaMenu) {
      * @return 是否删除成功
      */
     fun deleteItem(itemName: String): Boolean {
-        plugin.databaseManager.connection.use { conn ->
+        val deleted = plugin.databaseManager.connection.use { conn ->
             val sql = "DELETE FROM saved_items WHERE item_name = ?"
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setString(1, itemName)
-                return stmt.executeUpdate() > 0
+                stmt.executeUpdate() > 0
             }
         }
+        if (deleted) {
+            itemCache.remove(itemName)
+        }
+        return deleted
     }
 
     /**
@@ -125,17 +140,6 @@ class ItemManager(private val plugin: KaMenu) {
      * @return 物品名称列表
      */
     fun getAllItemNames(): List<String> {
-        val names = mutableListOf<String>()
-        plugin.databaseManager.connection.use { conn ->
-            val sql = "SELECT item_name FROM saved_items ORDER BY item_name"
-            conn.prepareStatement(sql).use { stmt ->
-                stmt.executeQuery().use { rs ->
-                    while (rs.next()) {
-                        names.add(rs.getString("item_name"))
-                    }
-                }
-            }
-        }
-        return names
+        return itemCache.keys.sorted()
     }
 }

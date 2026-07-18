@@ -6,7 +6,7 @@ import org.bukkit.OfflinePlayer
 /**
  * KaMenu PlaceholderAPI 扩展。
  *
- * 对外暴露 KaMenu 的 data/gdata/list/glist/meta 和物品检测能力。
+ * 对外暴露 KaMenu 的 data/gdata/list/glist/meta、物品检测和物品属性读取能力。
  * list/glist 以 JSON 数组字符串返回，方便 repeat source 或其他插件继续解析。
  *
  * 支持的变量格式：
@@ -20,6 +20,7 @@ import org.bukkit.OfflinePlayer
  * - %kamenu_meta_key% - 获取玩家元数据（内存缓存）
  * - %kamenu_hasstockitem_物品名% - 获取玩家背包中指定存储库物品的数量
  * - %kamenu_hasitem_[mats=材质;lore=描述;model=模型]% - 获取玩家背包中符合条件的物品数量
+ * - %kamenu_checkitem_[hand;name]% - 获取主手或保存物品的属性
  */
 class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
 
@@ -115,6 +116,11 @@ class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
                 }
                 val count = player.player?.let { ConditionUtils.getPlayerItemCount(it, cleanParams) }
                 count.toString()
+            }
+
+            // 物品属性: %kamenu_checkitem_[hand;name]%
+            paramsLower.startsWith("checkitem_") -> {
+                plugin.itemPlaceholderService.resolve(player?.player, params.substring(10))
             }
 
             else -> null

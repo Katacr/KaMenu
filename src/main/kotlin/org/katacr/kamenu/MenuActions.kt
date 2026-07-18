@@ -1592,7 +1592,7 @@ object MenuActions {
 
     /**
      * 解析可点击文本 (使用 Adventure API)
-     * 格式: <text='显示文字';hover='悬停文字';command='指令';url='链接';newline='false';actions='动作列表路径'>
+     * 格式: <text='显示文字';hover='悬停文字';hover_item='物品来源';command='指令';url='链接';newline='false';actions='动作列表路径'>
      * 注意: 只有包含 text= 参数的标签才会被解析为可点击文本，其他的 <...> 标签会被保留给 MiniMessage 处理
      */
     fun parseClickableText(rawText: String): Component {
@@ -1707,6 +1707,7 @@ object MenuActions {
     ): Component? {
         var text = ""
         var hover = ""
+        var hoverItem = ""
         var command = ""
         var url = ""
         var actions = ""
@@ -1728,6 +1729,7 @@ object MenuActions {
                         hasTextParam = true
                     }
                     "hover" -> hover = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                    "hover_item", "hover-item" -> hoverItem = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "command" -> command = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "url" -> url = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "actions" -> actions = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
@@ -1738,10 +1740,67 @@ object MenuActions {
 
         // 只有包含 text= 参数且 text 不为空时才返回组件
         return if (hasTextParam && text.isNotEmpty()) {
-            createAdventureClickableText(text, hover, command, url, actions, newline, player, config, menuOpener)
+            var component = createAdventureClickableText(text, hover, command, url, actions, newline, player, config, menuOpener)
+            if (player != null && hoverItem.isNotBlank()) {
+                resolveHoverItem(player, hoverItem)?.let { item ->
+                    component = component.hoverEvent(item.asHoverEvent())
+                }
+            }
+            component
         } else {
             null
         }
+    }
+
+    /**
+     * 将可点击文本的 hover_item 来源解析为完整 ItemStack。
+     *
+     * 支持主副手、背包槽位、四个护甲槽、保存物品和基础材质；返回克隆物品，避免悬浮展示修改原物品。
+     */
+    private fun resolveHoverItem(player: Player, rawSource: String): org.bukkit.inventory.ItemStack? {
+        val source = rawSource.trim()
+        val lowerSource = source.lowercase()
+        val item = when {
+            lowerSource == "hand" || lowerSource == "mainhand" || lowerSource == "main_hand" ->
+                player.inventory.itemInMainHand
+
+            lowerSource == "offhand" || lowerSource == "off_hand" ->
+                player.inventory.itemInOffHand
+
+            lowerSource == "helmet" || lowerSource == "head" || lowerSource == "armor:helmet" ->
+                player.inventory.helmet
+
+            lowerSource == "chestplate" || lowerSource == "chest" || lowerSource == "armor:chestplate" ->
+                player.inventory.chestplate
+
+            lowerSource == "leggings" || lowerSource == "legs" || lowerSource == "armor:leggings" ->
+                player.inventory.leggings
+
+            lowerSource == "boots" || lowerSource == "feet" || lowerSource == "armor:boots" ->
+                player.inventory.boots
+
+            lowerSource.startsWith("slot:") -> {
+                val slot = source.substringAfter(':').trim().toIntOrNull()
+                slot?.takeIf { it in 0 until player.inventory.size }
+                    ?.let { player.inventory.getItem(it) }
+            }
+
+            lowerSource.startsWith("stock:") -> {
+                val itemName = source.substringAfter(':').trim()
+                itemName.takeIf { it.isNotEmpty() }?.let { itemManager?.getItem(it) }
+            }
+
+            lowerSource.startsWith("material:") -> {
+                val materialName = source.substringAfter(':').trim()
+                MaterialUtils.matchMaterial(materialName)?.let { org.bukkit.inventory.ItemStack(it) }
+            }
+
+            else -> null
+        }
+
+        return item
+            ?.takeIf { it.amount > 0 && !it.type.isAir }
+            ?.clone()
     }
 
     /**

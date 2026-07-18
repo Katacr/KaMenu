@@ -340,7 +340,7 @@ Body:
 **hovertext 语法格式：**
 
 ```
-<text=显示文字;hover=悬停文字;command=指令;url=链接;actions=动作列表名;newline=false>
+<text=显示文字;hover=悬停文字;hover_item=物品来源;command=指令;url=链接;actions=动作列表名;newline=false>
 ```
 
 **参数说明：**
@@ -349,6 +349,7 @@ Body:
 |------|------|------|
 | `text` | 可点击的显示文字 | ✅ |
 | `hover` | 鼠标悬停时显示的提示文字 | ❌ |
+| `hover_item` | 鼠标悬停时显示完整 ItemStack | ❌ |
 | `command` | 点击时玩家执行的指令 | ❌ |
 | `url` | 点击时打开的网址链接 | ❌ |
 | `actions` | 点击时执行的动作列表（Events.Click 下的键名）| ❌ |
@@ -358,11 +359,29 @@ Body:
 - `command` 中的命令会以玩家身份执行（不需要 `/` 前缀）
 - `url` 用于打开网页链接
 - `actions` 用于执行 Events.Click 下定义的动作列表
+- `hover_item` 支持 `hand`、`offhand`、`slot:槽位`、`armor:helmet`、`armor:chestplate`、`armor:leggings`、`armor:boots`、`stock:保存物品名` 和 `material:材质ID`
+- `hover_item` 无需 `amount` 参数；手持、槽位和护甲来源保留实际 ItemStack，`material:` 创建一个基础物品
+- 有效的 `hover_item` 优先于 `hover`；物品不存在或槽位为空时仍使用普通 `hover` 文本
 - 可点击区域用 `< >` 包裹
 - 参数值可以用反引号 `` ` ``、单引号 `'` 或双引号 `"` 包裹
 - 普通文本和可点击文本可以混合使用
 - 支持颜色代码和 PAPI 变量
 - 所有字段都支持条件判断
+
+**ItemStack 悬浮示例：**
+
+```yaml
+Body:
+  weapon:
+    type: message
+    text:
+      - '当前武器：<text="&6[ 主手物品 ]";hover_item=hand>'
+      - '胸甲：<text="&b[ 查看胸甲 ]";hover_item=armor:chestplate;hover="&7当前未穿戴胸甲">'
+      - '奖励：<text="&d[ 神奇之剑 ]";hover_item="stock:神奇之剑";actions=claim_reward>'
+      - '材料：<text="&a[ 钻石 ]";hover_item=material:minecraft:diamond>'
+```
+
+`stock:` 会展示 KaMenu 保存物品库中的完整属性，包括名称、Lore、附魔、模型和数据组件。保存物品会在插件启动时载入内存缓存，后续菜单渲染不会查询数据库；通过 KaMenu 保存或删除物品时缓存会同步更新。
 
 **点击事件优先级：**
 

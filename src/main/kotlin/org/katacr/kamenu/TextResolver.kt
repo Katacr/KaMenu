@@ -21,6 +21,7 @@ object TextResolver {
     private val listPattern = Regex("\\{list:([^}]+)}")
     private val globalListPattern = Regex("\\{glist:([^}]+)}")
     private val metaPattern = Regex("\\{meta:([^}]+)}")
+    private val checkItemPattern = Regex("\\{checkitem:(\\[[^}]+])}")
     private val argPattern = Regex("\\{arg:([^}]+)}")
     private val jsPattern = Regex("\\{js:([^}]+)}")
 
@@ -81,6 +82,9 @@ object TextResolver {
             result = result.replace(metaPattern) { match ->
                 val key = match.groupValues[1]
                 currentPlugin.metaDataManager.getPlayerMeta(player.uniqueId, key)
+            }
+            result = result.replace(checkItemPattern) { match ->
+                currentPlugin.itemPlaceholderService.resolve(player, match.groupValues[1])
             }
         }
 
@@ -176,6 +180,9 @@ object TextResolver {
             }
             result = replaceConditionRegex(result, metaPattern) { match ->
                 currentPlugin.metaDataManager.getPlayerMeta(player.uniqueId, match.groupValues[1])
+            }
+            result = replaceConditionRegex(result, checkItemPattern) { match ->
+                currentPlugin.itemPlaceholderService.resolve(player, match.groupValues[1])
             }
         }
 

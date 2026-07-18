@@ -269,7 +269,7 @@ Bottom:
 
 发送带有悬停提示和点击功能的聊天消息。
 
-**格式：** `hovertext: 普通文字 <text=显示文字;hover=悬停文字;command=指令;url=链接;actions=动作列表名;newline=false> 继续文字`
+**格式：** `hovertext: 普通文字 <text=显示文字;hover=悬停文字;hover_item=物品来源;command=指令;url=链接;actions=动作列表名;newline=false> 继续文字`
 
 **参数说明：**
 
@@ -277,6 +277,7 @@ Bottom:
 |------|------|------|
 | `text` | 可点击的显示文字 | ✅ |
 | `hover` | 鼠标悬停时显示的提示文字 | ❌ |
+| `hover_item` | 鼠标悬停时显示完整 ItemStack | ❌ |
 | `command` | 点击时玩家执行的指令 | ❌ |
 | `url` | 点击时打开的链接 | ❌ |
 | `actions` | 点击时执行的动作列表（Events.Click 下的键名）| ❌ |
@@ -288,7 +289,11 @@ Bottom:
 - 'hovertext: &7点击这里 <text=&a[领取奖励];hover=&e点击领取今日奖励;command=/daily> 或稍后再来。'
 - 'hovertext: 访问 <text=&b[官网];hover=&7打开浏览器访问官网;url=https://example.com> 了解更多。'
 - 'hovertext: <text=&a[问候];actions=greet;hover=点击发送问候> 问候玩家'
+- 'hovertext: 玩家使用 <text="&6神奇之剑";hover_item=hand> 击败了敌人'
+- 'hovertext: 奖励预览：<text="&d[查看物品]";hover_item="stock:神奇之剑">'
 ```
+
+`hover_item` 支持 `hand`、`offhand`、`slot:槽位`、四个 `armor:*` 护甲槽、`stock:保存物品名` 和 `material:材质ID`，无需配置 `amount`。详细来源说明参见 Body 文档的可点击文本章节。
 
 **使用 actions 参数：**
 
