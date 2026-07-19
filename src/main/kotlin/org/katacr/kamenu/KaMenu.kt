@@ -31,6 +31,7 @@ class KaMenu : JavaPlugin() {
     lateinit var itemPlaceholderService: ItemPlaceholderService
     lateinit var actionPackageManager: ActionPackageManager
     lateinit var javaScriptPackageManager: JavaScriptPackageManager
+    lateinit var pauseEntryDatapackManager: PauseEntryDatapackManager
     var economy: Economy? = null
     var bungeeCordEnabled: Boolean = false
 
@@ -181,6 +182,9 @@ class KaMenu : JavaPlugin() {
         javaScriptPackageManager.loadPackages()
         JavaScriptManager.setPackageManager(javaScriptPackageManager)
 
+        // 3.45 初始化 ESC 暂停菜单入口数据包管理器
+        pauseEntryDatapackManager = PauseEntryDatapackManager(this)
+
         // 3.5 初始化自定义指令管理器
         customCommandManager = CustomCommandManager(this)
         customCommandManager.registerCustomCommands()
@@ -194,6 +198,7 @@ class KaMenu : JavaPlugin() {
 
         // 5. 注册监听器
         server.pluginManager.registerEvents(MenuListener(this), this)
+        server.pluginManager.registerEvents(PauseEntryListener(this), this)
 
         // 6. 初始化数据库管理器
         databaseManager = DatabaseManager(this)

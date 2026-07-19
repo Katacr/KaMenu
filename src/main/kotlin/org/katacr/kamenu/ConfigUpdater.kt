@@ -53,7 +53,7 @@ object ConfigUpdater {
      * 当前配置文件版本
      * 每次配置文件结构变更时需要增加此版本号
      */
-    private const val CURRENT_CONFIG_VERSION = 5
+    private const val CURRENT_CONFIG_VERSION = 10
 
     /**
      * 配置版本键名

@@ -38,8 +38,6 @@ object MenuUI {
     private lateinit var plugin: KaMenu
     private const val DEFAULT_REPEAT_PAGE_SIZE = 20
     private const val MAX_REPEAT_PAGE_SIZE = 99
-    private const val INPUT_REMOVE_CHAR_LISTS_PATH = "input-capture.remove-char-lists"
-
     private data class DropdownOption(
         val id: String,
         val display: String
@@ -85,57 +83,7 @@ object MenuUI {
     }
 
     private fun getInputRemoveChars(section: ConfigurationSection, path: String): String {
-        val value = section.get(path) ?: return ""
-        return resolveRemoveChars(value)
-    }
-
-    private fun resolveRemoveChars(value: Any?, seenPresets: Set<String> = emptySet()): String {
-        return when (value) {
-            null -> ""
-            is String -> resolveRemoveCharsString(value, seenPresets)
-            is List<*> -> value.joinToString("") { resolveRemoveChars(it, seenPresets) }
-            else -> decodeRemoveChars(value.toString())
-        }
-    }
-
-    private fun resolveRemoveCharsString(value: String, seenPresets: Set<String>): String {
-        val presetName = value.trim()
-        val presetSection = plugin.config.getConfigurationSection(INPUT_REMOVE_CHAR_LISTS_PATH)
-        if (presetName.isNotEmpty() && presetSection?.contains(presetName) == true && presetName !in seenPresets) {
-            return resolveRemoveChars(presetSection.get(presetName), seenPresets + presetName)
-        }
-        return decodeRemoveChars(value)
-    }
-
-    private fun decodeRemoveChars(value: String): String {
-        if (value.isEmpty()) {
-            return value
-        }
-
-        val result = StringBuilder()
-        var index = 0
-        while (index < value.length) {
-            val char = value[index]
-            if (char == '\\' && index + 1 < value.length) {
-                val escaped = value[index + 1]
-                when (escaped) {
-                    's' -> result.append(' ')
-                    'n' -> result.append('\n')
-                    'r' -> result.append('\r')
-                    't' -> result.append('\t')
-                    '\\' -> result.append('\\')
-                    else -> {
-                        result.append(char)
-                        result.append(escaped)
-                    }
-                }
-                index += 2
-            } else {
-                result.append(char)
-                index++
-            }
-        }
-        return result.toString()
+        return InputCaptureUtils.resolveRemoveChars(plugin, section.get(path))
     }
 
     private fun dynamicVariable(player: Player, contextId: String, key: String): String? {

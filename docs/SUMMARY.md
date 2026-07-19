@@ -4,6 +4,7 @@
   * [🚀 开始](home/start.md)
 * [⚙️ 配置插件](config/README.md)
   * [⛳ 配置文件: config.yml](config/config.md)
+  * [⏸ ESC 暂停菜单: pause_menu.yml](config/pause-menu.md)
   * [⌨️ 自定义指令](config/customCommands.md)
   * [📦 actions 文件夹](config/actions-packages.md)
   * [📦 js 文件夹](config/javascript-packages.md)

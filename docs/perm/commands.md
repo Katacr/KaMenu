@@ -199,6 +199,38 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 ---
 
+### /km pause
+
+生成或移除 ESC 暂停菜单入口数据包。`register` 会读取插件根目录的 `pause_menu.yml`，并将其中的静态 KaMenu 风格布局编译为原版 Dialog。
+
+**格式：**
+- `/km pause register` - 按当前 `plugins/KaMenu/pause_menu.yml` 生成入口数据包
+- `/km pause unregister` - 移除 KaMenu 生成的入口数据包
+- `/km pause info` - 查看当前入口状态和数据包路径
+
+**权限：** `kamenu.admin`
+
+**示例：**
+
+```bash
+/km pause register
+/km pause info
+/km pause unregister
+```
+
+**使用说明：**
+- 数据包写入 `world/datapacks/KaMenuPauseEntry`
+- 插件启动时若缺少 `pause_menu.yml`，会自动释放默认模板且不会覆盖已有文件
+- 新增、修改或移除后必须完整重启服务器才会影响 ESC 暂停菜单
+- KaMenu 只注册一个 ESC 入口；可在 `Bottom.buttons` 中配置该入口内部的按钮矩阵
+- `Body.message` 支持 Legacy、MiniMessage 和静态 `<text=...>` 可点击文本
+- 支持静态 `Inputs`；配置 `actions` 的按钮可通过 `$(key)` 接收客户端输入
+- 标题、Body、输入标签和按钮文本不解析运行期变量；按钮 `actions` 回调可使用 PAPI、KaMenu 变量、条件、JS 和动作包
+- `menu` 按钮打开的目标菜单仍按普通 KaMenu 菜单完整解析
+- 完整语法见 [ESC 暂停菜单](../config/pause-menu.md)
+
+---
+
 ### /km reload
 
 重新加载插件配置、菜单或资源包，无需重启服务器。不填写目标时默认重载全部。

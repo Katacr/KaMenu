@@ -41,6 +41,7 @@ command:
   help_guide: "§a/km guide §7- Open the getting started guide menu"
   help_language: "§a/km language <language_id> §7- Set language and reload"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- Release examples in a language"
+  help_pause: "§a/km pause <register|unregister|info> §7- Manage the ESC pause screen entry"
   help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- Reload all modules or a selected module"
   help_action: "§a/km action <player> <action> §7- Test execute action"
   help_help: "§a/km help §7- Show help information"
@@ -66,6 +67,24 @@ command:
   reload_js_success: "§a[KaMenu] JavaScript package reload complete: total {0}, success {1}, failed {2}, took {3}ms."
   reload_lang_success: "§a[KaMenu] Language reload complete: total {0}, success {1}, failed {2}, took {3}ms, current language {4}."
   reload_config_success: "§a[KaMenu] Config reload complete: custom commands total {0}, success {1}, failed {2}, took {3}ms."
+
+# ESC Pause Screen Entry
+pause_entry:
+  usage: "§eUsage: /km pause <register|unregister|info>"
+  register_usage: "§eUsage: /km pause register"
+  registered_file: "§aGenerated the ESC pause screen entry from {0}. Datapack path: {1}"
+  register_failed: "§cFailed to generate the ESC pause screen entry datapack. Check console errors."
+  unregistered: "§aRemoved the ESC pause screen entry datapack."
+  unregister_failed: "§cFailed to remove the ESC pause screen entry datapack. Check file permissions."
+  restart_required: "§eRestart the server fully to apply this change."
+  disabled: "§cThe ESC pause screen entry is currently disabled."
+  button_not_found: "§cESC pause screen entry button does not exist or is not bound to an operation: {0}"
+  menu_not_found: "§cESC pause screen entry target menu not found: {0}"
+  info_source: "§epause_menu.yml: §f{0} §7(exists: {1})"
+  info_datapack: "§eDatapack path: §f{0} §7(exists: {1})"
+  source_invalid: "[KaMenu] Failed to parse pause_menu.yml: {0}"
+  write_failed: "[KaMenu] Failed to write ESC pause screen entry datapack: {0}"
+  action_execution_failed: "[KaMenu] Pause menu button {0} action execution failed: {1}"
 
 # Custom Commands
 custom_commands:

@@ -1,0 +1,80 @@
+# KaMenu ESC pause screen entry / KaMenu ESC 暂停菜单入口
+# This file is compiled into a static vanilla Dialog by /km pause register.
+# 该文件通过 /km pause register 编译为原版静态 Dialog 数据包。
+
+Title: '&bKaMenu'
+External-Title: 'KaMenu'
+
+Settings:
+  can_escape: true
+  after_action: CLOSE
+
+Body:
+  website_link:
+    type: message
+    width: 340
+    text: '<text="&b[ Visit Website ]";hover="&aOpen the official website";url=https://example.com>'
+
+  welcome:
+    type: message
+    width: 300
+    text:
+      - '&fWelcome to KaMenu!'
+      - '&7Select an option below.'
+
+  # Static item bodies support material, amount, description, description_width,
+  # show_overlays, show_tooltip, width and height.
+  # 静态物品 Body 支持 material、amount、description、description_width、
+  # show_overlays、show_tooltip、width 和 height。
+  # example_item:
+  #   type: item
+  #   material: PAPER
+  #   amount: 1
+  #   description: '&7KaMenu menu guide'
+  #   description_width: 200
+  #   show_overlays: true
+  #   show_tooltip: true
+  #   width: 32
+  #   height: 32
+
+# Standard inputs are submitted only by a button using actions.
+# 标准输入组件仅会提交给使用 actions 的按钮。
+# Inputs:
+#   player_name:
+#     type: input
+#     text: '&ePlayer Name / 玩家名'
+#     default: 'Steve'
+#     max_length: 16
+#     remove_chars: global
+
+Bottom:
+  type: multi
+  columns: 3
+  buttons:
+    main:
+      text: '&aOpen Menu'
+      tooltip: '&7Open the KaMenu main menu'
+      width: 160
+      menu: 'example/main_menu'
+    website:
+      text: '&bWebsite'
+      tooltip: '&7Open the server website'
+      width: 160
+      url: 'https://example.com'
+    address:
+      text: '&eCopy Address'
+      tooltip: '&7Copy the server address'
+      width: 160
+      copy: 'play.example.com'
+    # Actions run on the server and may read Inputs with $(key).
+    # actions 会在服务端执行，并可通过 $(key) 读取 Inputs。
+    # greet:
+    #   text: '&dGreet / 问候'
+    #   width: 160
+    #   actions:
+    #     - 'tell: &aHello $(player_name)!'
+    #     - 'close'
+  exit:
+    text: '&cClose'
+    tooltip: '&7Return to the game'
+    width: 160

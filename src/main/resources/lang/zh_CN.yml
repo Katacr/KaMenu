@@ -41,6 +41,7 @@ command:
   help_guide: "§a/km guide §7- 打开入门向导菜单"
   help_language: "§a/km language <语言ID> §7- 设置语言并重载"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- 释放指定语言示例菜单"
+  help_pause: "§a/km pause <register|unregister|info> §7- 管理 ESC 暂停菜单入口"
   help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- 重载全部或指定模块"
   help_action: "§a/km action <玩家> <动作> §7- 测试执行动作"
   help_help: "§a/km help §7- 显示帮助信息"
@@ -66,6 +67,24 @@ command:
   reload_js_success: "§a[KaMenu] JavaScript 包重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
   reload_lang_success: "§a[KaMenu] 语言文件重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms，当前语言 {4}。"
   reload_config_success: "§a[KaMenu] config 重载完成：自定义指令总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+
+# ESC 暂停菜单入口
+pause_entry:
+  usage: "§e用法: /km pause <register|unregister|info>"
+  register_usage: "§e用法: /km pause register"
+  registered_file: "§a已根据 {0} 生成 ESC 暂停菜单入口。数据包路径: {1}"
+  register_failed: "§c生成 ESC 暂停菜单入口数据包失败，请查看控制台错误。"
+  unregistered: "§a已移除 ESC 暂停菜单入口数据包。"
+  unregister_failed: "§c移除 ESC 暂停菜单入口数据包失败，请检查文件权限。"
+  restart_required: "§e请完整重启服务器后生效。"
+  disabled: "§cESC 暂停菜单入口当前未启用。"
+  button_not_found: "§cESC 暂停菜单入口按钮不存在或未绑定操作: {0}"
+  menu_not_found: "§cESC 暂停菜单入口目标菜单不存在: {0}"
+  info_source: "§epause_menu.yml: §f{0} §7(存在: {1})"
+  info_datapack: "§e数据包路径: §f{0} §7(存在: {1})"
+  source_invalid: "[KaMenu] pause_menu.yml 解析失败: {0}"
+  write_failed: "[KaMenu] 写入 ESC 暂停菜单入口数据包失败: {0}"
+  action_execution_failed: "[KaMenu] 暂停菜单按钮 {0} 的动作队列执行失败: {1}"
 
 # 自定义指令
 custom_commands:

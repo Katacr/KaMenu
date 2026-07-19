@@ -153,6 +153,73 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             return true
         }
 
+        if (args[0].equals("pause", ignoreCase = true)) {
+            if (!sender.hasPermission("kamenu.admin")) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
+                return true
+            }
+            if (args.size < 2) {
+                sender.sendMessage(plugin.languageManager.getMessage("pause_entry.usage"))
+                return true
+            }
+
+            when (args[1].lowercase()) {
+                "register" -> {
+                    if (args.size > 2) {
+                        sender.sendMessage(plugin.languageManager.getMessage("pause_entry.register_usage"))
+                        return true
+                    }
+                    val success = plugin.pauseEntryDatapackManager.register()
+                    if (success) {
+                        val info = plugin.pauseEntryDatapackManager.info()
+                        sender.sendMessage(
+                            plugin.languageManager.getMessage(
+                                "pause_entry.registered_file",
+                                info.sourceFile.absolutePath,
+                                info.datapackFolder.absolutePath
+                            )
+                        )
+                        sender.sendMessage(plugin.languageManager.getMessage("pause_entry.restart_required"))
+                    } else {
+                        sender.sendMessage(plugin.languageManager.getMessage("pause_entry.register_failed"))
+                    }
+                    return true
+                }
+                "unregister" -> {
+                    val success = plugin.pauseEntryDatapackManager.unregister()
+                    if (success) {
+                        sender.sendMessage(plugin.languageManager.getMessage("pause_entry.unregistered"))
+                        sender.sendMessage(plugin.languageManager.getMessage("pause_entry.restart_required"))
+                    } else {
+                        sender.sendMessage(plugin.languageManager.getMessage("pause_entry.unregister_failed"))
+                    }
+                    return true
+                }
+                "info" -> {
+                    val info = plugin.pauseEntryDatapackManager.info()
+                    sender.sendMessage(
+                        plugin.languageManager.getMessage(
+                            "pause_entry.info_source",
+                            info.sourceFile.absolutePath,
+                            info.sourceExists.toString()
+                        )
+                    )
+                    sender.sendMessage(
+                        plugin.languageManager.getMessage(
+                            "pause_entry.info_datapack",
+                            info.datapackFolder.absolutePath,
+                            info.datapackExists.toString()
+                        )
+                    )
+                    return true
+                }
+                else -> {
+                    sender.sendMessage(plugin.languageManager.getMessage("pause_entry.usage"))
+                    return true
+                }
+            }
+        }
+
         if (args[0].equals("action", ignoreCase = true)) {
             if (!sender.hasPermission("kamenu.admin")) {
                 sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
@@ -397,6 +464,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         sender.sendMessage(plugin.languageManager.getMessage("command.help_guide"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_language"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_examples"))
+        sender.sendMessage(plugin.languageManager.getMessage("command.help_pause"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_reload"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_action"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_item"))
@@ -626,7 +694,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         val keyword = args.lastOrNull() ?: ""
         
         if (args.size == 1) return filterByKeyword(
-            listOf("help", "open", "guide", "language", "examples", "reload", "action", "list", "item"),
+            listOf("help", "open", "guide", "language", "examples", "pause", "reload", "action", "list", "item"),
             keyword
         )
         if (args.size == 2 && args[0].equals("open", ignoreCase = true)) {
@@ -638,6 +706,12 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         }
         if (args.size == 2 && args[0].equals("reload", ignoreCase = true)) {
             return filterByKeyword(ReloadTarget.ids(), keyword)
+        }
+        if (args.size == 2 && args[0].equals("pause", ignoreCase = true)) {
+            return filterByKeyword(listOf("register", "unregister", "info"), keyword)
+        }
+        if (args.size == 3 && args[0].equals("pause", ignoreCase = true) && args[1].equals("register", ignoreCase = true)) {
+            return emptyList()
         }
         if (args.size == 2 && (
             args[0].equals("examples", ignoreCase = true) ||

@@ -4,6 +4,7 @@
   * [🚀 Getting Started](home/start.md)
 * [⚙️ Configuration](config/README.md)
   * [⛳ Config File: config.yml](config/config.md)
+  * [⏸ ESC Pause Menu: pause_menu.yml](config/pause-menu.md)
   * [⌨️ Custom Commands](config/customCommands.md)
   * [📦 actions Folder](config/actions-packages.md)
   * [📦 js Folder](config/javascript-packages.md)

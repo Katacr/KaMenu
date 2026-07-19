@@ -1,5 +1,5 @@
 name: KaMenu
-version: '1.6.4'
+version: '1.6.5'
 main: org.katacr.kamenu.KaMenu
 api-version: '1.21'
 folia-supported: true

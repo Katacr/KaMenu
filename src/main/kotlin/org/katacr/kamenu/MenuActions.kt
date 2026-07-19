@@ -71,8 +71,6 @@ object MenuActions {
         val id: String
     )
 
-    private const val INPUT_TRIM_EDGE_SPACES_PATH = "input-capture.trim-edge-spaces"
-
     /**
      * 动作类型枚举
      */
@@ -439,35 +437,13 @@ object MenuActions {
         return DialogAction.customClick({ response, _ ->
             val initialTaskToken = MenuTaskManager.currentToken(player)
             val variables = initialVariables.toMutableMap()
-            inputKeys.forEach { key ->
-                val value = when {
-                    response.getFloat(key) != null -> {
-                        val f = response.getFloat(key)!!
-                        if (f == f.toInt().toFloat()) {
-                            val intVal = f.toInt()
-                            // 检查是否为 checkbox
-                            val mapping = checkboxMappings[key]
-                            if (inputTypes[key] == "checkbox" && mapping != null) {
-                                // checkbox：根据选中状态返回对应的映射值
-                                if (intVal == 1) {
-                                    mapping.first  // 选中状态返回 onTrue
-                                } else {
-                                    mapping.second  // 未选中状态返回 onFalse
-                                }
-                            } else {
-                                // 非 checkbox，保持原值
-                                intVal.toString()
-                            }
-                        } else {
-                            f.toString()
-                        }
-                    }
-                    response.getText(key) != null -> response.getText(key)
-                    response.getBoolean(key) != null -> response.getBoolean(key).toString()
-                    else -> ""
-                }
-                variables[key] = sanitizeInputValue(key, value ?: "", inputTypes, inputRemoveChars)
-            }
+            variables.putAll(
+                InputCaptureUtils.captureVariables(
+                    plugin,
+                    response,
+                    InputCaptureUtils.Schema(inputKeys, inputTypes, inputRemoveChars, checkboxMappings)
+                )
+            )
 
             val handledMenuLifecycle = AtomicBoolean(false)
             executeActionList(
@@ -501,30 +477,6 @@ object MenuActions {
             .uses(1)
             .lifetime(Duration.ofSeconds(DialogSessionManager.lifetimeSeconds(config)))
             .build()
-    }
-
-    private fun sanitizeInputValue(
-        key: String,
-        rawValue: String,
-        inputTypes: Map<String, String>,
-        inputRemoveChars: Map<String, String>
-    ): String {
-        if (inputTypes[key] != "text") {
-            return rawValue
-        }
-
-        var value = rawValue
-        if (plugin?.config?.getBoolean(INPUT_TRIM_EDGE_SPACES_PATH, false) == true) {
-            value = value.trim()
-        }
-
-        val removeChars = inputRemoveChars[key].orEmpty()
-        if (removeChars.isNotEmpty()) {
-            val removeSet = removeChars.toSet()
-            value = value.filterNot { it in removeSet }
-        }
-
-        return value
     }
 
     private fun completeDialogCloseLifecycle(
