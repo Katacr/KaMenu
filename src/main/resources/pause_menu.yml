@@ -1,20 +1,66 @@
 # KaMenu ESC pause screen entry / KaMenu ESC 暂停菜单入口
 # This file is compiled into a static vanilla Dialog by /km pause register.
 # 该文件通过 /km pause register 编译为原版静态 Dialog 数据包。
+#
+# Registration steps / 注册步骤：
+# 1. Edit this file. / 编辑本文件。
+# 2. Run /km pause register. / 执行 /km pause register。
+# 3. Fully restart the server. / 完整重启服务器后生效。
+#
+# KaMenu registers only one ESC entry. Use Bottom.type: multi when you need
+# several operations inside the entry Dialog.
+# KaMenu 只注册一个 ESC 入口；需要多个功能时，请使用 Bottom.type: multi
+# 在入口 Dialog 内创建按钮矩阵。
+#
+# Titles, Body, Inputs definitions and button labels are compiled statically.
+# They do not resolve PAPI, KaMenu variables, conditions or JavaScript.
+# 标题、Body、Inputs 定义及按钮文字均为静态编译，不会解析 PAPI、
+# KaMenu 内部变量、条件或 JavaScript。
+#
+# A button's actions list runs on the server after the player clicks it.
+# Runtime variables, PAPI, conditions, JavaScript and $(input) are available there.
+# 按钮 actions 会在玩家点击后由服务端执行，可在其中使用运行期变量、
+# PAPI、条件、JavaScript 和 $(input)。
 
+# Dialog title shown inside the opened screen. Legacy colors and MiniMessage are supported.
+# Dialog 打开后显示的内部标题，支持 Legacy 颜色与 MiniMessage。
 Title: '&bKaMenu'
+
+# Text shown for this entry on the vanilla ESC pause screen.
+# 原版 ESC 暂停菜单中显示的入口名称。
 External-Title: 'KaMenu'
 
 Settings:
+  # Allow the player to close this Dialog with ESC. Default: true.
+  # 是否允许玩家按 ESC 关闭该 Dialog，默认 true。
   can_escape: true
+
+  # Optional: pause single-player gameplay. Multiplayer servers normally keep false.
+  # 可选：是否暂停单人游戏；多人服务器通常保持 false。
+  # pause: false
+
+  # Client behavior after a button click: CLOSE, NONE or WAIT_FOR_RESPONSE.
+  # 点击按钮后的客户端行为：CLOSE、NONE 或 WAIT_FOR_RESPONSE。
+  # Do not combine pause: true with after_action: NONE.
+  # 不要同时使用 pause: true 与 after_action: NONE。
   after_action: CLOSE
 
+# Body components are rendered in YAML order.
+# Body 组件按照 YAML 中的顺序依次渲染。
 Body:
+  # message supports text as a string or string list, plus an optional width.
+  # message 的 text 支持单个字符串或字符串列表，也可设置 width。
+  # Static <text=...> supports hover, url, command and newline.
+  # 静态 <text=...> 支持 hover、url、command 和 newline。
+  # Runtime clickable-text actions and hover_item are not available in this static Body.
+  # 静态 Body 不支持需要玩家上下文的可点击文本 actions 与 hover_item。
   website_link:
     type: message
     width: 340
     text: '<text="&b[ Visit Website ]";hover="&aOpen the official website";url=https://example.com>'
 
+  # A string list is joined with line breaks. Empty lines in the list are preserved.
+  # 字符串列表会按换行连接，列表中主动配置的空行也会保留。
   welcome:
     type: message
     width: 300
@@ -26,41 +72,74 @@ Body:
   # show_overlays, show_tooltip, width and height.
   # 静态物品 Body 支持 material、amount、description、description_width、
   # show_overlays、show_tooltip、width 和 height。
-  # example_item:
-  #   type: item
-  #   material: PAPER
-  #   amount: 1
-  #   description: '&7KaMenu menu guide'
-  #   description_width: 200
-  #   show_overlays: true
-  #   show_tooltip: true
-  #   width: 32
-  #   height: 32
+  # material must be a vanilla Bukkit material; runtime slot references, custom names,
+  # lore, player heads, item_model and custom model data are not supported here.
+  # material 必须是原版 Bukkit 材质；这里不支持运行期槽位引用、自定义名称、
+  # Lore、玩家头颅、item_model 或自定义模型数据。
+  example_item:
+    type: item
+    material: PAPER
+    amount: 1
+    description: '&7KaMenu menu guide'
+    description_width: 200
+    show_overlays: true
+    show_tooltip: true
+    width: 16
+    height: 16
 
 # Standard inputs are submitted only by a button using actions.
 # 标准输入组件仅会提交给使用 actions 的按钮。
-# Inputs:
-#   player_name:
-#     type: input
-#     text: '&ePlayer Name / 玩家名'
-#     default: 'Steve'
-#     max_length: 16
-#     remove_chars: global
+# Supported types: input, slider, dropdown and checkbox.
+# 支持类型：input、slider、dropdown 和 checkbox。
+# Input labels, defaults and options are static; conditions, PAPI and JS cannot
+# generate these definitions dynamically.
+# 输入标签、默认值和选项是静态内容，不能通过条件、PAPI 或 JS 动态生成。
+# Text input cleanup follows config.yml input-capture settings and remove_chars.
+# 文本输入清理遵循 config.yml 的 input-capture 设置与 remove_chars。
+Inputs:
+  # Text input fields: text, hide_text, default, max_length, width,
+  # multiline.max_lines, multiline.height and remove_chars.
+  # 文本输入可配置：text、hide_text、default、max_length、width、
+  # multiline.max_lines、multiline.height 和 remove_chars。
+  player_name:
+    type: input
+    text: '&ePlayer Name / 玩家名'
+    default: 'Steve'
+    max_length: 16
+    remove_chars: global
 
+# Bottom types / 底部按钮类型：
+# - notice: one confirm button / 单个 confirm 按钮
+# - confirmation: confirm + deny / confirm 与 deny 双按钮
+# - multi: button matrix with optional exit / 按钮矩阵，可附加 exit
 Bottom:
   type: multi
+
+  # Number of columns for multi only. Supported range: 1-8.
+  # 仅用于 multi 的列数，支持范围 1-8。
   columns: 3
+
+  # Each button may define only one target: menu, actions, url, copy or command.
+  # 每个按钮只能配置一种目标：menu、actions、url、copy 或 command。
   buttons:
+    # menu calls KaMenu on the server and opens a regular dynamic menu.
+    # menu 会回调服务端 KaMenu，并打开普通动态菜单。
     main:
       text: '&aOpen Menu'
       tooltip: '&7Open the KaMenu main menu'
       width: 160
       menu: 'example/main_menu'
+
+    # url is a static client action and does not submit Inputs to KaMenu.
+    # url 是客户端静态动作，不会把 Inputs 提交给 KaMenu。
     website:
       text: '&bWebsite'
       tooltip: '&7Open the server website'
       width: 160
       url: 'https://example.com'
+
+    # copy is a static client action. Use command for a client-run player command.
+    # copy 是客户端静态复制动作；如需客户端执行玩家指令，可使用 command。
     address:
       text: '&eCopy Address'
       tooltip: '&7Copy the server address'
@@ -68,13 +147,24 @@ Bottom:
       copy: 'play.example.com'
     # Actions run on the server and may read Inputs with $(key).
     # actions 会在服务端执行，并可通过 $(key) 读取 Inputs。
-    # greet:
-    #   text: '&dGreet / 问候'
-    #   width: 160
-    #   actions:
-    #     - 'tell: &aHello $(player_name)!'
-    #     - 'close'
+    # They also receive the clicking player context, so PAPI, {data:*}, {gdata:*},
+    # {meta:*}, conditions, JavaScript and action packages work normally.
+    # actions 同时拥有点击玩家上下文，因此可正常使用 PAPI、{data:*}、
+    # {gdata:*}、{meta:*}、条件、JavaScript 与动作包。
+    greet:
+      text: '&dGreet / 问候'
+      width: 160
+      actions:
+        - 'tell: &aHello $(player_name)!'
+        - 'close'
+
+  # Optional exit button for multi. With can_escape: true, ESC also follows this path.
+  # multi 的可选退出按钮；当 can_escape: true 时，按 ESC 也会走该按钮路径。
   exit:
     text: '&cClose'
     tooltip: '&7Return to the game'
     width: 160
+    actions:
+      # close runs KaMenu's normal close behavior. force-close skips close events.
+      # close 使用 KaMenu 的正常关闭逻辑；force-close 会跳过关闭事件。
+      - 'close'
