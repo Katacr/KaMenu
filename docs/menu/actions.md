@@ -269,7 +269,7 @@ Bottom:
 
 发送带有悬停提示和点击功能的聊天消息。
 
-**格式：** `hovertext: 普通文字 <text=显示文字;hover=悬停文字;hover_item=物品来源;command=指令;url=链接;actions=动作列表名;newline=false> 继续文字`
+**格式：** `hovertext: 普通文字 <text=显示文字;hover=悬停文字;hover_item=物品来源;actions=动作列表名;copy=复制文本;command=指令;url=链接;newline=false> 继续文字`
 
 **参数说明：**
 
@@ -278,6 +278,7 @@ Bottom:
 | `text` | 可点击的显示文字 | ✅ |
 | `hover` | 鼠标悬停时显示的提示文字 | ❌ |
 | `hover_item` | 鼠标悬停时显示完整 ItemStack | ❌ |
+| `copy` | 点击时复制文本到客户端剪贴板 | ❌ |
 | `command` | 点击时玩家执行的指令 | ❌ |
 | `url` | 点击时打开的链接 | ❌ |
 | `actions` | 点击时执行的动作列表（Events.Click 下的键名）| ❌ |
@@ -289,11 +290,14 @@ Bottom:
 - 'hovertext: &7点击这里 <text=&a[领取奖励];hover=&e点击领取今日奖励;command=/daily> 或稍后再来。'
 - 'hovertext: 访问 <text=&b[官网];hover=&7打开浏览器访问官网;url=https://example.com> 了解更多。'
 - 'hovertext: <text=&a[问候];actions=greet;hover=点击发送问候> 问候玩家'
+- 'hovertext: <text=&e[复制口令];copy=KAMENU-2026;hover=点击复制> 粘贴后使用'
 - 'hovertext: 玩家使用 <text="&6神奇之剑";hover_item=hand> 击败了敌人'
 - 'hovertext: 奖励预览：<text="&d[查看物品]";hover_item="stock:神奇之剑">'
 ```
 
 `hover_item` 支持 `hand`、`offhand`、`slot:槽位`、四个 `armor:*` 护甲槽、`stock:保存物品名` 和 `material:材质ID`，无需配置 `amount`。详细来源说明参见 Body 文档的可点击文本章节。
+
+`actions`、`copy`、`command`、`url` 四种点击行为只能选择一种。
 
 **使用 actions 参数：**
 
@@ -1075,9 +1079,9 @@ Bottom:
 
 ---
 
-### item - 普通物品给予/扣除
+### item - 物品给予/扣除
 
-给予玩家或从玩家背包中扣除指定材质的普通物品。
+给予玩家或从玩家背包中扣除原版或外部插件物品。
 
 **格式：**
 - `item: type=give;mats=材质;amount=数量`
@@ -1088,7 +1092,7 @@ Bottom:
 | 参数 | 说明 | 必需 |
 |------|------|------|
 | `type` | 操作类型（give/take）| ✅ |
-| `mats` | 物品材质（Material ID）| ✅ |
+| `mats` | 原版材质或带提供方前缀的外部物品 ID | ✅ |
 | `amount` | 数量 | ❌（默认: 1）|
 | `lore` | 描述（仅用于take操作，可选）| ❌ |
 | `model` | 物品模型（仅用于take操作，可选）| ❌ |
@@ -1105,6 +1109,14 @@ Bottom:
 
 # 从玩家背包扣除 10 个钻石
 - 'item: type=take;mats=DIAMOND;amount=10'
+
+# 给予并扣除 ItemsAdder 物品
+- 'item: type=give;mats=itemsadder:my_pack:magic_sword;amount=1'
+- 'item: type=take;mats=itemsadder:my_pack:magic_sword;amount=1'
+
+# Oraxen 与 CraftEngine
+- 'item: type=give;mats=oraxen:magic_sword;amount=1'
+- 'item: type=give;mats=craftengine:my_pack:magic_sword;amount=1'
 
 # 扣除指定 lore 的物品
 - 'item: type=take;mats=DIAMOND;amount=10;lore=锻造材料'
@@ -1125,7 +1137,8 @@ Bottom:
 ```
 
 **注意：**
-- `mats` 参数使用 Minecraft 原生材质 ID（如 `DIAMOND`、`IRON_INGOT` 等）
+- `mats` 支持原版材质，以及 `itemsadder:`/`ia:`、`oraxen:`、`craftengine:`/`ce:` 外部物品前缀
+- 外部物品的 `take` 按插件物品 ID 精确匹配，不会误扣除使用相同基础材质的其他物品
 - `give` 操作时，`lore` 和 `model` 参数会被忽略，因为这两个参数仅用于判断
 - `give` 操作如果玩家背包已满，剩余物品会自动掉落在玩家位置，不会丢失
 - `take` 操作时：

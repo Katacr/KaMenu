@@ -131,7 +131,7 @@ Body:
       - '<text="&b[ 官网 ]";hover="&7点击打开";url=https://example.com>'
 ```
 
-`text` 支持字符串或字符串列表，并复用 KaMenu 的 Legacy、MiniMessage 和 `<text=...>` 文本解析。静态暂停菜单中的 `<text>` 支持 `hover`、`url`、`command` 和 `newline`；不支持需要运行期玩家上下文的 `actions` 与 `hover_item`。
+`text` 支持字符串或字符串列表，并复用 KaMenu 的 Legacy、MiniMessage 和 `<text=...>` 文本解析。静态暂停菜单中的 `<text>` 支持 `hover`、`copy`、`url`、`command` 和 `newline`；不支持需要运行期玩家上下文的 `actions` 与 `hover_item`。
 
 ### item
 

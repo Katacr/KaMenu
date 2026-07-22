@@ -675,9 +675,10 @@ object ActionHandlers {
             return
         }
 
-        // 获取材质（使用规范化的材质匹配）
+        // 外部物品保留插件写入的完整元数据；原版物品继续使用 Bukkit Material。
+        val externalItem = ExternalItemAdapter.create(finalMaterialName, amount, player)
         val material = MaterialUtils.matchMaterial(finalMaterialName)
-        if (material == null) {
+        if (externalItem == null && material == null) {
             languageManager?.getMessage("actions.item_invalid_material", finalMaterialName, player.name)?.let {
                 plugin?.logger?.warning(it)
             }
@@ -686,8 +687,9 @@ object ActionHandlers {
 
         when (type) {
             "give" -> {
-                // 给予物品（只需要材质和数量，忽略lore和model）
-                val itemToGive = org.bukkit.inventory.ItemStack(material, amount)
+                // 给予物品（只需要物品 ID 和数量，忽略 lore 和 model 过滤器）
+                val itemToGive = externalItem?.clone()
+                    ?: org.bukkit.inventory.ItemStack(material!!, amount)
                 val leftover = player.inventory.addItem(itemToGive)
 
                 if (leftover.isNotEmpty()) {
@@ -720,7 +722,12 @@ object ActionHandlers {
 
                 for (stack in allItems) {
                     if (remaining <= 0) break
-                    if (!stack.isEmpty && stack.type == material) {
+                    val itemMatches = if (externalItem != null) {
+                        ExternalItemAdapter.matches(stack, finalMaterialName)
+                    } else {
+                        stack.type == material
+                    }
+                    if (!stack.isEmpty && itemMatches) {
                         // 检查 lore 是否匹配（如果指定了 lore）
                         if (finalLoreText != null) {
                             val itemMeta = stack.itemMeta

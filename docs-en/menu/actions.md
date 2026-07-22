@@ -1075,9 +1075,9 @@ Give the player or take from the player's inventory an item from the database st
 
 ---
 
-### item - Regular Item Give/Take
+### item - Item Give/Take
 
-Give the player or take from the player's inventory items of a specified material.
+Give or take vanilla items and external-plugin custom items.
 
 **Format:**
 - `item: type=give;mats=material;amount=quantity`
@@ -1088,7 +1088,7 @@ Give the player or take from the player's inventory items of a specified materia
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | `type` | Operation type (give/take) | ✅ |
-| `mats` | Item material (Material ID) | ✅ |
+| `mats` | Vanilla material or provider-prefixed external item ID | ✅ |
 | `amount` | Quantity | ❌ (default: 1) |
 | `lore` | Description (only for take operation, optional) | ❌ |
 | `model` | Item model (only for take operation, optional) | ❌ |
@@ -1105,6 +1105,14 @@ Give the player or take from the player's inventory items of a specified materia
 
 # Take 10 diamonds from player inventory
 - 'item: type=take;mats=DIAMOND;amount=10'
+
+# Give and take an ItemsAdder item
+- 'item: type=give;mats=itemsadder:my_pack:magic_sword;amount=1'
+- 'item: type=take;mats=itemsadder:my_pack:magic_sword;amount=1'
+
+# Oraxen and CraftEngine
+- 'item: type=give;mats=oraxen:magic_sword;amount=1'
+- 'item: type=give;mats=craftengine:my_pack:magic_sword;amount=1'
 
 # Take items with specified lore
 - 'item: type=take;mats=DIAMOND;amount=10;lore=Forging Material'
@@ -1125,7 +1133,8 @@ Give the player or take from the player's inventory items of a specified materia
 ```
 
 **Note:**
-- `mats` parameter uses Minecraft native material ID (e.g., `DIAMOND`, `IRON_INGOT`, etc.)
+- `mats` accepts vanilla materials and the external prefixes `itemsadder:`/`ia:`, `oraxen:`, and `craftengine:`/`ce:`
+- External `take` operations match the plugin item ID exactly and do not remove other items sharing the same base material
 - During `give` operation, `lore` and `model` parameters are ignored because they're only used for matching
 - If player's inventory is full during `give`, excess items will drop at player location, not lost
 - During `take` operation:

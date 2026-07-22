@@ -1,11 +1,14 @@
 name: KaMenu
-version: '1.6.5'
+version: '1.6.6'
 main: org.katacr.kamenu.KaMenu
 api-version: '1.21'
 folia-supported: true
 softdepend:
   - PlaceholderAPI
   - Vault
+  - ItemsAdder
+  - Oraxen
+  - CraftEngine
 commands:
   kamenu:
     description: KaMenu 主指令

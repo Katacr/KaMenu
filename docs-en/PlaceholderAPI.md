@@ -233,12 +233,18 @@ Semicolons (`;`) separate the three top-level parameters, while colons (`:`) ass
 | `offhand` | Current player's off-hand item |
 | `slot:<index>` | A Bukkit player inventory slot |
 | `stock:<name>` | KaMenu saved-item storage; reads the memory cache without querying SQL |
+| `itemsadder:<namespace:id>` / `ia:<namespace:id>` | ItemsAdder item template |
+| `oraxen:<id>` | Oraxen item template |
+| `craftengine:<namespace:id>` / `ce:<namespace:id>` | CraftEngine item template |
 
 **Properties:**
 
 | Property | Return value |
 |----------|--------------|
 | `type` | Full material ID, such as `minecraft:diamond_sword` |
+| `custom_id` / `external_id` / `item_id` | Canonical external ID including KaMenu's provider prefix; empty for vanilla items |
+| `plugin_id` / `native_id` | The plugin's native item ID without KaMenu's provider prefix |
+| `plugin` / `provider` | `ItemsAdder`, `Oraxen`, or `CraftEngine`; empty for vanilla items |
 | `amt` | Stack amount |
 | `name` | Effective item display name |
 | `lore` | Lore as a JSON string array |
@@ -281,6 +287,10 @@ text: '{checkitem:[stock:Legendary Sword;lore:1;fmt:mini]}'
 
 # Return both the main-hand ItemModel NamespacedKey and integer CustomModelData
 text: 'Model: {checkitem:[hand;item_model]} / ID: {checkitem:[hand;custom_model_id]}'
+
+# Read an ItemsAdder template name and identify the external item in the player's main hand
+text: '{checkitem:[itemsadder:my_pack:magic_sword;name;fmt:mini]}'
+condition: '{checkitem:[hand;custom_id]} == itemsadder:my_pack:magic_sword'
 ```
 
 Vanilla enchantments may omit `minecraft:`, such as `ench:sharpness`. Custom enchantments require their full namespace, such as `ench:myplugin:lifesteal`.
@@ -293,15 +303,17 @@ text: '{checkitem:[stock:`Event;Sword`;name]}'
 
 The outer YAML value may still use single or double quotes. Only backticks delimit the inner item name; `checkitem` does not treat single or double quotes as argument delimiters.
 
-Missing strings return an empty string, missing numbers return `0`, and missing lists return `[]`. Player inventory sources can only be read on the Paper main thread or the player's current Folia region thread. Asynchronous third-party PAPI requests do not block across threads and therefore receive empty player-item values. The `stock:` source is not subject to this restriction.
+Missing strings return an empty string, missing numbers return `0`, and missing lists return `[]`. Player inventory sources and external-plugin item templates can only be read on the Paper main thread or the player's current Folia region thread. Asynchronous third-party PAPI requests do not block across threads and therefore receive empty values. The `stock:` source is not subject to this restriction.
 
 ---
 
 ### Inventory Item Variables
 
-Counts matching items (by material, lore, model) in the player's inventory.
+Counts matching vanilla or external-plugin items (by item ID, lore, or model) in the player's inventory.
 
 **Format:** `%kamenu_hasitem_[mats=material;lore=description;model=item-model;custom_model_id=integer-ID]%`
+
+`mats` accepts vanilla materials and the external prefixes `itemsadder:`/`ia:`, `oraxen:`, and `craftengine:`/`ce:`. External items match by their plugin item ID.
 
 **Parameter Description:**
 

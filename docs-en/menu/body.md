@@ -78,6 +78,18 @@ text: '&aGreen text <gold>Gold text</gold>'
 - Cleaner tag structure that is easier to maintain
 - Fully compatible with the Adventure API
 
+#### Resource-pack plugin glyphs
+
+Dynamic Dialog text supports these internal glyph syntaxes:
+
+| Plugin | Image/glyph | Pixel shift | Processing |
+|--------|-------------|-------------|------------|
+| ItemsAdder | `:font_image:` | `:offset_-8:` | KaMenu calls the ItemsAdder API |
+| Oraxen | `<glyph:glyph_id>` / `<g:glyph_id>` | `<shift:-8>` | KaMenu uses Oraxen's player-aware resolver |
+| CraftEngine | `<image:namespace:glyph>` | `<shift:-8>` | CraftEngine intercepts the Dialog packet |
+
+CraftEngine requires `network.intercept-packets.dialog: true`. KaMenu lets Oraxen consume `<shift:...>` only when the same original text line contains `<glyph:...>` or `<g:...>`. The Oraxen resolver remains active if that line is later split into clickable `<text=...>` segments, while standalone CraftEngine shifts are not consumed early. Do not mix Oraxen and CraftEngine tags in one text component. Fixed Unicode characters require no server-side plugin parsing.
+
 ---
 
 ### Multiple Formats for the `text` Field
@@ -359,7 +371,7 @@ Body:
 - Commands in `command` are executed as the player (no `/` prefix needed)
 - `url` opens a webpage link
 - `actions` executes action lists defined under Events.Click
-- `hover_item` supports `hand`, `offhand`, `slot:index`, `armor:helmet`, `armor:chestplate`, `armor:leggings`, `armor:boots`, `stock:saved-item-name`, and `material:material-id`
+- `hover_item` supports `hand`, `offhand`, `slot:index`, `armor:helmet`, `armor:chestplate`, `armor:leggings`, `armor:boots`, `stock:saved-item-name`, `material:material-id`, and external item IDs
 - `hover_item` does not use an `amount` parameter; hand, slot, and armor sources preserve the actual ItemStack, while `material:` creates one basic item
 - A valid `hover_item` takes priority over `hover`; if the item does not exist or the slot is empty, the regular `hover` text remains as fallback
 - Clickable areas are wrapped in `< >`
@@ -379,6 +391,9 @@ Body:
       - 'Chestplate: <text="&b[ View chestplate ]";hover_item=armor:chestplate;hover="&7No chestplate equipped">'
       - 'Reward: <text="&d[ Magic Sword ]";hover_item="stock:Magic Sword";actions=claim_reward>'
       - 'Material: <text="&a[ Diamond ]";hover_item=material:minecraft:diamond>'
+      - 'ItemsAdder: <text="&e[ Custom Sword ]";hover_item=itemsadder:my_pack:sword>'
+      - 'Oraxen: <text="&6[ Custom Sword ]";hover_item=oraxen:custom_sword>'
+      - 'CraftEngine: <text="&b[ Custom Sword ]";hover_item=craftengine:my_pack:sword>'
 ```
 
 `stock:` displays all properties stored in KaMenu's saved-item library, including the name, lore, enchantments, model, and data components. Saved items are loaded into memory when the plugin starts, so menu rendering does not query the database. Saving or deleting an item through KaMenu updates the cache immediately.
@@ -423,7 +438,7 @@ Displays an item icon in the menu, optionally with a name, Lore, and description
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `type` | `String` | ✅ | — | Fixed value `item` |
-| `material` | `String` | ✅ | `PAPER` | Item material (multiple formats supported; see below) |
+| `material` | `String` | ✅ | `PAPER` | Vanilla material or provider-prefixed external item ID (see below) |
 | `amount` | `Int` | ❌ | `1` | Stack size (1–64); defaults to 1 if not set |
 | `name` | `String` | ❌ | Default item name | Display name; supports color codes |
 | `lore` | `List<String>` | ❌ | — | Item Lore (list of description lines) |
@@ -646,6 +661,29 @@ Body:
 - `skull_texture` must be the complete Base64 texture `Value`; it can be copied from Minecraft head resource websites
 - Custom textures may need to be downloaded by the client on first display; later displays usually use the client cache
 {% endhint %}
+
+**External plugin item IDs:**
+
+| Plugin | Full form | Alias |
+|--------|-----------|-------|
+| ItemsAdder | `itemsadder:namespace:item` | `ia:namespace:item` |
+| Oraxen | `oraxen:item_id` | — |
+| CraftEngine | `craftengine:namespace:item` | `ce:namespace:item` |
+
+The provider prefix tells KaMenu which plugin API to call; everything after it remains the plugin's native ID. External items retain the name, lore, model, and data components supplied by the plugin. Explicit `amount`, `name`, `lore`, `custom_model_data`, or `item_model` fields override the corresponding values.
+
+```yaml
+Body:
+  ia_item:
+    type: item
+    material: 'itemsadder:my_pack:magic_sword'
+  oraxen_item:
+    type: item
+    material: 'oraxen:magic_sword'
+  ce_item:
+    type: item
+    material: 'craftengine:my_pack:magic_sword'
+```
 
 **Material name format support:**
 

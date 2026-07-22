@@ -58,6 +58,13 @@ All KaMenu features work standalone — no hard dependencies. The following are 
 **Optional Dependencies:**
 - [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) — Use `%variable%` PAPI placeholders in menus
 - [Vault](https://www.spigotmc.org/resources/vault.34315/) — Economy integration (if you need to manipulate player balances in actions)
+- ItemsAdder — Resolve `:glyph_id:` and `:offset_pixels:` in Dialog text and use ItemsAdder custom items
+- Oraxen — Resolve `<glyph:glyph_id>` and `<shift:pixels>` in Dialog text and use Oraxen custom items
+- CraftEngine — Display `<image:namespace:id>` and `<shift:pixels>` through CraftEngine's Dialog packet interceptor and use CraftEngine custom items
+
+{% hint style="info" %}
+ItemsAdder, Oraxen, and CraftEngine are soft dependencies; KaMenu still starts when they are absent. Keep `network.intercept-packets.dialog: true` enabled when using CraftEngine glyphs. Fully restart the server after installing or removing any of these plugins so the soft-dependency load order is applied.
+{% endhint %}
 
 ### 3. Install the Plugin
 

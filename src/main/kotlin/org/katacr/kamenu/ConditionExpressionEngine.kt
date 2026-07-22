@@ -574,14 +574,21 @@ object ConditionExpressionEngine {
         }
 
         if (materialName.isEmpty()) return 0
-        val material = MaterialUtils.matchMaterial(materialName) ?: return 0
+        val externalItem = ExternalItemAdapter.isExternalId(materialName)
+        val material = if (externalItem) null else MaterialUtils.matchMaterial(materialName)
+        if (!externalItem && material == null) return 0
         val customModelId = customModelIdText?.toIntOrNull()
         if (customModelIdText != null && customModelId == null) return 0
 
         var totalCount = 0
 
         for (item in getUniqueInventoryItems(player)) {
-            if (!item.isEmpty && item.type == material) {
+            val itemMatches = if (externalItem) {
+                ExternalItemAdapter.matches(item, materialName)
+            } else {
+                item.type == material
+            }
+            if (!item.isEmpty && itemMatches) {
                 val itemMeta = item.itemMeta
                 if (loreText != null) {
                     if (!itemMeta.hasLore()) continue

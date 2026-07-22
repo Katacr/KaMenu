@@ -71,13 +71,13 @@ object MenuUI {
         }
     }
 
-    private fun joinTooltipLines(lines: List<String>): Component {
+    private fun joinTooltipLines(player: Player, lines: List<String>): Component {
         var component = Component.empty()
         lines.forEachIndexed { index, line ->
             if (index > 0) {
                 component = component.append(Component.newline())
             }
-            component = component.append(TextParser.parseText(line))
+            component = component.append(TextParser.parseText(line, player))
         }
         return component
     }
@@ -257,13 +257,13 @@ object MenuUI {
         val btnText = resolveMenuText(player, getString(player, btnSection, "$btnKey.text", defaultText), variables, contextId, config)
         val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
 
-        val builder = ActionButton.builder(TextParser.parseText(btnText))
+        val builder = ActionButton.builder(TextParser.parseText(btnText, player))
             .action(MenuActions.buildActionFromConfig(player, config, "$path.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId))
 
         val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
             .map { resolveMenuText(player, it, variables, contextId, config) }
         if (tooltipList.isNotEmpty()) {
-            builder.tooltip(joinTooltipLines(tooltipList))
+            builder.tooltip(joinTooltipLines(player, tooltipList))
         }
 
         if (btnWidth > 0) {
@@ -582,7 +582,7 @@ object MenuUI {
         }
 
         val rawTitle = getConditionalValue(player, config, "Title", plugin.languageManager.getMessage("ui.default_title"))
-        val title = TextParser.parseText(TextResolver.resolve(player, rawTitle, menuConfig = config))
+        val title = TextParser.parseText(TextResolver.resolve(player, rawTitle, menuConfig = config), player)
 
         val bodyList = mutableListOf<DialogBody>()
         val inputList = mutableListOf<DialogInput>()
@@ -677,7 +677,7 @@ object MenuUI {
                                     // 其他槽位为空，渲染浅灰色玻璃板，name设为"无"
                                     val glass = ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE)
                                     glass.editMeta { meta ->
-                                        meta.displayName(TextParser.parseText("无"))
+                                        meta.displayName(TextParser.parseText("无", player))
                                     }
                                     glass
                                 }
@@ -693,18 +693,18 @@ object MenuUI {
                             }
                         } else {
                             // 正常物品创建流程
-                            val material = MaterialUtils.matchMaterial(materialStr) ?: Material.PAPER
                             val amount = getInt(player, section, "$key.amount", 1)
-                            item = ItemStack(material, amount)
+                            item = ExternalItemAdapter.create(materialStr, amount, player)
+                                ?: ItemStack(MaterialUtils.matchMaterial(materialStr) ?: Material.PAPER, amount)
 
                             item.editMeta { meta ->
                                 val name = TextResolver.resolve(player, getString(player, section, "$key.name", ""))
                                 if (name.isNotEmpty()) {
-                                    meta.displayName(TextParser.parseText(name))
+                                    meta.displayName(TextParser.parseText(name, player))
                                 }
                                 val lore = getStringList(player, section, "$key.lore")
                                 if (lore.isNotEmpty()) {
-                                    meta.lore(lore.map { TextParser.parseText(it) })
+                                    meta.lore(lore.map { TextParser.parseText(it, player) })
                                 }
 
                                 // 支持设置 custom_model_data（兼容 ItemsAdder 等基于该属性的资源包物品）
@@ -759,9 +759,12 @@ object MenuUI {
                         val descriptionWidth = getInt(player, section, "$key.description_width", 0)
                         val descriptionBody = descriptionText.takeIf { it.isNotEmpty() }?.let {
                             if (descriptionWidth > 0) {
-                                DialogBody.plainMessage(MenuActions.parseClickableText(it), descriptionWidth)
+                                DialogBody.plainMessage(
+                                    MenuActions.parseClickableText(it, player, config, menuOpener),
+                                    descriptionWidth
+                                )
                             } else {
-                                DialogBody.plainMessage(MenuActions.parseClickableText(it))
+                                DialogBody.plainMessage(MenuActions.parseClickableText(it, player, config, menuOpener))
                             }
                         }
 
@@ -783,7 +786,7 @@ object MenuUI {
                 // 如果类型为 'none'，跳过此组件
                 if (type == "none") continue
 
-                val prompt = TextParser.parseText(getString(player, section, "$key.text", ""))
+                val prompt = TextParser.parseText(getString(player, section, "$key.text", ""), player)
 
                 when (type) {
                     "checkbox" -> {
@@ -845,7 +848,7 @@ object MenuUI {
                             val option = parseDropdownOption(it)
                             SingleOptionDialogInput.OptionEntry.create(
                                 option.id,
-                                TextParser.parseText(option.display),
+                                TextParser.parseText(option.display, player),
                                 option.id == defaultId
                             )
                         }
@@ -925,7 +928,7 @@ object MenuUI {
                     val exitText = getString(player, section, "exit.text", "")
                     if (exitText.isNotEmpty()) {
                         val exitWidth = getInt(player, section, "exit.width", 0)
-                        val builder = ActionButton.builder(TextParser.parseText(exitText))
+                        val builder = ActionButton.builder(TextParser.parseText(exitText, player))
                             .action(MenuActions.buildActionFromConfig(player, config, "Bottom.exit.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
 
                         // 如果设置了宽度（width > 0），则应用宽度设置
@@ -950,14 +953,14 @@ object MenuUI {
                 val confirmWidth = bottomSection?.let { getInt(player, it, "confirm.width", 0) } ?: 0
                 val denyWidth = bottomSection?.let { getInt(player, it, "deny.width", 0) } ?: 0
 
-                val confirmBuilder = ActionButton.builder(TextParser.parseText(confirmBtnText))
+                val confirmBuilder = ActionButton.builder(TextParser.parseText(confirmBtnText, player))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.confirm.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
                 
                 // 读取 confirm 按钮的 tooltip
                 val confirmTooltipList = bottomSection?.let { getStringList(player, it, "confirm.tooltip") }
                 confirmTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        confirmBuilder.tooltip(joinTooltipLines(confirmTooltipList))
+                        confirmBuilder.tooltip(joinTooltipLines(player, confirmTooltipList))
                     }
                 }
                 
@@ -966,14 +969,14 @@ object MenuUI {
                 }
                 val confirmBtn = confirmBuilder.build()
 
-                val denyBuilder = ActionButton.builder(TextParser.parseText(denyBtnText))
+                val denyBuilder = ActionButton.builder(TextParser.parseText(denyBtnText, player))
                     .action(MenuActions.buildActionFromConfig(player, config, "Bottom.deny.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
                 
                 // 读取 deny 按钮的 tooltip
                 val denyTooltipList = bottomSection?.let { getStringList(player, it, "deny.tooltip") }
                 denyTooltipList?.let {
                     if (it.isNotEmpty()) {
-                        denyBuilder.tooltip(joinTooltipLines(denyTooltipList))
+                        denyBuilder.tooltip(joinTooltipLines(player, denyTooltipList))
                     }
                 }
                 
@@ -994,14 +997,14 @@ object MenuUI {
                 val widthPath = if (config.contains("Bottom.confirm.width")) "Bottom.confirm.width" else "Bottom.button1.width"
                 val btnWidth = getInt(player, config, widthPath, 0)
 
-                val builder = ActionButton.builder(TextParser.parseText(btnText))
+                val builder = ActionButton.builder(TextParser.parseText(btnText, player))
                     .action(MenuActions.buildActionFromConfig(player, config, path, inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, contextId = menuId))
 
                 // 读取 tooltip 配置
                 val tooltipPath = if (config.contains("Bottom.confirm.tooltip")) "Bottom.confirm.tooltip" else "Bottom.button1.tooltip"
                 val tooltipList = getStringList(player, config, tooltipPath)
                 if (tooltipList.isNotEmpty()) {
-                    builder.tooltip(joinTooltipLines(tooltipList))
+                    builder.tooltip(joinTooltipLines(player, tooltipList))
                 }
 
                 if (btnWidth > 0) {

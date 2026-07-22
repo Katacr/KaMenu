@@ -78,6 +78,18 @@ text: '&a绿色文本 <gold>金色文本</gold>'
 - 更清晰的标签结构，易于维护
 - 与 Adventure API 完全兼容
 
+#### 资源包插件字形
+
+动态 Dialog 文本支持以下插件的内部字形语法：
+
+| 插件 | 图片/字形 | 像素偏移 | 处理方式 |
+|------|-----------|----------|----------|
+| ItemsAdder | `:font_image:` | `:offset_-8:` | KaMenu 调用 ItemsAdder API 转换 |
+| Oraxen | `<glyph:glyph_id>` / `<g:glyph_id>` | `<shift:-8>` | KaMenu 使用 Oraxen 玩家字形 Resolver |
+| CraftEngine | `<image:namespace:glyph>` | `<shift:-8>` | CraftEngine 拦截 Dialog 数据包转换 |
+
+CraftEngine 需要启用 `network.intercept-packets.dialog: true`。KaMenu 只在同一原始文本行出现 Oraxen `<glyph:...>` 或 `<g:...>` 时让 Oraxen 处理该行的 `<shift:...>`；即使该行随后被 `<text=...>` 拆成多个可点击片段，偏移仍会使用 Oraxen Resolver。这样也能避免单独的 CraftEngine shift 被提前消费。不要在同一个文本组件中混用 Oraxen 和 CraftEngine 标签；固定 Unicode 字符不需要服务端插件解析。
+
 ---
 
 ### text 字段的多种格式
@@ -340,7 +352,7 @@ Body:
 **hovertext 语法格式：**
 
 ```
-<text=显示文字;hover=悬停文字;hover_item=物品来源;command=指令;url=链接;actions=动作列表名;newline=false>
+<text=显示文字;hover=悬停文字;hover_item=物品来源;actions=动作列表名;copy=复制文本;command=指令;url=链接;newline=false>
 ```
 
 **参数说明：**
@@ -350,6 +362,7 @@ Body:
 | `text` | 可点击的显示文字 | ✅ |
 | `hover` | 鼠标悬停时显示的提示文字 | ❌ |
 | `hover_item` | 鼠标悬停时显示完整 ItemStack | ❌ |
+| `copy` | 点击时复制文本到客户端剪贴板 | ❌ |
 | `command` | 点击时玩家执行的指令 | ❌ |
 | `url` | 点击时打开的网址链接 | ❌ |
 | `actions` | 点击时执行的动作列表（Events.Click 下的键名）| ❌ |
@@ -357,9 +370,10 @@ Body:
 
 **注意事项：**
 - `command` 中的命令会以玩家身份执行（不需要 `/` 前缀）
+- `actions`、`copy`、`command`、`url` 四种点击行为只能选择一种
 - `url` 用于打开网页链接
 - `actions` 用于执行 Events.Click 下定义的动作列表
-- `hover_item` 支持 `hand`、`offhand`、`slot:槽位`、`armor:helmet`、`armor:chestplate`、`armor:leggings`、`armor:boots`、`stock:保存物品名` 和 `material:材质ID`
+- `hover_item` 支持 `hand`、`offhand`、`slot:槽位`、`armor:helmet`、`armor:chestplate`、`armor:leggings`、`armor:boots`、`stock:保存物品名`、`material:材质ID` 和外部物品 ID
 - `hover_item` 无需 `amount` 参数；手持、槽位和护甲来源保留实际 ItemStack，`material:` 创建一个基础物品
 - 有效的 `hover_item` 优先于 `hover`；物品不存在或槽位为空时仍使用普通 `hover` 文本
 - 可点击区域用 `< >` 包裹
@@ -379,16 +393,20 @@ Body:
       - '胸甲：<text="&b[ 查看胸甲 ]";hover_item=armor:chestplate;hover="&7当前未穿戴胸甲">'
       - '奖励：<text="&d[ 神奇之剑 ]";hover_item="stock:神奇之剑";actions=claim_reward>'
       - '材料：<text="&a[ 钻石 ]";hover_item=material:minecraft:diamond>'
+      - 'ItemsAdder：<text="&e[ 自定义剑 ]";hover_item=itemsadder:my_pack:sword>'
+      - 'Oraxen：<text="&6[ 自定义剑 ]";hover_item=oraxen:custom_sword>'
+      - 'CraftEngine：<text="&b[ 自定义剑 ]";hover_item=craftengine:my_pack:sword>'
 ```
 
 `stock:` 会展示 KaMenu 保存物品库中的完整属性，包括名称、Lore、附魔、模型和数据组件。保存物品会在插件启动时载入内存缓存，后续菜单渲染不会查询数据库；通过 KaMenu 保存或删除物品时缓存会同步更新。
 
 **点击事件优先级：**
 
-当同时存在多个点击参数时，优先级如下（从高到低）：
+为兼容旧配置，同时存在多个点击参数时按以下优先级取一个（从高到低）：
 1. `actions` - 执行动作列表
-2. `url` - 打开链接
+2. `copy` - 复制文本
 3. `command` - 执行指令
+4. `url` - 打开链接
 
 **使用 actions 参数示例：**
 
@@ -423,7 +441,7 @@ Body:
 | 字段 | 类型 | 必须 | 默认值 | 说明                                                         |
 |------|------|------|--------|------------------------------------------------------------|
 | `type` | `String` | ✅ | — | 固定值 `item`                                                 |
-| `material` | `String` | ✅ | `PAPER` | 物品材质名（支持多种格式，见下方说明）                                        |
+| `material` | `String` | ✅ | `PAPER` | 原版材质或带提供方前缀的外部物品 ID（见下方说明）                              |
 | `amount` | `Int` | ❌ | `1` | 物品堆叠数量（1-64），不设置则默认为 1                                       |
 | `name` | `String` | ❌ | 物品默认名称 | 物品显示名称，支持颜色代码                                              |
 | `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）                                            |
@@ -646,6 +664,29 @@ Body:
 - `skull_texture` 需要填写完整的 Base64 纹理 `Value` 值，可从 Minecraft Heads 等头颅资源网站获取
 - 自定义纹理首次显示时客户端可能需要下载纹理，后续通常会使用客户端缓存
 {% endhint %}
+
+**外部插件物品 ID：**
+
+| 插件 | 完整写法 | 短写 |
+|------|----------|------|
+| ItemsAdder | `itemsadder:namespace:item` | `ia:namespace:item` |
+| Oraxen | `oraxen:item_id` | — |
+| CraftEngine | `craftengine:namespace:item` | `ce:namespace:item` |
+
+提供方前缀只用于告诉 KaMenu 调用哪个插件，前缀后的内容保持插件原始 ID。外部物品会保留插件写入的名称、Lore、模型和数据组件；菜单中显式配置的 `amount`、`name`、`lore`、`custom_model_data` 或 `item_model` 会覆盖对应字段。
+
+```yaml
+Body:
+  ia_item:
+    type: item
+    material: 'itemsadder:my_pack:magic_sword'
+  oraxen_item:
+    type: item
+    material: 'oraxen:magic_sword'
+  ce_item:
+    type: item
+    material: 'craftengine:my_pack:magic_sword'
+```
 
 **物品材质名格式支持：**
 

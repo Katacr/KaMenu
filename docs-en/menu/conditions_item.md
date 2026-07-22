@@ -84,6 +84,14 @@ The system automatically ignores case, replaces hyphens and spaces with undersco
     - 'tell: &cYou need 16 Magic Crystals!'
 ```
 
+**Match an exact plugin item ID:**
+
+```yaml
+- condition: 'hasItem.[mats=itemsadder:my_pack:magic_sword;amount=1]'
+- condition: 'hasItem.[mats=oraxen:magic_sword;amount=1]'
+- condition: 'hasItem.[mats=craftengine:my_pack:magic_sword;amount=1]'
+```
+
 **Check for paper with custom model ID 10001:**
 
 ```yaml
@@ -120,6 +128,7 @@ actions:
 ### Notes
 
 - Material names are **case-insensitive**, supporting multiple formats (see above)
+- `mats` accepts `itemsadder:`/`ia:`, `oraxen:`, and `craftengine:`/`ce:` prefixes; external items match by plugin item ID
 - `lore` check is an "includes" relationship, any matching string in description is sufficient
 - `model` format is `namespace:key`, such as:
   - `minecraft:book` (vanilla item model)

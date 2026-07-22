@@ -233,12 +233,18 @@ KaMenu 可以读取物品的常用属性。菜单内部优先使用不依赖 Pla
 | `offhand` | 当前玩家副手物品 |
 | `slot:<索引>` | 玩家背包指定 Bukkit 槽位 |
 | `stock:<名称>` | KaMenu 保存物品库；直接读取内存缓存，不查询 SQL |
+| `itemsadder:<namespace:id>` / `ia:<namespace:id>` | ItemsAdder 物品模板 |
+| `oraxen:<id>` | Oraxen 物品模板 |
+| `craftengine:<namespace:id>` / `ce:<namespace:id>` | CraftEngine 物品模板 |
 
 **可读属性：**
 
 | 属性 | 返回值 |
 |------|--------|
 | `type` | 完整材质 ID，例如 `minecraft:diamond_sword` |
+| `custom_id` / `external_id` / `item_id` | 带 KaMenu 提供方前缀的规范外部物品 ID；原版物品返回空字符串 |
+| `plugin_id` / `native_id` | 插件自身的物品 ID，不含 KaMenu 提供方前缀 |
+| `plugin` / `provider` | `ItemsAdder`、`Oraxen` 或 `CraftEngine`；原版物品返回空字符串 |
 | `amt` | 堆叠数量 |
 | `name` | 物品有效显示名称 |
 | `lore` | Lore JSON 字符串数组 |
@@ -281,6 +287,10 @@ text: '{checkitem:[stock:神奇之剑;lore:1;fmt:mini]}'
 
 # 同时输出主手物品的 ItemModel NamespacedKey 和整数 CustomModelData
 text: '模型：{checkitem:[hand;item_model]} / ID：{checkitem:[hand;custom_model_id]}'
+
+# 读取 ItemsAdder 模板名称，并检查玩家主手中的外部物品身份
+text: '{checkitem:[itemsadder:my_pack:magic_sword;name;fmt:mini]}'
+condition: '{checkitem:[hand;custom_id]} == itemsadder:my_pack:magic_sword'
 ```
 
 原版附魔可省略 `minecraft:`，例如 `ench:sharpness`；自定义附魔必须填写完整命名空间，例如 `ench:myplugin:lifesteal`。
@@ -293,15 +303,17 @@ text: '{checkitem:[stock:`活动;长剑`;name]}'
 
 外层 YAML 仍可使用单引号或双引号；内部物品名只使用反引号。单引号和双引号不会被 `checkitem` 当作参数包裹符。
 
-物品不存在时，字符串返回空字符串、数字返回 `0`、列表返回 `[]`。玩家背包只能在 Paper 主线程或 Folia 当前玩家区域线程读取；异步第三方 PAPI 请求不会跨线程阻塞，此时玩家物品属性返回空值。`stock:` 来源不受此限制。
+物品不存在时，字符串返回空字符串、数字返回 `0`、列表返回 `[]`。玩家背包和外部插件物品模板只能在 Paper 主线程或 Folia 当前玩家区域线程读取；异步第三方 PAPI 请求不会跨线程阻塞，此时返回空值。`stock:` 来源不受此限制。
 
 ---
 
 ### 背包物品变量
 
-查询玩家背包中符合条件的普通物品数量（材质、描述、模型等）。
+查询玩家背包中符合条件的原版或外部插件物品数量（物品 ID、描述、模型等）。
 
 **格式：** `%kamenu_hasitem_[mats=材质;lore=描述;model=物品模型;custom_model_id=整数ID]%`
+
+`mats` 支持原版材质，以及 `itemsadder:`/`ia:`、`oraxen:`、`craftengine:`/`ce:` 外部物品前缀。外部物品按插件物品 ID 精确匹配。
 
 **参数说明：**
 

@@ -1544,7 +1544,7 @@ object MenuActions {
 
     /**
      * 解析可点击文本 (使用 Adventure API)
-     * 格式: <text='显示文字';hover='悬停文字';hover_item='物品来源';command='指令';url='链接';newline='false';actions='动作列表路径'>
+     * 格式: <text='显示文字';hover='悬停文字';hover_item='物品来源';actions='动作列表路径';copy='复制文本';command='指令';url='链接';newline='false'>
      * 注意: 只有包含 text= 参数的标签才会被解析为可点击文本，其他的 <...> 标签会被保留给 MiniMessage 处理
      */
     fun parseClickableText(rawText: String): Component {
@@ -1553,7 +1553,7 @@ object MenuActions {
 
     /**
      * 解析可点击文本 (使用 Adventure API) - 带上下文版本
-     * 格式: <text='显示文字';hover='悬停文字';command='指令';url='链接';newline='false';actions='动作列表路径'>
+     * 格式: <text='显示文字';hover='悬停文字';actions='动作列表路径';copy='复制文本';command='指令';url='链接';newline='false'>
      * 注意: 只有包含 text= 参数的标签才会被解析为可点击文本，其他的 <...> 标签会被保留给 MiniMessage 处理
      * @param rawText 原始文本
      * @param player 玩家对象（用于 actions 回调）
@@ -1566,6 +1566,7 @@ object MenuActions {
         config: YamlConfiguration?,
         menuOpener: ((Player, String) -> Unit)?
     ): Component {
+        val forceOraxenResolver = OraxenTextAdapter.containsGlyphTag(rawText)
         val replacements = mutableListOf<Pair<IntRange, Component>>()
         var currentPos = 0
 
@@ -1594,7 +1595,7 @@ object MenuActions {
 
         // 如果没有 hovertext，直接用 parseText 处理 MiniMessage
         if (replacements.isEmpty()) {
-            return TextParser.parseText(rawText)
+            return TextParser.parseText(rawText, player, forceOraxenResolver)
         }
 
         // 按位置升序排序，从前往后处理
@@ -1607,7 +1608,7 @@ object MenuActions {
         replacements.forEach { (range, component) ->
             // 添加 hovertext 之前的文本（包含 MiniMessage）
             if (range.first > lastEnd) {
-                mainBuilder.append(TextParser.parseText(rawText.substring(lastEnd, range.first)))
+                mainBuilder.append(TextParser.parseText(rawText.substring(lastEnd, range.first), player, forceOraxenResolver))
             }
             // 添加 hovertext 组件
             mainBuilder.append(component)
@@ -1616,7 +1617,7 @@ object MenuActions {
 
         // 添加最后剩余的文本
         if (lastEnd < rawText.length) {
-            mainBuilder.append(TextParser.parseText(rawText.substring(lastEnd)))
+            mainBuilder.append(TextParser.parseText(rawText.substring(lastEnd), player, forceOraxenResolver))
         }
 
         return mainBuilder.build()
@@ -1661,6 +1662,7 @@ object MenuActions {
         var hover = ""
         var hoverItem = ""
         var command = ""
+        var copy = ""
         var url = ""
         var actions = ""
         var newline = false
@@ -1683,6 +1685,7 @@ object MenuActions {
                     "hover" -> hover = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "hover_item", "hover-item" -> hoverItem = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "command" -> command = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                    "copy" -> copy = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "url" -> url = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "actions" -> actions = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
                     "newline" -> newline = value.removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"").equals("true", ignoreCase = true)
@@ -1692,7 +1695,18 @@ object MenuActions {
 
         // 只有包含 text= 参数且 text 不为空时才返回组件
         return if (hasTextParam && text.isNotEmpty()) {
-            var component = createAdventureClickableText(text, hover, command, url, actions, newline, player, config, menuOpener)
+            var component = createAdventureClickableTextInternal(
+                text,
+                hover,
+                command,
+                copy,
+                url,
+                actions,
+                newline,
+                player,
+                config,
+                menuOpener
+            )
             if (player != null && hoverItem.isNotBlank()) {
                 resolveHoverItem(player, hoverItem)?.let { item ->
                     component = component.hoverEvent(item.asHoverEvent())
@@ -1744,10 +1758,11 @@ object MenuActions {
 
             lowerSource.startsWith("material:") -> {
                 val materialName = source.substringAfter(':').trim()
-                MaterialUtils.matchMaterial(materialName)?.let { org.bukkit.inventory.ItemStack(it) }
+                ExternalItemAdapter.create(materialName, player = player)
+                    ?: MaterialUtils.matchMaterial(materialName)?.let { org.bukkit.inventory.ItemStack(it) }
             }
 
-            else -> null
+            else -> ExternalItemAdapter.create(source, player = player)
         }
 
         return item
@@ -1777,8 +1792,33 @@ object MenuActions {
         player: Player? = null,
         config: YamlConfiguration? = null,
         menuOpener: ((Player, String) -> Unit)? = null
+    ): Component = createAdventureClickableTextInternal(
+        text,
+        hoverText,
+        command,
+        "",
+        url,
+        actions,
+        newline,
+        player,
+        config,
+        menuOpener
+    )
+
+    /** 创建包含 copy 点击行为的可点击文本，并统一处理互斥点击动作。 */
+    private fun createAdventureClickableTextInternal(
+        text: String,
+        hoverText: String,
+        command: String,
+        copy: String,
+        url: String,
+        actions: String,
+        newline: Boolean,
+        player: Player?,
+        config: YamlConfiguration?,
+        menuOpener: ((Player, String) -> Unit)?
     ): Component {
-        var component = TextParser.parseText(text)
+        var component = TextParser.parseText(text, player)
 
         // 添加点击事件
         if (actions.isNotEmpty()) {
@@ -1807,15 +1847,17 @@ object MenuActions {
                     }
                 }, buildCallbackOptions(config)))
             }
-        } else if (url.isNotEmpty()) {
-            component = component.clickEvent(ClickEvent.openUrl(url))
+        } else if (copy.isNotEmpty()) {
+            component = component.clickEvent(ClickEvent.copyToClipboard(copy))
         } else if (command.isNotEmpty()) {
             component = component.clickEvent(ClickEvent.runCommand(command))
+        } else if (url.isNotEmpty()) {
+            component = component.clickEvent(ClickEvent.openUrl(url))
         }
 
         // 添加悬停事件
         if (hoverText.isNotEmpty()) {
-            component = component.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(TextParser.parseText(hoverText)))
+            component = component.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(TextParser.parseText(hoverText, player)))
         }
 
         // 添加换行

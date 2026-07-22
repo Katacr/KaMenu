@@ -12,6 +12,7 @@ import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
 import org.bukkit.inventory.EquipmentSlot
+import org.bukkit.inventory.ItemStack
 
 /**
  * Bukkit 事件监听器。
@@ -56,8 +57,6 @@ class MenuListener(private val plugin: KaMenu) : Listener {
         if (!item.hasItemMeta() || !item.itemMeta.hasLore()) return
 
         val lore = item.itemMeta.lore ?: return
-        val itemMaterial = item.type.name
-
         val config = plugin.config
 
         // 遍历 listeners.item-lore 下的所有配置项
@@ -77,7 +76,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
             if (requireSneaking && !player.isSneaking) continue
 
             // 检查 material 是否匹配（使用规范化的材质匹配）
-            if (!isMaterialMatch(itemMaterial, targetMaterial)) continue
+            if (!isMaterialMatch(item, targetMaterial)) continue
 
             // 检查物品 lore 是否包含目标文本
             val hasTargetLore = lore.any { loreLine ->
@@ -152,13 +151,14 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
     /**
      * 检查两个材质名称是否匹配（使用规范化比较）
-     * @param itemMaterial 物品的材质名称（Material.name）
+     * @param item 当前交互物品
      * @param targetMaterial 配置中的材质名称（可能包含短杠、空格、混合大小写）
      * @return 是否匹配
      */
-    private fun isMaterialMatch(itemMaterial: String, targetMaterial: String): Boolean {
+    private fun isMaterialMatch(item: ItemStack, targetMaterial: String): Boolean {
+        if (ExternalItemAdapter.matches(item, targetMaterial)) return true
         // 尝试规范化目标材质名称并匹配
         val normalizedTarget = MaterialUtils.normalizeMaterialName(targetMaterial)
-        return itemMaterial.equals(normalizedTarget, ignoreCase = true)
+        return item.type.name.equals(normalizedTarget, ignoreCase = true)
     }
 }

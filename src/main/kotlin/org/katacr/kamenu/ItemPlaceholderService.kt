@@ -104,6 +104,12 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
             return stockName.takeIf(String::isNotEmpty)?.let(itemManager::getItem)
         }
 
+        if (ExternalItemAdapter.isExternalId(source)) {
+            if (player != null && !canReadInventory(player)) return null
+            if (player == null && !Bukkit.isPrimaryThread()) return null
+            return ExternalItemAdapter.create(source, player = player)
+        }
+
         if (player == null || !canReadInventory(player)) return null
 
         val item = when {
@@ -132,6 +138,10 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
         val meta = item.itemMeta
         return when {
             property == "type" -> item.type.key.toString()
+            property == "external_id" || property == "custom_id" || property == "item_id" ->
+                ExternalItemAdapter.identify(item).orEmpty()
+            property == "native_id" || property == "plugin_id" -> ExternalItemAdapter.nativeId(item).orEmpty()
+            property == "provider" || property == "plugin" -> ExternalItemAdapter.providerName(item).orEmpty()
             property == "amt" -> item.amount.toString()
             property == "name" -> serializeText(item.effectiveName(), query.format)
             property == "lore" -> serializeLore(meta.lore().orEmpty(), query.format)

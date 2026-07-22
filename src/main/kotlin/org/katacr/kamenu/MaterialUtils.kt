@@ -42,17 +42,20 @@ object MaterialUtils {
      * 规范化材质名称
      * 1. 转换为大写
      * 2. 将短杠、空格替换为下划线
+     * 3. 移除原版 minecraft 命名空间
      *
      * @param materialName 原始材质名称
      * @return 规范化后的材质名称
      */
     fun normalizeMaterialName(materialName: String): String {
-        return materialName
+        val normalized = materialName
             .uppercase()                          // 转换为大写
             .replace("-", "_")                      // 将短杠替换为下划线
             .replace(" ", "_")                     // 将空格替换为下划线
             .replace(Regex("_+"), "_")            // 合并多个下划线
             .trim()                               // 去除首尾空白
+
+        return normalized.removePrefix("MINECRAFT:")
     }
 
     /**
