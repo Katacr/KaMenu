@@ -516,7 +516,7 @@ object ConditionExpressionEngine {
         var totalCount = 0
 
         for (item in getUniqueInventoryItems(player)) {
-            if (!item.isEmpty && item.isSimilar(savedItem)) {
+            if (item.type != org.bukkit.Material.AIR && item.amount > 0 && item.isSimilar(savedItem)) {
                 totalCount += item.amount
             }
         }
@@ -588,14 +588,14 @@ object ConditionExpressionEngine {
             } else {
                 item.type == material
             }
-            if (!item.isEmpty && itemMatches) {
+            if (item.type != org.bukkit.Material.AIR && item.amount > 0 && itemMatches) {
                 val itemMeta = item.itemMeta
                 if (loreText != null) {
                     if (!itemMeta.hasLore()) continue
-                    val loreMatched = itemMeta.lore()?.any { line ->
+                    val loreMatched = MenuUI.itemLore(itemMeta).any { line ->
                         val plainText = LegacyComponentSerializer.legacySection().serialize(line)
                         plainText.contains(loreText, ignoreCase = true)
-                    } ?: false
+                    }
                     if (!loreMatched) continue
                 }
 

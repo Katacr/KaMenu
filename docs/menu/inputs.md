@@ -2,6 +2,10 @@
 
 `Inputs` 节点用于在菜单中添加交互式输入组件，允许玩家提交数值、文字或做出选择。输入的值可以在动作中通过 `$(键名)` 变量引用。
 
+{% hint style="warning" %}
+Spigot v1.7.0 可以显示全部 Inputs，并把经过长度、范围和选项校验的输入值提交给 KaMenu actions。参见 [Spigot Dialog 兼容](../config/spigot-dialog.md)。
+{% endhint %}
+
 ---
 
 ## 配置结构

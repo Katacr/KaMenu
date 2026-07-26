@@ -86,6 +86,8 @@ Bottom:
 
 `lifetime` 的单位为秒，默认值为 `300`（5 分钟）。该值同时决定 Paper callback 的有效期和 KaMenu 服务端的菜单关闭定时器。
 
+Spigot v1.7.0 同样支持 `lifetime` 主动关闭，并会清理 Tasks、分页状态和执行 `Events.Close`。纯客户端 `url:` / `copy:` 导致的提前关闭无法即时通知服务端，但仍会由 `lifetime` 兜底收尾。
+
 达到上限后，KaMenu 会：
 
 1. 确认该玩家当前仍处于原菜单会话，避免旧定时器误关后来打开的新菜单；

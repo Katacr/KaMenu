@@ -129,7 +129,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
                     return@Runnable
                 }
                 val message = plugin.languageManager.getMessage("command.guide_join_hint")
-                player.sendMessage(MenuActions.parseClickableText(message))
+                MenuUI.sendMessage(player, MenuActions.parseClickableText(message))
             })
         }
 

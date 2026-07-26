@@ -158,6 +158,10 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
                 return true
             }
+            if (!plugin.pauseEntrySupported) {
+                sender.sendMessage(plugin.languageManager.getMessage("pause_entry.unsupported_platform"))
+                return true
+            }
             if (args.size < 2) {
                 sender.sendMessage(plugin.languageManager.getMessage("pause_entry.usage"))
                 return true
@@ -484,7 +488,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         val hoverText = plugin.languageManager.getMessage("command.help_footer_hover")
         val clickableFooter = "$footerText <text='$clickText';hover='$hoverText';url='$docUrl'>"
         val parsedFooter = MenuActions.parseClickableText(clickableFooter)
-        sender.sendMessage(parsedFooter)
+        MenuUI.sendMessage(sender, parsedFooter)
 
         // 空行
         sender.sendMessage("")
@@ -519,7 +523,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             val number = startIndex + index + 1
             val menuItemText = plugin.languageManager.getMessage("menu_list.menu_item", menuId)
             val message = MenuActions.parseClickableText("§f$number. $menuItemText")
-            player.sendMessage(message)
+            MenuUI.sendMessage(player, message)
         }
 
         // 分页信息 + 翻页按钮（同一行）
@@ -537,7 +541,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             }
             val lineText = "$prevButton  $pageInfo  $nextButton"
             val lineMessage = MenuActions.parseClickableText(lineText)
-            player.sendMessage(lineMessage)
+            MenuUI.sendMessage(player, lineMessage)
         } else {
             player.sendMessage(pageInfo)
         }

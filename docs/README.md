@@ -1,20 +1,21 @@
 ---
-description: KaMenu - 专为 Minecraft Paper 服务器设计的现代化 Dialog 菜单插件
+description: KaMenu - 支持 Paper、Folia 与 Spigot 的现代化 Dialog 菜单插件
 ---
 
 # 🏠 首页
 
-> 基于 Paper Dialog API 的下一代 Minecraft GUI 插件，超越传统箱子菜单的全新交互体验
+> 基于原生 Dialog API 的下一代 Minecraft GUI 插件，超越传统箱子菜单的全新交互体验
 
-**KaMenu** 是一款专为现代 Minecraft Paper 服务器打造的 GUI 插件。它抛弃了传统的箱子 (Inventory) 菜单模式，转而采用 **Paper 1.21.7+ 原生 Dialog API**，为玩家提供包含文本输入、滑块、单项选择按钮、复选框等丰富交互组件的现代化菜单界面。配置文件基于 YAML，简洁直观，开箱即用。
+**KaMenu** 是一款面向现代 Minecraft 服务器的原生 Dialog 菜单插件。Paper/Folia 使用 Paper Dialog API，Spigot 1.21.6+ 使用 Bungee Dialog API；同一份 YAML 和同一个插件 JAR 可在三个核心上运行。
 
 > **⚠️ 重要提示**：
-> - **最低版本**：Paper 1.21.7
+> - **Paper/Folia 最低版本**：1.21.7
+> - **Spigot Dialog 最低版本**：Spigot 1.21.6
 > - **推荐版本**：Paper 1.21.8+
-> - **完整功能版本**：Paper 1.21.9+ （支持 sprite 物品图标、player head 头像等高级特性）
-> - **支持核心**：Paper、Folia，以及提供兼容 Paper Dialog API 的衍生核心
+> - **高级组件版本**：Paper 1.21.9+ （支持 sprite 物品图标、player head 头像等高级特性）
+> - **支持核心**：Paper、Folia、Spigot 及兼容衍生核心
 >
-> KaMenu **不支持** Paper 1.21.6 及以下版本。请确保服务器版本符合要求！
+> Spigot 已支持服务端 actions、Events、Inputs、Tasks、JavaScript、存储、外部 API，以及 `Body.item` 和 `hover_item` 的公开视觉属性。Paper/Folia 独占边界主要是 `toast`、ESC 暂停菜单入口、`Body.sprite` 和 `Body.player_head`。
 
 KaMenu 已适配 Folia 的区域线程模型。菜单打开、动作延迟、周期任务、JavaScript 延迟辅助方法和外部菜单 API 会根据运行核心使用 Paper 或 Folia 调度器。菜单中的自定义 JavaScript、外部 action handler 和第三方 PlaceholderAPI 扩展仍需自行遵守 Folia 的线程规则。
 

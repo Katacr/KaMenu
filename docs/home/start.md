@@ -10,7 +10,7 @@
 |------|----------------------------|
 | Minecraft 版本 | 1.21.7+                    |
 | Java 版本 | Java 21+                   |
-| 服务器类型 | **Paper**、**Folia** 及兼容 Paper Dialog API 的衍生核心 |
+| 服务器类型 | **Paper**、**Folia**、**Spigot** 及兼容衍生核心 |
 | 数据库 | SQLite（默认）、MySQL 5.7+      |
 
 {% hint style="info" %}
@@ -20,6 +20,7 @@
 - ✨ Paper 1.21.8+：推荐版本，API 更加稳定
 - 🎨 Paper 1.21.9+：完整功能（支持 sprite 物品图标、player head 头像等高级特性）
 - ⚡ Folia 1.21.7+：支持区域线程调度；建议使用与目标 Minecraft 版本匹配的最新构建
+- 🧩 Spigot 1.21.6+：支持原生 Dialog、服务端 actions、Events、Inputs、Tasks、JavaScript、存储与外部 API
 {% endhint %}
 
 {% hint style="info" %}
@@ -27,12 +28,7 @@
 {% endhint %}
 
 {% hint style="warning" %}
-KaMenu 依赖 Paper Dialog API，**不支持**： 
-
-- Paper 1.21.6 及以下版本（API 尚未完全实现）
-- Spigot、CraftBukkit 等非 Paper 服务端
-
-请确保服务器基于 **Paper/Folia 1.21.7 或更高版本**，并提供对应版本的 Dialog API！
+**Spigot 兼容范围**：v1.7.0 已接通输入与按钮的服务端回调，并通过 Bukkit 公共 API 映射 `Body.item` 和 `hover_item` 的主要视觉属性，普通菜单功能可使用同一份配置。Paper/Folia 独占边界主要是 `toast`、ESC 暂停菜单入口、`Body.sprite` 和 `Body.player_head`。纯客户端 `url:` / `copy:` 无法即时通知服务端关闭状态。完整差异见 [Spigot Dialog 兼容](../config/spigot-dialog.md)。
 {% endhint %}
 
 ---
@@ -75,6 +71,10 @@ ItemsAdder、Oraxen 和 CraftEngine 均为软依赖，未安装时不会影响 K
    - 创建 `plugins/KaMenu/` 配置目录
    - 释放默认配置文件 `config.yml`
    - 初始化数据库（默认为 SQLite）
+
+{% hint style="info" %}
+首次启动需要连接 Maven 仓库，服务端会在加载 KaMenu 主类前下载 Kotlin 与 Adventure；KaMenu 随后会继续自动下载数据库驱动和 JavaScript 引擎等运行库。依赖缓存完成后，后续启动无需重复下载。
+{% endhint %}
 
 {% hint style="info" %}
 首次使用建议在游戏内执行 `/kamenu guide`（或 `/km guide`）打开入门向导。向导菜单直接从插件 jar 内部加载到内存，不会写入 `menus` 目录。

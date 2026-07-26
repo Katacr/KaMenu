@@ -2,6 +2,10 @@
 
 KaMenu provides a public API for other plugins to open file-based menus, render in-memory YAML menus, and register custom action namespaces.
 
+{% hint style="info" %}
+Paper, Folia, and Spigot all support loaded menus, in-memory YAML, Events, button actions, and external action handlers. See [Spigot Dialog Compatibility](config/spigot-dialog.md) for the remaining platform boundaries.
+{% endhint %}
+
 ## API Class
 
 ### `org.katacr.kamenu.api.KaMenuAPI`
@@ -85,7 +89,7 @@ config.loadFromString(yaml)
 KaMenuAPI.openConfig(player, config, "myplugin:dynamic-shop")
 ```
 
-`Events.Open` is executed before rendering. If the `Open` event returns with `return`, the menu is not opened. If the external menu uses `reset` and no file menu ID exists, KaMenu ignores the reset action.
+All three platforms run `Events.Open` before rendering. If the action chain reaches `return`, the menu is not opened. `reset` reopens the current in-memory `YamlConfiguration`, so external menus do not require a `MenuManager` file ID.
 
 #### `registerActionHandler(String namespace, KaMenuActionHandler handler)`
 

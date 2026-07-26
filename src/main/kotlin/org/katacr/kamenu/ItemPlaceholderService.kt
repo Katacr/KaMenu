@@ -8,7 +8,6 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
@@ -106,7 +105,7 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
 
         if (ExternalItemAdapter.isExternalId(source)) {
             if (player != null && !canReadInventory(player)) return null
-            if (player == null && !Bukkit.isPrimaryThread()) return null
+            if (player == null && !org.bukkit.Bukkit.isPrimaryThread()) return null
             return ExternalItemAdapter.create(source, player = player)
         }
 
@@ -121,13 +120,13 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
             }
             else -> null
         }
-        return item?.takeUnless { it.type == Material.AIR || it.isEmpty }?.clone()
+        return item?.takeUnless { it.type == Material.AIR || it.amount <= 0 }?.clone()
     }
 
     /** 判断当前线程是否允许读取该玩家的背包。 */
     private fun canReadInventory(player: Player): Boolean {
         if (!player.isOnline) return false
-        return if (KaScheduler.folia) Bukkit.isOwnedByCurrentRegion(player) else Bukkit.isPrimaryThread()
+        return KaScheduler.isPlayerThread(player)
     }
 
     /** 读取目标属性；物品或属性不存在时返回对应类型的空值。 */
@@ -143,12 +142,12 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
             property == "native_id" || property == "plugin_id" -> ExternalItemAdapter.nativeId(item).orEmpty()
             property == "provider" || property == "plugin" -> ExternalItemAdapter.providerName(item).orEmpty()
             property == "amt" -> item.amount.toString()
-            property == "name" -> serializeText(item.effectiveName(), query.format)
-            property == "lore" -> serializeLore(meta.lore().orEmpty(), query.format)
+            property == "name" -> serializeText(MenuUI.itemName(item), query.format)
+            property == "lore" -> serializeLore(MenuUI.itemLore(meta), query.format)
             property.startsWith("lore:") -> {
                 val lineNumber = property.substringAfter(':').toIntOrNull()
                 val index = lineNumber?.takeIf { it >= 1 }?.minus(1) ?: -1
-                meta.lore()?.getOrNull(index)?.let { serializeText(it, query.format) }.orEmpty()
+                MenuUI.itemLore(meta).getOrNull(index)?.let { serializeText(it, query.format) }.orEmpty()
             }
             property == "enchants" -> serializeEnchantments(meta.enchants)
             property.startsWith("ench:") -> findEnchantmentLevel(meta.enchants, query.property.substringAfter(':')).toString()

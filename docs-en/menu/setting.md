@@ -86,6 +86,8 @@ Bottom:
 
 `lifetime` is measured in seconds and defaults to `300` (5 minutes). It controls both the Paper callback lifetime and KaMenu's server-side menu timeout.
 
+Spigot v1.7.0 also supports active close through `lifetime`, including Tasks, pagination, and `Events.Close` cleanup. An earlier close caused by client-only `url:` or `copy:` actions cannot notify the server immediately, but `lifetime` still provides fallback cleanup.
+
 When the limit is reached, KaMenu:
 
 1. Verifies that the player is still in the original menu session, so an old timeout cannot close a newer menu;

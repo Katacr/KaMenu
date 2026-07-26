@@ -957,6 +957,8 @@ Bottom:
 
 ### toast - Toast 通知
 
+`toast` 依赖 Paper/Folia 的 Advancement API。Spigot 会改为发送本地化的不支持提示；需要三平台一致显示时，请使用 `actionbar` 或 `title`。
+
 在屏幕右上角显示一个 Toast 通知。
 
 **格式：** `toast: type=类型;icon=物品ID;msg=标题`

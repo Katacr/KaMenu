@@ -13,7 +13,7 @@ import org.bukkit.inventory.meta.ItemMeta
 object ItemPropertyReader {
     /** 读取 ItemModel 的完整 NamespacedKey；未配置时返回 null。 */
     fun getItemModel(itemMeta: ItemMeta?): String? {
-        return itemMeta?.itemModel?.toString()
+        return itemMeta?.let(MenuUI::itemModel)
     }
 
     /** 读取旧整数 CustomModelData；未配置时返回 null。 */

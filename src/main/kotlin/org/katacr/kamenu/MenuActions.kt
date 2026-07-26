@@ -2,7 +2,6 @@
 
 package org.katacr.kamenu
 
-import io.papermc.paper.registry.data.dialog.action.DialogAction
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.event.ClickEvent
@@ -377,94 +376,95 @@ object MenuActions {
     }
 
     /**
-     * 从配置文件中构建 Paper Dialog 的点击动作。
+     * 执行菜单按钮路径下的动作列表。
      *
-     * 该方法是按钮点击进入 KaMenu 动作系统的入口，会收集输入组件值，
-     * 处理输入清洗规则，再把动作列表交给异步串行执行器。
-     *
-     * `closesDialogAfterAction` 用于补偿 Paper 的 after_action 关闭行为：
-     * 当客户端点击后会关闭 Dialog 时，KaMenu 需要在动作完成后补发 Close 生命周期。
+     * Paper callback 与 Spigot custom-click session 都通过此入口复用动作编排、输入变量和关闭生命周期。
+     * `closesDialogAfterAction` 表示客户端会在点击后自动关闭当前 Dialog。
      */
-    fun buildActionFromConfig(
+    fun executeConfigActionPath(
         player: Player,
         config: YamlConfiguration,
         path: String,
-        inputKeys: List<String>,
-        inputTypes: Map<String, String>,
-        inputRemoveChars: Map<String, String> = emptyMap(),
-        checkboxMappings: Map<String, Pair<String, String>>,
-        menuOpener: (Player, String) -> Unit,
+        variables: Map<String, String> = emptyMap(),
+        menuOpener: ((Player, String) -> Unit)? = null,
         closesDialogAfterAction: Boolean = false,
-        initialVariables: Map<String, String> = emptyMap(),
         contextId: String? = null
-    ): DialogAction {
-        // 只使用 actions（复数）键
+    ): CompletableFuture<Boolean> {
         val actionList = config.getList(path)
         if (actionList == null || actionList.isEmpty()) {
-            return DialogAction.customClick({ _, _ ->
-                completeDialogCloseLifecycle(player, config, MenuTaskManager.currentToken(player), closesDialogAfterAction)
-            }, buildCallbackOptions(config))
+            completeDialogCloseLifecycle(player, config, MenuTaskManager.currentToken(player), closesDialogAfterAction)
+            return CompletableFuture.completedFuture(false)
         }
 
-        // 1. 优先处理不需要服务器参与的静态动作 (url, copy)
-        // 仅当只有一个动作且是特定字符串时才执行
-        if (actionList.size == 1) {
-            val firstAction = actionList[0]
-            if (firstAction is String) {
-                when {
-                    firstAction.startsWith("url:") ->
-                        return DialogAction.staticAction(ClickEvent.openUrl(firstAction.removePrefix("url:").trim()))
-                    firstAction.startsWith("copy:") ->
-                        return DialogAction.staticAction(ClickEvent.copyToClipboard(firstAction.removePrefix("copy:").trim()))
-                }
+        val resolvedMenuOpener = menuOpener ?: { target: Player, menuName: String ->
+            plugin?.let { kaMenu ->
+                KaScheduler.runPlayer(target, Runnable {
+                    MenuUI.openMenu(target, menuName, kaMenu.menuManager, kaMenu)
+                })
             }
-            // 如果是Map且包含condition键，走下面的customClick处理路径
-            if (firstAction is Map<*, *>) {
-                if (firstAction.containsKey("condition")) {
-                    // 条件格式动作，继续执行下面的复杂逻辑
-                } else {
-                    // 未知类型的Map，返回无操作
-                    return DialogAction.customClick({ _, _ -> }, buildCallbackOptions(config))
-                }
-            } else if (firstAction !is String) {
-                // 其他非String、非condition的Map类型，返回无操作
-                return DialogAction.customClick({ _, _ -> }, buildCallbackOptions(config))
+            Unit
+        }
+        val initialTaskToken = MenuTaskManager.currentToken(player)
+        val handledMenuLifecycle = AtomicBoolean(false)
+        return executeActionList(
+            player,
+            actionList.map { it ?: Any() },
+            variables,
+            resolvedMenuOpener,
+            config = config,
+            contextId = contextId,
+            handledMenuLifecycle = handledMenuLifecycle
+        ).whenComplete { _, error ->
+            if (error != null) {
+                plugin?.logger?.severe("按钮动作执行失败: ${error.message}")
+                error.printStackTrace()
+            }
+            if (!handledMenuLifecycle.get()) {
+                completeDialogCloseLifecycle(player, config, initialTaskToken, closesDialogAfterAction)
             }
         }
+    }
 
-        // 2. 统一处理所有需要服务器参与的复杂逻辑
-        // (多行指令、变量、声音、条件判断等)
-        return DialogAction.customClick({ response, _ ->
-            val initialTaskToken = MenuTaskManager.currentToken(player)
-            val variables = initialVariables.toMutableMap()
-            variables.putAll(
-                InputCaptureUtils.captureVariables(
-                    plugin,
-                    response,
-                    InputCaptureUtils.Schema(inputKeys, inputTypes, inputRemoveChars, checkboxMappings)
-                )
-            )
+    /** 执行可点击文本引用的菜单内或全局 actions 包，并支持 `{arg:n}` 参数。 */
+    fun executeActionReference(
+        player: Player,
+        config: YamlConfiguration,
+        rawCall: String,
+        variables: Map<String, String> = emptyMap(),
+        contextId: String? = null,
+        closesDialogAfterAction: Boolean = false
+    ): CompletableFuture<Boolean> {
+        val initialTaskToken = MenuTaskManager.currentToken(player)
+        val handledMenuLifecycle = AtomicBoolean(false)
+        val actionCall = parseActionCall(rawCall)
+        val actionList = findActionList(config, actionCall.name)
+        if (actionList == null) {
+            MenuUI.sendMessage(player, TextParser.parseText(actionListNotFoundMessage(actionCall.name, config), player))
+            completeDialogCloseLifecycle(player, config, initialTaskToken, closesDialogAfterAction)
+            return CompletableFuture.completedFuture(false)
+        }
 
-            val handledMenuLifecycle = AtomicBoolean(false)
-            executeActionList(
-                player,
-                actionList.map { it ?: Any() },
-                variables,
-                menuOpener,
-                config = config,
-                contextId = contextId,
-                handledMenuLifecycle = handledMenuLifecycle
-            )
-                .whenComplete { _, error ->
-                    if (error != null) {
-                        plugin?.logger?.severe("按钮动作执行失败: ${error.message}")
-                        error.printStackTrace()
-                    }
-                    if (!handledMenuLifecycle.get()) {
-                        completeDialogCloseLifecycle(player, config, initialTaskToken, closesDialogAfterAction)
-                    }
-                }
-        }, buildCallbackOptions(config))
+        val menuOpener: (Player, String) -> Unit = { target, menuName ->
+            plugin?.let { kaMenu ->
+                KaScheduler.runPlayer(target, Runnable {
+                    MenuUI.openMenu(target, menuName, kaMenu.menuManager, kaMenu)
+                })
+            }
+        }
+        return executeActionList(
+            player = player,
+            actionList = actionList.actions,
+            variables = mergeActionArguments(variables, actionCall.arguments),
+            menuOpener = menuOpener,
+            config = config,
+            contextId = contextId,
+            actionListId = actionList.id,
+            handledMenuLifecycle = handledMenuLifecycle
+        ).whenComplete { _, _ ->
+            if (!handledMenuLifecycle.get()) {
+                completeDialogCloseLifecycle(player, config, initialTaskToken, closesDialogAfterAction)
+            }
+        }
     }
 
     /**
@@ -695,10 +695,10 @@ object MenuActions {
                 } else {
                     val subActionList = findActionList(context.config, actionCall.name)
                     if (subActionList == null) {
-                        context.player.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, context.config)))
+                        MenuUI.sendMessage(context.player, TextParser.parseText(actionListNotFoundMessage(actionCall.name, context.config)))
                         CompletableFuture.completedFuture(false)
                     } else if (subActionList.id == context.actionListId) {
-                        context.player.sendMessage(TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_self_call", actionCall.name)))
+                        MenuUI.sendMessage(context.player, TextParser.parseText(plugin?.languageManager?.getMessage("actions.action_list_self_call", actionCall.name)))
                         CompletableFuture.completedFuture(false)
                     } else {
                         val childContext = context.copy(
@@ -951,7 +951,7 @@ object MenuActions {
         when {
             // tell: 普通消息
             finalCmd.startsWith("tell:") ->
-                player.sendMessage(TextParser.parseText(finalCmd.removePrefix("tell:").trim()))
+                MenuUI.sendMessage(player, TextParser.parseText(finalCmd.removePrefix("tell:").trim()))
 
             // js: 执行 JavaScript 代码或 JavaScript 包
             finalCmd.startsWith("js:") -> {
@@ -968,17 +968,17 @@ object MenuActions {
                     } catch (e: Exception) {
                         val error = e.message ?: e.javaClass.simpleName
                         plugin?.logger?.warning(message("javascript.execution_error_player", player.name, error))
-                        player.sendMessage(TextParser.parseText(message("javascript.execution_failed_user", error)))
+                        MenuUI.sendMessage(player, TextParser.parseText(message("javascript.execution_failed_user", error)))
                     }
                 } else {
-                    player.sendMessage(TextParser.parseText(message("javascript.unavailable")))
+                    MenuUI.sendMessage(player, TextParser.parseText(message("javascript.unavailable")))
                 }
             }
 
             // actionbar: ActionBar 消息
             finalCmd.startsWith("actionbar:") -> {
                 val message = finalCmd.removePrefix("actionbar:").trim()
-                player.sendActionBar(TextParser.parseText(message))
+                MenuUI.sendActionBar(player, TextParser.parseText(message))
             }
 
             // title: 发送标题
@@ -992,8 +992,7 @@ object MenuActions {
             // hovertext: 可点击文本
             finalCmd.startsWith("hovertext:") -> {
                 val text = finalCmd.removePrefix("hovertext:").trim()
-                val message = parseClickableText(text, player, config, menuOpener)
-                player.sendMessage(message)
+                MenuUI.sendClickableText(player, text, config, contextId)
             }
 
             // command: 玩家执行指令
@@ -1084,6 +1083,11 @@ object MenuActions {
                                 handledMenuLifecycle?.set(true)
                                 MenuUI.forceOpenMenu(player, currentMenuId, kaMenu.menuManager, kaMenu)
                             })
+                        } else {
+                            KaScheduler.runPlayer(player, Runnable {
+                                handledMenuLifecycle?.set(true)
+                                MenuUI.forceOpenConfig(player, config, kaMenu, contextId ?: "external")
+                            })
                         }
                     }
                 }
@@ -1095,7 +1099,7 @@ object MenuActions {
                 KaScheduler.runPlayer(player, Runnable {
                     DialogSessionManager.cancel(player)
                     MenuTaskManager.cancel(player)
-                    player.closeDialog()
+                    MenuUI.closeDialog(player)
                 })
             }
 
@@ -1117,7 +1121,7 @@ object MenuActions {
                                 KaScheduler.runPlayer(player, Runnable {
                                     DialogSessionManager.cancel(player)
                                     MenuTaskManager.cancel(player)
-                                    player.closeDialog()
+                                    MenuUI.closeDialog(player)
                                 })
                             }
                             // 如果 result 为 true（Close 事件中遇到 return），不关闭菜单
@@ -1129,7 +1133,7 @@ object MenuActions {
                 KaScheduler.runPlayer(player, Runnable {
                     DialogSessionManager.cancel(player)
                     MenuTaskManager.cancel(player)
-                    player.closeDialog()
+                    MenuUI.closeDialog(player)
                 })
             }
 
@@ -1152,7 +1156,7 @@ object MenuActions {
                                 actionListId = actionList.id
                             )
                         } else {
-                            player.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
+                            MenuUI.sendMessage(player, TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
                         }
                     }
                 }
@@ -1514,7 +1518,7 @@ object MenuActions {
      */
     fun executeTestAction(player: Player, actionString: String): Boolean {
         if (plugin == null) {
-            player.sendMessage(TextParser.parseText(languageManager?.getMessage("actions.test_failed", "插件未初始化") ?: "§c插件未初始化，无法执行动作"))
+            MenuUI.sendMessage(player, TextParser.parseText(languageManager?.getMessage("actions.test_failed", "插件未初始化") ?: "§c插件未初始化，无法执行动作"))
             return false
         }
 
@@ -1535,7 +1539,7 @@ object MenuActions {
             )
             return true
         } catch (e: Exception) {
-            player.sendMessage(TextParser.parseText(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))
+            MenuUI.sendMessage(player, TextParser.parseText(e.message?.let { languageManager?.getMessage("actions.test_failed", it) } ?: "§c动作执行失败: ${e.message}"))
             plugin?.logger?.severe("测试动作执行失败: ${e.message}")
             e.printStackTrace()
             return false
@@ -1723,7 +1727,7 @@ object MenuActions {
      *
      * 支持主副手、背包槽位、四个护甲槽、保存物品和基础材质；返回克隆物品，避免悬浮展示修改原物品。
      */
-    private fun resolveHoverItem(player: Player, rawSource: String): org.bukkit.inventory.ItemStack? {
+    fun resolveHoverItem(player: Player, rawSource: String): org.bukkit.inventory.ItemStack? {
         val source = rawSource.trim()
         val lowerSource = source.lowercase()
         val item = when {
@@ -1842,7 +1846,7 @@ object MenuActions {
                                 )
                             })
                         } else {
-                            audience.sendMessage(TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
+                            MenuUI.sendMessage(audience, TextParser.parseText(actionListNotFoundMessage(actionCall.name, config)))
                         }
                     }
                 }, buildCallbackOptions(config)))

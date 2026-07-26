@@ -76,7 +76,7 @@ object DialogSessionManager {
     private fun closeSession(player: Player, session: ActiveDialog) {
         MenuTaskManager.cancel(player)
         MenuListManager.clear(player)
-        player.closeDialog()
+        MenuUI.closeDialog(player)
 
         if (session.config.contains("Events.Close")) {
             MenuActions.executeEvent(player, session.config, "Close", session.contextId)

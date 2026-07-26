@@ -5,14 +5,12 @@ package org.katacr.kamenu
 import com.google.common.io.ByteStreams
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
-import net.kyori.adventure.title.Title
 import net.milkbowl.vault.economy.Economy
 import org.bukkit.Bukkit
 import org.bukkit.NamespacedKey
 import org.bukkit.SoundCategory
 import org.bukkit.entity.Player
 import com.google.common.io.ByteArrayDataOutput
-import java.time.Duration
 
 /**
  * 具体动作处理工具。
@@ -135,7 +133,7 @@ object ActionHandlers {
                 normalizedSoundName.replace('_', '.')
             ).asSequence()
                 .distinct()
-                .mapNotNull { key -> parseSoundKey(key)?.let { org.bukkit.Registry.SOUND_EVENT.get(it) } }
+                .mapNotNull { key -> parseSoundKey(key)?.let { org.bukkit.Registry.SOUNDS.get(it) } }
                 .firstOrNull()
 
             if (sound != null) {
@@ -196,20 +194,20 @@ object ActionHandlers {
         val titleComponent = if (title.isEmpty()) Component.empty() else TextParser.parseText(title)
         val subtitleComponent = if (subtitle.isEmpty()) Component.empty() else TextParser.parseText(subtitle)
 
-        // 使用 Adventure API 的 Title (Paper 推荐方式)
-        val titleTimes = Title.Times.times(
-            Duration.ofMillis(fadeIn * 50L),   // ticks to milliseconds
-            Duration.ofMillis(stay * 50L),     // ticks to milliseconds
-            Duration.ofMillis(fadeOut * 50L)   // ticks to milliseconds
-        )
-        val adventureTitle = Title.title(titleComponent, subtitleComponent, titleTimes)
-        player.showTitle(adventureTitle)
+        MenuUI.showTitle(player, titleComponent, subtitleComponent, fadeIn, stay, fadeOut)
     }
 
     /**
      * 解析并发送 Toast 通知
      */
     fun parseAndSendToast(player: Player, args: String) {
+        if (!MenuUI.paperPlatform) {
+            val warning = languageManager?.getMessage("actions.toast_unsupported_platform")
+                ?: "§cThe toast action is not supported by this server platform."
+            MenuUI.sendMessage(player, TextParser.parseText(warning, player))
+            return
+        }
+
         var frameType = "task"
         var iconItem = "minecraft:stone"
         var title = "提示"
@@ -543,7 +541,7 @@ object ActionHandlers {
         val item = itemManager!!.getItem(finalItemName)
         if (item == null) {
             languageManager?.getMessage("condition.stock_item_not_exist", finalItemName)?.let {
-                player.sendMessage(TextParser.parseText(it))
+                MenuUI.sendMessage(player, TextParser.parseText(it))
             }
             return
         }
@@ -566,7 +564,7 @@ object ActionHandlers {
                     // 发送 actionbar 提示和拾取音效
                     val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
                     if (actionbarMessage != null) {
-                        player.sendActionBar(TextParser.parseText(actionbarMessage))
+                        MenuUI.sendActionBar(player, TextParser.parseText(actionbarMessage))
                     }
                     player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
                 }
@@ -585,7 +583,7 @@ object ActionHandlers {
 
                 for (stack in allItems) {
                     if (remaining <= 0) break
-                    if (!stack.isEmpty && stack.isSimilar(item)) {
+                    if (stack.type != org.bukkit.Material.AIR && stack.amount > 0 && stack.isSimilar(item)) {
                         val stackAmount = stack.amount
                         if (stackAmount <= remaining) {
                             // 整个堆叠都扣除
@@ -703,7 +701,7 @@ object ActionHandlers {
                     // 发送 actionbar 提示和拾取音效
                     val actionbarMessage = languageManager?.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
                     if (actionbarMessage != null) {
-                        player.sendActionBar(TextParser.parseText(actionbarMessage))
+                        MenuUI.sendActionBar(player, TextParser.parseText(actionbarMessage))
                     }
                     player.playSound(player.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
                 }
@@ -727,17 +725,17 @@ object ActionHandlers {
                     } else {
                         stack.type == material
                     }
-                    if (!stack.isEmpty && itemMatches) {
+                    if (stack.type != org.bukkit.Material.AIR && stack.amount > 0 && itemMatches) {
                         // 检查 lore 是否匹配（如果指定了 lore）
                         if (finalLoreText != null) {
                             val itemMeta = stack.itemMeta
                             if (itemMeta != null && itemMeta.hasLore()) {
-                                val lore = itemMeta.lore()
+                                val lore = MenuUI.itemLore(itemMeta)
                                 // 检查 lore 中是否包含指定字符串（忽略大小写）
-                                val loreMatched = lore?.any { line ->
+                                val loreMatched = lore.any { line ->
                                     val plainText = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(line)
                                     plainText.contains(finalLoreText, ignoreCase = true)
-                                } ?: false
+                                }
                                 if (!loreMatched) {
                                     continue
                                 }
@@ -750,22 +748,8 @@ object ActionHandlers {
                         // 检查 item_model 是否匹配（如果指定了 model）
                         if (finalItemModel != null) {
                             val itemMeta = stack.itemMeta
-                            if (itemMeta != null && itemMeta.hasItemModel()) {
-                                val modelKey = itemMeta.itemModel
-                                if (modelKey != null) {
-                                    // 格式化为 namespace:key
-                                    val modelStr = "${modelKey.namespace()}:${modelKey.value()}"
-                                    if (!modelStr.equals(finalItemModel, ignoreCase = true)) {
-                                        continue
-                                    }
-                                } else {
-                                    // 没有模型，跳过
-                                    continue
-                                }
-                            } else {
-                                // 没有模型，跳过
-                                continue
-                            }
+                            val modelKey = ItemPropertyReader.getItemModel(itemMeta) ?: continue
+                            if (!modelKey.equals(finalItemModel, ignoreCase = true)) continue
                         }
 
                         // 符合所有条件，执行扣除
@@ -804,10 +788,6 @@ object ActionHandlers {
             if (parts.size <= 4) location.yaw = player.location.yaw
             if (parts.size <= 5) location.pitch = player.location.pitch
         }
-        if (KaScheduler.folia) {
-            player.teleportAsync(location)
-        } else {
-            player.teleport(location)
-        }
+        KaScheduler.teleport(player, location)
     }
 }

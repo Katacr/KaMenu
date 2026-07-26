@@ -2,6 +2,10 @@
 
 `Bottom` 节点定义菜单底部的交互按钮区域，共有三种布局模式：`notice`、`confirmation`、`multi`。在 `multi.buttons` 内还可以使用 `type: repeat` 动态生成按钮列表。
 
+{% hint style="info" %}
+Spigot v1.7.0 支持三种布局、`repeat`、输入回传和完整服务端 actions。只有单动作 `url:` / `copy:` 会直接在客户端执行，无法即时回报关闭状态。参见 [Spigot Dialog 兼容](../config/spigot-dialog.md)。
+{% endhint %}
+
 ---
 
 ## 配置结构
@@ -118,7 +122,7 @@ Bottom:
 
 ### repeat - 动态按钮列表
 
-`multi.buttons` 中的某个按钮可以配置为 `type: repeat`，用于根据动态数据源生成一组真实 Paper Dialog 按钮。适合在线玩家列表、传送点列表、好友列表、邮件列表等数量不固定的内容。
+`multi.buttons` 中的某个按钮可以配置为 `type: repeat`，用于根据动态数据源生成一组真实原生 Dialog 按钮。适合在线玩家列表、传送点列表、好友列表、邮件列表等数量不固定的内容。
 
 **基本位置：**
 

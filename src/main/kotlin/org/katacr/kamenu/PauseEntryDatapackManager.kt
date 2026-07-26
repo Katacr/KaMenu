@@ -191,7 +191,12 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
             }
 
             is RegisteredTarget.Actions -> {
-                val variables = InputCaptureUtils.captureVariables(plugin, response, runtime.inputSchema)
+                val rawValues = runtime.inputSchema.keys.associateWith { key ->
+                    response?.getFloat(key)?.toString()
+                        ?: response?.getText(key)
+                        ?: response?.getBoolean(key)?.toString()
+                }
+                val variables = InputCaptureUtils.captureVariables(plugin, rawValues, runtime.inputSchema)
                 MenuActions.executeActionGroup(
                     sender,
                     runtime.config,

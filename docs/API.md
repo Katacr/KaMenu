@@ -2,6 +2,10 @@
 
 KaMenu 提供公开 API，允许其他插件打开文件菜单、渲染内存 YAML 菜单，并注册自定义动作命名空间。
 
+{% hint style="info" %}
+Paper、Folia 与 Spigot 均支持文件菜单、内存 YAML、Events、按钮 actions 和外部 action handler。Spigot 的平台边界见 [Spigot Dialog 兼容](config/spigot-dialog.md)。
+{% endhint %}
+
 ## API 类
 
 ### `org.katacr.kamenu.api.KaMenuAPI`
@@ -85,7 +89,7 @@ config.loadFromString(yaml)
 KaMenuAPI.openConfig(player, config, "myplugin:dynamic-shop")
 ```
 
-`Events.Open` 会在渲染前执行。如果 `Open` 事件中执行了 `return`，菜单不会继续打开。外部内存菜单使用 `reset` 且不存在文件菜单 ID 时，KaMenu 会忽略该动作。
+三个平台都会在渲染前执行 `Events.Open`；若动作链执行 `return`，菜单不会继续打开。外部内存菜单使用 `reset` 时会重新打开当前内存 `YamlConfiguration`，不要求配置来自 `MenuManager`。
 
 #### `registerActionHandler(String namespace, KaMenuActionHandler handler)`
 

@@ -203,6 +203,8 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 生成或移除 ESC 暂停菜单入口数据包。`register` 会读取插件根目录的 `pause_menu.yml`，并将其中的静态 KaMenu 风格布局编译为原版 Dialog。
 
+该指令仅在 Paper/Folia 及提供兼容 Paper custom click API 的衍生核心可用；Spigot 会返回不支持提示。
+
 **格式：**
 - `/km pause register` - 按当前 `plugins/KaMenu/pause_menu.yml` 生成入口数据包
 - `/km pause unregister` - 移除 KaMenu 生成的入口数据包

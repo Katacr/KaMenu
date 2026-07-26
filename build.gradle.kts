@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.katacr"
-version = "1.6.6"
+version = "1.7.0"
 
 repositories {
     mavenCentral()
@@ -30,13 +30,27 @@ repositories {
     maven("https://jitpack.io") {
         name = "vaultapi"
     }
+    maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") {
+        name = "spigot-snapshots"
+    }
+}
+
+val spigotAdapter by sourceSets.creating {
+    java.srcDir("src/spigot/java")
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
 }
 
 dependencies {
     implementation("net.byteflux:libby-bukkit:1.3.0")
     implementation("org.bstats:bstats-bukkit:3.1.0")
+    compileOnly(kotlin("stdlib"))
+    compileOnly("net.kyori:adventure-text-minimessage:4.22.0")
+    compileOnly("net.kyori:adventure-text-serializer-legacy:4.22.0")
+    compileOnly("net.kyori:adventure-text-serializer-plain:4.22.0")
+    compileOnly("net.kyori:adventure-text-serializer-gson:4.22.0")
+    compileOnly("net.kyori:adventure-text-serializer-bungeecord:4.4.1")
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("org.jetbrains.kotlin:kotlin-stdlib")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude(group = "org.bukkit", module = "bukkit")
@@ -45,6 +59,10 @@ dependencies {
     compileOnly("org.openjdk.nashorn:nashorn-core:15.3")
     compileOnly("org.ow2.asm:asm:9.5")
     compileOnly("org.ow2.asm:asm-util:9.5")
+    add(spigotAdapter.compileOnlyConfigurationName, "org.spigotmc:spigot-api:1.21.6-R0.1-SNAPSHOT")
+    add(spigotAdapter.compileOnlyConfigurationName, "net.kyori:adventure-text-serializer-legacy:4.22.0")
+    add(spigotAdapter.compileOnlyConfigurationName, "net.kyori:adventure-text-serializer-bungeecord:4.4.1")
+    add(spigotAdapter.compileOnlyConfigurationName, "org.jetbrains.kotlin:kotlin-stdlib")
 }
 
 tasks {
@@ -69,6 +87,8 @@ tasks.build {
 tasks.shadowJar {
     relocate("org.bstats", project.group.toString())
     archiveClassifier.set("")
+    dependsOn(spigotAdapter.classesTaskName)
+    from(spigotAdapter.output)
 }
 
 tasks.processResources {

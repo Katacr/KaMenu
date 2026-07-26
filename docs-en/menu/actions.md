@@ -953,6 +953,8 @@ Operate the player's metadata (memory cache), supporting set, add, subtract, and
 
 ### toast - Toast Notification
 
+`toast` depends on the Paper/Folia Advancement API. Spigot sends a localized unsupported message instead; use `actionbar` or `title` when the same visible behavior is required on all three platforms.
+
 Display a Toast notification in the upper right corner of the screen.
 
 **Format:** `toast: type=type;icon=item_id;msg=title`

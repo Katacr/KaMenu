@@ -2,6 +2,10 @@
 
 `plugins/KaMenu/pause_menu.yml` 用于设计原版 ESC 暂停菜单中的 KaMenu 入口 Dialog。插件启动时会检查该文件，不存在时自动释放默认模板，已经存在的文件不会被覆盖。
 
+{% hint style="warning" %}
+ESC 暂停菜单入口依赖 Paper 的数据包 custom click 回调，Spigot 模式不加载该功能；`/km pause` 会返回不支持提示。
+{% endhint %}
+
 编辑完成后执行：
 
 ```bash

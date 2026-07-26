@@ -2,6 +2,10 @@
 
 The `Bottom` node defines the interactive button area at the bottom of the menu, with three layout modes available: `notice`, `confirmation`, and `multi`. Inside `multi.buttons`, you can also use `type: repeat` to generate dynamic button lists.
 
+{% hint style="info" %}
+Spigot v1.7.0 supports all three layouts, `repeat`, input submission, and full server-side actions. Only a single `url:` or `copy:` action runs directly on the client and cannot immediately report close state. See [Spigot Dialog Compatibility](../config/spigot-dialog.md).
+{% endhint %}
+
 ---
 
 ## Configuration Structure
@@ -118,7 +122,7 @@ Supports multiple custom buttons arranged in a matrix, with an optional exit but
 
 ### repeat - Dynamic Button Lists
 
-A button under `multi.buttons` can use `type: repeat` to generate real Paper Dialog buttons from a dynamic data source. This is useful for online player lists, warp lists, friend lists, mail lists, and other content with unknown item counts.
+A button under `multi.buttons` can use `type: repeat` to generate real native Dialog buttons from a dynamic data source. This is useful for online player lists, warp lists, friend lists, mail lists, and other content with unknown item counts.
 
 **Basic location:**
 

@@ -10,7 +10,7 @@ This guide will help you quickly install and configure the KaMenu plugin.
 |------|---------|
 | Minecraft Version | 1.21.7+ |
 | Java Version | Java 21+ |
-| Server Type | **Paper**, **Folia**, and forks with a compatible Paper Dialog API |
+| Server Type | **Paper**, **Folia**, **Spigot**, and compatible forks |
 | Database | SQLite (default), MySQL 5.7+ |
 
 {% hint style="info" %}
@@ -20,6 +20,7 @@ This guide will help you quickly install and configure the KaMenu plugin.
 - ✨ Paper 1.21.8+: Recommended — more stable API
 - 🎨 Paper 1.21.9+: Full features (sprite item icons, player head avatars, and more)
 - ⚡ Folia 1.21.7+: Region-threaded scheduling support; use a current build matching the target Minecraft version
+- 🧩 Spigot 1.21.6+: Native Dialogs plus server-side actions, Events, Inputs, Tasks, JavaScript, storage, and external APIs
 {% endhint %}
 
 {% hint style="info" %}
@@ -27,12 +28,7 @@ This guide will help you quickly install and configure the KaMenu plugin.
 {% endhint %}
 
 {% hint style="warning" %}
-KaMenu depends on the Paper Dialog API and does **not support**: 
-
-- Paper 1.21.6 or below (API not fully implemented)
-- Spigot, CraftBukkit, or other non-Paper server software
-
-Make sure the server is based on **Paper/Folia 1.21.7 or newer** and provides the matching Dialog API.
+**Spigot compatibility scope:** v1.7.0 connects Inputs and button actions to the server-side runtime and maps the main visual properties of both `Body.item` and `hover_item` through Bukkit public APIs, so normal menus use the same configuration. The main Paper/Folia-only boundaries are `toast`, the ESC pause entry, `Body.sprite`, and `Body.player_head`. Client-only `url:` and `copy:` actions cannot immediately report close state to the server. See [Spigot Dialog Compatibility](../config/spigot-dialog.md).
 {% endhint %}
 
 ---
@@ -74,6 +70,10 @@ ItemsAdder, Oraxen, and CraftEngine are soft dependencies; KaMenu still starts w
    - Create the `plugins/KaMenu/` configuration directory
    - Generate the default `config.yml`
    - Initialize the database (SQLite by default)
+
+{% hint style="info" %}
+The first startup requires Maven repository access. The server downloads Kotlin and Adventure before loading KaMenu's main class, then KaMenu downloads runtime libraries such as database drivers and the JavaScript engine. Cached dependencies are not downloaded again on later startups.
+{% endhint %}
 
 {% hint style="info" %}
 For first-time setup, run `/kamenu guide` (or `/km guide`) in game to open the getting started guide. The guide menu is loaded directly from inside the plugin jar into memory and is not written to the `menus` directory.

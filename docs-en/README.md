@@ -1,20 +1,21 @@
 ---
-description: KaMenu - A modern Dialog menu plugin for Minecraft Paper servers
+description: KaMenu - A modern Dialog menu plugin for Paper, Folia, and Spigot
 ---
 
 # 🏠 Home
 
-> The next-generation Minecraft GUI plugin powered by the Paper Dialog API — a fresh interactive experience beyond traditional chest menus
+> A next-generation Minecraft GUI plugin powered by the native Dialog API — a fresh interactive experience beyond traditional chest menus
 
-**KaMenu** is a GUI plugin built for modern Minecraft Paper servers. It abandons the traditional Inventory (chest) menu pattern in favor of the **native Paper 1.21.7+ Dialog API**, providing players with a modern menu interface featuring rich interactive components such as text inputs, sliders, single-option buttons, and checkboxes. Configuration is YAML-based — clean, intuitive, and ready to use out of the box.
+**KaMenu** is a native Dialog menu plugin for modern Minecraft servers. Paper/Folia use the Paper Dialog API and Spigot 1.21.6+ uses the Bungee Dialog API. The same YAML configuration and plugin JAR run on all three server platforms.
 
 > **⚠️ Important:**
-> - **Minimum version:** Paper 1.21.7
+> - **Paper/Folia minimum:** 1.21.7
+> - **Spigot Dialog minimum:** Spigot 1.21.6
 > - **Recommended version:** Paper 1.21.8+
-> - **Full feature version:** Paper 1.21.9+ (supports sprite item icons, player head avatars, and other advanced features)
-> - **Supported server software:** Paper, Folia, and forks that provide a compatible Paper Dialog API
+> - **Advanced component version:** Paper 1.21.9+ (supports sprite item icons, player head avatars, and other advanced features)
+> - **Supported server software:** Paper, Folia, Spigot, and compatible forks
 >
-> KaMenu **does not support** Paper 1.21.6 or earlier. Make sure your server meets the version requirements!
+> Spigot supports server-side actions, Events, Inputs, Tasks, JavaScript, storage, external APIs, and public visual properties for both `Body.item` and `hover_item`. The main Paper/Folia-only boundaries are `toast`, the ESC pause-screen entry, `Body.sprite`, and `Body.player_head`.
 
 KaMenu supports Folia's region-threaded execution model. Menu opening, delayed actions, periodic tasks, JavaScript delay helpers, and the external menu API automatically use the appropriate Paper or Folia scheduler. Custom JavaScript, external action handlers, and third-party PlaceholderAPI expansions must still follow Folia's threading rules.
 

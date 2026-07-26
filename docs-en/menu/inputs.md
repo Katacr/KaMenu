@@ -2,6 +2,10 @@
 
 The `Inputs` node adds interactive input components to menus, allowing players to submit values, text, or make selections. Input values can be referenced in actions via the `$(key)` variable.
 
+{% hint style="warning" %}
+Spigot v1.7.0 displays all Inputs and submits values to KaMenu actions after validating text length, ranges, and option IDs. See [Spigot Dialog Compatibility](../config/spigot-dialog.md).
+{% endhint %}
+
 ---
 
 ## Configuration Structure

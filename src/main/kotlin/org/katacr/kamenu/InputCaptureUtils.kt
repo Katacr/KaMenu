@@ -1,8 +1,4 @@
-@file:Suppress("UnstableApiUsage")
-
 package org.katacr.kamenu
-
-import io.papermc.paper.dialog.DialogResponseView
 
 /**
  * Dialog 输入捕获的公共解析与清理工具。
@@ -29,33 +25,22 @@ object InputCaptureUtils {
     }
 
     /**
-     * 从 Paper Dialog 响应中读取并清理全部已注册输入。
+     * 从平台适配器提供的原始字符串中规范化并清理全部已注册输入。
+     *
+     * Paper 与 Spigot 都先把原生响应转换为该结构，避免公共输入逻辑依赖任一平台 API。
      */
     fun captureVariables(
         plugin: KaMenu?,
-        response: DialogResponseView?,
+        rawValues: Map<String, String?>,
         schema: Schema
     ): Map<String, String> {
-        if (response == null || schema.keys.isEmpty()) {
+        if (schema.keys.isEmpty()) {
             return schema.keys.associateWith { "" }
         }
 
         return buildMap {
             schema.keys.forEach { key ->
-                val value = when {
-                    response.getFloat(key) != null -> formatFloatValue(
-                        response.getFloat(key)!!,
-                        schema.types[key],
-                        schema.checkboxMappings[key]
-                    )
-
-                    response.getText(key) != null -> response.getText(key).orEmpty()
-                    response.getBoolean(key) != null -> formatBooleanValue(
-                        response.getBoolean(key)!!,
-                        schema.checkboxMappings[key]
-                    )
-                    else -> ""
-                }
+                val value = formatRawValue(rawValues[key].orEmpty(), schema.types[key], schema.checkboxMappings[key])
                 put(key, sanitizeInputValue(plugin, key, value, schema))
             }
         }
@@ -86,26 +71,25 @@ object InputCaptureUtils {
         }
     }
 
-    private fun formatFloatValue(
-        value: Float,
+    private fun formatRawValue(
+        value: String,
         inputType: String?,
         checkboxMapping: Pair<String, String>?
     ): String {
-        if (value != value.toInt().toFloat()) {
-            return value.toString()
+        if (inputType == "checkbox") {
+            if (checkboxMapping != null && (value == checkboxMapping.first || value == checkboxMapping.second)) {
+                return value
+            }
+            val checked = value.equals("true", true) || value == "1" || value.equals("yes", true)
+            return checkboxMapping?.let { if (checked) it.first else it.second } ?: checked.toString()
         }
-        val integer = value.toInt()
-        if (inputType == "checkbox" && checkboxMapping != null) {
-            return if (integer == 1) checkboxMapping.first else checkboxMapping.second
+        if (inputType == "number") {
+            val number = value.toDoubleOrNull() ?: return value
+            if (number.isFinite() && number == number.toLong().toDouble()) {
+                return number.toLong().toString()
+            }
         }
-        return integer.toString()
-    }
-
-    private fun formatBooleanValue(
-        value: Boolean,
-        checkboxMapping: Pair<String, String>?
-    ): String {
-        return checkboxMapping?.let { if (value) it.first else it.second } ?: value.toString()
+        return value
     }
 
     private fun sanitizeInputValue(

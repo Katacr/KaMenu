@@ -14,6 +14,7 @@ plugin:
 logo:
   version: "§b插件版本: §a{0}"
   minecraft: "§b服务器版本: §a{0}"
+  dialog_platform: "§bDialog 平台: §a{0}"
   language: "§b语言设置: §a{0}"
   placeholderapi: "§bPlaceholderAPI: {0}"
   vault: "§bVault: {0}"
@@ -78,6 +79,7 @@ pause_entry:
   unregister_failed: "§c移除 ESC 暂停菜单入口数据包失败，请检查文件权限。"
   restart_required: "§e请完整重启服务器后生效。"
   disabled: "§cESC 暂停菜单入口当前未启用。"
+  unsupported_platform: "§c当前核心不支持 ESC 暂停菜单入口；此功能需要 Paper 或兼容核心。"
   button_not_found: "§cESC 暂停菜单入口按钮不存在或未绑定操作: {0}"
   menu_not_found: "§cESC 暂停菜单入口目标菜单不存在: {0}"
   info_source: "§epause_menu.yml: §f{0} §7(存在: {1})"
@@ -85,6 +87,15 @@ pause_entry:
   source_invalid: "[KaMenu] pause_menu.yml 解析失败: {0}"
   write_failed: "[KaMenu] 写入 ESC 暂停菜单入口数据包失败: {0}"
   action_execution_failed: "[KaMenu] 暂停菜单按钮 {0} 的动作队列执行失败: {1}"
+
+# Spigot Dialog 兼容
+spigot_dialog:
+  compile_failed: "[KaMenu] Spigot Dialog 编译失败：contextId={0}，错误={1}"
+  render_failed: "[KaMenu] Spigot Dialog 渲染失败：contextId={0}，错误={1}"
+  unsupported_body: "[KaMenu] Spigot 已跳过不支持的 Body：contextId={0}，组件={1}，类型={2}"
+  invalid_item_property: "[KaMenu] 无效的物品属性：contextId={0}，组件={1}，属性={2}，值={3}"
+  invalid_item_slot: "[KaMenu] 无法读取物品槽位：contextId={0}，组件={1}，槽位或玩家={2}"
+  item_mapping_failed: "[KaMenu] Spigot 物品公共属性映射失败，已回退为基础物品：contextId={0}，组件={1}，错误={2}"
 
 # 自定义指令
 custom_commands:
@@ -148,6 +159,7 @@ condition:
 
 # 动作处理
 actions:
+  toast_unsupported_platform: "§c当前服务器核心不支持 toast 动作。"
   unknown_sound_category: "§c未知的声音类别: {0}"
   test_usage: "§c用法: /kamenu action <玩家> <动作>"
   test_example: "§a示例: /kamenu action Player1 tell:Hello World"

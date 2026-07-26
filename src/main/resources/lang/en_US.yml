@@ -14,6 +14,7 @@ plugin:
 logo:
   version: "§bPlugin Version: §a{0}"
   minecraft: "§bServer Version: §a{0}"
+  dialog_platform: "§bDialog Platform: §a{0}"
   language: "§bLanguage: §a{0}"
   placeholderapi: "§bPlaceholderAPI: {0}"
   vault: "§bVault: {0}"
@@ -78,6 +79,7 @@ pause_entry:
   unregister_failed: "§cFailed to remove the ESC pause screen entry datapack. Check file permissions."
   restart_required: "§eRestart the server fully to apply this change."
   disabled: "§cThe ESC pause screen entry is currently disabled."
+  unsupported_platform: "§cThis server does not support the ESC pause screen entry; it requires Paper or a compatible fork."
   button_not_found: "§cESC pause screen entry button does not exist or is not bound to an operation: {0}"
   menu_not_found: "§cESC pause screen entry target menu not found: {0}"
   info_source: "§epause_menu.yml: §f{0} §7(exists: {1})"
@@ -85,6 +87,15 @@ pause_entry:
   source_invalid: "[KaMenu] Failed to parse pause_menu.yml: {0}"
   write_failed: "[KaMenu] Failed to write ESC pause screen entry datapack: {0}"
   action_execution_failed: "[KaMenu] Pause menu button {0} action execution failed: {1}"
+
+# Spigot Dialog compatibility
+spigot_dialog:
+  compile_failed: "[KaMenu] Failed to compile Spigot Dialog: contextId={0}, error={1}"
+  render_failed: "[KaMenu] Failed to render Spigot Dialog: contextId={0}, error={1}"
+  unsupported_body: "[KaMenu] Spigot skipped an unsupported Body: contextId={0}, component={1}, type={2}"
+  invalid_item_property: "[KaMenu] Invalid item property: contextId={0}, component={1}, property={2}, value={3}"
+  invalid_item_slot: "[KaMenu] Cannot resolve item slot: contextId={0}, component={1}, slot or player={2}"
+  item_mapping_failed: "[KaMenu] Failed to map public Spigot item properties; using a basic item fallback: contextId={0}, component={1}, error={2}"
 
 # Custom Commands
 custom_commands:
@@ -150,6 +161,7 @@ condition:
 
 # Actions
 actions:
+  toast_unsupported_platform: "§cThe current server platform does not support the toast action."
   unknown_sound_category: "§cUnknown sound category: {0}"
   test_usage: "§cUsage: /kamenu action <player> <action>"
   test_example: "§aExample: /kamenu action Player1 tell:Hello World"

@@ -17,7 +17,7 @@ KaMenu supports executing predefined action lists at specific moments in the men
 - The `Open` event fires before the menu opens, so it does **not support** `$(input_key)` input variables (the input fields haven't been displayed yet)
 - The `Open` event waits for the full action chain to complete before opening the menu; if `return` is encountered, the menu will not open
 - The `Close` event fires after the menu closes and supports all variable formats, including `$(input_key)`
-- `Tasks` do not receive live input responses, so they do not support real-time `$(input_key)` values; if a task must stop exactly when the menu closes, make sure every menu-closing path executes `close` / `force-close`
+- `Tasks` do not receive live input responses, so they do not support real-time `$(input_key)` values. Paper, Folia, and Spigot stop them on server-visible close paths; `Settings.lifetime` is the fallback for client-only closes that cannot be reported.
 
 ---
 

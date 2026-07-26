@@ -91,7 +91,7 @@ object UpdateChecker {
         val msg = languageManager?.getMessage("plugin.update_available", latest, current)
             ?: "&e[KaMenu] &fNew version available: &a$latest&f, current: &7$current"
         val hoverText = parseUpdateMessage(msg)
-        player.sendMessage(MenuActions.parseClickableText(hoverText))
+        MenuUI.sendMessage(player, MenuActions.parseClickableText(hoverText))
     }
 
     /**

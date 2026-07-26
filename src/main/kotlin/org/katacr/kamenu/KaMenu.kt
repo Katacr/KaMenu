@@ -35,10 +35,15 @@ class KaMenu : JavaPlugin() {
     var economy: Economy? = null
     var bungeeCordEnabled: Boolean = false
 
+    /** 当前运行核心是否支持 Paper 专用的 ESC 暂停菜单数据包回调。 */
+    val pauseEntrySupported: Boolean
+        get() = MenuUI.paperPlatform && ::pauseEntryDatapackManager.isInitialized
+
     /**
      * 在 Bukkit 启用插件前下载并挂载运行时依赖。
      *
-     * KaMenu 使用 Libby 将 Kotlin、数据库驱动、连接池和 Nashorn 放到服务器共享 libraries 目录。
+     * KaMenu 使用 Libby 将数据库驱动、连接池和 Nashorn 放到服务器共享 libraries 目录。
+     * Kotlin 与 Adventure 由 plugin.yml 的 libraries 在插件主类实例化前下载，不能放在此处自举。
      * 这里不要访问依赖这些库的业务类，避免类加载顺序早于依赖注入。
      */
     override fun onLoad() {
@@ -53,13 +58,6 @@ class KaMenu : JavaPlugin() {
         // 添加 Maven 中央仓库和阿里云镜像（加速国内下载）
         libraryManager.addMavenCentral()
         libraryManager.addRepository("https://maven.aliyun.com/repository/public")
-
-        // Kotlin 标准库
-        val kotlinStd = Library.builder()
-            .groupId("org{}jetbrains{}kotlin")
-            .artifactId("kotlin-stdlib")
-            .version("1.9.22")
-            .build()
 
         // SQLite JDBC 驱动
         val sqlite = Library.builder()
@@ -105,7 +103,6 @@ class KaMenu : JavaPlugin() {
 
         logger.info("Checking and downloading necessary dependent libraries, please wait...")
 
-        libraryManager.loadLibrary(kotlinStd)
         libraryManager.loadLibrary(sqlite)
         libraryManager.loadLibrary(mysql)
         libraryManager.loadLibrary(hikari)
@@ -182,8 +179,10 @@ class KaMenu : JavaPlugin() {
         javaScriptPackageManager.loadPackages()
         JavaScriptManager.setPackageManager(javaScriptPackageManager)
 
-        // 3.45 初始化 ESC 暂停菜单入口数据包管理器
-        pauseEntryDatapackManager = PauseEntryDatapackManager(this)
+        // 3.45 ESC 暂停菜单入口依赖 Paper custom click 事件，Spigot 不加载该实现。
+        if (MenuUI.paperPlatform) {
+            pauseEntryDatapackManager = PauseEntryDatapackManager(this)
+        }
 
         // 3.5 初始化自定义指令管理器
         customCommandManager = CustomCommandManager(this)
@@ -198,7 +197,9 @@ class KaMenu : JavaPlugin() {
 
         // 5. 注册监听器
         server.pluginManager.registerEvents(MenuListener(this), this)
-        server.pluginManager.registerEvents(PauseEntryListener(this), this)
+        if (MenuUI.paperPlatform) {
+            server.pluginManager.registerEvents(PauseEntryListener(this), this)
+        }
 
         // 6. 初始化数据库管理器
         databaseManager = DatabaseManager(this)
@@ -257,6 +258,7 @@ class KaMenu : JavaPlugin() {
         MenuTaskManager.cancelAll()
         DialogSessionManager.clearAll()
         MenuListManager.clearAll()
+        MenuUI.shutdown()
         if (::menuManager.isInitialized) {
             menuManager.clear()
         }
@@ -310,6 +312,7 @@ class KaMenu : JavaPlugin() {
             §b
             §7${languageManager.getMessage("logo.version", version)}
             §7${languageManager.getMessage("logo.minecraft", gameVersion)}
+            §7${languageManager.getMessage("logo.dialog_platform", MenuUI.platformName)}
             §7${languageManager.getMessage("logo.database", dbType)}
             §7${languageManager.getMessage("logo.language", currentLang)}
             §7${languageManager.getMessage("logo.vault", vaultText)}
