@@ -4,7 +4,6 @@
   * [🚀 Getting Started](home/start.md)
 * [⚙️ Configuration](config/README.md)
   * [⛳ Config File: config.yml](config/config.md)
-  * [🧩 Spigot Dialog Compatibility](config/spigot-dialog.md)
   * [⏸ ESC Pause Menu: pause_menu.yml](config/pause-menu.md)
   * [⌨️ Custom Commands](config/customCommands.md)
   * [📦 actions Folder](config/actions-packages.md)

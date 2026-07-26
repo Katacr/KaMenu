@@ -16,7 +16,7 @@ class PauseEntryListener(private val plugin: KaMenu) : Listener {
 
     @EventHandler
     fun onCustomClick(event: PlayerCustomClickEvent) {
-        if (event.identifier != PauseEntryDatapackManager.ACTION_KEY) {
+        if (event.identifier.asString() != PauseEntryDatapackManager.ACTION_KEY) {
             return
         }
 
@@ -27,8 +27,13 @@ class PauseEntryListener(private val plugin: KaMenu) : Listener {
             ?: event.dialogResponseView?.getText("button")?.let { "button:$it" }
             ?: readPayloadValue(payload, "button")?.let { "button:$it" }
         val response = event.dialogResponseView
+        val responseValues = plugin.pauseEntryDatapackManager.registeredInputKeys().associateWith { key ->
+            response?.getFloat(key)?.toString()
+                ?: response?.getText(key)
+                ?: response?.getBoolean(key)?.toString()
+        }
         KaScheduler.runPlayer(player, Runnable {
-            plugin.pauseEntryDatapackManager.handleRegisteredTarget(player, targetId, response)
+            plugin.pauseEntryDatapackManager.handleRegisteredTarget(player, targetId, responseValues)
         })
     }
 

@@ -3,7 +3,6 @@
 `plugins/KaMenu/pause_menu.yml` defines KaMenu's single Dialog entry on the vanilla ESC pause screen. KaMenu checks this file during startup and releases the default template when it is missing. Existing files are never overwritten.
 
 {% hint style="warning" %}
-The ESC pause entry depends on Paper's datapack custom-click callback. It is not loaded in Spigot mode, and `/km pause` reports that the platform is unsupported.
 {% endhint %}
 
 After editing, run:

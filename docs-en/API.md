@@ -3,7 +3,6 @@
 KaMenu provides a public API for other plugins to open file-based menus, render in-memory YAML menus, and register custom action namespaces.
 
 {% hint style="info" %}
-Paper, Folia, and Spigot all support loaded menus, in-memory YAML, Events, button actions, and external action handlers. See [Spigot Dialog Compatibility](config/spigot-dialog.md) for the remaining platform boundaries.
 {% endhint %}
 
 ## API Class

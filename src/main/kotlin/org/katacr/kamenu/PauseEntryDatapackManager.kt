@@ -8,8 +8,6 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import io.papermc.paper.dialog.DialogResponseView
-import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import org.bukkit.World
 import org.bukkit.command.CommandSender
@@ -93,7 +91,7 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
     )
 
     companion object {
-        val ACTION_KEY: Key = Key.key("kamenu", "pause_screen_open")
+        const val ACTION_KEY = "kamenu:pause_screen_open"
         private val JSON: Gson = GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
         private val COMPONENT_SERIALIZER = GsonComponentSerializer.gson()
         private const val SOURCE_FILE = "pause_menu.yml"
@@ -159,7 +157,7 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
     fun handleRegisteredTarget(
         sender: CommandSender,
         targetId: String? = null,
-        response: DialogResponseView? = null
+        responseValues: Map<String, String?> = emptyMap()
     ) {
         if (sender !is Player) {
             return
@@ -191,11 +189,7 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
             }
 
             is RegisteredTarget.Actions -> {
-                val rawValues = runtime.inputSchema.keys.associateWith { key ->
-                    response?.getFloat(key)?.toString()
-                        ?: response?.getText(key)
-                        ?: response?.getBoolean(key)?.toString()
-                }
+                val rawValues = runtime.inputSchema.keys.associateWith(responseValues::get)
                 val variables = InputCaptureUtils.captureVariables(plugin, rawValues, runtime.inputSchema)
                 MenuActions.executeActionGroup(
                     sender,
@@ -217,6 +211,9 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
             }
         }
     }
+
+    /** 返回当前暂停菜单声明的输入键，供平台监听器读取原生响应。 */
+    fun registeredInputKeys(): List<String> = registeredPauseMenu?.inputSchema?.keys.orEmpty()
 
     /**
      * 首次安装时释放可直接修改的 `pause_menu.yml` 模板。
@@ -628,14 +625,14 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
             button.menu != null -> JsonObject().apply {
                 targets[targetId] = RegisteredTarget.Menu(button.menu)
                 addProperty("type", "minecraft:dynamic/custom")
-                addProperty("id", ACTION_KEY.asString())
+                addProperty("id", ACTION_KEY)
                 add("additions", JsonObject().apply { addProperty("target", targetId) })
             }
 
             button.actions != null -> JsonObject().apply {
                 targets[targetId] = RegisteredTarget.Actions(button.actions)
                 addProperty("type", "minecraft:dynamic/custom")
-                addProperty("id", ACTION_KEY.asString())
+                addProperty("id", ACTION_KEY)
                 add("additions", JsonObject().apply { addProperty("target", targetId) })
             }
 

@@ -18,7 +18,7 @@ This guide will help you quickly install and configure the KaMenu plugin.
 
 - ✅ Paper 1.21.7+: Full basic functionality
 - ✨ Paper 1.21.8+: Recommended — more stable API
-- 🎨 Paper 1.21.9+: Full features (sprite item icons, player head avatars, and more)
+- 🎨 Minecraft 1.21.9+: Supports sprite and other newer client text components with the same menu syntax on Paper, Folia, and Spigot
 - ⚡ Folia 1.21.7+: Region-threaded scheduling support; use a current build matching the target Minecraft version
 - 🧩 Spigot 1.21.6+: Native Dialogs plus server-side actions, Events, Inputs, Tasks, JavaScript, storage, and external APIs
 {% endhint %}
@@ -28,7 +28,6 @@ This guide will help you quickly install and configure the KaMenu plugin.
 {% endhint %}
 
 {% hint style="warning" %}
-**Spigot compatibility scope:** v1.7.0 connects Inputs and button actions to the server-side runtime and maps the main visual properties of both `Body.item` and `hover_item` through Bukkit public APIs, so normal menus use the same configuration. The main Paper/Folia-only boundaries are `toast`, the ESC pause entry, `Body.sprite`, and `Body.player_head`. Client-only `url:` and `copy:` actions cannot immediately report close state to the server. See [Spigot Dialog Compatibility](../config/spigot-dialog.md).
 {% endhint %}
 
 ---

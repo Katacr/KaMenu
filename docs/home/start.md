@@ -18,7 +18,7 @@
 
 - ✅ Paper 1.21.7+：基础功能完整支持
 - ✨ Paper 1.21.8+：推荐版本，API 更加稳定
-- 🎨 Paper 1.21.9+：完整功能（支持 sprite 物品图标、player head 头像等高级特性）
+- 🎨 Minecraft 1.21.9+：支持 sprite 等新版客户端文本组件；Paper、Folia 与 Spigot 使用相同菜单语法
 - ⚡ Folia 1.21.7+：支持区域线程调度；建议使用与目标 Minecraft 版本匹配的最新构建
 - 🧩 Spigot 1.21.6+：支持原生 Dialog、服务端 actions、Events、Inputs、Tasks、JavaScript、存储与外部 API
 {% endhint %}
@@ -28,7 +28,6 @@
 {% endhint %}
 
 {% hint style="warning" %}
-**Spigot 兼容范围**：v1.7.0 已接通输入与按钮的服务端回调，并通过 Bukkit 公共 API 映射 `Body.item` 和 `hover_item` 的主要视觉属性，普通菜单功能可使用同一份配置。Paper/Folia 独占边界主要是 `toast`、ESC 暂停菜单入口、`Body.sprite` 和 `Body.player_head`。纯客户端 `url:` / `copy:` 无法即时通知服务端关闭状态。完整差异见 [Spigot Dialog 兼容](../config/spigot-dialog.md)。
 {% endhint %}
 
 ---

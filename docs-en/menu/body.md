@@ -3,7 +3,6 @@
 The `Body` node displays various content in the main area of the menu, such as plain text messages and item displays.
 
 {% hint style="info" %}
-Spigot v1.7.0 supports `message`, body `actions=` callbacks, and maps the main visual properties of both `item` and `hover_item` through public APIs. `sprite` and `player_head` still require Paper/Folia. See [Spigot Dialog Compatibility](../config/spigot-dialog.md).
 {% endhint %}
 
 ---

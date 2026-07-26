@@ -79,7 +79,7 @@ pause_entry:
   unregister_failed: "§cFailed to remove the ESC pause screen entry datapack. Check file permissions."
   restart_required: "§eRestart the server fully to apply this change."
   disabled: "§cThe ESC pause screen entry is currently disabled."
-  unsupported_platform: "§cThis server does not support the ESC pause screen entry; it requires Paper or a compatible fork."
+  unsupported_platform: "§cThis server platform or version does not support the ESC pause screen entry."
   button_not_found: "§cESC pause screen entry button does not exist or is not bound to an operation: {0}"
   menu_not_found: "§cESC pause screen entry target menu not found: {0}"
   info_source: "§epause_menu.yml: §f{0} §7(exists: {1})"

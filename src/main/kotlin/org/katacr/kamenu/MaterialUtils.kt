@@ -6,7 +6,7 @@ import org.bukkit.Material
  * 物品材质工具类。
  *
  * 统一把用户输入的材质名规范化为 Bukkit Material 可识别的格式，
- * 并提供 Paper Dialog 文本中使用的 sprite 标签转换。
+ * 并提供 Dialog 文本中使用的 sprite 标签转换。
  */
 object MaterialUtils {
 
@@ -74,7 +74,7 @@ object MaterialUtils {
         val material = matchMaterial(materialName) ?: return null
 
         // MiniMessage sprite 标签需要小写
-        val key = material.key.value().lowercase()
+        val key = material.key.key.lowercase()
         return if (material.isBlock) {
             "<sprite:blocks:block/$key>"
         } else {

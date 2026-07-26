@@ -31,10 +31,12 @@
 
 - 消息、ActionBar、Title、可点击文本、物品名称/Lore/模型读取和 Dialog 关闭统一经过平台适配器。
 - Folia 区域线程判断与 `teleportAsync` 移入隔离适配器，Spigot 通用代码不再直接链接 Folia API。
-- `toast:` 在 Spigot 下发送本地化的不支持提示；ESC 暂停菜单入口仍为 Paper/Folia 专用。
+- `toast:` 在 Spigot 下发送本地化的不支持提示；ESC 暂停菜单入口通过平台各自的 custom-click 事件支持 Paper、Folia 与 Spigot。
 - Spigot `Body.item` 使用 Bukkit/Spigot 公共 API 映射名称、Lore、附魔、耐久、模型、光效、Tooltip、皮革颜色和玩家头颅，不静态或反射调用 NMS。
 - PDC、插件私有组件和 Bukkit 未公开的数据组件不会写入 Spigot Dialog；映射异常时按组件回退到基础物品并限流告警。
-- Spigot 可点击文本 `hover_item` 与 `Body.item` 复用同一套 Bukkit 公共属性映射；`Body.sprite` 和 `Body.player_head` 仍需 Paper/Folia。
+- Spigot 可点击文本 `hover_item` 与 `Body.item` 复用同一套 Bukkit 公共属性映射；`message` 中的 sprite 文本组件及 `Body.item` 玩家头颅同样支持。
+- Spigot 运行时 Adventure/MiniMessage 统一升级至 `4.26.1`，修复 sprite 标签因旧运行库而原样显示的问题。
+- 修复 sprite 材质键读取误用 Paper `NamespacedKey.value()` 导致的 Spigot `NoSuchMethodError`。
 - 客户端静态 `url:` / `copy:` 不会向服务端回传关闭状态，相关生命周期由 `Settings.lifetime` 兜底。
 - 修复 Spigot 下 `sound:` 使用 Paper 专属注册表字段导致的异常，并保留资源包自定义音效支持。
 - 验证内置 `{checkitem:[...]}` 与外部 `%kamenu_checkitem_[...]%` 在 Spigot 玩家背包中的读取链路。
@@ -72,10 +74,12 @@
 
 - Messages, ActionBar, Title, clickable text, item name/lore/model access, and Dialog close operations now use platform adapters.
 - Folia ownership checks and `teleportAsync` are isolated from shared Spigot runtime classes.
-- `toast:` sends a localized unsupported message on Spigot. The ESC pause-screen entry remains Paper/Folia-only.
+- `toast:` sends a localized unsupported message on Spigot. The ESC pause-screen entry supports Paper, Folia, and Spigot through each platform's custom-click event.
 - Spigot `Body.item` maps names, lore, enchantments, damage, models, glint, tooltip settings, leather colors, and player heads through Bukkit/Spigot public APIs without static or reflective NMS calls.
 - PDC, plugin-private components, and data components not exposed by Bukkit are omitted from Spigot Dialogs. Mapping errors fall back per component with rate-limited warnings.
-- Spigot clickable-text `hover_item` shares the same Bukkit public-property mapping as `Body.item`; `Body.sprite` and `Body.player_head` still require Paper/Folia.
+- Spigot clickable-text `hover_item` shares the same Bukkit public-property mapping as `Body.item`; sprite text components in `message` and player heads rendered through `Body.item` are supported as well.
+- Upgraded the Spigot Adventure/MiniMessage runtime to `4.26.1`, fixing sprite tags being displayed literally by the older runtime.
+- Fixed a Spigot `NoSuchMethodError` caused by using Paper's `NamespacedKey.value()` while resolving sprite material keys.
 - Client-side `url:` and `copy:` actions cannot report close state to the server; `Settings.lifetime` provides lifecycle fallback cleanup.
 - Fixed `sound:` failures on Spigot caused by a Paper-only registry field while retaining resource-pack custom sound support.
 - Verified both internal `{checkitem:[...]}` and external `%kamenu_checkitem_[...]%` inventory lookups on Spigot.

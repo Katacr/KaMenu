@@ -12,10 +12,10 @@ description: KaMenu - A modern Dialog menu plugin for Paper, Folia, and Spigot
 > - **Paper/Folia minimum:** 1.21.7
 > - **Spigot Dialog minimum:** Spigot 1.21.6
 > - **Recommended version:** Paper 1.21.8+
-> - **Advanced component version:** Paper 1.21.9+ (supports sprite item icons, player head avatars, and other advanced features)
+> - **Advanced text components:** Minecraft 1.21.9+ (supports sprite and other newer client text components)
 > - **Supported server software:** Paper, Folia, Spigot, and compatible forks
 >
-> Spigot supports server-side actions, Events, Inputs, Tasks, JavaScript, storage, external APIs, and public visual properties for both `Body.item` and `hover_item`. The main Paper/Folia-only boundaries are `toast`, the ESC pause-screen entry, `Body.sprite`, and `Body.player_head`.
+> Some features that depend on the Paper API may not be available on Spigot. We still recommend Paper for full functionality and better compatibility.
 
 KaMenu supports Folia's region-threaded execution model. Menu opening, delayed actions, periodic tasks, JavaScript delay helpers, and the external menu API automatically use the appropriate Paper or Folia scheduler. Custom JavaScript, external action handlers, and third-party PlaceholderAPI expansions must still follow Folia's threading rules.
 

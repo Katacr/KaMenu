@@ -45,6 +45,7 @@ import org.katacr.kamenu.MenuActions;
 import org.katacr.kamenu.MenuManager;
 import org.katacr.kamenu.MenuRequirementChecker;
 import org.katacr.kamenu.MenuTaskManager;
+import org.katacr.kamenu.PauseEntryDatapackManager;
 import org.katacr.kamenu.TextParser;
 import org.katacr.kamenu.dialog.DialogBodyDefinition;
 import org.katacr.kamenu.dialog.DialogButtonDefinition;
@@ -237,7 +238,25 @@ public final class SpigotDialogPlatformAdapter implements DialogPlatformAdapter,
     /** 验证并消费一次性按钮 session，然后执行平台中立的 KaMenu 动作列表。 */
     @EventHandler
     public void onCustomClick(PlayerCustomClickEvent event) {
+        if (event.getId().toString().equals(PauseEntryDatapackManager.ACTION_KEY)) {
+            Map<String, String> values = primitiveValues(event.getData());
+            runOnPrimaryThread(event.getPlayer(), () -> plugin.getPauseEntryDatapackManager()
+                    .handleRegisteredTarget(event.getPlayer(), values.get("target"), values));
+            return;
+        }
         dispatchCallback(event.getPlayer(), event.getId().toString(), event.getData());
+    }
+
+    /** 将 Spigot custom-click JSON 中的基础值转换为平台中立输入表。 */
+    private Map<String, String> primitiveValues(JsonElement payload) {
+        if (payload == null || !payload.isJsonObject()) return Map.of();
+        Map<String, String> values = new LinkedHashMap<>();
+        payload.getAsJsonObject().entrySet().forEach(entry -> {
+            if (entry.getValue().isJsonPrimitive()) {
+                values.put(entry.getKey(), entry.getValue().getAsString());
+            }
+        });
+        return values;
     }
 
     /** 校验并原子消费玩家绑定的一次性回调，然后执行对应 KaMenu 动作。 */

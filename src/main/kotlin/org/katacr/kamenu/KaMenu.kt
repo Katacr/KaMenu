@@ -35,9 +35,9 @@ class KaMenu : JavaPlugin() {
     var economy: Economy? = null
     var bungeeCordEnabled: Boolean = false
 
-    /** 当前运行核心是否支持 Paper 专用的 ESC 暂停菜单数据包回调。 */
+    /** 当前运行核心是否已初始化 ESC 暂停菜单数据包与平台回调。 */
     val pauseEntrySupported: Boolean
-        get() = MenuUI.paperPlatform && ::pauseEntryDatapackManager.isInitialized
+        get() = ::pauseEntryDatapackManager.isInitialized
 
     /**
      * 在 Bukkit 启用插件前下载并挂载运行时依赖。
@@ -179,10 +179,8 @@ class KaMenu : JavaPlugin() {
         javaScriptPackageManager.loadPackages()
         JavaScriptManager.setPackageManager(javaScriptPackageManager)
 
-        // 3.45 ESC 暂停菜单入口依赖 Paper custom click 事件，Spigot 不加载该实现。
-        if (MenuUI.paperPlatform) {
-            pauseEntryDatapackManager = PauseEntryDatapackManager(this)
-        }
+        // 3.45 初始化平台中立的 ESC 暂停菜单数据包管理器。
+        pauseEntryDatapackManager = PauseEntryDatapackManager(this)
 
         // 3.5 初始化自定义指令管理器
         customCommandManager = CustomCommandManager(this)

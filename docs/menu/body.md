@@ -3,7 +3,6 @@
 `Body` 节点用于在菜单主体区域显示各种内容，如纯文字消息和物品展示。
 
 {% hint style="info" %}
-Spigot v1.7.0 支持 `message`、正文 `actions=` 回调，并通过公共 API 映射 `item` 与 `hover_item` 的主要视觉属性；`sprite` 和 `player_head` 仍需 Paper/Folia。参见 [Spigot Dialog 兼容](../config/spigot-dialog.md)。
 {% endhint %}
 
 ---

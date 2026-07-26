@@ -12,10 +12,10 @@ description: KaMenu - 支持 Paper、Folia 与 Spigot 的现代化 Dialog 菜单
 > - **Paper/Folia 最低版本**：1.21.7
 > - **Spigot Dialog 最低版本**：Spigot 1.21.6
 > - **推荐版本**：Paper 1.21.8+
-> - **高级组件版本**：Paper 1.21.9+ （支持 sprite 物品图标、player head 头像等高级特性）
+> - **高级文本组件版本**：Minecraft 1.21.9+（支持 sprite 等新版客户端文本组件）
 > - **支持核心**：Paper、Folia、Spigot 及兼容衍生核心
 >
-> Spigot 已支持服务端 actions、Events、Inputs、Tasks、JavaScript、存储、外部 API，以及 `Body.item` 和 `hover_item` 的公开视觉属性。Paper/Folia 独占边界主要是 `toast`、ESC 暂停菜单入口、`Body.sprite` 和 `Body.player_head`。
+> 部分依赖 Paper API 的功能在 Spigot 上可能无法使用。为获得完整功能和更好的兼容性，我们仍建议使用 Paper 核心。
 
 KaMenu 已适配 Folia 的区域线程模型。菜单打开、动作延迟、周期任务、JavaScript 延迟辅助方法和外部菜单 API 会根据运行核心使用 Paper 或 Folia 调度器。菜单中的自定义 JavaScript、外部 action handler 和第三方 PlaceholderAPI 扩展仍需自行遵守 Folia 的线程规则。
 
