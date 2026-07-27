@@ -36,9 +36,12 @@ repositories {
 }
 
 val spigotAdapter by sourceSets.creating {
-    java.srcDir("src/spigot/java")
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().output
+}
+
+kotlin.sourceSets.named(spigotAdapter.name) {
+    kotlin.srcDir("src/spigot/kotlin")
 }
 
 dependencies {
