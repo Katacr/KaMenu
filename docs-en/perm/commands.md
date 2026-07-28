@@ -1,4 +1,4 @@
-# ⌨️ Command List
+# Command List
 
 KaMenu provides a concise command structure. The main command is `/km` (aliases: `/kamenu`, `/menu`).
 
@@ -354,7 +354,7 @@ Test and execute a specified action for debugging and verifying action configura
 - Action-chain or menu-context actions such as `wait`, `return`, `run-task:`, `stop-task:`, `stop-current-task`, `page:`, and `actions:` can be entered, but some effects depend on the current menu config or task lifecycle.
 - `url:` and `copy:` are Paper Dialog static button click events. They only work as a single menu button action and are not useful `/km action` test targets.
 
-For a full list of action types, see [🤖 Actions](../menu/actions.md).
+For a full list of action types, see [Actions](../menu/actions.md).
 
 ---
 
@@ -397,4 +397,4 @@ custom-commands:
   menu: 'main_menu'     # Players run /menu to open main_menu
 ```
 
-For detailed configuration, see [⌨️ Custom Commands](../home/commands.md).
+For detailed configuration, see [Custom Commands](../home/commands.md).

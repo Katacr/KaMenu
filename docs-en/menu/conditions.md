@@ -1,4 +1,4 @@
-# 🔍 Conditions
+# Conditions
 
 KaMenu provides a powerful universal condition system that can be used in **any text field** and **action list** in menus, dynamically displaying different content or executing different actions based on player state.
 
@@ -212,7 +212,7 @@ method.value    # Forward check
 | `hasStockItem` | Check if player inventory has stored item | `hasStockItem.MysticFruit;16` | `!hasStockItem.MysticFruit;16` |
 | `inList` / `inGlist` | Check whether a value is in a player/global list | `inGlist.%player_name%;{glist:vip_players}` | `!inList.%player_name%;Steve,Alex` |
 
-**For detailed usage of item checks, see [ hasItem and hasStockItem Condition Methods](conditions_item.md).**
+**For detailed usage of item checks, see [hasItem and hasStockItem Condition Methods](conditions_item.md).**
 
 ### Usage Examples
 
@@ -563,10 +563,10 @@ Bottom:
 
 ## Related Documents
 
-- [🍉 hasItem and hasStockItem Condition Methods](conditions_item.md) - Learn detailed usage of item checks
-- [⚙️ Events](events.md) - Learn detailed usage of the event system
-- [🤖 Actions](actions.md) - Learn all available action types
-- [💾 Data Storage](../data/storage.md) - Learn about data storage and variable usage
+- [hasItem and hasStockItem Condition Methods](conditions_item.md) - Learn detailed usage of item checks
+- [Events](events.md) - Learn detailed usage of the event system
+- [Actions](actions.md) - Learn all available action types
+- [Data Storage](../data/storage.md) - Learn about data storage and variable usage
 
 ---
 

@@ -1,4 +1,4 @@
-# 📊 数据存储
+# 数据存储
 
 KaMenu 内置了数据存储系统，无需额外插件即可在菜单中持久化读写玩家数据、全局数据、玩家列表和全局列表。
 
@@ -377,7 +377,7 @@ Bottom:
 
 数据存储的后端数据库可在 `config.yml` 中配置，支持 SQLite 和 MySQL 两种方式。
 
-详细配置请参阅 [⛳ 配置文件: config.yml](../config/config.md)。
+详细配置请参阅 [配置文件: config.yml](../config/config.md)。
 
 ---
 

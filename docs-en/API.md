@@ -2,9 +2,6 @@
 
 KaMenu provides a public API for other plugins to open file-based menus, render in-memory YAML menus, and register custom action namespaces.
 
-{% hint style="info" %}
-{% endhint %}
-
 ## API Class
 
 ### `org.katacr.kamenu.api.KaMenuAPI`

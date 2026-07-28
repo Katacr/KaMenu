@@ -1,4 +1,4 @@
-# 🔖 PlaceholderAPI
+# PlaceholderAPI
 
 KaMenu includes a built-in PlaceholderAPI (PAPI) extension that exposes plugin data as placeholder variables for use in other plugins (such as scoreboards and chat plugins).
 
@@ -10,7 +10,7 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 
 ---
 
-## 📊 Variable Types Overview
+## Variable Types Overview
 
 | Variable Type | Prefix | Data Source | Persistent | Description |
 |--------------|--------|-------------|------------|-------------|
@@ -27,14 +27,14 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 | **Stock Items** | `%kamenu_hasstockitem_<itemName>%` | Player Inventory | — | Count of a saved stock item in player's inventory |
 
 **Quick Navigation:**
-- 📦 [Player Data Variables](#player-data-variables)
-- 🌐 [Global Data Variables](#global-data-variables)
-- 📋 [List Variables](#list-variables)
-- 👥 [Online Player List Variable](#online-player-list-variable)
-- 💾 [Player Metadata Variables](#player-metadata-variables)
-- 🧰 [Item Property Variables](#item-property-variables)
-- 🎒 [Inventory Item Variables](#inventory-item-variables)
-- 📦 [Stock Item Variables](#stock-item-variables)
+- [Player Data Variables](#player-data-variables)
+- [Global Data Variables](#global-data-variables)
+- [List Variables](#list-variables)
+- [Online Player List Variable](#online-player-list-variable)
+- [Player Metadata Variables](#player-metadata-variables)
+- [Item Property Variables](#item-property-variables)
+- [Inventory Item Variables](#inventory-item-variables)
+- [Stock Item Variables](#stock-item-variables)
 
 ---
 
@@ -378,7 +378,7 @@ Stock items must be saved to the database via command before they can be used.
 
 1. Hold the item you want to save
 2. Run `/km item save <item_name>`
-3. For full details see: [📝 Commands - /km item](perm/commands.md#km-item)
+3. For full details see: [Commands - /km item](perm/commands.md#km-item)
 {% endhint %}
 
 **Examples:**

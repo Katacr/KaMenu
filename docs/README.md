@@ -2,13 +2,13 @@
 description: KaMenu - 支持 Paper、Folia 与 Spigot 的现代化 Dialog 菜单插件
 ---
 
-# 🏠 首页
+# 首页
 
 > 基于原生 Dialog API 的下一代 Minecraft GUI 插件，超越传统箱子菜单的全新交互体验
 
 **KaMenu** 是一款面向现代 Minecraft 服务器的原生 Dialog 菜单插件。Paper/Folia 使用 Paper Dialog API，Spigot 1.21.6+ 使用 Bungee Dialog API；同一份 YAML 和同一个插件 JAR 可在三个核心上运行。
 
-> **⚠️ 重要提示**：
+> **重要提示**：
 > - **Paper/Folia 最低版本**：1.21.7
 > - **Spigot Dialog 最低版本**：Spigot 1.21.6
 > - **推荐版本**：Paper 1.21.8+
@@ -21,9 +21,9 @@ KaMenu 已适配 Folia 的区域线程模型。菜单打开、动作延迟、周
 
 ***
 
-## ✨ 核心特性
+## 核心特性
 
-### 🖥️ 基于 Dialog API 的现代化 GUI
+### 基于 Dialog API 的现代化 GUI
 
 告别传统箱子菜单，拥抱原生 UI：
 
@@ -32,13 +32,13 @@ KaMenu 已适配 Folia 的区域线程模型。菜单打开、动作延迟、周
 * 支持物品展示 (Item)、纯文字消息 (Message) 等内容组件
 * 三种底部按钮布局模式：`notice`、`confirmation`、`multi`
 
-### 🔧 高度可定制
+### 高度可定制
 
 * 完全基于 YAML 配置，无需任何编程知识
 * 支持多层文件夹结构，轻松管理大量菜单
 * 支持热重载，修改配置后无需重启服务器
 
-### 🔀 强大的动作系统
+### 强大的动作系统
 
 支持丰富的按钮点击动作：
 
@@ -58,21 +58,21 @@ KaMenu 已适配 Folia 的区域线程模型。菜单打开、动作延迟、周
 * `Events.Open` — 会等待整条动作链完成后再打开菜单
 * `Events.Tasks` — 菜单打开期间按固定间隔周期执行动作组
 
-### 🔍 通用条件判断
+### 通用条件判断
 
 * 在**任意文本字段**（标题、按钮文字、组件文本）中使用条件判断
-* 在**动作列表**中嵌套条件，实现分支执行逻辑
+* 在**动作列表** 中嵌套条件，实现分支执行逻辑
 * 支持 PlaceholderAPI 变量、比较运算符（`==` `!=` `>` `<` `>=` `<=`）及逻辑运算符（`&&` `||`）
 * 条件中可直接使用 `{js:...}` 进行动态计算
 
-### 💾 内置数据存储
+### 内置数据存储
 
 * 支持 **SQLite**（默认）和 **MySQL** 双数据库
 * **玩家数据** (`{data:key}`)：按玩家 UUID 存储的独立键值对
 * **全局数据** (`{gdata:key}`)：所有玩家共享的键值对
 * 通过 **PlaceholderAPI** 扩展对外暴露数据变量
 
-### 🌐 快捷打开方式
+### 快捷打开方式
 
 * `/kamenu guide` — 首次使用时打开内置入门向导，引导设置语言和释放示例菜单
 * `/km open <菜单ID>` — 标准指令打开
@@ -80,14 +80,14 @@ KaMenu 已适配 Folia 的区域线程模型。菜单打开、动作延迟、周
 * **自定义指令注册**：一行配置将任意单词变为打开菜单的快捷指令
 * **外部插件 API**：其他插件可直接打开文件菜单，或渲染内存 YAML / `YamlConfiguration` 菜单，无需写入 `menus` 目录和执行 reload
 
-### 📊 PlaceholderAPI 支持
+### PlaceholderAPI 支持
 
 * 完整支持 PAPI 变量解析（菜单标题、组件文本、动作中均可使用）
 * 提供 `%kamenu_data_<key>%`、`%kamenu_gdata_<key>%`、`%kamenu_list_<key>%`、`%kamenu_glist_<key>%` 和 `%kamenu_online_players%` 变量
 
 ***
 
-## 💰 支持
+## 支持
 
 KaMenu 是一款免费开源插件，您可以在 GitHub 下载源代码并自行构建最新实验功能使用。
 
@@ -96,11 +96,11 @@ KaMenu 是一款免费开源插件，您可以在 GitHub 下载源代码并自�
 
 ***
 
-## 🤝 社区与反馈
+## 社区与反馈
 
 * **GitHub**: [Katacr/KaMenu](https://github.com/Katacr/KaMenu/)
 * **问题反馈**: [GitHub Issues](https://github.com/Katacr/KaMenu/issues)
 
-## 📄 许可证
+## 许可证
 
 本项目采用 [GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html) 许可证开源。

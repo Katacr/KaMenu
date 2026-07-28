@@ -1,9 +1,6 @@
-# 🔘 Bottom Buttons (Bottom)
+# Bottom Buttons (Bottom)
 
 The `Bottom` node defines the interactive button area at the bottom of the menu, with three layout modes available: `notice`, `confirmation`, and `multi`. Inside `multi.buttons`, you can also use `type: repeat` to generate dynamic button lists.
-
-{% hint style="info" %}
-{% endhint %}
 
 ---
 
@@ -351,7 +348,7 @@ Bottom:
       - 'tell: &7Cancelled'
 ```
 
-For complete condition syntax, see [🔍 Conditions](conditions.md).
+For complete condition syntax, see [Conditions](conditions.md).
 
 ---
 

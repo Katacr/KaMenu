@@ -1,10 +1,10 @@
-# ⛳ Configuration File: config.yml
+# Configuration File: config.yml
 
 `config.yml` is the global configuration file for KaMenu, located at `plugins/KaMenu/config.yml`.
 
 ---
 
-## 📋 Full Example
+## Full Example
 
 ```yaml
 # KaMenu global configuration file
@@ -92,7 +92,7 @@ custom-commands:
 
 ---
 
-## 🔧 Configuration Reference
+## Configuration Reference
 
 ### language — Plugin Language
 
@@ -494,4 +494,4 @@ custom-commands:
 Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}`, `{arg:1}`, `{args}`, `{arg_count}`, and `{command}`.
 `args` indexes also start at `0` and support YAML lists, comma-separated strings, PAPI placeholders, and KaMenu built-in variables. PAPI and built-in variables are resolved in real time when the player presses Tab.
 
-To learn more about custom commands and their advantages, see [⌨️ Custom Commands](customCommands.md)
+To learn more about custom commands and their advantages, see [Custom Commands](customCommands.md)

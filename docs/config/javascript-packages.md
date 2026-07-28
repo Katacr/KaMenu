@@ -1,4 +1,4 @@
-# 📦 js 文件夹
+# js 文件夹
 
 `plugins/KaMenu/js/` 用于存放全局 JavaScript 包。JavaScript 包适合放置多个菜单都会复用的脚本逻辑，例如文本格式化、复杂状态计算、奖励消息、游戏逻辑和列表解析。
 

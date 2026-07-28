@@ -1,4 +1,4 @@
-# 📦 js Folder
+# js Folder
 
 `plugins/KaMenu/js/` stores global JavaScript packages. Use JavaScript packages for script logic shared by multiple menus, such as text formatting, complex state calculation, reward messages, game logic, and list parsing.
 

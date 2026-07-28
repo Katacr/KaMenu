@@ -1,1 +1,1 @@
-# 🤵 Commands & Permissions
+# Commands & Permissions

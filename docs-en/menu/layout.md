@@ -1,4 +1,4 @@
-# 🎬 Menu Title
+# Menu Title
 
 The `Title` node defines the title text displayed at the top of the menu.
 
@@ -44,7 +44,7 @@ Title:
     deny: '&8» &7&lGeneral Area &8«'
 ```
 
-For the complete conditional syntax, refer to [🔍 Conditions](conditions.md).
+For the complete conditional syntax, refer to [Conditions](conditions.md).
 
 ---
 

@@ -1,10 +1,10 @@
-# ⛳ 配置文件: config.yml
+# 配置文件: config.yml
 
 `config.yml` 是 KaMenu 的全局配置文件，位于 `plugins/KaMenu/config.yml`。
 
 ---
 
-## 📋 完整示例
+## 完整示例
 
 ```yaml
 # KaMenu 全局配置文件
@@ -92,7 +92,7 @@ custom-commands:
 
 ---
 
-## 🔧 配置项详解
+## 配置项详解
 
 ### language - 插件语言
 
@@ -494,4 +494,4 @@ custom-commands:
 动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}`、`{arg:1}`、`{args}`、`{arg_count}`、`{command}` 读取。
 `args` 的索引同样从 `0` 开始，并支持 YAML 列表、逗号分隔字符串、PAPI 和 KaMenu 内置变量；PAPI 与内置变量会在玩家按下 Tab 时实时解析。
 
-想要了解自定义指令的用法和优势，点击此处 [⌨️ 自定义指令](customCommands.md)
+想要了解自定义指令的用法和优势，点击此处 [自定义指令](customCommands.md)

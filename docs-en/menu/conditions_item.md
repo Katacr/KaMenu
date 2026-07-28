@@ -1,4 +1,4 @@
-# 🍉 hasItem and hasStockItem Condition Methods
+# hasItem and hasStockItem Condition Methods
 
 ## hasItem - Regular Item Check
 

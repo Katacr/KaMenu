@@ -1,4 +1,4 @@
-# 🚥 事件 (Events)
+# 事件 (Events)
 
 KaMenu 支持在菜单的特定时刻执行预定义的动作列表，通过 `Events` 键配置。事件系统允许你在菜单打开、关闭等关键时刻执行特定逻辑。
 
@@ -554,6 +554,6 @@ Bottom:
 
 ## 相关文档
 
-- [🔍 条件判断](conditions.md) - 了解条件表达式的详细语法
-- [🤖 动作 (Actions)](actions.md) - 了解所有可用的动作类型
-- [💾 数据存储](../data/storage.md) - 了解数据存储和变量使用
+- [条件判断](conditions.md) - 了解条件表达式的详细语法
+- [动作 (Actions)](actions.md) - 了解所有可用的动作类型
+- [数据存储](../data/storage.md) - 了解数据存储和变量使用

@@ -1,4 +1,4 @@
-# 📦 actions 文件夹
+# actions 文件夹
 
 `plugins/KaMenu/actions/` 用于存放全局 actions 动作包。动作包适合放置多个菜单都会复用的动作队列，例如通用提示、奖励发放、权限校验、跨菜单跳转等。
 

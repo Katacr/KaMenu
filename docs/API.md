@@ -2,9 +2,6 @@
 
 KaMenu 提供公开 API，允许其他插件打开文件菜单、渲染内存 YAML 菜单，并注册自定义动作命名空间。
 
-{% hint style="info" %}
-{% endhint %}
-
 ## API 类
 
 ### `org.katacr.kamenu.api.KaMenuAPI`

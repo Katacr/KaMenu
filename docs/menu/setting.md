@@ -1,4 +1,4 @@
-# ⚙️ 全局设置 (Settings)
+# 全局设置 (Settings)
 
 `Settings` 节点用于配置菜单的全局行为参数，包括关闭方式、动作执行后的行为等。
 
@@ -193,7 +193,7 @@ Bottom:
 
 当 `after_action: NONE` 时，客户端点击按钮后不会自动关闭菜单，但普通按钮和正文可点击文本的服务端 callback 均固定只能触发一次。若动作完成后没有关闭或重建菜单，后续点击将不会再产生服务器回调，客户端会留下无法响应的缓存界面。
 
-使用 `after_action: NONE` 时，必须确保**每个按钮的每条条件分支**最终执行以下动作之一：
+使用 `after_action: NONE` 时，必须确保**每个按钮的每条条件分支** 最终执行以下动作之一：
 - `close` / `force-close`：关闭菜单
 - `reset`：刷新当前菜单，重新建立按钮回调
 - `open` / `force-open`：打开其它菜单
@@ -250,7 +250,7 @@ Bottom:
 
 使用 `WAIT_FOR_RESPONSE` 时，客户端会进入等待响应状态。和 `NONE` 一样，按钮回调仍然是一次性的；如果动作链结束后没有 `close`、`reset`、`open` / `force-open` 等能关闭或重新渲染菜单的动作，客户端会持续停留在等待遮罩或旧菜单状态，玩家无法继续有效交互。
 
-因此，使用 `WAIT_FOR_RESPONSE` 时，请确保**每个按钮的每条条件分支**最终都会执行以下动作之一：
+因此，使用 `WAIT_FOR_RESPONSE` 时，请确保**每个按钮的每条条件分支** 最终都会执行以下动作之一：
 - `close` / `force-close`：关闭菜单并结束等待
 - `reset`：刷新当前菜单并重新建立按钮回调
 - `open` / `force-open`：打开其它菜单并结束当前等待
@@ -394,7 +394,7 @@ Bottom:
 1. 使用 `/papi list` 命令查看已安装的扩展
 2. 访问 [PlaceholderAPI Expansion](https://wiki.placeholderapi.com/users/placeholder-list/minecraft/) 搜索扩展
 3. 查看扩展的官方文档或源码
-   {% endhint %}
+{% endhint %}
 
 ---
 
@@ -598,7 +598,7 @@ Bottom:
 
 ## 相关文档
 
-- [🔘 底部按钮 (Bottom)](bottom.md) - 了解按钮动作配置
-- [🤖 动作 (Actions)](actions.md) - 了解所有可用的动作类型
-- [⚙️ 事件 (Events)](events.md) - 了解事件系统
-- [📊 PlaceholderAPI](../PlaceholderAPI.md) - 了解 PlaceholderAPI 集成
+- [底部按钮 (Bottom)](bottom.md) - 了解按钮动作配置
+- [动作 (Actions)](actions.md) - 了解所有可用的动作类型
+- [事件 (Events)](events.md) - 了解事件系统
+- [PlaceholderAPI](../PlaceholderAPI.md) - 了解 PlaceholderAPI 集成

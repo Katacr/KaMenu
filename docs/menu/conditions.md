@@ -1,6 +1,6 @@
-# 🔍 条件判断
+# 条件判断
 
-KaMenu 提供了强大的通用条件判断系统，可以在菜单的**任意文本字段**和**动作列表**中使用，根据玩家状态动态显示不同内容或执行不同操作。
+KaMenu 提供了强大的通用条件判断系统，可以在菜单的**任意文本字段**和**动作列表** 中使用，根据玩家状态动态显示不同内容或执行不同操作。
 
 ---
 
@@ -212,7 +212,7 @@ method.value    # 正向判断
 | `hasStockItem`  | 判断玩家背包中是否有存储库的物品     | `hasStockItem.神秘果;16` | `!hasStockItem.神秘果;16` |
 | `inList` / `inGlist` | 判断某个值是否在玩家列表/全局列表内 | `inGlist.%player_name%;{glist:vip_players}` | `!inList.%player_name%;Steve,Alex` |
 
-**关于物品判断详细使用方法，请参阅 [ hasItem 和 hasStockItem 条件方法](conditions_item.md) 。**
+**关于物品判断详细使用方法，请参阅 [hasItem 和 hasStockItem 条件方法](conditions_item.md) 。**
 
 ### 使用示例
 
@@ -562,10 +562,10 @@ Bottom:
 
 ## 相关文档
 
-- [🍉 hasItem和hasStockItem条件方法](conditions_item.md) - 了解物品判断的详细使用
-- [⚙️ 事件 (Events)](events.md) - 了解事件系统的详细使用
-- [🤖 动作 (Actions)](actions.md) - 了解所有可用的动作类型
-- [💾 数据存储](../data/storage.md) - 了解数据存储和变量使用
+- [hasItem和hasStockItem条件方法](conditions_item.md) - 了解物品判断的详细使用
+- [事件 (Events)](events.md) - 了解事件系统的详细使用
+- [动作 (Actions)](actions.md) - 了解所有可用的动作类型
+- [数据存储](../data/storage.md) - 了解数据存储和变量使用
 
 ---
 

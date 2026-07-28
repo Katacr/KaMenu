@@ -1,10 +1,10 @@
-# 🔧 JavaScript 功能
+# JavaScript 功能
 
 KaMenu 内置了强大的 JavaScript 引擎（基于 OpenJDK Nashorn 15.3），允许你在菜单中使用 JavaScript 代码执行各种复杂操作。
 
 ---
 
-## ✨ 功能特性
+## 功能特性
 
 - ✅ **开箱即用**：无需安装额外插件
 - ✅ **自动下载**：首次启动时自动下载所需依赖
@@ -15,7 +15,7 @@ KaMenu 内置了强大的 JavaScript 引擎（基于 OpenJDK Nashorn 15.3），�
 
 ---
 
-## 🔧 基础使用
+## 基础使用
 
 ### 直接执行 JavaScript 代码
 
@@ -50,7 +50,7 @@ actions:
 
 ---
 
-## 📦 内置变量
+## 内置变量
 
 JavaScript 代码中可以直接使用以下变量：
 
@@ -74,7 +74,7 @@ actions:
 
 ---
 
-## 🔌 内置辅助函数
+## 内置辅助函数
 
 JavaScript 环境中已预置以下辅助函数：
 
@@ -200,7 +200,7 @@ if (target) {
 
 ---
 
-## 📝 JavaScript 包
+## JavaScript 包
 
 ### 定义菜单内 JavaScript 包
 
@@ -361,7 +361,7 @@ var count = args.length;
 
 ---
 
-## 💡 使用示例
+## 使用示例
 
 ### 示例 1：发送消息和变量
 
@@ -513,7 +513,7 @@ Bottom:
 
 ---
 
-## 🎯 高级技巧
+## 高级技巧
 
 ### 创建可复用函数
 
@@ -551,7 +551,7 @@ Bottom:
 
 ---
 
-## 🐛 故障排除
+## 故障排除
 
 ### JavaScript 功能不可用？
 
@@ -560,7 +560,7 @@ Bottom:
 **问题 1：Nashorn 库未加载**
 
 1. 首次启动时，服务器会在后台自动下载 Nashorn 依赖
-2. 下载完成后，需要**重启服务器**以加载 JavaScript 功能
+2. 下载完成后，需要**重启服务器** 以加载 JavaScript 功能
 3. 检查控制台是否有 `JavaScript support enabled (Nashorn 15.3 engine)` 消息
 
 **问题 2：下载失败**
@@ -608,7 +608,7 @@ JavaScript execution error: SyntaxError: Unexpected token
   deny:
     - 'tell: 等级不足'
 
-# ⚠️ 可以但不推荐：使用 JavaScript
+# 可以但不推荐：使用 JavaScript
 - 'js: if (player.getLevel() >= 10) { player.sendMessage("等级足够"); }'
 ```
 
@@ -639,7 +639,7 @@ try {
 
 ---
 
-## 📚 完整示例菜单
+## 完整示例菜单
 
 查看 `menus/example/javascript_demo.yml` 获取更多完整示例！
 
@@ -654,25 +654,25 @@ try {
 
 ---
 
-## ⚠️ 注意事项
+## 注意事项
 
-- JavaScript 代码在**服务器端**执行
-- 每个玩家点击时的上下文是**独立**的
+- JavaScript 代码在**服务器端** 执行
+- 每个玩家点击时的上下文是**独立** 的
 - 每次 `js:` / `{js:...}` / JavaScript 包调用都会使用独立执行上下文；不要依赖上一条 `js:` 动作中定义的变量或函数
 - 复杂的 JavaScript 代码可能会影响服务器性能
-- 建议在生产环境**充分测试**后再部署
+- 建议在生产环境**充分测试** 后再部署
 - Nashorn 引擎基于 ECMAScript 5.1 标准，不支持 ES6+ 语法
 
 ---
 
-## 🚀 下一步
+## 下一步
 
 掌握了 JavaScript 功能后，你可以：
 
 1. **深入了解其他功能**：
-   - [🤖 动作 (Actions)](actions.md) - 学习所有可用的动作
-   - [🔍 条件判断](conditions.md) - 掌握条件判断的使用
-   - [💾 数据存储](../data/storage.md) - 使用数据库存储数据
+   - [动作 (Actions)](actions.md) - 学习所有可用的动作
+   - [条件判断](conditions.md) - 掌握条件判断的使用
+   - [数据存储](../data/storage.md) - 使用数据库存储数据
 
 2. **探索高级应用**：
    - 结合数据存储创建动态菜单
@@ -685,7 +685,7 @@ try {
 
 ---
 
-## 💬 需要帮助？
+## 需要帮助？
 
 如果遇到问题或有建议：
 

@@ -1,10 +1,10 @@
-# 🔧 JavaScript Features
+# JavaScript Features
 
 KaMenu has a built-in powerful JavaScript engine (based on OpenJDK Nashorn 15.3), allowing you to use JavaScript code inside menus to perform various complex operations.
 
 ---
 
-## ✨ Features
+## Features
 
 - ✅ **Ready to use**: No extra plugins required
 - ✅ **Auto-download**: Required dependencies are downloaded automatically on first startup
@@ -15,7 +15,7 @@ KaMenu has a built-in powerful JavaScript engine (based on OpenJDK Nashorn 15.3)
 
 ---
 
-## 🔧 Basic Usage
+## Basic Usage
 
 ### Executing JavaScript Directly
 
@@ -50,7 +50,7 @@ actions:
 
 ---
 
-## 📦 Built-in Variables
+## Built-in Variables
 
 The following variables can be used directly in JavaScript code:
 
@@ -74,7 +74,7 @@ actions:
 
 ---
 
-## 🔌 Built-in Helper Functions
+## Built-in Helper Functions
 
 The following helper functions are pre-loaded in the JavaScript environment:
 
@@ -200,7 +200,7 @@ if (target) {
 
 ---
 
-## 📝 JavaScript Packages
+## JavaScript Packages
 
 ### Defining Menu-local JavaScript Packages
 
@@ -361,7 +361,7 @@ var count = args.length;
 
 ---
 
-## 💡 Usage Examples
+## Usage Examples
 
 ### Example 1: Sending Messages and Variables
 
@@ -513,7 +513,7 @@ Bottom:
 
 ---
 
-## 🎯 Advanced Tips
+## Advanced Tips
 
 ### Creating Reusable Functions
 
@@ -551,7 +551,7 @@ Bottom:
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### JavaScript Features Unavailable?
 
@@ -608,7 +608,7 @@ For simple condition checks, prefer KaMenu's built-in `condition` feature:
   deny:
     - 'tell: Level insufficient'
 
-# ⚠️ Works but not recommended: use JavaScript
+# Works but not recommended: use JavaScript
 - 'js: if (player.getLevel() >= 10) { player.sendMessage("Level sufficient"); }'
 ```
 
@@ -639,7 +639,7 @@ try {
 
 ---
 
-## 📚 Complete Example Menu
+## Complete Example Menu
 
 See `menus/example/javascript_demo.yml` for more complete examples!
 
@@ -654,7 +654,7 @@ The example menu includes:
 
 ---
 
-## ⚠️ Notes
+## Notes
 
 - JavaScript code executes **server-side**
 - Each player's click has an **independent** execution context
@@ -665,14 +665,14 @@ The example menu includes:
 
 ---
 
-## 🚀 Next Steps
+## Next Steps
 
 Now that you have mastered JavaScript, you can:
 
 1. **Explore other features:**
-   - [🤖 Actions (Actions)](actions.md) — Learn all available actions
-   - [🔍 Conditions](conditions.md) — Master condition checks
-   - [💾 Data Storage](../data/storage.md) — Use the database to store data
+   - [Actions (Actions)](actions.md) — Learn all available actions
+   - [Conditions](conditions.md) — Master condition checks
+   - [Data Storage](../data/storage.md) — Use the database to store data
 
 2. **Explore advanced applications:**
    - Combine data storage to create dynamic menus
@@ -685,7 +685,7 @@ Now that you have mastered JavaScript, you can:
 
 ---
 
-## 💬 Need Help?
+## Need Help?
 
 If you encounter issues or have suggestions:
 

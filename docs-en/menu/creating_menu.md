@@ -1,10 +1,10 @@
-# 📝 Creating a Menu Tutorial
+# Creating a Menu Tutorial
 
 This tutorial walks you through creating a complete menu from scratch, helping you quickly master KaMenu's menu-building workflow.
 
 ---
 
-## 🎯 Learning Goals
+## Learning Goals
 
 By the end of this tutorial, you will be able to:
 - ✅ Create the basic structure of a menu file
@@ -17,7 +17,7 @@ By the end of this tutorial, you will be able to:
 
 ---
 
-## 📄 Step 1: Create the Menu File
+## Step 1: Create the Menu File
 
 ### 1.1 File Location
 
@@ -36,12 +36,12 @@ To create a menu, you first need to understand its structure. A complete menu fi
 
 | Parameter | Description | Required | Documentation |
 |-----------|-------------|----------|---------------|
-| `Title` | Title text displayed at the very top of the menu | ✅ | [🎬 Menu Title (Title)](layout.md) |
-| `Body` | Area for displaying information | | [🧩 Body Components (Body)](body.md) |
-| `Inputs` | Area for creating input components | | [⌨️ Input Components (Inputs)](inputs.md) |
-| `Bottom` | Bottom button area | ✅ | [📋 Bottom Buttons (Bottom)](bottom.md) |
-| `Settings` | Options for configuring the menu | | [⚙️ Global Settings (Settings)](setting.md) |
-| `Events` | Menu open/close actions | | [🎯 Events (Events)](events.md) |
+| `Title` | Title text displayed at the very top of the menu | ✅ | [Menu Title (Title)](layout.md) |
+| `Body` | Area for displaying information | | [Body Components (Body)](body.md) |
+| `Inputs` | Area for creating input components | | [Input Components (Inputs)](inputs.md) |
+| `Bottom` | Bottom button area | ✅ | [Bottom Buttons (Bottom)](bottom.md) |
+| `Settings` | Options for configuring the menu | | [Global Settings (Settings)](setting.md) |
+| `Events` | Menu open/close actions | | [Events (Events)](events.md) |
 
 
 {% hint style="info" %}
@@ -82,7 +82,7 @@ Bottom:
 
 ---
 
-## 📝 Step 2: Add Text Content
+## Step 2: Add Text Content
 
 ### 2.1 Add a Welcome Message
 
@@ -125,7 +125,7 @@ Body:
 
 ---
 
-## 🎨 Step 3: Add Item Displays
+## Step 3: Add Item Displays
 
 ### 3.1 Add a Single Item
 
@@ -179,7 +179,7 @@ Body:
 
 ---
 
-## 🎯 Step 4: Add Input Components
+## Step 4: Add Input Components
 
 ### 4.1 Add a Quantity Slider
 
@@ -218,7 +218,7 @@ Once you have created `Inputs` components, each component maps to an internal ke
 
 ---
 
-## 🔘 Step 5: Add Bottom Buttons
+## Step 5: Add Bottom Buttons
 
 ### 5.1 Simple Confirm Button
 
@@ -259,7 +259,7 @@ Bottom:
 
 ---
 
-## 🎨 Step 6: Use Condition Checks
+## Step 6: Use Condition Checks
 
 ### 6.1 Display Different Content Based on Player State
 In KaMenu, most areas support condition checks to display customised content.
@@ -303,7 +303,7 @@ Bottom:
 
 ---
 
-## 🚀 Test Your Menu
+## Test Your Menu
 
 ### 7.1 Reload Menus
 
@@ -333,27 +333,27 @@ Or use Tab completion:
 
 ---
 
-## 📚 Advanced Topics
+## Advanced Topics
 
 Once you have mastered the basics, you can explore more advanced features:
 
 ### Layout and Styling
-- [🧩 Body Components (Body)](body.md) — Learn about all available component types
-- [⌨️ Input Components (Inputs)](inputs.md) — Explore the various input components
-- [📋 Bottom Buttons (Bottom)](bottom.md) — Customise button layouts
+- [Body Components (Body)](body.md) — Learn about all available component types
+- [Input Components (Inputs)](inputs.md) — Explore the various input components
+- [Bottom Buttons (Bottom)](bottom.md) — Customise button layouts
 
 ### Interaction and Actions
-- [🤖 Actions (Actions)](actions.md) — Learn all available actions
-- [❓ Conditions (Conditions)](conditions.md) — Master condition checks
+- [Actions (Actions)](actions.md) — Learn all available actions
+- [Conditions (Conditions)](conditions.md) — Master condition checks
 
 ### Other Features
-- [⚙️ Global Settings (Settings)](setting.md) — Configure menu behaviour
-- [🎯 Events (Events)](events.md) — Respond to menu events
-- [🗄️ Data Storage (Storage)](../data/storage.md) — Use the database to store data
+- [Global Settings (Settings)](setting.md) — Configure menu behaviour
+- [Events (Events)](events.md) — Respond to menu events
+- [Data Storage (Storage)](../data/storage.md) — Use the database to store data
 
 ---
 
-## 🎉 Congratulations!
+## Congratulations!
 
 You have successfully created your first KaMenu menu!
 

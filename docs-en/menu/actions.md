@@ -1,4 +1,4 @@
-# 🤖 Actions
+# Actions
 
 The `actions` node defines a list of actions to execute when a button is clicked. Supports multiple action types, delayed execution, and conditional branches.
 
@@ -25,43 +25,42 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 
 | Action        | Description                                                    | Supports Target Selector |
 |---------------|----------------------------------------------------------------|--------------------------|
-| `tell`        | Send a chat message to the player                              | ✅                        | 
-| `actionbar`   | Send an action bar message (bottom of screen)                  | ✅                        | 
-| `title`       | Send a screen title and subtitle                               | ✅                        | 
-| `toast`       | Display a Toast notification on screen                         | ✅                        | 
-| `hovertext`   | Send a chat message with hover tooltip and click functionality | ✅                        | 
-| `command`     | Make the player execute a command                              | ✅                        | 
-| `chat`        | Make the player send a message in chat                         | ✅                        | 
-| `console`     | Execute a command with console permissions                     | ✅                        | 
-| `server`      | Transfer to a specified server (BungeeCord/Velocity)           | ✅                        | 
-| `tppos`       | Teleport to specified coordinates                              | ✅                        | 
-| `sound`       | Play a sound at the player's location                          | ✅                        | 
-| `money`       | Operate player coins (requires Vault)                          | ✅                        | 
-| `stock-item`  | Give/take stored items                                         | ✅                        | 
-| `item`        | Give/take regular items                                        | ✅                        | 
-| `open`        | Open another menu for the player                               | ✅                        | 
-| `close`       | Close the current menu                                         | ✅                        | 
-| `force-open`  | Force open menu (skips Events.Open)                            | ✅                        | 
-| `force-close` | Force close menu (skips Events.Close)                          | ✅                        | 
-| `reset`       | Reopen current menu (skips Events.Open)                        | ✅                        | 
-| `url`         | Open a specified link (only works with single action)          | ❌                        | 
-| `copy`        | Copy text to clipboard (only works with single action)         | ❌                        | 
-| `data`        | Operate player data (supports set/add/take/delete)             | ✅                        | 
-| `gdata`       | Operate global data (supports set/add/take/delete)             | ✅                        | 
-| `list`        | Operate player list data (supports set/add/remove/take/clear/delete) | ✅                        | 
-| `glist`       | Operate global list data (supports set/add/remove/take/clear/delete) | ✅                        | 
-| `meta`        | Operate player metadata (supports set/add/take/delete)         | ✅                        | 
-| `set-data`    | Short form for setting player data                             | ✅                        | 
-| `set-gdata`   | Short form for setting global data                             | ✅                        | 
-| `set-meta`    | Short form for setting player metadata                         | ✅                        | 
-| `js`          | Execute JavaScript code (supports menu/global JS packages)     | ❌                        | 
-| `actions`     | Execute an Events.Click list or global actions package         | ❌                        | 
-| `run-task`    | Start a periodic task defined under Events.Tasks               | ❌                        | 
-| `stop-task`   | Stop a specified periodic task                                 | ❌                        | 
-| `stop-current-task` | Stop the current periodic task and interrupt the current round | ❌                        | 
-| `wait`        | Insert delayed execution                                       | ❌                        | 
-| `return`      | Interrupt action execution list                                | ❌                        | 
-
+| `tell`        | Send a chat message to the player                              | ✅                        |
+| `actionbar`   | Send an action bar message (bottom of screen)                  | ✅                        |
+| `title`       | Send a screen title and subtitle                               | ✅                        |
+| `toast`       | Display a Toast notification on screen                         | ✅                        |
+| `hovertext`   | Send a chat message with hover tooltip and click functionality | ✅                        |
+| `command`     | Make the player execute a command                              | ✅                        |
+| `chat`        | Make the player send a message in chat                         | ✅                        |
+| `console`     | Execute a command with console permissions                     | ✅                        |
+| `server`      | Transfer to a specified server (BungeeCord/Velocity)           | ✅                        |
+| `tppos`       | Teleport to specified coordinates                              | ✅                        |
+| `sound`       | Play a sound at the player's location                          | ✅                        |
+| `money`       | Operate player coins (requires Vault)                          | ✅                        |
+| `stock-item`  | Give/take stored items                                         | ✅                        |
+| `item`        | Give/take regular items                                        | ✅                        |
+| `open`        | Open another menu for the player                               | ✅                        |
+| `close`       | Close the current menu                                         | ✅                        |
+| `force-open`  | Force open menu (skips Events.Open)                            | ✅                        |
+| `force-close` | Force close menu (skips Events.Close)                          | ✅                        |
+| `reset`       | Reopen current menu (skips Events.Open)                        | ✅                        |
+| `url`         | Open a specified link (only works with single action)          | ❌                        |
+| `copy`        | Copy text to clipboard (only works with single action)         | ❌                        |
+| `data`        | Operate player data (supports set/add/take/delete)             | ✅                        |
+| `gdata`       | Operate global data (supports set/add/take/delete)             | ✅                        |
+| `list`        | Operate player list data (supports set/add/remove/take/clear/delete) | ✅                        |
+| `glist`       | Operate global list data (supports set/add/remove/take/clear/delete) | ✅                        |
+| `meta`        | Operate player metadata (supports set/add/take/delete)         | ✅                        |
+| `set-data`    | Short form for setting player data                             | ✅                        |
+| `set-gdata`   | Short form for setting global data                             | ✅                        |
+| `set-meta`    | Short form for setting player metadata                         | ✅                        |
+| `js`          | Execute JavaScript code (supports menu/global JS packages)     | ❌                        |
+| `actions`     | Execute an Events.Click list or global actions package         | ❌                        |
+| `run-task`    | Start a periodic task defined under Events.Tasks               | ❌                        |
+| `stop-task`   | Stop a specified periodic task                                 | ❌                        |
+| `stop-current-task` | Stop the current periodic task and interrupt the current round | ❌                        |
+| `wait`        | Insert delayed execution                                       | ❌                        |
+| `return`      | Interrupt action execution list                                | ❌                        |
 ---
 
 ## Target Selector
@@ -132,9 +131,9 @@ Target selectors support all condition expressions supported by `Condition`:
 
 **Notes:**
 
-- ⚠️ `*` and `all` match all online players, use with caution
-- ⚠️ Variables in condition expressions are resolved individually for each target player
-- ⚠️ `server`, `actions`, `js`, `wait`, `return`, and task-control actions don't support target selectors and will ignore the target parameter
+- `*` and `all` match all online players, use with caution
+- Variables in condition expressions are resolved individually for each target player
+- `server`, `actions`, `js`, `wait`, `return`, and task-control actions don't support target selectors and will ignore the target parameter
 - ✅ `open`, `close`, `force-open`, `force-close`, and `reset` support target selectors and can refresh or close menus for selected players
 - ✅ Selector conditions can use variables such as `{data:*}`, `{gdata:*}`, and `{meta:*}`, for example: `open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
@@ -413,7 +412,7 @@ This action automatically selects the transfer method based on the `bungeecord` 
 | Configuration | Transfer Method | Advantages |
 |---------------|----------------|------------|
 | `bungeecord: true` | BungeeCord plugin message system | ✅ No player permission needed<br>✅ More reliable<br>✅ Better performance |
-| `bungeecord: false` | Execute `/server` command | ⚠️ Player needs `/server` command permission |
+| `bungeecord: false` | Execute `/server` command | Player needs `/server` command permission |
 
 **Use Cases:**
 - BungeeCord/Velocity network servers
@@ -1296,7 +1295,7 @@ actions:
 - Number: `50`, `3.14`
 
 {% hint style="info" %}
-JavaScript functionality is very powerful, supporting access to Bukkit API, math calculations, condition checks, etc. For more details on JavaScript functionality, see [🔧 JavaScript Features](javascript.md).
+JavaScript functionality is very powerful, supporting access to Bukkit API, math calculations, condition checks, etc. For more details on JavaScript functionality, see [JavaScript Features](javascript.md).
 {% endhint %}
 
 **Note:**

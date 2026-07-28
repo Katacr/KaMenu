@@ -1,38 +1,35 @@
-# 🚀 快速开始
+# 快速开始
 
 本指南将帮助你快速安装和配置 KaMenu 插件。
 
 ---
 
-## 🎮 系统要求
+## 系统要求
 
 | 项目 | 支持详情                       |
 |------|----------------------------|
 | Minecraft 版本 | 1.21.7+                    |
 | Java 版本 | Java 21+                   |
-| 服务器类型 | **Paper**、**Folia**、**Spigot** 及兼容衍生核心 |
+| 服务器类型 | **Paper**、**Folia**、**Spigot**及兼容衍生核心 |
 | 数据库 | SQLite（默认）、MySQL 5.7+      |
 
 {% hint style="info" %}
 **版本功能支持**： 
 
 - ✅ Paper 1.21.7+：基础功能完整支持
-- ✨ Paper 1.21.8+：推荐版本，API 更加稳定
-- 🎨 Minecraft 1.21.9+：支持 sprite 等新版客户端文本组件；Paper、Folia 与 Spigot 使用相同菜单语法
-- ⚡ Folia 1.21.7+：支持区域线程调度；建议使用与目标 Minecraft 版本匹配的最新构建
-- 🧩 Spigot 1.21.6+：支持原生 Dialog、服务端 actions、Events、Inputs、Tasks、JavaScript、存储与外部 API
+- Paper 1.21.8+：推荐版本，API 更加稳定
+- Minecraft 1.21.9+：支持 sprite 等新版客户端文本组件；Paper、Folia 与 Spigot 使用相同菜单语法
+- Folia 1.21.7+：支持区域线程调度；建议使用与目标 Minecraft 版本匹配的最新构建
+- Spigot 1.21.6+：支持原生 Dialog、服务端 actions、Events、Inputs、Tasks、JavaScript、存储与外部 API
 {% endhint %}
 
 {% hint style="info" %}
 **Folia 兼容说明**：KaMenu 会自动识别 Folia，并将玩家菜单、`wait`、`Events.Tasks`、JavaScript `delay()`、菜单 API 等任务调度到正确的玩家或全局线程。自定义 JavaScript、外部 action handler、PlaceholderAPI 扩展及由 `console:` 调用的其他插件指令，仍取决于对应代码或插件自身是否兼容 Folia。
 {% endhint %}
 
-{% hint style="warning" %}
-{% endhint %}
-
 ---
 
-## 📥 安装步骤
+## 安装步骤
 
 ### 1. 下载插件
 
@@ -112,7 +109,7 @@ plugins/KaMenu/menus/example/
 
 ---
 
-## 🧪 验证安装
+## 验证安装
 
 服务器启动后，控制台应显示 KaMenu 的启动 Logo，包含版本、数据库类型、已加载菜单数量等信息。
 
@@ -126,7 +123,7 @@ plugins/KaMenu/menus/example/
 
 ---
 
-## 🔄 热重载
+## 热重载
 
 修改配置文件或菜单文件后，无需重启服务器即可重新加载。未指定目标时会重载全部模块：
 

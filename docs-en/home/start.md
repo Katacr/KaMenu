@@ -1,10 +1,10 @@
-# 🚀 Quick Start
+# Quick Start
 
 This guide will help you quickly install and configure the KaMenu plugin.
 
 ---
 
-## 🎮 System Requirements
+## System Requirements
 
 | Item | Details |
 |------|---------|
@@ -17,22 +17,19 @@ This guide will help you quickly install and configure the KaMenu plugin.
 **Version Feature Support**: 
 
 - ✅ Paper 1.21.7+: Full basic functionality
-- ✨ Paper 1.21.8+: Recommended — more stable API
-- 🎨 Minecraft 1.21.9+: Supports sprite and other newer client text components with the same menu syntax on Paper, Folia, and Spigot
-- ⚡ Folia 1.21.7+: Region-threaded scheduling support; use a current build matching the target Minecraft version
-- 🧩 Spigot 1.21.6+: Native Dialogs plus server-side actions, Events, Inputs, Tasks, JavaScript, storage, and external APIs
+- Paper 1.21.8+: Recommended — more stable API
+- Minecraft 1.21.9+: Supports sprite and other newer client text components with the same menu syntax on Paper, Folia, and Spigot
+- Folia 1.21.7+: Region-threaded scheduling support; use a current build matching the target Minecraft version
+- Spigot 1.21.6+: Native Dialogs plus server-side actions, Events, Inputs, Tasks, JavaScript, storage, and external APIs
 {% endhint %}
 
 {% hint style="info" %}
 **Folia compatibility:** KaMenu detects Folia automatically and schedules player menus, `wait`, `Events.Tasks`, JavaScript `delay()`, and menu API calls on the appropriate player or global scheduler. Custom JavaScript, external action handlers, PlaceholderAPI expansions, and commands from other plugins invoked through `console:` must also be Folia-compatible.
 {% endhint %}
 
-{% hint style="warning" %}
-{% endhint %}
-
 ---
 
-## 📥 Installation
+## Installation
 
 ### 1. Download the Plugin
 
@@ -111,7 +108,7 @@ When no menus are loaded and an OP player joins the server, KaMenu sends a click
 
 ---
 
-## 🧪 Verify Installation
+## Verify Installation
 
 After starting the server, the console should show the KaMenu startup banner, including the version, database type, and number of loaded menus.
 
@@ -125,7 +122,7 @@ If the guide opens, the installation is working correctly. After releasing the e
 
 ---
 
-## 🔄 Hot Reload
+## Hot Reload
 
 After modifying configuration or menu files, reload without restarting the server. If no target is provided, all modules are reloaded:
 

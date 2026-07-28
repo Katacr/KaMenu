@@ -1,9 +1,6 @@
-# 📥 Input Components (Inputs)
+# Input Components (Inputs)
 
 The `Inputs` node adds interactive input components to menus, allowing players to submit values, text, or make selections. Input values can be referenced in actions via the `$(key)` variable.
-
-{% hint style="warning" %}
-{% endhint %}
 
 ---
 

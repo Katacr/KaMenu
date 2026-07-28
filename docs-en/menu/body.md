@@ -1,9 +1,6 @@
-# 🧩 Body Components (Body)
+# Body Components (Body)
 
 The `Body` node displays various content in the main area of the menu, such as plain text messages and item displays.
-
-{% hint style="info" %}
-{% endhint %}
 
 ---
 
@@ -171,7 +168,7 @@ Body:
 
 | Feature | List mode (A) | String mode (B) |
 |---------|--------------|-----------------|
-| Readability | ✅ Cleaner; each line is independent | ⚠️ Requires `\n` separators |
+| Readability | ✅ Cleaner; each line is independent | Requires `\n` separators |
 | Variable resolution | ✅ Each line resolved independently | ✅ Full text resolved at once |
 | Best for | Multi-line, formatted text | Short text or logically connected content |
 

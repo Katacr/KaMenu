@@ -1,6 +1,6 @@
-# 📁 菜单文件结构
+# 菜单文件结构
 
-## 📂 文件夹布局
+## 文件夹布局
 
 所有菜单文件统一存放在 `plugins/KaMenu/menus/` 目录下，支持任意层级的子文件夹结构：
 
@@ -20,7 +20,7 @@ plugins/KaMenu/menus/
 
 ---
 
-## 🎯 菜单 ID 规则
+## 菜单 ID 规则
 
 菜单 ID 由文件路径决定：
 
@@ -39,7 +39,7 @@ plugins/KaMenu/menus/
 
 ---
 
-## ✏️ 添加自定义菜单
+## 添加自定义菜单
 
 1. 在 `plugins/KaMenu/menus/` 下创建 `.yml` 文件（可以按需创建子文件夹）
 2. 按照菜单配置格式编写内容（参见后续章节）
@@ -47,12 +47,12 @@ plugins/KaMenu/menus/
 
 **文件命名说明：**
 - ✅ 支持中文文件名和文件夹名
-- ⚠️ 文件扩展名必须是 `.yml`（不是 `.yaml`）
-- ⚠️ 路径分隔符使用 `/`，不使用 `\`
+- 文件扩展名必须是 `.yml`（不是 `.yaml`）
+- 路径分隔符使用 `/`，不使用 `\`
 
 ---
 
-## 📝 Tab 补全
+## Tab 补全
 
 输入 `/km open ` 后按 Tab 键，会自动列出所有已加载的菜单 ID，包括子文件夹路径：
 
@@ -66,7 +66,7 @@ admin/tools
 
 ---
 
-## 📄 菜单文件基础结构
+## 菜单文件基础结构
 
 一个完整的菜单 YAML 文件的基本结构如下：
 
@@ -117,7 +117,7 @@ Bottom:
 
 ---
 
-## 🎨 菜单文件节点说明
+## 菜单文件节点说明
 
 ### Title - 菜单标题
 
@@ -149,7 +149,7 @@ Title:
 | `can_escape` | `Boolean` | `true` | 是否允许玩家通过 ESC 键关闭菜单 |
 | `after_action` | `String` | `CLOSE` | 点击按钮执行动作后的客户端行为 |
 
-**详细说明和示例：** 详见 [⚙️ 全局设置 (Settings)](setting.md)
+**详细说明和示例：** 详见 [全局设置 (Settings)](setting.md)
 
 ### JavaScript - 菜单 JavaScript 包
 
@@ -174,7 +174,7 @@ actions:
 
 也可以将通用代码放到 `plugins/KaMenu/js/<包名>.js` 作为全局 JavaScript 包。
 
-**详细说明和示例：** 详见 [🔧 JavaScript 功能 (JavaScript)](javascript.md)
+**详细说明和示例：** 详见 [JavaScript 功能 (JavaScript)](javascript.md)
 
 
 ### Events - 菜单事件
@@ -209,7 +209,7 @@ Events:
         - 'tell: &7菜单仍在打开'
 ```
 
-**详细说明和示例：** 详见 [🎯 菜单事件 (Events)](events.md)
+**详细说明和示例：** 详见 [菜单事件 (Events)](events.md)
 
 ### Body - 内容展示区
 
@@ -219,7 +219,7 @@ Events:
 - `message` - 纯文字消息
 - `item` - 物品展示
 
-**详细说明和示例：** 详见 [🧩 内容组件 (Body)](body.md)
+**详细说明和示例：** 详见 [内容组件 (Body)](body.md)
 
 ### Inputs - 输入组件区
 
@@ -231,7 +231,7 @@ Events:
 - `dropdown` - 单项选择按钮
 - `checkbox` - 复选框
 
-**详细说明和示例：** 详见 [⌨️ 输入组件 (Inputs)](inputs.md)
+**详细说明和示例：** 详见 [输入组件 (Inputs)](inputs.md)
 
 ### Bottom - 底部按钮区
 
@@ -244,18 +244,18 @@ Events:
 
 `multi.buttons` 下还支持 `type: repeat` 动态按钮模板，用于根据列表数据生成不固定数量的真实按钮。`repeat` 不是 `Bottom.type`，应写在具体按钮节点内。
 
-**详细说明和示例：** 详见 [📋 底部按钮 (Bottom)](bottom.md)
+**详细说明和示例：** 详见 [底部按钮 (Bottom)](bottom.md)
 
 ---
 
-## 🚀 下一步
+## 下一步
 
 了解菜单文件结构后，您可以：
 
-1. **创建您的第一个菜单**：查看 [📝 创建菜单教程](creating_menu.md)
+1. **创建您的第一个菜单**：查看 [创建菜单教程](creating_menu.md)
 2. **深入了解各个组件**：阅读对应的详细文档
 3. **探索高级功能**：条件判断、数据存储、动作系统等
 
 {% hint style="success" %}
-建议从 [📝 创建菜单教程](creating_menu.md) 开始，跟随教程一步步创建您的第一个菜单！
+建议从 [创建菜单教程](creating_menu.md) 开始，跟随教程一步步创建您的第一个菜单！
 {% endhint %}

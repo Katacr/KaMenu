@@ -1,4 +1,4 @@
-# ⌨️ 指令列表
+# 指令列表
 
 KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/menu`）。
 
@@ -354,7 +354,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 - `wait`、`return`、`run-task:`、`stop-task:`、`stop-current-task`、`page:`、`actions:` 等动作链/菜单上下文动作可以输入，但部分效果依赖当前菜单配置或任务生命周期。
 - `url:` 和 `copy:` 是 Paper Dialog 按钮的静态点击事件，只在菜单按钮中作为单动作使用，不适合作为 `/km action` 测试目标。
 
-详细动作类型请参阅 [🤖 动作 (Actions)](../menu/actions.md)。
+详细动作类型请参阅 [动作 (Actions)](../menu/actions.md)。
 
 ---
 
@@ -397,4 +397,4 @@ custom-commands:
   menu: 'main_menu'     # 玩家执行 /menu 即打开 main_menu 菜单
 ```
 
-详细配置请参阅 [⌨️ 自定义指令](../home/commands.md)。
+详细配置请参阅 [自定义指令](../home/commands.md)。

@@ -1,4 +1,4 @@
-# 📊 Data Storage
+# Data Storage
 
 KaMenu has a built-in data storage system, allowing persistent read/write of player data, global data, player lists, and global lists without additional plugins.
 
@@ -375,7 +375,7 @@ Bottom:
 
 The backend database for data storage can be configured in `config.yml`, supporting both SQLite and MySQL.
 
-For detailed configuration, see [⛳ Configuration File: config.yml](../config/config.md).
+For detailed configuration, see [Configuration File: config.yml](../config/config.md).
 
 ---
 

@@ -1,4 +1,4 @@
-# ⚙️ Global Settings (Settings)
+# Global Settings (Settings)
 
 The `Settings` node configures the menu's global behaviour, including how it can be closed and what happens after a button action is executed.
 
@@ -395,7 +395,7 @@ Regular players see a simplified message:
 1. Use `/papi list` to view all installed expansions
 2. Visit [PlaceholderAPI Expansion](https://wiki.placeholderapi.com/users/placeholder-list/minecraft/) to search for expansions
 3. Check the expansion's official documentation or source code
-   {% endhint %}
+{% endhint %}
 
 ---
 
@@ -599,7 +599,7 @@ Bottom:
 
 ## Related Documentation
 
-- [🔘 Bottom Buttons (Bottom)](bottom.md) — Learn about button action configuration
-- [🤖 Actions (Actions)](actions.md) — Learn about all available action types
-- [⚙️ Events (Events)](events.md) — Learn about the events system
-- [📊 PlaceholderAPI](../PlaceholderAPI.md) — Learn about PlaceholderAPI integration
+- [Bottom Buttons (Bottom)](bottom.md) — Learn about button action configuration
+- [Actions (Actions)](actions.md) — Learn about all available action types
+- [Events (Events)](events.md) — Learn about the events system
+- [PlaceholderAPI](../PlaceholderAPI.md) — Learn about PlaceholderAPI integration

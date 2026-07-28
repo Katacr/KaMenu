@@ -1,10 +1,10 @@
-# 🔐 Permission Design Philosophy
+# Permission Design Philosophy
 
 KaMenu adopts a minimalist permission philosophy, keeping only a single core admin permission and delegating all access control to the configuration system.
 
 ---
 
-## 💡 Design Philosophy
+## Design Philosophy
 
 ### Why Only One Permission Node?
 
@@ -58,7 +58,7 @@ Events:
 
 ---
 
-## 📋 Permission Overview
+## Permission Overview
 
 | Permission Node | Description | Default Holders |
 |----------------|-------------|-----------------|
@@ -66,7 +66,7 @@ Events:
 
 ---
 
-## 🔧 kamenu.admin Permission
+## kamenu.admin Permission
 
 ### Description
 
@@ -78,7 +78,7 @@ Allows server administrators to perform plugin management operations:
 
 ---
 
-## 🎯 Flexible Access Control
+## Flexible Access Control
 
 KaMenu implements menu access control through multiple configuration methods, without relying on permission nodes.
 
@@ -153,7 +153,7 @@ Events:
 
 ---
 
-## 📝 Comparison Summary
+## Comparison Summary
 
 ### Traditional Permission System vs KaMenu Configuration-Driven
 
@@ -169,9 +169,9 @@ Events:
 
 ---
 
-## 📚 Related Documentation
+## Related Documentation
 
-- [⌨️ Custom Commands](../config/customCommands.md) — Learn how to register custom commands
-- [⚙️ Event System](../menu/events.md) — Learn about detailed usage of Events.open
-- [🔧 Conditions](../menu/conditions.md) — Learn about all condition check methods
-- [📋 Configuration File](../config/config.md) — Full reference for config.yml
+- [Custom Commands](../config/customCommands.md) — Learn how to register custom commands
+- [Event System](../menu/events.md) — Learn about detailed usage of Events.open
+- [Conditions](../menu/conditions.md) — Learn about all condition check methods
+- [Configuration File](../config/config.md) — Full reference for config.yml

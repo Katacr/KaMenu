@@ -1,4 +1,4 @@
-# ⚙️ 配置插件
+# 配置插件
 
 - [配置文件: config.yml](config.md)：插件主配置、语言、数据库、输入清理和自定义指令等。
 - [自定义指令](customCommands.md)：绑定菜单或 actions 动作列表到自定义指令。

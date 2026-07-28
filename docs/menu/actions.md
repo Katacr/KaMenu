@@ -1,4 +1,4 @@
-# 🤖 动作 (Actions)
+# 动作 (Actions)
 
 `actions` 节点定义按钮被点击后执行的操作列表。支持多种动作类型、延迟执行和条件分支。
 
@@ -17,7 +17,7 @@ Bottom:
       - 'close'
 ```
 
-动作列表按**顺序**逐一执行（`wait` 动作可插入延迟）。
+动作列表按**顺序** 逐一执行（`wait` 动作可插入延迟）。
 
 ---
 
@@ -131,9 +131,9 @@ Bottom:
 
 **注意事项：**
 
-- ⚠️ `*` 和 `all` 会匹配所有在线玩家，请谨慎使用
-- ⚠️ 条件表达式中的变量会为每个目标玩家单独解析
-- ⚠️ `server`、`actions`、`js`、`wait`、`return`、任务控制类动作不支持目标选择器，会忽略目标参数
+- `*` 和 `all` 会匹配所有在线玩家，请谨慎使用
+- 条件表达式中的变量会为每个目标玩家单独解析
+- `server`、`actions`、`js`、`wait`、`return`、任务控制类动作不支持目标选择器，会忽略目标参数
 - ✅ `open`、`close`、`force-open`、`force-close`、`reset` 支持目标选择器，可用于刷新或关闭指定玩家的菜单
 - ✅ 选择器条件中可以使用 `{data:*}`、`{gdata:*}`、`{meta:*}` 等变量，例如：`open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
@@ -417,7 +417,7 @@ Body:
 | 配置 | 传输方式 | 优点 |
 |------|---------|------|
 | `bungeecord: true` | BungeeCord 插件消息系统 | ✅ 无需玩家权限<br>✅ 更加可靠<br>✅ 性能更优 |
-| `bungeecord: false` | 执行 `/server` 命令 | ⚠️ 需要玩家有 `/server` 命令权限 |
+| `bungeecord: false` | 执行 `/server` 命令 | 需要玩家有 `/server` 命令权限 |
 
 **使用场景：**
 - BungeeCord/Velocity 网络服务器
@@ -640,7 +640,7 @@ actions:
 ```
 
 {% hint style="info" %}
-`url` 和 `copy` 动作为静态动作，**仅当按钮的 actions 列表中只有这一个动作时**才会生效。如需在执行其他动作的同时打开链接，请使用 `hovertext` 动作。
+`url` 和 `copy` 动作为静态动作，**仅当按钮的 actions 列表中只有这一个动作时** 才会生效。如需在执行其他动作的同时打开链接，请使用 `hovertext` 动作。
 {% endhint %}
 
 ---
@@ -1300,7 +1300,7 @@ actions:
 - 数字：`50`, `3.14`
 
 {% hint style="info" %}
-JavaScript 功能非常强大，支持访问 Bukkit API、数学计算、条件判断等。详细了解 JavaScript 功能，请查看 [🔧 JavaScript 功能](javascript.md) 文档。
+JavaScript 功能非常强大，支持访问 Bukkit API、数学计算、条件判断等。详细了解 JavaScript 功能，请查看 [JavaScript 功能](javascript.md) 文档。
 {% endhint %}
 
 **注意：**

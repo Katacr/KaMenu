@@ -1,6 +1,6 @@
-# 📁 Menu File Structure
+# Menu File Structure
 
-## 📂 Folder Layout
+## Folder Layout
 
 All menu files are stored under `plugins/KaMenu/menus/`, supporting any level of subfolder nesting:
 
@@ -20,7 +20,7 @@ plugins/KaMenu/menus/
 
 ---
 
-## 🎯 Menu ID Rules
+## Menu ID Rules
 
 A menu's ID is determined by its file path:
 
@@ -39,7 +39,7 @@ A menu's ID is determined by its file path:
 
 ---
 
-## ✏️ Adding Custom Menus
+## Adding Custom Menus
 
 1. Create a `.yml` file under `plugins/KaMenu/menus/` (create subfolders as needed)
 2. Write the menu configuration following the menu format (see the following sections)
@@ -47,12 +47,12 @@ A menu's ID is determined by its file path:
 
 **File naming notes:**
 - ✅ Supports Unicode file names and folder names
-- ⚠️ The file extension must be `.yml` (not `.yaml`)
-- ⚠️ Use `/` as the path separator, not `\`
+- The file extension must be `.yml` (not `.yaml`)
+- Use `/` as the path separator, not `\`
 
 ---
 
-## 📝 Tab Completion
+## Tab Completion
 
 After typing `/km open `, press Tab to automatically list all loaded menu IDs, including subfolder paths:
 
@@ -66,7 +66,7 @@ admin/tools
 
 ---
 
-## 📄 Basic Menu File Structure
+## Basic Menu File Structure
 
 A complete menu YAML file has the following basic structure:
 
@@ -117,7 +117,7 @@ Only the `Title` node is required; all other nodes are optional. Add whichever f
 
 ---
 
-## 🎨 Menu Node Descriptions
+## Menu Node Descriptions
 
 ### Title — Menu Title
 
@@ -149,7 +149,7 @@ Configures the menu's global behaviour.
 | `can_escape` | `Boolean` | `true` | Whether players can close the menu using the ESC key |
 | `after_action` | `String` | `CLOSE` | Client-side behaviour after a button action is executed |
 
-**Detailed description and examples:** See [⚙️ Global Settings (Settings)](setting.md)
+**Detailed description and examples:** See [Global Settings (Settings)](setting.md)
 
 ### JavaScript — Menu JavaScript Packages
 
@@ -174,7 +174,7 @@ actions:
 
 Reusable code can also be placed under `plugins/KaMenu/js/<package>.js` as a global JavaScript package.
 
-**Detailed description and examples:** See [🔧 JavaScript Features](javascript.md)
+**Detailed description and examples:** See [JavaScript Features](javascript.md)
 
 
 ### Events — Menu Events
@@ -209,7 +209,7 @@ Events:
         - 'tell: &7The menu is still open'
 ```
 
-**Detailed description and examples:** See [🎯 Menu Events (Events)](events.md)
+**Detailed description and examples:** See [Menu Events (Events)](events.md)
 
 ### Body — Content Display Area
 
@@ -219,7 +219,7 @@ Displays various content in the main body of the menu, such as plain text messag
 - `message` — Plain text message
 - `item` — Item display
 
-**Detailed description and examples:** See [🧩 Body Components (Body)](body.md)
+**Detailed description and examples:** See [Body Components (Body)](body.md)
 
 ### Inputs — Input Component Area
 
@@ -231,7 +231,7 @@ Provides interactive input components such as text fields, sliders, single-optio
 - `dropdown` — Single-option button
 - `checkbox` — Checkbox
 
-**Detailed description and examples:** See [⌨️ Input Components (Inputs)](inputs.md)
+**Detailed description and examples:** See [Input Components (Inputs)](inputs.md)
 
 ### Bottom — Bottom Button Area
 
@@ -244,18 +244,18 @@ Configures the buttons at the bottom of the menu, supporting multiple layout typ
 
 Under `multi.buttons`, `type: repeat` is also supported as a dynamic button template for generating a variable number of real buttons from list data. `repeat` is not a `Bottom.type`; it belongs inside a specific button node.
 
-**Detailed description and examples:** See [📋 Bottom Buttons (Bottom)](bottom.md)
+**Detailed description and examples:** See [Bottom Buttons (Bottom)](bottom.md)
 
 ---
 
-## 🚀 Next Steps
+## Next Steps
 
 Now that you understand the menu file structure, you can:
 
-1. **Create your first menu**: See [📝 Creating a Menu Tutorial](creating_menu.md)
+1. **Create your first menu**: See [Creating a Menu Tutorial](creating_menu.md)
 2. **Dive into each component**: Read the corresponding detailed documentation
 3. **Explore advanced features**: Conditions, data storage, actions system, and more
 
 {% hint style="success" %}
-It is recommended to start with the [📝 Creating a Menu Tutorial](creating_menu.md) and follow it step by step to create your first menu!
+It is recommended to start with the [Creating a Menu Tutorial](creating_menu.md) and follow it step by step to create your first menu!
 {% endhint %}

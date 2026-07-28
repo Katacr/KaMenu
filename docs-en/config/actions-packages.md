@@ -1,4 +1,4 @@
-# 📦 actions Folder
+# actions Folder
 
 `plugins/KaMenu/actions/` stores global actions packages. Use actions packages for action queues shared by multiple menus, such as common feedback, reward delivery, permission checks, and cross-menu navigation.
 

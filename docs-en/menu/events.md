@@ -1,4 +1,4 @@
-# 🚥 Events
+# Events
 
 KaMenu supports executing predefined action lists at specific moments in the menu lifecycle, configured via the `Events` key. The event system allows you to run specific logic when the menu opens, closes, and at other key moments.
 
@@ -554,6 +554,6 @@ Bottom:
 
 ## Related Documentation
 
-- [🔍 Conditions](conditions.md) — Learn the detailed syntax for condition expressions
-- [🤖 Actions (Actions)](actions.md) — Learn about all available action types
-- [💾 Data Storage](../data/storage.md) — Learn about data storage and variable usage
+- [Conditions](conditions.md) — Learn the detailed syntax for condition expressions
+- [Actions (Actions)](actions.md) — Learn about all available action types
+- [Data Storage](../data/storage.md) — Learn about data storage and variable usage

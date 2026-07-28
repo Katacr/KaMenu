@@ -1,9 +1,6 @@
-# 🔘 底部按钮 (Bottom)
+# 底部按钮 (Bottom)
 
 `Bottom` 节点定义菜单底部的交互按钮区域，共有三种布局模式：`notice`、`confirmation`、`multi`。在 `multi.buttons` 内还可以使用 `type: repeat` 动态生成按钮列表。
-
-{% hint style="info" %}
-{% endhint %}
 
 ---
 
@@ -352,7 +349,7 @@ Bottom:
       - 'tell: &7已取消'
 ```
 
-关于条件判断的完整语法，请参阅 [🔍 条件判断](conditions.md)。
+关于条件判断的完整语法，请参阅 [条件判断](conditions.md)。
 
 ---
 
