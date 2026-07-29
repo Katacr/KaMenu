@@ -504,17 +504,23 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                 }) null
             else button(player, config, section, "item", "{item.text}", "Bottom.buttons.$listId.item.actions", variables, contextId)
         }
-        return buttons + repeatPaddingButtons(buttons.size, columns)
+        return buttons + repeatPaddingButtons(player, section, buttons.size, columns)
     }
 
     /** 为 repeat 当前页补齐矩阵尾部，并让补位按钮点击后重新渲染当前菜单。 */
-    private fun repeatPaddingButtons(count: Int, columns: Int): List<DialogButtonDefinition> {
+    private fun repeatPaddingButtons(
+        player: Player,
+        section: ConfigurationSection,
+        count: Int,
+        columns: Int
+    ): List<DialogButtonDefinition> {
         val paddingCount = (columns - count % columns) % columns
+        val itemWidth = getInt(player, section, "item.width", 0).takeIf { it > 0 }
         return List(paddingCount) {
             DialogButtonDefinition(
                 text = "",
                 tooltip = null,
-                width = null,
+                width = itemWidth,
                 actionPath = "",
                 actionOverride = listOf("reset")
             )

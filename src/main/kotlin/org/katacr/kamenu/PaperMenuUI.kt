@@ -254,10 +254,11 @@ object PaperMenuUI {
         checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit,
         closesDialogAfterAction: Boolean,
-        actionOverride: List<*>? = null
+        actionOverride: List<*>? = null,
+        widthOverride: Int? = null
     ): ActionButton {
         val btnText = resolveMenuText(player, getString(player, btnSection, "$btnKey.text", defaultText), variables, contextId, config)
-        val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
+        val btnWidth = widthOverride ?: getInt(player, btnSection, "$btnKey.width", 0)
 
         val builder = ActionButton.builder(TextParser.parseText(btnText, player))
             .action(PaperDialogActionFactory.build(player, config, "$path.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId, actionOverride))
@@ -367,6 +368,7 @@ object PaperMenuUI {
         }
 
         val paddingCount = (columns - renderedCount % columns) % columns
+        val itemWidth = getInt(player, listSection, "item.width", 0).takeIf { it > 0 }
         repeat(paddingCount) {
             actionButtons.add(createActionButton(
                 player = player,
@@ -383,7 +385,8 @@ object PaperMenuUI {
                 checkboxMappings = checkboxMappings,
                 menuOpener = menuOpener,
                 closesDialogAfterAction = closesDialogAfterAction,
-                actionOverride = listOf("reset")
+                actionOverride = listOf("reset"),
+                widthOverride = itemWidth
             ))
         }
     }

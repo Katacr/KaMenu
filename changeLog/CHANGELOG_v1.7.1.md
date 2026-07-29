@@ -18,7 +18,8 @@
 
 - `type: repeat` 会按当前页实际渲染的动态按钮数量和 `columns` 自动补齐矩阵。
 - 当按钮数量无法被 `columns` 整除时，追加空白按钮，使动态按钮区域保持完整对齐。
-- 空白按钮没有显示文本和服务器回调，点击后执行 `reset`，避免残留无响应的按钮状态。
+- 空白按钮没有显示文本，不执行 `item.actions` 或其他业务动作，点击后仅执行 `reset`。
+- 如果 `item.width` 已配置，空白按钮会复用该宽度，保持整个动态按钮矩阵对齐。
 - 上一页、下一页等普通分页按钮不计入动态按钮补齐数量，仍会在补位按钮后按配置顺序追加。
 - Paper 与 Spigot 的 Dialog 渲染路径均保持一致。
 
@@ -42,7 +43,8 @@
 
 - `type: repeat` now pads each page according to the number of successfully rendered dynamic buttons and `columns`.
 - When the dynamic button count is not divisible by `columns`, empty buttons are appended to keep the repeat area aligned.
-- Padding buttons have no visible text or server callback and execute `reset` when clicked, preventing an unusable stale button state.
+- Padding buttons have no visible text and do not execute `item.actions` or other business actions; clicking one only executes `reset`.
+- When `item.width` is configured, padding buttons reuse that width to keep the dynamic button grid aligned.
 - Previous, next, and other regular pagination buttons are excluded from the repeat count and remain appended after the padding buttons in configuration order.
 - Paper and Spigot Dialog rendering paths now use the same behavior.
 

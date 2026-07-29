@@ -196,7 +196,7 @@ Bottom:
 
 **Matrix alignment:**
 
-On every render, KaMenu counts the repeat buttons actually generated on the current page. If that count is not divisible by `columns`, it appends enough blank buttons to complete the row. For example, with `columns: 3` and 28 generated buttons, KaMenu adds 2 blank buttons so the repeat section contains 30 buttons. Blank buttons have no visible text but execute `reset` when clicked, rebuilding the current menu callback. Normal buttons such as Previous/Next are excluded from the repeat count and are appended after the padding buttons.
+On every render, KaMenu counts the repeat buttons actually generated on the current page. If that count is not divisible by `columns`, it appends enough blank buttons to complete the row. For example, with `columns: 3` and 28 generated buttons, KaMenu adds 2 blank buttons so the repeat section contains 30 buttons. Blank buttons have no visible text but execute `reset` when clicked, rebuilding the current menu callback. When `item.width` is configured, padding buttons reuse that width so the repeat grid stays aligned; otherwise they use the default width. Normal buttons such as Previous/Next are excluded from the repeat count and are appended after the padding buttons.
 
 Built-in list variables `{list:key}` and `{glist:key}` return JSON array strings and can be used directly as `source`:
 
