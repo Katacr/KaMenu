@@ -32,9 +32,10 @@ object PaperDialogActionFactory {
         menuOpener: (Player, String) -> Unit,
         closesDialogAfterAction: Boolean = false,
         initialVariables: Map<String, String> = emptyMap(),
-        contextId: String? = null
+        contextId: String? = null,
+        actionOverride: List<*>? = null
     ): DialogAction {
-        val actionList = config.getList(path)
+        val actionList = actionOverride ?: config.getList(path)
         if (actionList?.size == 1) {
             val action = actionList.first()
             if (action is String) {
@@ -64,15 +65,19 @@ object PaperDialogActionFactory {
                     InputCaptureUtils.Schema(inputKeys, inputTypes, inputRemoveChars, checkboxMappings)
                 )
             )
-            MenuActions.executeConfigActionPath(
-                player,
-                config,
-                path,
-                variables,
-                menuOpener,
-                closesDialogAfterAction,
-                contextId
-            )
+            if (actionOverride != null) {
+                MenuActions.executeActionGroup(player, config, actionOverride, variables, contextId = contextId)
+            } else {
+                MenuActions.executeConfigActionPath(
+                    player,
+                    config,
+                    path,
+                    variables,
+                    menuOpener,
+                    closesDialogAfterAction,
+                    contextId
+                )
+            }
         }, callbackOptions(config))
     }
 

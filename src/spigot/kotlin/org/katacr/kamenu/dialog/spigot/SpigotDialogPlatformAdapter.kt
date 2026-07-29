@@ -80,6 +80,7 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
         val config: YamlConfiguration,
         val actionPath: String?,
         val actionReference: String?,
+        val actionOverride: List<*>?,
         val initialVariables: Map<String, String>,
         val inputSchema: DialogInputSchema,
         val inputDefinitions: List<DialogInputDefinition>,
@@ -278,6 +279,14 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
                 variables,
                 session.contextId,
                 session.closesDialogAfterAction
+            )
+        } else if (session.actionOverride != null) {
+            MenuActions.executeActionGroup(
+                player,
+                session.config,
+                session.actionOverride,
+                variables,
+                contextId = session.contextId
             )
         } else {
             MenuActions.executeConfigActionPath(
@@ -530,7 +539,7 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
     /** 保留纯客户端动作，其余按钮注册服务端一次性 callback。 */
     private fun action(context: RenderContext, definition: DialogButtonDefinition): Action {
         val path = definition.actionPath
-        val actions = if (path.isBlank()) emptyList<Any>() else context.config.getList(path)
+        val actions = definition.actionOverride ?: if (path.isBlank()) emptyList<Any>() else context.config.getList(path)
         val onlyAction = actions?.singleOrNull()
         if (onlyAction is String) {
             val trimmed = onlyAction.trim()
@@ -545,6 +554,7 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
             context,
             path,
             null,
+            definition.actionOverride,
             definition.variables,
             context.inputSchema,
             context.inputDefinitions
@@ -584,6 +594,7 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
                         context,
                         null,
                         attributes["actions"],
+                        null,
                         emptyMap(),
                         emptySchema,
                         emptyList()
@@ -647,6 +658,7 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
         context: RenderContext,
         actionPath: String?,
         actionReference: String?,
+        actionOverride: List<*>?,
         variables: Map<String, String>,
         inputSchema: DialogInputSchema,
         inputDefinitions: List<DialogInputDefinition>
@@ -657,6 +669,7 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
             context.config,
             actionPath,
             actionReference,
+            actionOverride,
             variables.toMap(),
             inputSchema,
             inputDefinitions.toList(),

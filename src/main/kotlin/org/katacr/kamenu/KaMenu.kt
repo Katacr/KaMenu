@@ -269,7 +269,7 @@ class KaMenu : JavaPlugin() {
         if (::customCommandManager.isInitialized) {
             customCommandManager.clear()
         }
-        server.scheduler.cancelTasks(this)
+        KaScheduler.cancelPluginTasks()
 
         logger.info(languageManager.getMessage("plugin.disabled"))
     }

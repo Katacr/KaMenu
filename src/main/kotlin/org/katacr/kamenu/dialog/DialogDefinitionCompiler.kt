@@ -439,10 +439,18 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         contextId: String
     ): DialogBottomDefinition {
         val buttons = mutableListOf<DialogButtonDefinition>()
+        val columns = section.getInt("columns", 2).coerceAtLeast(1)
         section.getConfigurationSection("buttons")?.let { buttonSection ->
             for (key in buttonSection.getKeys(false)) {
                 if (buttonSection.getString("$key.type", "").equals("repeat", true)) {
-                    buttons += repeatButtons(player, config, buttonSection.getConfigurationSection(key) ?: continue, key, contextId)
+                    buttons += repeatButtons(
+                        player,
+                        config,
+                        buttonSection.getConfigurationSection(key) ?: continue,
+                        key,
+                        contextId,
+                        columns
+                    )
                     continue
                 }
                 val showCondition = buttonSection.getString("$key.show-condition") ?: buttonSection.getString("$key.show_condition")
@@ -458,7 +466,7 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         return DialogBottomDefinition(
             DialogBottomType.MULTI,
             buttons,
-            section.getInt("columns", 2).coerceAtLeast(1),
+            columns,
             exit
         )
     }
@@ -468,7 +476,8 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         config: YamlConfiguration,
         section: ConfigurationSection,
         listId: String,
-        contextId: String
+        contextId: String,
+        columns: Int
     ): List<DialogButtonDefinition> {
         val source = section.getString("source", "") ?: ""
         val items = resolveRepeatSource(player, config, source, section.getString("split"), getBoolean(player, section, "trim", true))
@@ -480,7 +489,7 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
             } ?: emptyList()
         }
         val itemSection = section.getConfigurationSection("item") ?: return emptyList()
-        return items.subList(page.start, page.end).mapIndexedNotNull { pageIndex, item ->
+        val buttons = items.subList(page.start, page.end).mapIndexedNotNull { pageIndex, item ->
             val variables = item.values.toMutableMap().apply {
                 put("item.page_index", pageIndex.toString())
                 put("item.page_number", (pageIndex + 1).toString())
@@ -494,6 +503,21 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                     dynamicVariable(player, contextId, it)
                 }) null
             else button(player, config, section, "item", "{item.text}", "Bottom.buttons.$listId.item.actions", variables, contextId)
+        }
+        return buttons + repeatPaddingButtons(buttons.size, columns)
+    }
+
+    /** 为 repeat 当前页补齐矩阵尾部，并让补位按钮点击后重新渲染当前菜单。 */
+    private fun repeatPaddingButtons(count: Int, columns: Int): List<DialogButtonDefinition> {
+        val paddingCount = (columns - count % columns) % columns
+        return List(paddingCount) {
+            DialogButtonDefinition(
+                text = "",
+                tooltip = null,
+                width = null,
+                actionPath = "",
+                actionOverride = listOf("reset")
+            )
         }
     }
 

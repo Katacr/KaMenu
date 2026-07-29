@@ -123,7 +123,8 @@ data class DialogButtonDefinition(
     val tooltip: String?,
     val width: Int?,
     val actionPath: String,
-    val variables: Map<String, String> = emptyMap()
+    val variables: Map<String, String> = emptyMap(),
+    val actionOverride: List<*>? = null
 )
 
 /** 提交输入时需要保留的 KaMenu 输入清理规则。 */

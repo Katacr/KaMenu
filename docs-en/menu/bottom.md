@@ -194,6 +194,10 @@ Bottom:
 
 `source` is resolved through KaMenu internal variables, PAPI, `{js:...}`, and other text variables first. The resolved result can be a JSON array, newline text, or a simple string list used with `split`. Items may be objects, strings, or numbers. Object fields become `{item.fieldName}` and can be used in button text, tooltip, show-condition, and actions.
 
+**Matrix alignment:**
+
+On every render, KaMenu counts the repeat buttons actually generated on the current page. If that count is not divisible by `columns`, it appends enough blank buttons to complete the row. For example, with `columns: 3` and 28 generated buttons, KaMenu adds 2 blank buttons so the repeat section contains 30 buttons. Blank buttons have no visible text but execute `reset` when clicked, rebuilding the current menu callback. Normal buttons such as Previous/Next are excluded from the repeat count and are appended after the padding buttons.
+
 Built-in list variables `{list:key}` and `{glist:key}` return JSON array strings and can be used directly as `source`:
 
 ```yaml

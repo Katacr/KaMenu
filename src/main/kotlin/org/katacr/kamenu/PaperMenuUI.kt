@@ -253,13 +253,14 @@ object PaperMenuUI {
         inputRemoveChars: Map<String, String>,
         checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit,
-        closesDialogAfterAction: Boolean
+        closesDialogAfterAction: Boolean,
+        actionOverride: List<*>? = null
     ): ActionButton {
         val btnText = resolveMenuText(player, getString(player, btnSection, "$btnKey.text", defaultText), variables, contextId, config)
         val btnWidth = getInt(player, btnSection, "$btnKey.width", 0)
 
         val builder = ActionButton.builder(TextParser.parseText(btnText, player))
-            .action(PaperDialogActionFactory.build(player, config, "$path.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId))
+            .action(PaperDialogActionFactory.build(player, config, "$path.actions", inputKeys, inputTypes, inputRemoveChars, checkboxMappings, menuOpener, closesDialogAfterAction, variables, contextId, actionOverride))
 
         val tooltipList = getStringList(player, btnSection, "$btnKey.tooltip")
             .map { resolveMenuText(player, it, variables, contextId, config) }
@@ -291,7 +292,8 @@ object PaperMenuUI {
         inputRemoveChars: Map<String, String>,
         checkboxMappings: Map<String, Pair<String, String>>,
         menuOpener: (Player, String) -> Unit,
-        closesDialogAfterAction: Boolean
+        closesDialogAfterAction: Boolean,
+        columns: Int
     ) {
         val source = listSection.getString("source", "") ?: ""
         val split = listSection.getString("split")
@@ -328,6 +330,7 @@ object PaperMenuUI {
 
         val itemSection = listSection.getConfigurationSection("item") ?: return
         val visibleItems = items.subList(pageInfo.start, pageInfo.end)
+        var renderedCount = 0
         visibleItems.forEachIndexed { pageIndex, item ->
             val variables = item.values.toMutableMap()
             variables["item.page_index"] = pageIndex.toString()
@@ -359,6 +362,28 @@ object PaperMenuUI {
                 checkboxMappings = checkboxMappings,
                 menuOpener = menuOpener,
                 closesDialogAfterAction = closesDialogAfterAction
+            ))
+            renderedCount++
+        }
+
+        val paddingCount = (columns - renderedCount % columns) % columns
+        repeat(paddingCount) {
+            actionButtons.add(createActionButton(
+                player = player,
+                config = config,
+                path = "Bottom.buttons.$listId.padding",
+                btnSection = listSection,
+                btnKey = "padding",
+                defaultText = "",
+                variables = emptyMap(),
+                contextId = contextId,
+                inputKeys = inputKeys,
+                inputTypes = inputTypes,
+                inputRemoveChars = inputRemoveChars,
+                checkboxMappings = checkboxMappings,
+                menuOpener = menuOpener,
+                closesDialogAfterAction = closesDialogAfterAction,
+                actionOverride = listOf("reset")
             ))
         }
     }
@@ -851,7 +876,8 @@ object PaperMenuUI {
                                     inputRemoveChars = inputRemoveChars,
                                     checkboxMappings = checkboxMappings,
                                     menuOpener = menuOpener,
-                                    closesDialogAfterAction = closesDialogAfterAction
+                                    closesDialogAfterAction = closesDialogAfterAction,
+                                    columns = bottomSection.getInt("columns", 2).coerceAtLeast(1)
                                 )
                             }
                             continue
