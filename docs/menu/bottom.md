@@ -95,9 +95,48 @@ Bottom:
 
 ### multi - 多按钮矩阵模式
 
-支持多个自定义按钮，以矩阵方式排列，可额外配置一个退出按钮。
+`multi` 用于在菜单底部显示多个按钮。`buttons` 中的按钮按 YAML 书写顺序排列，`columns` 决定每行显示多少列，`exit` 可在按钮矩阵之后追加一个独立的退出或返回按钮。
 
-**配置项：**
+#### 基础格式
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+
+  buttons:
+    shop:
+      text: '&6[ 商店 ]'
+      tooltip:
+        - '&7打开服务器商店'
+      actions:
+        - 'open: shop/main'
+
+    profile:
+      text: '&b[ 个人信息 ]'
+      actions:
+        - 'open: profile'
+
+    settings:
+      text: '&7[ 设置 ]'
+      actions:
+        - 'open: settings'
+
+    admin:
+      text: '&c[ 管理面板 ]'
+      show-condition: 'hasPerm.kamenu.admin'
+      actions:
+        - 'open: admin/tools'
+
+  exit:
+    text: '&8[ 关闭 ]'
+    actions:
+      - 'close'
+```
+
+上例会按 `shop → profile → settings → admin` 的顺序生成按钮，并以每行 2 列排列。按钮 ID（例如 `shop`）只需在当前 `buttons` 节点内保持唯一。
+
+#### multi 配置项
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
@@ -105,18 +144,91 @@ Bottom:
 | `buttons` | 节点 | — | 按钮列表（按 YAML 书写顺序排列）|
 | `exit` | 节点 | — | 可选的退出/返回按钮（显示在按钮列表末尾）|
 
-**按钮配置项：**
+#### 普通按钮配置项
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `show-condition` | String | 可选，按钮显示条件；条件不满足时该按钮不显示 |
-| `type` | String | 可选。普通按钮无需填写；填写 `repeat` 时表示动态按钮列表 |
 | `text` | String/List | 按钮文字，支持颜色代码、条件判断和 MiniMessage 标签 |
 | `width` | Int | 可选，按钮宽度（1-1024），不设置则使用默认宽度 |
 | `tooltip` | List | 可选，按钮悬停提示（每行一个字符串），支持颜色代码和 MiniMessage |
 | `actions` | List | 可选，点击时执行的动作列表；如果不设置则点击时无反应 |
 
-### repeat - 动态按钮列表
+#### 退出按钮配置项
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `text` | String/List | 退出按钮文字，支持颜色代码、条件判断和 MiniMessage 标签 |
+| `width` | Int | 可选，退出按钮宽度（1-1024）|
+| `tooltip` | List | 可选，退出按钮悬停提示（每行一个字符串）|
+| `actions` | List | 可选，点击时执行的动作列表；通常使用 `close`、`open` 或 `force-open` |
+
+#### 使用显示条件
+
+普通按钮可使用 `show-condition` 控制是否显示：
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    admin:
+      show-condition: 'hasPerm.kamenu.admin'
+      text: '&c[ 管理员按钮 ]'
+      actions:
+        - 'open: admin/tools'
+
+    level_reward:
+      show-condition: '%player_level% >= 10'
+      text: '&e[ 10 级奖励 ]'
+      actions:
+        - 'actions: claim_level_reward'
+
+    public:
+      text: '&a[ 公共按钮 ]'
+      actions:
+        - 'tell: &a所有玩家都能看到此按钮'
+```
+
+#### 按钮宽度 (width)
+
+`multi` 中的普通按钮和 `exit` 按钮可以通过 `width` 设置 Java Dialog 按钮宽度：
+
+- 范围为 1-1024。
+- 不设置时使用 Paper Dialog API 的默认宽度。
+- 支持条件判断。
+- 宽度只影响 Java 版 Dialog，不影响基岩版表单。
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    wide_button:
+      text: '&a[ 宽按钮 ]'
+      width: 200
+      actions:
+        - 'tell: &a这是一个宽按钮'
+
+    conditional_width:
+      text: '&c[ 条件宽度 ]'
+      width:
+        - condition: '%player_is_op% == true'
+          allow: 200
+          deny: 100
+      actions:
+        - 'tell: &c按钮宽度根据条件变化'
+
+  exit:
+    text: '&8[ 退出 ]'
+    width: 80
+    actions:
+      - 'close'
+```
+
+过大的宽度可能导致按钮超出屏幕，请根据实际布局调整。
+
+#### repeat - 动态按钮列表
 
 `multi.buttons` 中的某个按钮可以配置为 `type: repeat`，用于根据动态数据源生成一组真实原生 Dialog 按钮。适合在线玩家列表、传送点列表、好友列表、邮件列表等数量不固定的内容。
 
@@ -245,7 +357,7 @@ Bottom:
 | `{item.page_index}` | 当前项在当前页的下标，从 0 开始 |
 | `{item.page_number}` | 当前项在当前页的序号，从 1 开始 |
 
-分页变量可用于 `Bottom.multi.buttons` 的普通按钮和 repeat item 模板：
+分页变量可用于 `Bottom.buttons` 的普通按钮和 repeat item 模板：
 
 | 变量 | 说明 |
 |------|------|
@@ -267,69 +379,75 @@ Bottom:
 
 `page:` 动作只修改分页状态，不会自动刷新界面。通常需要紧跟 `reset`、`open` 或 `force-open`。
 
-**退出按钮配置项：**
+---
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `text` | String/List | 退出按钮文字，支持颜色代码、条件判断和 MiniMessage 标签 |
-| `width` | Int | 可选，退出按钮宽度（1-1024）|
-| `actions` | List | 可选，点击时执行的动作列表；如果不设置则点击时无反应 |
+## 基岩版按钮图标
 
-**示例：**
+安装 Geyser 和 Floodgate 后，KaMenu 可为无输入组件的菜单按钮提供基岩版图片。只有同时满足以下条件时，插件才会使用带图标的 Floodgate `SimpleForm`：
 
-```yaml
-Bottom:
-  type: 'multi'
-  columns: 3
+- 当前玩家通过 Floodgate 进入服务器。
+- 菜单没有配置任何 `Inputs` 组件。
+- 当前实际显示的按钮中至少有一个合法的 `icon`。
 
-  buttons:
-    btn_shop:
-      text: '&6[ 商店 ]'
-      actions:
-        - 'open: shop/main'
+其他玩家和菜单继续使用原有 Java Dialog；带 `Inputs` 的菜单仍由 Geyser 自动转换，因此其下方按钮不支持 `icon`。
 
-    btn_profile:
-      text: '&b[ 个人信息 ]'
-      actions:
-        - 'open: profile'
+`icon` 可配置在 `Bottom.confirm`、`Bottom.deny`、`Bottom.button1`、`Bottom.buttons.<按钮ID>`、`Bottom.exit` 和 `Bottom.buttons.<repeat ID>.item` 下。
 
-    btn_settings:
-      text: '&7[ 设置 ]'
-      actions:
-        - 'open: settings'
-
-    btn_admin:
-      text: '&4[ 管理面板 ]'
-      actions:
-        - 'open: admin/tools'
-
-  exit:
-    text: '&8[ 关闭 ]'
-    actions:
-      - 'actionbar: &7菜单已关闭'
-      - 'close'
-```
-
-
-在 Multi 模式下，还可以使用 `show-condition` 来控制按钮是否显示：
+### URL 图片
 
 ```yaml
 Bottom:
   type: multi
-  columns: 2
   buttons:
-    1:
-      show-condition: "%player_is_op% == true"  # 只有管理员才能看到此按钮
-      text: '[ 管理员按钮 ]'
-      actions: ...
-    2:
-      show-condition: "%player_level% >= 10"  # 玩家大于等于 10 级才能看到
-      text: '[ VIP 按钮 ]'
-      actions: ...
-    3:
-      text: '[ 普通按钮 ]'  # 无显示条件，所有玩家可见
-      actions: ...
+    shop:
+      text: '&a打开商店'
+      icon:
+        type: url
+        value: 'https://example.com/images/shop.png'
+      actions:
+        - 'open: shop'
 ```
+
+URL 仅支持 `http` 和 `https`，最长 2048 个字符。图片由玩家客户端直接访问，图片托管方可能获取玩家的 IP 地址，请使用可信的图片服务。
+
+### 基岩版资源包路径
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    reward:
+      text: '&e领取奖励'
+      icon:
+        type: path
+        value: 'textures/items/diamond'
+      actions:
+        - 'actions: reward'
+```
+
+`path` 指向基岩版客户端资源包内的图片路径，不是服务器文件路径。不能填写绝对路径或包含 `..` 的路径。
+
+URL 也可以使用简写，其他简写值会被识别为资源包路径：
+
+```yaml
+icon: 'https://example.com/images/shop.png'
+```
+
+### `repeat` 动态图标
+
+`Bottom.buttons.<repeat ID>.item.icon` 支持 `{item.xxx}`、PAPI 和 KaMenu 内置变量：
+
+```yaml
+item:
+  text: '&f{item.name}'
+  icon:
+    type: url
+    value: '{item.icon}'
+  actions:
+    - 'tell: &a你选择了 {item.name}'
+```
+
+基岩版 `SimpleForm` 是纵向按钮列表，没有 Java Dialog 的按钮矩阵、宽度和悬停提示能力。因此 `columns`、按钮 `width` 和 `tooltip` 不会影响基岩版表单，repeat 的矩阵补位按钮也不会显示。若菜单按钮使用单独的客户端静态 `url:` 或 `copy:` 动作，整份菜单会回退到原有 Java Dialog 转换，以保留该动作行为。
 
 ---
 
@@ -354,84 +472,3 @@ Bottom:
 ```
 
 关于条件判断的完整语法，请参阅 [条件判断](conditions.md)。
-
----
-
-## 按钮宽度 (width)
-
-所有按钮都支持自定义宽度配置，通过 `width` 字段可以控制按钮的显示宽度。
-
-**适用范围：**
-- `notice` 模式的确认按钮（`confirm.width`）
-- `confirmation` 模式的确认和取消按钮（`confirm.width` 和 `deny.width`）
-- `multi` 模式的所有按钮（`buttons` 中的每个按钮和 `exit` 按钮）
-
-**宽度值：**
-- 范围：1 - 1024
-- 不设置则使用默认宽度（由 Paper Dialog API 决定）
-- 支持条件判断
-
-**示例：**
-
-```yaml
-# notice 模式
-Bottom:
-  type: 'notice'
-  confirm:
-    text: '&a[ 确认 ]'
-    width: 200
-    actions:
-      - 'tell: &a确认操作'
-
-# confirmation 模式
-Bottom:
-  type: 'confirmation'
-  confirm:
-    text: '&a[ 确认 ]'
-    width: 200
-    actions:
-      - 'tell: &a确认操作'
-  deny:
-    text: '&c[ 取消 ]'
-    width: 100
-    actions:
-      - 'tell: &c取消操作'
-
-# multi 模式
-Bottom:
-  type: 'multi'
-  columns: 2
-
-  buttons:
-    wide_button:
-      text: '&a[ 宽按钮 ]'
-      width: 200
-      actions:
-        - 'tell: &a这是一个宽按钮'
-
-    narrow_button:
-      text: '&b[ 窄按钮 ]'
-      width: 50
-      actions:
-        - 'tell: &b这是一个窄按钮'
-
-    conditional_width:
-      text: '&c[ 条件宽度 ]'
-      width:
-        - condition: '%player_is_op% == true'
-          allow: 200
-          deny: 100
-      actions:
-        - 'tell: &c按钮宽度根据权限变化'
-
-  exit:
-    text: '&8[ 退出 ]'
-    width: 80
-    actions:
-      - 'close'
-```
-
-**注意：**
-- 宽度值会影响按钮在界面上的实际显示尺寸
-- 过大的宽度可能导致按钮超出屏幕
-- 建议根据实际显示需求调整宽度值

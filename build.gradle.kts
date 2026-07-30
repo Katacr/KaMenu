@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.katacr"
-version = "1.7.1"
+version = "1.7.2"
 
 repositories {
     mavenCentral()
@@ -32,6 +32,9 @@ repositories {
     }
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") {
         name = "spigot-snapshots"
+    }
+    maven("https://repo.opencollab.dev/main/") {
+        name = "opencollab"
     }
 }
 
@@ -60,6 +63,7 @@ dependencies {
     }
     compileOnly("com.zaxxer:HikariCP:5.1.0")
     compileOnly("org.openjdk.nashorn:nashorn-core:15.3")
+    compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
     compileOnly("org.ow2.asm:asm:9.5")
     compileOnly("org.ow2.asm:asm-util:9.5")
     add(spigotAdapter.compileOnlyConfigurationName, "org.spigotmc:spigot-api:1.21.6-R0.1-SNAPSHOT")

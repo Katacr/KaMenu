@@ -425,6 +425,43 @@ object MenuActions {
         }
     }
 
+    /**
+     * 执行编译后 Dialog 按钮绑定的动作。
+     *
+     * 普通按钮使用配置路径，repeat 补位等合成按钮使用内存动作列表；两者共享相同的关闭生命周期。
+     */
+    fun executeDialogButton(
+        player: Player,
+        config: YamlConfiguration,
+        actionPath: String,
+        actionOverride: List<*>?,
+        variables: Map<String, String> = emptyMap(),
+        closesDialogAfterAction: Boolean = false,
+        contextId: String? = null
+    ): CompletableFuture<Boolean> {
+        if (actionOverride == null) {
+            return executeConfigActionPath(
+                player,
+                config,
+                actionPath,
+                variables,
+                closesDialogAfterAction = closesDialogAfterAction,
+                contextId = contextId
+            )
+        }
+
+        val initialTaskToken = MenuTaskManager.currentToken(player)
+        return executeActionGroup(
+            player,
+            config,
+            actionOverride,
+            variables,
+            contextId = contextId
+        ).whenComplete { _, _ ->
+            completeDialogCloseLifecycle(player, config, initialTaskToken, closesDialogAfterAction)
+        }
+    }
+
     /** 执行可点击文本引用的菜单内或全局 actions 包，并支持 `{arg:n}` 参数。 */
     fun executeActionReference(
         player: Player,

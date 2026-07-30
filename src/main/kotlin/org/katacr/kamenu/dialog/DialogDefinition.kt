@@ -124,7 +124,21 @@ data class DialogButtonDefinition(
     val width: Int?,
     val actionPath: String,
     val variables: Map<String, String> = emptyMap(),
-    val actionOverride: List<*>? = null
+    val actionOverride: List<*>? = null,
+    val icon: DialogButtonIcon? = null,
+    val syntheticPadding: Boolean = false
+)
+
+/** 基岩版表单按钮支持的图片来源类型。 */
+enum class DialogButtonIconType {
+    URL,
+    PATH
+}
+
+/** 已完成变量解析的基岩版按钮图标。 */
+data class DialogButtonIcon(
+    val type: DialogButtonIconType,
+    val value: String
 )
 
 /** 提交输入时需要保留的 KaMenu 输入清理规则。 */

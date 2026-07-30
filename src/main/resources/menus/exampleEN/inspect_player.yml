@@ -23,29 +23,29 @@ Body:
     type: item
     material: '[HEAD:{meta:player}]'
     name: '&b{meta:player}''s Helmet'
-    width: 32
-    height: 32
+    width: 16
+    height: 16
 
   chest_display:
     type: item
     material: '[CHEST:{meta:player}]'
     name: '&b{meta:player}''s Chestplate'
-    width: 32
-    height: 32
+    width: 16
+    height: 16
 
   leggings_display:
     type: item
     material: '[LEGGINGS:{meta:player}]'
     name: '&b{meta:player}''s Leggings'
-    width: 32
-    height: 32
+    width: 16
+    height: 16
 
   boots_display:
     type: item
     material: '[BOOTS:{meta:player}]'
     name: '&b{meta:player}''s Boots'
-    width: 32
-    height: 32
+    width: 16
+    height: 16
 
 Bottom:
   type: multi

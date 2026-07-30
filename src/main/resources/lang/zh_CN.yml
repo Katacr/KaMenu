@@ -244,3 +244,12 @@ config_update:
   save_failed: "配置文件保存失败: {0}"
   backup_success: "已备份旧配置文件到: {0}"
   backup_failed: "配置文件备份失败: {0}"
+bedrock_form:
+  initialize_failed: "[KaMenu] Floodgate 基岩表单支持初始化失败：{0}"
+  open_event_failed: "[KaMenu] 基岩表单菜单 {0} 的 Open 事件执行失败：{1}"
+  close_event_failed: "[KaMenu] 基岩表单菜单 {0} 的 Close 事件执行失败：{1}"
+  compile_failed: "[KaMenu] 基岩表单菜单 {0} 编译失败，已回退到原生 Dialog：{1}"
+  send_failed: "[KaMenu] 基岩表单菜单 {0} 发送失败：{1}"
+  send_rejected: "[KaMenu] Floodgate 未能发送基岩表单菜单 {0}，已回退到原生 Dialog"
+  invalid_icon_type: "[KaMenu] 菜单 {0} 的 {1} 使用了无效的按钮图标类型，仅支持 url 或 path"
+  invalid_icon: "[KaMenu] 菜单 {0} 的按钮 {1} 使用了无效的基岩版图标，已忽略该图标"

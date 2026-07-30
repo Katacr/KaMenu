@@ -8,6 +8,7 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.ItemMeta
 import org.katacr.kamenu.dialog.DialogPlatformAdapter
+import org.katacr.kamenu.dialog.bedrock.BedrockFormAdapter
 
 /**
  * KaMenu 的平台中立 Dialog 入口。
@@ -18,6 +19,7 @@ import org.katacr.kamenu.dialog.DialogPlatformAdapter
 object MenuUI {
     private lateinit var plugin: KaMenu
     private lateinit var adapter: DialogPlatformAdapter
+    private var bedrockAdapter: BedrockFormAdapter? = null
 
     val platformName: String
         get() = adapter.platformName
@@ -49,31 +51,78 @@ object MenuUI {
         } catch (error: LinkageError) {
             throw IllegalStateException("Failed to link Dialog platform adapter: $adapterClassName", error)
         }
+
+        initializeBedrockAdapter(kaMenu, classLoader)
     }
 
     /** 打开菜单管理器中的菜单。 */
     fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
+        val config = manager.getMenuConfig(menuId)
+        if (config != null && bedrockAdapter?.tryOpen(
+                player,
+                config,
+                menuId,
+                true
+            ) { adapter.forceOpenConfig(player, config, plugin, menuId) } == true
+        ) {
+            return
+        }
         adapter.openMenu(player, menuId, manager, plugin)
     }
 
     /** 打开外部插件提供的内存 YAML 菜单。 */
     fun openConfig(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
+        if (bedrockAdapter?.tryOpen(
+                player,
+                config,
+                contextId,
+                true
+            ) { adapter.forceOpenConfig(player, config, plugin, contextId) } == true
+        ) {
+            return
+        }
         adapter.openConfig(player, config, plugin, contextId)
     }
 
     /** 强制重新打开已加载菜单。 */
     fun forceOpenMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
+        val config = manager.getMenuConfig(menuId)
+        if (config != null && bedrockAdapter?.tryOpen(
+                player,
+                config,
+                menuId,
+                false
+            ) { adapter.forceOpenConfig(player, config, plugin, menuId) } == true
+        ) {
+            return
+        }
         adapter.forceOpenMenu(player, menuId, manager, plugin)
     }
 
     /** 强制重新打开内存菜单，不重复执行 Events.Open。 */
     fun forceOpenConfig(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
+        if (bedrockAdapter?.tryOpen(
+                player,
+                config,
+                contextId,
+                false
+            ) { adapter.forceOpenConfig(player, config, plugin, contextId) } == true
+        ) {
+            return
+        }
         adapter.forceOpenConfig(player, config, plugin, contextId)
     }
 
     /** 通过当前平台 API 关闭 Dialog。 */
     fun closeDialog(player: Player) {
-        adapter.close(player)
+        if (bedrockAdapter?.close(player) != true) {
+            adapter.close(player)
+        }
+    }
+
+    /** 玩家离线时丢弃可选基岩表单状态。 */
+    fun discardPlayer(player: Player) {
+        bedrockAdapter?.discard(player)
     }
 
     /** 使用当前平台支持的文本协议发送富文本消息。 */
@@ -107,6 +156,8 @@ object MenuUI {
 
     /** 释放平台适配器状态。 */
     fun shutdown() {
+        bedrockAdapter?.shutdown()
+        bedrockAdapter = null
         if (::adapter.isInitialized) {
             adapter.shutdown()
         }
@@ -155,6 +206,37 @@ object MenuUI {
             false
         } catch (_: LinkageError) {
             false
+        }
+    }
+
+    /** Floodgate 可用时通过反射加载基岩表单层，避免形成强制运行时依赖。 */
+    private fun initializeBedrockAdapter(kaMenu: KaMenu, classLoader: ClassLoader) {
+        val floodgatePlugin = kaMenu.server.pluginManager.getPlugin("floodgate")
+        if (floodgatePlugin?.isEnabled != true ||
+            !classAvailable("org.geysermc.floodgate.api.FloodgateApi", classLoader) ||
+            !classAvailable("org.geysermc.cumulus.form.SimpleForm", classLoader)
+        ) {
+            return
+        }
+
+        val className = "org.katacr.kamenu.dialog.bedrock.FloodgateFormAdapter"
+        try {
+            val adapterClass = Class.forName(className, true, classLoader)
+            val resolved = adapterClass.getDeclaredConstructor().newInstance() as BedrockFormAdapter
+            resolved.initialize(kaMenu)
+            bedrockAdapter = resolved
+        } catch (error: ReflectiveOperationException) {
+            kaMenu.logger.warning(
+                kaMenu.languageManager.getMessage("bedrock_form.initialize_failed", error.message.toString())
+            )
+        } catch (error: LinkageError) {
+            kaMenu.logger.warning(
+                kaMenu.languageManager.getMessage("bedrock_form.initialize_failed", error.message.toString())
+            )
+        } catch (error: RuntimeException) {
+            kaMenu.logger.warning(
+                kaMenu.languageManager.getMessage("bedrock_form.initialize_failed", error.message.toString())
+            )
         }
     }
 }

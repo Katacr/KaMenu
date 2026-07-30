@@ -522,7 +522,8 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                 tooltip = null,
                 width = itemWidth,
                 actionPath = "",
-                actionOverride = listOf("reset")
+                actionOverride = listOf("reset"),
+                syntheticPadding = true
             )
         }
     }
@@ -548,8 +549,72 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
             tooltip = tooltip,
             width = getInt(player, actualSection, "$key.width", 0).takeIf { it > 0 },
             actionPath = actionPath,
-            variables = variables
+            variables = variables,
+            icon = buttonIcon(player, actualSection, key, contextId, variables, config)
         )
+    }
+
+    /** 解析按钮的基岩版 URL 或资源包路径图标，并允许 repeat item 变量参与取值。 */
+    private fun buttonIcon(
+        player: Player,
+        section: ConfigurationSection,
+        key: String,
+        contextId: String,
+        variables: Map<String, String>,
+        config: YamlConfiguration
+    ): DialogButtonIcon? {
+        val path = "$key.icon"
+        if (section.isConfigurationSection(path)) {
+            val value = resolve(
+                player,
+                getString(player, section, "$path.value", ""),
+                contextId,
+                variables,
+                config
+            ).trim()
+            if (value.isEmpty()) return null
+            val rawType = resolve(
+                player,
+                getString(player, section, "$path.type", ""),
+                contextId,
+                variables,
+                config
+            ).trim().lowercase()
+            val type = when (rawType) {
+                "url" -> DialogButtonIconType.URL
+                "path" -> DialogButtonIconType.PATH
+                "" -> if (value.startsWith("http://", true) || value.startsWith("https://", true)) {
+                    DialogButtonIconType.URL
+                } else {
+                    DialogButtonIconType.PATH
+                }
+                else -> {
+                    warnOnce(
+                        "$contextId:$path:type",
+                        "bedrock_form.invalid_icon_type",
+                        contextId,
+                        path
+                    )
+                    return null
+                }
+            }
+            return DialogButtonIcon(type, value)
+        }
+
+        val value = resolve(
+            player,
+            getString(player, section, path, ""),
+            contextId,
+            variables,
+            config
+        ).trim()
+        if (value.isEmpty()) return null
+        val type = if (value.startsWith("http://", true) || value.startsWith("https://", true)) {
+            DialogButtonIconType.URL
+        } else {
+            DialogButtonIconType.PATH
+        }
+        return DialogButtonIcon(type, value)
     }
 
     private fun resolveRepeatSource(
@@ -572,14 +637,26 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         null -> emptyList()
         is Iterable<*> -> value.mapIndexedNotNull(::repeatItem)
         is Array<*> -> value.mapIndexedNotNull(::repeatItem)
-        is String -> JavaScriptManager.parseJsonCompatible(value)?.takeIf { it !is String }
-            ?.let { repeatItemsFromAny(it, split, trimItems) }
-            ?: if (!split.isNullOrEmpty()) value.split(split)
+        is String -> if (!split.isNullOrEmpty()) value.split(split)
                 .map { if (trimItems) it.trim() else it }
                 .filter { it.isNotEmpty() }
                 .mapIndexed { index, item -> scalarRepeatItem(index, item) }
-            else value.lines().filter { it.isNotBlank() }.mapIndexed { index, item -> scalarRepeatItem(index, item.trim()) }
+            else if (looksLikeJsonCollection(value)) {
+                JavaScriptManager.parseJsonCompatible(value)?.takeIf { it !is String }
+                    ?.let { repeatItemsFromAny(it, null, trimItems) }
+                    ?: emptyList()
+            } else {
+                value.lines().filter { it.isNotBlank() }
+                    .mapIndexed { index, item -> scalarRepeatItem(index, if (trimItems) item.trim() else item) }
+            }
         else -> emptyList()
+    }
+
+    /** 仅让外形完整的 JSON 数组或对象进入 JSON 解析器，普通列表字符串不会产生解析警告。 */
+    private fun looksLikeJsonCollection(value: String): Boolean {
+        val trimmed = value.trim()
+        return (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+            (trimmed.startsWith('{') && trimmed.endsWith('}'))
     }
 
     private fun repeatItem(index: Int, item: Any?): RepeatItem? = when (item) {

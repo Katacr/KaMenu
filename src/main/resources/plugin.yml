@@ -16,6 +16,7 @@ softdepend:
   - ItemsAdder
   - Oraxen
   - CraftEngine
+  - floodgate
 commands:
   kamenu:
     description: KaMenu 主指令

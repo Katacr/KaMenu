@@ -95,9 +95,48 @@ Bottom:
 
 ### multi - Multi-Button Matrix Mode
 
-Supports multiple custom buttons arranged in a matrix, with an optional exit button.
+`multi` displays multiple buttons at the bottom of a menu. Buttons under `buttons` follow YAML declaration order, `columns` controls how many columns appear per row, and `exit` can append a separate exit or back button after the matrix.
 
-**Configuration:**
+#### Basic Format
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+
+  buttons:
+    shop:
+      text: '&6[ Shop ]'
+      tooltip:
+        - '&7Open the server shop'
+      actions:
+        - 'open: shop/main'
+
+    profile:
+      text: '&b[ Profile ]'
+      actions:
+        - 'open: profile'
+
+    settings:
+      text: '&7[ Settings ]'
+      actions:
+        - 'open: settings'
+
+    admin:
+      text: '&c[ Admin Panel ]'
+      show-condition: 'hasPerm.kamenu.admin'
+      actions:
+        - 'open: admin/tools'
+
+  exit:
+    text: '&8[ Close ]'
+    actions:
+      - 'close'
+```
+
+This example generates buttons in `shop → profile → settings → admin` order and arranges them in two columns. Button IDs such as `shop` only need to be unique inside the current `buttons` node.
+
+#### multi Configuration
 
 | Field | Type | Default | Description |
 |------|------|---------|-------------|
@@ -105,18 +144,91 @@ Supports multiple custom buttons arranged in a matrix, with an optional exit but
 | `buttons` | Node | — | List of buttons (arranged in YAML order) |
 | `exit` | Node | — | Optional exit/return button (displayed at the end of the button list) |
 
-**Button Configuration:**
+#### Normal Button Configuration
 
 | Field | Type | Description |
 |------|------|-------------|
 | `show-condition` | String | Optional, button display condition; button is hidden when condition is not met |
-| `type` | String | Optional. Omit for normal buttons; set to `repeat` for a dynamic button list |
 | `text` | String/List | Button text, supports color codes, conditions, and MiniMessage tags |
 | `width` | Int | Optional, button width (1-1024); uses default width if not set |
 | `tooltip` | List | Optional, button hover tooltip (one string per line), supports color codes and MiniMessage |
 | `actions` | List | Optional, list of actions to execute on click; if not set, clicking does nothing |
 
-### repeat - Dynamic Button Lists
+#### Exit Button Configuration
+
+| Field | Type | Description |
+|------|------|-------------|
+| `text` | String/List | Exit button text, supports color codes, conditions, and MiniMessage tags |
+| `width` | Int | Optional exit button width (1-1024) |
+| `tooltip` | List | Optional exit button hover tooltip, one string per line |
+| `actions` | List | Optional action list; commonly uses `close`, `open`, or `force-open` |
+
+#### Display Conditions
+
+Normal buttons can use `show-condition` to control visibility:
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    admin:
+      show-condition: 'hasPerm.kamenu.admin'
+      text: '&c[ Admin Button ]'
+      actions:
+        - 'open: admin/tools'
+
+    level_reward:
+      show-condition: '%player_level% >= 10'
+      text: '&e[ Level 10 Reward ]'
+      actions:
+        - 'actions: claim_level_reward'
+
+    public:
+      text: '&a[ Public Button ]'
+      actions:
+        - 'tell: &aEvery player can see this button'
+```
+
+#### Button Width
+
+Normal buttons and the `exit` button in `multi` mode can use `width` to set their Java Dialog button width:
+
+- The supported range is 1-1024.
+- When omitted, the default width from the Paper Dialog API is used.
+- Conditions are supported.
+- Width only affects the Java Dialog and does not affect Bedrock forms.
+
+```yaml
+Bottom:
+  type: multi
+  columns: 2
+  buttons:
+    wide_button:
+      text: '&a[ Wide Button ]'
+      width: 200
+      actions:
+        - 'tell: &aThis is a wide button'
+
+    conditional_width:
+      text: '&c[ Conditional Width ]'
+      width:
+        - condition: '%player_is_op% == true'
+          allow: 200
+          deny: 100
+      actions:
+        - 'tell: &cButton width changes based on a condition'
+
+  exit:
+    text: '&8[ Exit ]'
+    width: 80
+    actions:
+      - 'close'
+```
+
+An excessively large width may cause a button to extend beyond the screen. Adjust it for the actual layout.
+
+#### repeat - Dynamic Button Lists
 
 A button under `multi.buttons` can use `type: repeat` to generate real native Dialog buttons from a dynamic data source. This is useful for online player lists, warp lists, friend lists, mail lists, and other content with unknown item counts.
 
@@ -245,7 +357,7 @@ Built-in item variables:
 | `{item.page_index}` | Index on the current page, starting at 0 |
 | `{item.page_number}` | Number on the current page, starting at 1 |
 
-Pagination variables can be used in normal `Bottom.multi.buttons` and repeat item templates:
+Pagination variables can be used in normal `Bottom.buttons` and repeat item templates:
 
 | Variable | Description |
 |----------|-------------|
@@ -267,68 +379,75 @@ Pagination actions:
 
 The `page:` action only changes page state. It does not refresh the dialog by itself. Usually follow it with `reset`, `open`, or `force-open`.
 
-**Exit Button Configuration:**
+---
 
-| Field | Type | Description |
-|------|------|-------------|
-| `text` | String/List | Exit button text, supports color codes, conditions, and MiniMessage tags |
-| `width` | Int | Optional, exit button width (1-1024) |
-| `actions` | List | Optional, list of actions to execute on click; if not set, clicking does nothing |
+## Bedrock Button Icons
 
-**Example:**
+When Geyser and Floodgate are installed, KaMenu can provide button images for menus without input components. KaMenu uses an icon-enabled Floodgate `SimpleForm` only when all of these conditions are met:
 
-```yaml
-Bottom:
-  type: 'multi'
-  columns: 3
+- The current player joined through Floodgate.
+- The menu has no `Inputs` components.
+- At least one currently visible button has a valid `icon`.
 
-  buttons:
-    btn_shop:
-      text: '&6[ Shop ]'
-      actions:
-        - 'open: shop/main'
+Other players and menus continue to use the existing Java Dialog. Menus with `Inputs` are still converted automatically by Geyser, so their bottom buttons do not support `icon`.
 
-    btn_profile:
-      text: '&b[ Profile ]'
-      actions:
-        - 'open: profile'
+`icon` can be configured under `Bottom.confirm`, `Bottom.deny`, `Bottom.button1`, `Bottom.buttons.<buttonId>`, `Bottom.exit`, and `Bottom.buttons.<repeatId>.item`.
 
-    btn_settings:
-      text: '&7[ Settings ]'
-      actions:
-        - 'open: settings'
-
-    btn_admin:
-      text: '&4[ Admin Panel ]'
-      actions:
-        - 'open: admin/tools'
-
-  exit:
-    text: '&8[ Close ]'
-    actions:
-      - 'actionbar: &7Menu closed'
-      - 'close'
-```
-
-You can also use `show-condition` in Multi mode to control button visibility:
+### URL Images
 
 ```yaml
 Bottom:
   type: multi
-  columns: 2
   buttons:
-    1:
-      show-condition: "%player_is_op% == true"  # Only admins can see this button
-      text: '[ Admin Button ]'
-      actions: ...
-    2:
-      show-condition: "%player_level% >= 10"  # Players level 10+ can see
-      text: '[ VIP Button ]'
-      actions: ...
-    3:
-      text: '[ Normal Button ]'  # No condition, visible to all players
-      actions: ...
+    shop:
+      text: '&aOpen Shop'
+      icon:
+        type: url
+        value: 'https://example.com/images/shop.png'
+      actions:
+        - 'open: shop'
 ```
+
+Only `http` and `https` URLs are accepted, with a maximum length of 2048 characters. The player's client downloads the image directly, so the image host may receive the player's IP address. Use a trusted image host.
+
+### Bedrock Resource-Pack Paths
+
+```yaml
+Bottom:
+  type: multi
+  buttons:
+    reward:
+      text: '&eClaim Reward'
+      icon:
+        type: path
+        value: 'textures/items/diamond'
+      actions:
+        - 'actions: reward'
+```
+
+`path` refers to an image inside the Bedrock client resource pack, not a file on the server. Absolute paths and paths containing `..` are rejected.
+
+A URL can also use the scalar shorthand. Other scalar values are treated as resource-pack paths:
+
+```yaml
+icon: 'https://example.com/images/shop.png'
+```
+
+### Dynamic `repeat` Icons
+
+`Bottom.buttons.<repeatId>.item.icon` supports `{item.xxx}`, PAPI placeholders, and built-in KaMenu variables:
+
+```yaml
+item:
+  text: '&f{item.name}'
+  icon:
+    type: url
+    value: '{item.icon}'
+  actions:
+    - 'tell: &aYou selected {item.name}'
+```
+
+A Bedrock `SimpleForm` is a vertical button list and has no equivalents for Java Dialog button grids, widths, or tooltips. Therefore, `columns`, button `width`, and `tooltip` do not affect the Bedrock form, and repeat grid-padding buttons are omitted. If a menu button uses a standalone client-side `url:` or `copy:` action, the entire menu falls back to the existing Java Dialog conversion so that action keeps working.
 
 ---
 
@@ -353,84 +472,3 @@ Bottom:
 ```
 
 For complete condition syntax, see [Conditions](conditions.md).
-
----
-
-## Button Width
-
-All buttons support custom width configuration via the `width` field.
-
-**Applicable Scope:**
-- Confirm button in `notice` mode (`confirm.width`)
-- Confirm and cancel buttons in `confirmation` mode (`confirm.width` and `deny.width`)
-- All buttons in `multi` mode (`buttons` and `exit` buttons)
-
-**Width Values:**
-- Range: 1 - 1024
-- Uses default width (determined by Paper Dialog API) if not set
-- Supports conditions
-
-**Example:**
-
-```yaml
-# notice mode
-Bottom:
-  type: 'notice'
-  confirm:
-    text: '&a[ Confirm ]'
-    width: 200
-    actions:
-      - 'tell: &aOperation confirmed'
-
-# confirmation mode
-Bottom:
-  type: 'confirmation'
-  confirm:
-    text: '&a[ Confirm ]'
-    width: 200
-    actions:
-      - 'tell: &aOperation confirmed'
-  deny:
-    text: '&c[ Cancel ]'
-    width: 100
-    actions:
-      - 'tell: &cOperation cancelled'
-
-# multi mode
-Bottom:
-  type: 'multi'
-  columns: 2
-
-  buttons:
-    wide_button:
-      text: '&a[ Wide Button ]'
-      width: 200
-      actions:
-        - 'tell: &aThis is a wide button'
-
-    narrow_button:
-      text: '&b[ Narrow Button ]'
-      width: 50
-      actions:
-        - 'tell: &bThis is a narrow button'
-
-    conditional_width:
-      text: '&c[ Conditional Width ]'
-      width:
-        - condition: '%player_is_op% == true'
-          allow: 200
-          deny: 100
-      actions:
-        - 'tell: &cButton width changes based on permission'
-
-  exit:
-    text: '&8[ Exit ]'
-    width: 80
-    actions:
-      - 'close'
-```
-
-**Note:**
-- Width values affect the actual display size of buttons on screen
-- Too large widths may cause buttons to extend beyond the screen
-- Adjust width values based on actual display needs

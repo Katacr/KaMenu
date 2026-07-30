@@ -142,6 +142,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
+        MenuUI.discardPlayer(event.player)
         DialogSessionManager.cancel(event.player)
         MenuTaskManager.cancel(event.player)
         MenuListManager.clear(event.player)

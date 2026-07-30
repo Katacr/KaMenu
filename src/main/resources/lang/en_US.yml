@@ -246,3 +246,12 @@ config_update:
   save_failed: "Failed to save config file: {0}"
   backup_success: "Old config backed up to: {0}"
   backup_failed: "Failed to backup config file: {0}"
+bedrock_form:
+  initialize_failed: "[KaMenu] Failed to initialize Floodgate form support: {0}"
+  open_event_failed: "[KaMenu] Failed to execute the Open event for Bedrock form menu {0}: {1}"
+  close_event_failed: "[KaMenu] Failed to execute the Close event for Bedrock form menu {0}: {1}"
+  compile_failed: "[KaMenu] Failed to compile Bedrock form menu {0}; falling back to the native Dialog: {1}"
+  send_failed: "[KaMenu] Failed to send Bedrock form menu {0}: {1}"
+  send_rejected: "[KaMenu] Floodgate could not send Bedrock form menu {0}; falling back to the native Dialog"
+  invalid_icon_type: "[KaMenu] Menu {0} uses an invalid button icon type at {1}; only url and path are supported"
+  invalid_icon: "[KaMenu] Menu {0} uses an invalid Bedrock icon for button {1}; the icon was ignored"
