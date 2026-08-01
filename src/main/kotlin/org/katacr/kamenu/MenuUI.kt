@@ -192,10 +192,18 @@ object MenuUI {
         config: YamlConfiguration? = null,
         menuOpener: ((Player, String) -> Unit)? = null
     ): Component {
-        if (paperPlatform) {
-            return PaperMenuUI.createMessageComponent(player, section, path, defaultText, config, menuOpener)
+        val rawText = ConditionUtils.getString(player, section, path, defaultText)
+        val resolved = TextResolver.resolve(player, rawText, menuConfig = config)
+        val normalized = if (section.isList(path)) {
+            if (resolved.endsWith('\n') || resolved.endsWith('\r')) "$resolved " else resolved
+        } else {
+            when {
+                resolved.endsWith("\r\n") -> resolved.dropLast(2)
+                resolved.endsWith('\n') || resolved.endsWith('\r') -> resolved.dropLast(1)
+                else -> resolved
+            }
         }
-        return TextParser.parseText(getConditionalValue(player, config ?: YamlConfiguration(), path, defaultText), player)
+        return MenuActions.parseClickableText(normalized, player, config, menuOpener)
     }
 
     private fun classAvailable(name: String, classLoader: ClassLoader): Boolean {

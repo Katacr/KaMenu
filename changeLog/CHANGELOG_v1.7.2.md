@@ -3,7 +3,7 @@
 ## 版本信息
 
 - **版本号**: 1.7.2
-- **发布日期**: 待定
+- **发布日期**: 2026年7月31日
 
 ---
 
@@ -34,7 +34,7 @@
 ## Version Information
 
 - **Version**: 1.7.2
-- **Release Date**: TBD
+- **Release Date**: July 31, 2026
 
 ---
 

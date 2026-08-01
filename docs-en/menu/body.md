@@ -438,7 +438,7 @@ Displays an item icon in the menu, optionally with a name, Lore, and description
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `type` | `String` | ✅ | — | Fixed value `item` |
-| `material` | `String` | ✅ | `PAPER` | Vanilla material or provider-prefixed external item ID (see below) |
+| `material` | `String` | ✅ | `PAPER` | Vanilla material, `stock:saved-item-name`, or provider-prefixed external item ID (see below) |
 | `amount` | `Int` | ❌ | `1` | Stack size (1–64); defaults to 1 if not set |
 | `name` | `String` | ❌ | Default item name | Display name; supports color codes |
 | `lore` | `List<String>` | ❌ | — | Item Lore (list of description lines) |
@@ -467,6 +467,12 @@ Body:
     description: '&fClick the button below to purchase this weapon'
     width: 16
     height: 16
+
+  saved_item:
+    type: 'item'
+    material: 'stock:Magic Sword'
+    amount: 1
+    description: '&7Reads the complete ItemStack from KaMenu saved items'
 
   # Item with custom description width
   custom_width_item:

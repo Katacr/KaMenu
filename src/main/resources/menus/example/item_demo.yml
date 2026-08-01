@@ -78,7 +78,7 @@ Bottom:
         - '&7背包满时会掉落在地上'
         - '&f点击测试'
       actions:
-        - 'item: type=give;mats=DIAMOND;amount=64'
+        - 'item: type=give;mats=DIAMOND;amount=3000'
         - 'tell: &a已给予你 3000 个钻石！'
         - 'tell: &7如果背包已满，会掉落在地上'
 

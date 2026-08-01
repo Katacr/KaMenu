@@ -90,12 +90,17 @@ pause_entry:
 
 # Spigot Dialog 兼容
 spigot_dialog:
+  open_event_failed: "[KaMenu] Spigot Dialog 菜单 {0} 的 Open 事件执行失败：{1}"
   compile_failed: "[KaMenu] Spigot Dialog 编译失败：contextId={0}，错误={1}"
   render_failed: "[KaMenu] Spigot Dialog 渲染失败：contextId={0}，错误={1}"
   unsupported_body: "[KaMenu] Spigot 已跳过不支持的 Body：contextId={0}，组件={1}，类型={2}"
   invalid_item_property: "[KaMenu] 无效的物品属性：contextId={0}，组件={1}，属性={2}，值={3}"
   invalid_item_slot: "[KaMenu] 无法读取物品槽位：contextId={0}，组件={1}，槽位或玩家={2}"
   item_mapping_failed: "[KaMenu] Spigot 物品公共属性映射失败，已回退为基础物品：contextId={0}，组件={1}，错误={2}"
+
+# Paper Dialog
+paper_dialog:
+  open_event_failed: "[KaMenu] Paper Dialog 菜单 {0} 的 Open 事件执行失败：{1}"
 
 # 自定义指令
 custom_commands:

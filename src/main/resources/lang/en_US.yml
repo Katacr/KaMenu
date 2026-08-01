@@ -90,12 +90,17 @@ pause_entry:
 
 # Spigot Dialog compatibility
 spigot_dialog:
+  open_event_failed: "[KaMenu] Failed to execute the Open event for Spigot Dialog menu {0}: {1}"
   compile_failed: "[KaMenu] Failed to compile Spigot Dialog: contextId={0}, error={1}"
   render_failed: "[KaMenu] Failed to render Spigot Dialog: contextId={0}, error={1}"
   unsupported_body: "[KaMenu] Spigot skipped an unsupported Body: contextId={0}, component={1}, type={2}"
   invalid_item_property: "[KaMenu] Invalid item property: contextId={0}, component={1}, property={2}, value={3}"
   invalid_item_slot: "[KaMenu] Cannot resolve item slot: contextId={0}, component={1}, slot or player={2}"
   item_mapping_failed: "[KaMenu] Failed to map public Spigot item properties; using a basic item fallback: contextId={0}, component={1}, error={2}"
+
+# Paper Dialog
+paper_dialog:
+  open_event_failed: "[KaMenu] Failed to execute the Open event for Paper Dialog menu {0}: {1}"
 
 # Custom Commands
 custom_commands:

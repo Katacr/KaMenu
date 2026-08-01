@@ -308,6 +308,10 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
     }
 
     private fun openWithLifecycle(player: Player, config: YamlConfiguration, contextId: String) {
+        if (!MenuRequirementChecker.check(player, config, plugin)) {
+            return
+        }
+
         val openActions = config.getList("Events.Open")
         if (openActions.isNullOrEmpty()) {
             openDirect(player, config, contextId)

@@ -67,6 +67,10 @@ class FloodgateFormAdapter : BedrockFormAdapter {
         }
 
         runOnPlayerThread(player) {
+            if (!MenuRequirementChecker.check(player, config, plugin)) {
+                return@runOnPlayerThread
+            }
+
             if (runOpenEvent && !config.getList("Events.Open").isNullOrEmpty()) {
                 MenuActions.executeEvent(player, config, "Open", contextId).whenComplete { shouldStop, error ->
                     if (error != null) {

@@ -268,6 +268,16 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         if (inventoryItem != null && inventoryItem.type != Material.AIR && inventoryItem.amount > 0) {
             return inventoryItem.clone()
         }
+
+        if (normalized.startsWith("stock:", ignoreCase = true)) {
+            val itemName = normalized.substringAfter(':').trim()
+            plugin.itemManager.getItem(itemName)?.let { savedItem ->
+                return savedItem.apply {
+                    amount = defaultAmount.coerceAtLeast(1).coerceAtMost(maxStackSize)
+                }
+            }
+        }
+
         return ExternalItemAdapter.create(normalized, defaultAmount, player)
             ?: ItemStack(MaterialUtils.matchMaterial(normalized) ?: Material.PAPER, defaultAmount.coerceAtLeast(1))
     }

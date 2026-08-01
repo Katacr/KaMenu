@@ -441,7 +441,7 @@ Body:
 | 字段 | 类型 | 必须 | 默认值 | 说明                                                         |
 |------|------|------|--------|------------------------------------------------------------|
 | `type` | `String` | ✅ | — | 固定值 `item`                                                 |
-| `material` | `String` | ✅ | `PAPER` | 原版材质或带提供方前缀的外部物品 ID（见下方说明）                              |
+| `material` | `String` | ✅ | `PAPER` | 原版材质、`stock:保存物品名` 或带提供方前缀的外部物品 ID（见下方说明）          |
 | `amount` | `Int` | ❌ | `1` | 物品堆叠数量（1-64），不设置则默认为 1                                       |
 | `name` | `String` | ❌ | 物品默认名称 | 物品显示名称，支持颜色代码                                              |
 | `lore` | `List<String>` | ❌ | — | 物品 Lore（描述文字列表）                                            |
@@ -470,6 +470,12 @@ Body:
     description: '&f点击下方按钮购买此武器'
     width: 16
     height: 16
+
+  saved_item:
+    type: 'item'
+    material: 'stock:神秘之剑'
+    amount: 1
+    description: '&7直接读取 KaMenu 保存物品库中的完整 ItemStack'
 
   # 带自定义 description 宽度的物品
   custom_width_item:
