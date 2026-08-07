@@ -1,0 +1,81 @@
+# KaMenu V2 熔炉进度示例
+# 打开方式: /km open example/container_furnace
+
+Type: FURNACE
+Title: '&8熔炉进度示例'
+Progress-Update: 5
+
+Properties:
+  burn_progress: '{meta:example_burn_progress}'
+  cook_progress: '{meta:example_cook_progress}'
+
+Events:
+  Open:
+    - 'meta: type=set;key=example_burn_progress;var=`75%`'
+    - 'meta: type=set;key=example_cook_progress;var=`25%`'
+    - 'actionbar: &a点击槽位按钮修改熔炉进度'
+  Progress:
+    cook_complete:
+      source: cook_progress
+      condition: '{progress.current} >= 100'
+      trigger_initial: false
+      actions:
+        - 'actionbar: &a加工进度已达到 100%'
+        - 'sound: BLOCK_NOTE_BLOCK_PLING;volume=1;pitch=1.4'
+    fuel_empty:
+      source: burn_progress
+      condition: '{progress.current} <= 0'
+      trigger_initial: false
+      actions:
+        - 'actionbar: &c燃料已经耗尽'
+
+Layout:
+  - 'IFR'
+
+Buttons:
+  I:
+    display:
+      material: IRON_ORE
+      name: '&e加工进度: &f{meta:example_cook_progress}'
+      lore:
+        - '&7左键: 增加到 100%'
+        - '&7右键: 重置为 25%'
+    actions:
+      left:
+        - 'meta: type=set;key=example_cook_progress;var=`100%`'
+        - 'refresh: properties'
+        - 'refresh: I'
+      right:
+        - 'meta: type=set;key=example_cook_progress;var=`25%`'
+        - 'refresh: properties'
+        - 'refresh: I'
+
+  F:
+    display:
+      material: COAL
+      name: '&6燃料进度: &f{meta:example_burn_progress}'
+      lore:
+        - '&7左键: 设为 100%'
+        - '&7右键: 设为 0%'
+    actions:
+      left:
+        - 'meta: type=set;key=example_burn_progress;var=`100%`'
+        - 'refresh: properties'
+        - 'refresh: F'
+      right:
+        - 'meta: type=set;key=example_burn_progress;var=`0%`'
+        - 'refresh: properties'
+        - 'refresh: F'
+
+  R:
+    display:
+      material: IRON_INGOT
+      name: '&a返回箱子示例'
+      lore:
+        - '&7左键返回基础菜单'
+        - '&7右键关闭菜单'
+    actions:
+      left:
+        - 'open: example/container_main'
+      right:
+        - 'close'

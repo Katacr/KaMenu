@@ -8,7 +8,7 @@ import org.bukkit.entity.Player
 import java.util.Locale
 
 /**
- * config.yml 中 custom-commands 的运行定义。
+ * custom_commands.yml 中单条自定义指令的运行定义。
  *
  * 同一条自定义指令可以是“打开菜单”，也可以是“执行动作列表”。
  * `argSuggestions` 以参数下标为键，支持静态列表、PAPI、KaMenu 内置变量和 list/glist JSON。
@@ -35,7 +35,7 @@ sealed interface CustomCommandDefinition {
 
 /**
  * 自定义指令处理器
- * 用于处理 config.yml 中配置的自定义指令，可直接打开菜单或执行动作队列。
+ * 用于处理 custom_commands.yml 中配置的自定义指令，可直接打开菜单或执行动作队列。
  *
  * 用法示例：
  * `test: example/main_menu` 直接打开菜单；

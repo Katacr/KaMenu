@@ -6,13 +6,14 @@ KaMenu provides a public API for other plugins to open file-based menus, render 
 
 ### `org.katacr.kamenu.api.KaMenuAPI`
 
-#### `openMenu(Player player, String menuId)`
+#### `openMenu(Player player, String menuId, List<String> arguments = emptyList())`
 
 Opens a menu loaded by KaMenu's `MenuManager`.
 
 **Parameters:**
 - `player` — The target player
 - `menuId` — The menu ID, such as `"main_menu"` or `"shop/weapons"`
+- `arguments` — Positional arguments passed to the target menu; read them with `{arg:0}`, `{arg:1}`, and so on
 
 **Returns:**
 - `boolean` — Whether the open request was submitted successfully
@@ -21,17 +22,18 @@ Opens a menu loaded by KaMenu's `MenuManager`.
 import org.katacr.kamenu.api.KaMenuAPI
 
 val success = KaMenuAPI.openMenu(player, "main_menu")
-KaMenuAPI.openMenu(player, "shop/weapons")
+KaMenuAPI.openMenu(player, "shop/weapons", listOf("weapons", "vip"))
 ```
 
 ```java
 import org.katacr.kamenu.api.KaMenuAPI;
+import java.util.List;
 
 boolean success = KaMenuAPI.openMenu(player, "main_menu");
-KaMenuAPI.openMenu(player, "shop/weapons");
+KaMenuAPI.openMenu(player, "shop/weapons", List.of("weapons", "vip"));
 ```
 
-#### `openYaml(Player player, String yaml, String contextId = "external")`
+#### `openYaml(Player player, String yaml, String contextId = "external", List<String> arguments = emptyList())`
 
 Parses a YAML string in memory and opens it as a KaMenu menu. The YAML is not written to the `menus` directory and does not require a menu reload.
 
@@ -39,6 +41,7 @@ Parses a YAML string in memory and opens it as a KaMenu menu. The YAML is not wr
 - `player` — The target player
 - `yaml` — Full KaMenu menu YAML content
 - `contextId` — A log identifier used to locate the source of the external menu
+- `arguments` — Positional arguments passed to the target menu
 
 **Returns:**
 - `boolean` — Whether the YAML was parsed and the open request was submitted successfully
@@ -58,12 +61,12 @@ Bottom:
       - "kgc:join lobby"
 """.trimIndent()
 
-KaMenuAPI.openYaml(player, yaml, "kagamecenter:main")
+KaMenuAPI.openYaml(player, yaml, "kagamecenter:main", listOf("lobby", "solo"))
 ```
 
 If YAML parsing fails, KaMenu writes a warning containing the `contextId`.
 
-#### `openConfig(Player player, YamlConfiguration config, String contextId = "external")`
+#### `openConfig(Player player, YamlConfiguration config, String contextId = "external", List<String> arguments = emptyList())`
 
 Opens an in-memory `YamlConfiguration` as a KaMenu menu. The configuration does not need to come from `MenuManager`.
 
@@ -71,6 +74,7 @@ Opens an in-memory `YamlConfiguration` as a KaMenu menu. The configuration does 
 - `player` — The target player
 - `config` — A complete KaMenu menu configuration
 - `contextId` — A log identifier used to locate the source of the external menu
+- `arguments` — Positional arguments passed to the target menu
 
 **Returns:**
 - `boolean` — Whether the open request was submitted successfully
@@ -82,10 +86,12 @@ import org.katacr.kamenu.api.KaMenuAPI
 val config = YamlConfiguration()
 config.loadFromString(yaml)
 
-KaMenuAPI.openConfig(player, config, "myplugin:dynamic-shop")
+KaMenuAPI.openConfig(player, config, "myplugin:dynamic-shop", listOf("diamond", "buy"))
 ```
 
 All three platforms run `Events.Open` before rendering. If the action chain reaches `return`, the menu is not opened. `reset` reopens the current in-memory `YamlConfiguration`, so external menus do not require a `MenuManager` file ID.
+
+The target menu can declare fallback values and a minimum count under `Settings.pass_arguments`. Explicit values win by index; missing indexes are filled from `default`. Menu content can use `{arg:0}`, `{arg:1}`, `{args}`, and `{arg_count}`. If the final count after fallback is below `must`, the menu is not opened.
 
 #### `registerActionHandler(String namespace, KaMenuActionHandler handler)`
 

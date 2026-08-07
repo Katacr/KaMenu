@@ -1,0 +1,61 @@
+# KaMenu V2 anvil input example
+# Open with: /km open example/container_anvil
+
+Type: ANVIL
+Title: '&8Anvil Input Example'
+
+Properties:
+  input: 'KaMenu_Name'
+  remove_chars:
+    - '&'
+    - '_'
+  repair_cost: 0
+  maximum_repair_cost: 40
+  repair_item_count: 0
+
+Events:
+  Open:
+    - 'meta: type=delete;key=example_anvil_input'
+    - 'actionbar: &aEdit the text in the anvil input field'
+
+Layout:
+  - 'IMR'
+
+Buttons:
+  I:
+    display:
+      material: PAPER
+      name: '&fKaMenu Input'
+      lore:
+        - '&7Initial value: KaMenu_Name'
+        - '&7The & and _ characters are removed'
+    actions:
+      right:
+        - 'reset'
+
+  M:
+    display:
+      material: NAME_TAG
+      name: '&eCurrent input: &f$(input)'
+      lore:
+        - '&7Left-click to refresh the displayed input'
+    actions:
+      left:
+        - 'refresh: properties'
+        - 'refresh: M'
+
+  R:
+    view_condition: '!isPass.$(input)'
+    display:
+      material: EMERALD
+      name: '&aConfirm: &f$(input)'
+      lore:
+        - '&7Left: save the input and return'
+        - '&7Right: close the menu'
+    actions:
+      left:
+        - 'meta: type=set;key=example_anvil_input;var=`$(input)`'
+        - 'actionbar: &aSaved input: $(input)'
+        - 'open: example/container_main'
+      right:
+        - 'close'

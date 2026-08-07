@@ -1,0 +1,88 @@
+# KaMenu V2 basic container menu example
+# Open with: /km open example/container_main
+
+Type: CHEST
+Title: '&8KaMenu Container Example | &f%player_name%'
+
+Settings:
+  min_click_delay: 200
+
+Layout:
+  - '#########'
+  - '#P A F V#'
+  - '#   R   #'
+  - '####X####'
+
+Events:
+  Open:
+    - 'actionbar: &aContainer example opened'
+  Close:
+    - 'actionbar: &7Container example closed'
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  P:
+    display:
+      material: PLAYER_HEAD
+      skull_owner: '%player_name%'
+      name: '&a%player_name%'
+      lore:
+        - '&7Language: &f{language}'
+        - '&7Main-hand item: &f{checkitem:[hand;name]}'
+        - '&8This button demonstrates PAPI and built-in variables'
+    actions:
+      all:
+        - 'actionbar: &aHello, %player_name%!'
+
+  A:
+    display:
+      material: REDSTONE
+      name: '&dActions and Clicks'
+      lore:
+        - '&7Open click types and refresh examples'
+    actions:
+      all:
+        - 'open: example/container_actions'
+
+  F:
+    display:
+      material: FURNACE
+      name: '&6Furnace Progress'
+      lore:
+        - '&7Control the flame and cooking arrow progress'
+    actions:
+      all:
+        - 'open: example/container_furnace'
+
+  V:
+    display:
+      material: ANVIL
+      name: '&eAnvil Input'
+      lore:
+        - '&7Read and process player input'
+    actions:
+      all:
+        - 'open: example/container_anvil'
+
+  R:
+    display:
+      material: CLOCK
+      name: '&bRefresh Menu'
+      lore:
+        - '&7Render the title, properties, and all buttons again'
+    actions:
+      all:
+        - 'refresh: *'
+        - 'actionbar: &bMenu refreshed'
+
+  X:
+    display:
+      material: BARRIER
+      name: '&cClose Menu'
+    actions:
+      all:
+        - 'close'

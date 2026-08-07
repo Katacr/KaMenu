@@ -76,18 +76,6 @@ listeners:
     #   menu: 'server_shop'
     #   require-sneaking: false
 
-# 自定义指令注册
-# 旧写法: 指令名: 菜单文件名
-# 新写法: 指令名下配置 actions 动作队列
-custom-commands:
-  zcd: 'example/main_menu'
-  shop: 'server_shop'
-  menu: 'example/main_menu'
-  test:
-    actions:
-      - "tell: 嘿，你输入了/test指令"
-      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
-      - "tell: 你想测试什么内容呢？"
 ```
 
 ---
@@ -274,7 +262,7 @@ listeners:
 
 #### item-lore - 右键物品 Lore 触发
 
-玩家右键持有指定材质且包含特定 Lore 文本的物品时触发打开菜单。
+玩家右键持有指定材质的物品时触发打开菜单，并可选择额外匹配 Lore 文本。
 
 **配置格式：**
 
@@ -284,7 +272,7 @@ listeners:
     配置名称:        # 自定义名称，用于区分不同配置
       enabled: true  # 是否启用此配置
       material: 'CLOCK'              # 物品材质（必须匹配）
-      target-lore: '菜单'            # 目标 Lore 文本
+      target-lore: '菜单'            # 可选；目标 Lore 文本
       menu: 'main_menu'              # 触发时打开的菜单 ID
       require-sneaking: false        # 是否需要潜行才触发
 ```
@@ -295,7 +283,7 @@ listeners:
 |------|------|------|--------|
 | `enabled` | 是否启用此监听配置 | `Boolean` | `true` |
 | `material` | 物品材质（Material 枚举值，必须匹配） | `String` | 无 |
-| `target-lore` | 物品 Lore 中包含的文本（包含即匹配） | `String` | 无 |
+| `target-lore` | 可选的 Lore 包含文本；缺失、`''` 或 `[]` 时只匹配材质 | `String` / `[]` | 无 |
 | `menu` | 触发时打开的菜单 ID | `String` | 无 |
 | `require-sneaking` | 是否需要同时按住潜行键（Shift）才触发 | `Boolean` | `false` |
 
@@ -308,6 +296,19 @@ listeners:
       enabled: true
       material: 'CLOCK'
       target-lore: '服务器菜单'
+      menu: 'server_menu'
+      require-sneaking: false
+```
+
+如果只需要判断玩家手持物品的材质，可以将 `target-lore` 留空、设为空列表，或直接省略该字段：
+
+```yaml
+listeners:
+  item-lore:
+    material-only:
+      enabled: true
+      material: 'CLOCK'
+      target-lore: []
       menu: 'server_menu'
       require-sneaking: false
 ```
@@ -350,7 +351,8 @@ listeners:
 
 {% hint style="info" %}
 - 支持配置多个 item-lore 监听器，每个监听器可以设置不同的物品和菜单
-- `target-lore` 是模糊匹配，只要物品 Lore 中包含该文本就会触发
+- 非空的 `target-lore` 使用模糊匹配，只要物品 Lore 中包含该文本就会触发
+- `target-lore` 缺失、设为 `''` 或 `[]` 时不检查 Lore，只检查 `material`
 - 推荐为功能物品设置独特的 Lore 文本，避免与其他物品冲突
 {% endhint %}
 
@@ -456,42 +458,8 @@ Body:
 
 ---
 
-### custom-commands - 自定义指令
+### custom_commands.yml - 自定义指令
 
-将简短的自定义指令注册为打开指定菜单的快捷方式，或直接执行一组 actions 动作队列，无需额外权限配置。
+自定义指令已从 `config.yml` 独立到插件根目录的 `custom_commands.yml`。该文件仍使用 `custom-commands` 根节，可注册菜单快捷指令、actions 动作队列和 Tab 补全。
 
-**格式：**
-
-- `指令名: 菜单ID`
-- `指令名:` 下配置 `actions: 动作队列`
-- 对象写法可额外配置 `args`，为参数提供 Tab 补全
-
-**示例：**
-
-```yaml
-custom-commands:
-  shop: 'server_shop'       # /shop -> 打开 server_shop 菜单
-  menu: 'main_menu'         # /menu -> 打开 main_menu 菜单
-  hub: 'hub/main'           # /hub  -> 打开 hub/main 菜单（子文件夹）
-  profile:
-    menu: 'player/profile'
-    args:
-      0: '%kamenu_online_players%'
-  test:
-    args:
-      0: '[hello, info]'
-      1: '{list:friends}'
-    actions:
-      - "tell: 嘿，你输入了/test指令"
-      - "tell: 参数：{args}"
-      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
-      - condition: "hasPerm.test.admin"
-        allow:
-          - "tell: &a你拥有测试权限"
-        deny:
-          - "tell: &c你没有测试权限"
-```
-动作队列支持与按钮 actions 相同的条件判断、嵌套列表、`wait`、`return` 和复杂逻辑。命令参数可通过 `{arg:0}`、`{arg:1}`、`{args}`、`{arg_count}`、`{command}` 读取。
-`args` 的索引同样从 `0` 开始，并支持 YAML 列表、逗号分隔字符串、PAPI 和 KaMenu 内置变量；PAPI 与内置变量会在玩家按下 Tab 时实时解析。
-
-想要了解自定义指令的用法和优势，点击此处 [自定义指令](customCommands.md)
+详细字段、动作参数和迁移说明请参阅 [自定义指令](customCommands.md)。修改后使用 `/km reload config` 立即重载。

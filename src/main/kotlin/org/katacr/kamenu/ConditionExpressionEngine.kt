@@ -589,7 +589,7 @@ object ConditionExpressionEngine {
                 item.type == material
             }
             if (item.type != org.bukkit.Material.AIR && item.amount > 0 && itemMatches) {
-                val itemMeta = item.itemMeta
+                val itemMeta = item.itemMeta ?: continue
                 if (loreText != null) {
                     if (!itemMeta.hasLore()) continue
                     val loreMatched = MenuUI.itemLore(itemMeta).any { line ->

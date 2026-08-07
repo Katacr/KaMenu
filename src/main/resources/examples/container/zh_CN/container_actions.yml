@@ -1,0 +1,107 @@
+# KaMenu V2 Container 动作与生命周期示例
+# 打开方式: /km open example/container_actions
+
+Type: CHEST
+Title: '&8动作示例 | 点击次数: &f{meta:container_clicks}'
+Title-Update: 20
+
+Settings:
+  min_click_delay: 250
+
+Layout:
+  - '#########'
+  - '#L S C R#'
+  - '#   B   #'
+  - '####X####'
+
+Events:
+  Open:
+    - 'meta: type=set;key=container_clicks;var=`0`'
+    - 'actionbar: &aEvents.Open 已执行'
+  Close:
+    - 'actionbar: &7Events.Close 已执行'
+  Click:
+    record:
+      - 'meta: type=add;key=container_clicks;var=`1`'
+      - 'refresh: *'
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  L:
+    display:
+      material: STONE_BUTTON
+      name: '&a左键与右键'
+      lore:
+        - '&7左键: 播放音效'
+        - '&7右键: 显示 ActionBar'
+    actions:
+      all:
+        - 'actions: record'
+      left:
+        - 'sound: BLOCK_NOTE_BLOCK_PLING;volume=1;pitch=1.2'
+      right:
+        - 'actionbar: &e你使用了右键'
+
+  S:
+    display:
+      material: LEVER
+      name: '&eShift 点击'
+      lore:
+        - '&7支持 Shift+左键和 Shift+右键'
+    actions:
+      shift_left:
+        - 'actions: record'
+        - 'actionbar: &aShift+左键'
+      shift_right:
+        - 'actions: record'
+        - 'actionbar: &bShift+右键'
+
+  C:
+    display:
+      material:
+        - condition: '%player_is_op% == true'
+          allow: EMERALD
+          deny: REDSTONE
+      name: '&d条件动作'
+      lore:
+        - '&7根据 %player_is_op% 执行不同分支'
+    actions:
+      all:
+        - condition: '%player_is_op% == true'
+          allow:
+            - 'actionbar: &a条件通过：你是 OP'
+          deny:
+            - 'actionbar: &c条件拒绝：你不是 OP'
+        - 'actions: record'
+
+  R:
+    display:
+      material: CLOCK
+      name: '&breset 动作'
+      lore:
+        - '&7重新打开当前菜单但不执行 Events.Open'
+        - '&7因此点击计数不会被清零'
+    actions:
+      all:
+        - 'actions: record'
+        - 'reset'
+
+  B:
+    display:
+      material: ARROW
+      name: '&f返回基础示例'
+    actions:
+      all:
+        - 'open: example/container_main'
+
+  X:
+    display:
+      material: BARRIER
+      name: '&c关闭菜单'
+    actions:
+      all:
+        - 'close'

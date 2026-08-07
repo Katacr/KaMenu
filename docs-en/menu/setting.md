@@ -12,6 +12,137 @@ The `Settings` node configures the menu's global behaviour, including how it can
 | `after_action` | `String` | `CLOSE` | Client-side behaviour after a button action is executed |
 | `lifetime` | `Long` | `300` | Maximum time the menu may remain open, in seconds |
 | `need_placeholder` | `List<String>` | `null` | List of PlaceholderAPI expansions required by the menu |
+| `min_click_delay` | `Long` | `0` | Container menus only; minimum interval between valid button clicks in the same session, in milliseconds |
+| `pass_arguments` | `Section` | Disabled | Menu argument-passing settings supported by Dialog and Container menus |
+
+---
+
+## pass_arguments - Menu Arguments
+
+`pass_arguments` creates an isolated argument context for the target menu. Arguments are not written to `meta`, the database, or shared YAML, so asynchronous actions cannot overwrite temporary shared values or observe stale data.
+
+> KaMenu uses the existing plural configuration node `Settings`; the full path is `Settings.pass_arguments`.
+
+### Configuration Format
+
+```yaml
+Settings:
+  pass_arguments:
+    enable: true
+    default:
+      - 'Default value'
+      - '%player_name%'
+      - '{meta:test}'
+      - '{js:[hello]}'
+    must: 2
+```
+
+### Resolution Rules
+
+- `enable: false` or an omitted section disables the target menu argument context
+- `default` is an index-ordered list of fallback arguments
+- Explicit arguments take priority
+- When explicit arguments are fewer than the default list, missing indexes use the corresponding default values
+- Defaults are resolved before the target menu opens and support PlaceholderAPI, KaMenu built-in variables, MetaData, and JavaScript
+- `must` is the minimum number of arguments after defaults have been applied; opening is rejected when the count is lower
+- An omitted or `0` `must` value imposes no minimum
+- Extra explicit arguments are preserved
+
+### Passing Arguments from Actions
+
+`open` and `force-open` accept arguments after the menu ID. Arguments may be separated by whitespace or English commas. Wrap an argument containing spaces in single quotes, double quotes, or backticks:
+
+```yaml
+Buttons:
+  profile:
+    display:
+      material: PLAYER_HEAD
+      name: '&aOpen profile'
+    actions:
+      left:
+        - 'open: profile/detail {meta:target} vip'
+  search:
+    display:
+      material: PAPER
+      name: '&aOpen search'
+    actions:
+      left:
+        - 'open: search/result,`Diamond Sword`'
+```
+
+Inside the target menu, use `{arg:0}`, `{arg:1}`, and so on. `{args}` returns all arguments joined by spaces, and `{arg_count}` returns the argument count. These values can be used in titles, Body, button items, conditions, Events, and actions:
+
+```yaml
+Title: '&8Search: {arg:0}'
+
+Body:
+  info:
+    type: 'message'
+    text: 'Player: {arg:0}, mode: {arg:1}'
+
+Events:
+  Open:
+    - 'tell: &7Opening the menu for {arg:0}'
+
+Buttons:
+  confirm:
+    display:
+      material: EMERALD
+      name: '&aConfirm {arg:0}'
+    actions:
+      left:
+        - 'tell: &aArgument count: {arg_count}'
+        - 'close'
+```
+
+### reset and Menu Switching
+
+`reset` preserves the already resolved arguments of the current menu and re-renders it. `open` and `force-open` switch to a new menu, which resolves arguments again using that menu's own `default` and `must` settings.
+
+---
+
+## Settings for Container Menus
+
+Chest, hopper, dispenser, dropper, furnace, blast furnace, smoker, and anvil menus currently support these `Settings` entries:
+
+```yaml
+Settings:
+  need_placeholder:
+    - 'player'
+    - 'vault'
+  min_click_delay: 200
+```
+
+### need_placeholder
+
+`need_placeholder` is the PlaceholderAPI prerequisite check shared by Container and Dialog menus. Each entry is a PlaceholderAPI expansion identifier, for example:
+
+- `%player_name%` uses the `player` expansion
+- `%vault_eco_balance%` uses the `vault` expansion
+
+When the menu opens, KaMenu checks that PlaceholderAPI is enabled and that each listed expansion is registered. A failed check prevents rendering, avoiding incomplete displays or incorrect action conditions. Administrators receive a clickable prompt for missing expansions; regular players receive a dependency-missing message.
+
+This setting does not scan every `%...%` variable in the menu automatically. Add the relevant expansion identifiers when a menu uses PlaceholderAPI variables. Menus that do not use PAPI expansions do not need `need_placeholder`.
+
+### min_click_delay
+
+`min_click_delay` limits the frequency of valid button clicks by the same player during the current Container menu session. The unit is milliseconds, matching TrMenu's `Options.Min-Click-Delay`:
+
+```yaml
+Settings:
+  min_click_delay: 200
+```
+
+- `0` or omitted: no click limit; this is the default
+- `200`: at least 200 milliseconds must pass between valid button clicks
+- It applies only after the button is visible and resolves to at least one action
+- Empty slots, hidden buttons, and buttons without actions do not consume the cooldown
+- The timestamp belongs to the current menu session and resets after reopening, `reset`, or switching menus
+- A blocked click runs no button action and does not change items or refresh the menu
+
+For shops, reward claims, economy deductions, and point deductions, `150` to `300` milliseconds is a practical starting range. Menus that require rapid repeated interaction can keep the default `0`.
+
+Container menus do not use the Dialog-only `can_escape`, `after_action`, or `lifetime` settings. Configure Container closing, action transitions, and lifecycle behaviour through button actions and `Events.Open` / `Events.Close`.
 
 ---
 

@@ -8,19 +8,22 @@
 
 | 项目 | 支持详情                       |
 |------|----------------------------|
-| Minecraft 版本 | 1.21.7+                    |
-| Java 版本 | Java 21+                   |
+| Minecraft 版本 | 1.16.5+                    |
+| Java 版本 | Java 16+                   |
 | 服务器类型 | **Paper**、**Folia**、**Spigot**及兼容衍生核心 |
 | 数据库 | SQLite（默认）、MySQL 5.7+      |
 
 {% hint style="info" %}
 **版本功能支持**： 
 
-- ✅ Paper 1.21.7+：基础功能完整支持
+- ✅ Java 16+：插件公共运行时可在 Java 16 及以上版本加载
+- ✅ Bukkit/Spigot/Paper-compatible core 1.16.5+：Container、actions、变量、JavaScript、存储和自定义指令等公共功能
+- ✅ Paper/Folia 1.21.7+：启用原生 Dialog
 - Paper 1.21.8+：推荐版本，API 更加稳定
 - Minecraft 1.21.9+：支持 sprite 等新版客户端文本组件；Paper、Folia 与 Spigot 使用相同菜单语法
 - Folia 1.21.7+：支持区域线程调度；建议使用与目标 Minecraft 版本匹配的最新构建
 - Spigot 1.21.6+：支持原生 Dialog、服务端 actions、Events、Inputs、Tasks、JavaScript、存储与外部 API
+- 低于原生 Dialog 最低版本的核心：自动禁用 Dialog 菜单和 ESC Dialog 入口，公共功能仍可使用
 {% endhint %}
 
 {% hint style="info" %}
@@ -69,11 +72,11 @@ ItemsAdder、Oraxen 和 CraftEngine 均为软依赖，未安装时不会影响 K
    - 初始化数据库（默认为 SQLite）
 
 {% hint style="info" %}
-首次启动需要连接 Maven 仓库，服务端会在加载 KaMenu 主类前下载 Kotlin 与 Adventure；KaMenu 随后会继续自动下载数据库驱动和 JavaScript 引擎等运行库。依赖缓存完成后，后续启动无需重复下载。
+KaMenu 只将 Libby 随插件 JAR 提供，并在插件 `onLoad` 阶段优先热加载 Kotlin，随后加载 Adventure/MiniMessage、数据库驱动和 JavaScript 引擎等运行库。首次启动需要连接 Maven 仓库；依赖缓存完成后，后续启动无需重复下载。
 {% endhint %}
 
 {% hint style="info" %}
-首次使用建议在游戏内执行 `/kamenu guide`（或 `/km guide`）打开入门向导。向导菜单直接从插件 jar 内部加载到内存，不会写入 `menus` 目录。
+首次使用建议在游戏内执行 `/kamenu guide`（或 `/km guide`）打开入门向导。支持 Dialog 的核心会打开 Dialog 向导；不支持 Dialog 的低版本核心会自动回退到箱子向导。向导直接从插件 jar 内部加载到内存，不会写入 `menus` 目录。
 {% endhint %}
 
 ### 4. 打开入门向导
@@ -84,7 +87,7 @@ ItemsAdder、Oraxen 和 CraftEngine 均为软依赖，未安装时不会影响 K
 /kamenu guide
 ```
 
-入门向导会引导你设置插件语言，并按语言释放示例菜单。示例菜单会写入：
+入门向导会引导你设置插件语言，并按语言释放示例菜单。不支持 Dialog 的低版本核心只释放箱子、熔炉和铁砧等 Container 示例；支持 Dialog 的核心会同时释放 Container 与 Dialog 示例。示例菜单会写入：
 
 ```text
 plugins/KaMenu/menus/example/
@@ -119,7 +122,7 @@ plugins/KaMenu/menus/example/
 /kamenu guide
 ```
 
-如果成功弹出入门向导，则表示安装正常。释放示例菜单后，也可以执行 `/km open example/actions_demo` 打开动作示例菜单。
+如果成功弹出入门向导，则表示安装正常。释放示例菜单后，低版本核心可执行 `/km open example/container_main` 打开箱子示例；支持 Dialog 的核心也可执行 `/km open example/actions_demo` 打开 Dialog 动作示例。
 
 ---
 
@@ -135,7 +138,7 @@ plugins/KaMenu/menus/example/
 
 ```bash
 /km reload menu      # 仅重载菜单
-/km reload config    # 重载 config.yml、语言文件和自定义指令
+/km reload config    # 重载 config.yml、custom_commands.yml、语言文件和自定义指令
 /km reload actions   # 仅重载全局动作包
 /km reload js        # 仅重载全局 JavaScript 包
 /km reload lang      # 仅重载当前语言文件

@@ -13,16 +13,18 @@ import org.katacr.kamenu.api.KaMenuActionHandler
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 菜单动作执行中心。
  *
  * 负责把 YAML 中的动作节点解析为实际行为，支持普通字符串动作、条件 Map、
- * 嵌套动作列表、动作包调用、目标选择器、wait 延迟、return 中断和外部插件动作。
+ * 嵌套动作列表、动作包调用、目标选择器、概率/单行延迟修饰符、wait 延迟、return 中断和外部插件动作。
  *
  * 动作执行是“异步串行”的：每个节点按顺序执行，遇到 `wait:` 会返回一个 future，
- * 后续动作会在等待完成后继续，因此变量和条件会在真正执行到该节点时才解析。
+ * 后续动作会在等待完成后继续，因此变量和条件会在真正执行到该节点时才解析；
+ * `<delay=...>` 则把当前行独立调度，不等待该行完成。
  */
 object MenuActions {
     private var languageManager: LanguageManager? = null
@@ -41,6 +43,13 @@ object MenuActions {
     private data class ParsedAction(
         val action: String,
         val targetSelector: String?
+    )
+
+    /** 单行动作中提取出的概率与独立延迟修饰符。 */
+    private data class ActionModifiers(
+        val action: String,
+        val chance: String?,
+        val delay: String?
     )
 
     /**
@@ -70,6 +79,12 @@ object MenuActions {
         val id: String
     )
 
+    /** `open` / `force-open` 动作解析出的目标菜单和传入参数。 */
+    private data class MenuOpenRequest(
+        val menuId: String,
+        val arguments: List<String>
+    )
+
     /**
      * 动作类型枚举
      */
@@ -77,6 +92,15 @@ object MenuActions {
         MULTITARGET,  // 支持多目标的动作
         SINGLE_TARGET_ONLY  // 只对单个玩家有意义的动作
     }
+
+    private val actionModifierPattern = Regex(
+        """(?:<\s*(chance|rate|rand(?:om)?|delay|wait)\s*[=:]\s*([^>]*)>|\{\s*(chance|rate|rand(?:om)?|delay|wait)\s*[=:]\s*([^{}]*)})""",
+        RegexOption.IGNORE_CASE
+    )
+    private val pointsAliasPattern = Regex(
+        """^(give|add|deposit|take|remove|withdraw)-?points?\s*:\s*(.*)$""",
+        RegexOption.IGNORE_CASE
+    )
 
     /**
      * 设置语言管理器引用
@@ -190,6 +214,16 @@ object MenuActions {
             // 支持多目标的动作
             else -> ActionType.MULTITARGET
         }
+    }
+
+    /** 将 TrMenu 风格的点券动作名转换为 KaMenu 的 add/take 操作。 */
+    private fun parsePointsAlias(action: String): Pair<String, String>? {
+        val match = pointsAliasPattern.matchEntire(action.trim()) ?: return null
+        val type = when (match.groupValues[1].lowercase()) {
+            "give", "add", "deposit" -> "add"
+            else -> "take"
+        }
+        return type to match.groupValues[2].trim()
     }
 
     /**
@@ -348,6 +382,13 @@ object MenuActions {
             merged["arg:$index"] = value
         }
         return merged
+    }
+
+    /** 解析 `菜单ID 参数...`，参数分隔和引号规则与 actions 包参数保持一致。 */
+    private fun parseMenuOpenRequest(raw: String): MenuOpenRequest? {
+        val parts = ActionArgumentParser.splitArguments(raw)
+        val menuId = parts.firstOrNull()?.takeIf(String::isNotBlank) ?: return null
+        return MenuOpenRequest(menuId, parts.drop(1))
     }
 
     /**
@@ -525,11 +566,15 @@ object MenuActions {
         if (!closesDialogAfterAction) {
             return
         }
+        val argumentContext = MenuArgumentManager.currentContext(player)
         DialogSessionManager.cancel(player)
         if (initialTaskToken == null) {
+            MenuArgumentManager.clearIfCurrent(player, argumentContext)
             return
         }
-        if (MenuTaskManager.currentToken(player) != initialTaskToken) {
+        if (MenuTaskManager.currentToken(player) != initialTaskToken ||
+            MenuArgumentManager.currentContext(player) != argumentContext
+        ) {
             return
         }
 
@@ -539,12 +584,16 @@ object MenuActions {
                     plugin?.logger?.severe("Close 事件执行失败: ${error.message}")
                     error.printStackTrace()
                 }
-                if (MenuTaskManager.currentToken(player) == initialTaskToken) {
+                if (MenuTaskManager.currentToken(player) == initialTaskToken &&
+                    MenuArgumentManager.currentContext(player) == argumentContext
+                ) {
                     MenuTaskManager.cancel(player)
+                    MenuArgumentManager.clearIfCurrent(player, argumentContext)
                 }
             }
         } else {
             MenuTaskManager.cancel(player)
+            MenuArgumentManager.clearIfCurrent(player, argumentContext)
         }
     }
 
@@ -698,6 +747,76 @@ object MenuActions {
     }
 
     /**
+     * 提取 TrMenu 风格的单行动作修饰符。
+     *
+     * 支持 `<chance=50>`、`{chance=50}`、`<delay=20>` 及其 rate/random/wait 别名；
+     * 修饰符会在动作交给变量解析器前移除，避免被当作内置变量或 MiniMessage 标签。
+     */
+    private fun parseActionModifiers(action: String): ActionModifiers {
+        var chance: String? = null
+        var delay: String? = null
+        actionModifierPattern.findAll(action).forEach { match ->
+            val key = match.groupValues[1].ifEmpty { match.groupValues[3] }.lowercase()
+            val value = match.groupValues[2].ifEmpty { match.groupValues[4] }.trim()
+            when (key) {
+                "chance", "rate", "rand", "random" -> if (chance == null) chance = value
+                "delay", "wait" -> if (delay == null) delay = value
+            }
+        }
+        return ActionModifiers(
+            action = actionModifierPattern.replace(action, "").trim(),
+            chance = chance,
+            delay = delay
+        )
+    }
+
+    /** 解析并判定 `0..100` 概率；非法值会跳过该动作并输出本地化警告。 */
+    private fun passesActionChance(context: ActionExecutionContext, rawChance: String?): Boolean {
+        if (rawChance == null) return true
+        val resolved = TextResolver.resolve(context.player, rawChance, context.variables, context.config).trim()
+        val chance = resolved.removeSuffix("%").trim().toDoubleOrNull()
+        if (chance == null || !chance.isFinite()) {
+            plugin?.logger?.warning(message("actions.modifier_invalid_chance", resolved, context.player.name))
+            return false
+        }
+        if (chance <= 0.0) return false
+        if (chance >= 100.0) return true
+        return ThreadLocalRandom.current().nextDouble(100.0) < chance
+    }
+
+    /** 解析单行动作延迟 tick；非法值按不延迟处理并输出本地化警告。 */
+    private fun parseActionDelay(context: ActionExecutionContext, rawDelay: String?): Long {
+        if (rawDelay == null) return 0L
+        val resolved = TextResolver.resolve(context.player, rawDelay, context.variables, context.config).trim()
+        val delay = resolved.toLongOrNull()
+        if (delay == null || delay < 0L) {
+            plugin?.logger?.warning(message("actions.modifier_invalid_delay", resolved, context.player.name))
+            return 0L
+        }
+        return delay
+    }
+
+    /**
+     * 独立调度一行动作，并立即把控制权交还当前动作序列。
+     *
+     * 这与 `wait:` 不同：延迟动作不会阻塞后续行，也不会把延迟后的 `return` 传播回原动作链。
+     */
+    private fun scheduleDetachedAction(context: ActionExecutionContext, action: String, delay: Long) {
+        KaScheduler.runPlayerLater(context.player, delay, Runnable {
+            if (!context.player.isOnline) return@Runnable
+            executeActionString(context, action).whenComplete { _, error ->
+                if (error != null) {
+                    plugin?.logger?.warning(message(
+                        "actions.delayed_action_failed",
+                        context.player.name,
+                        error.message ?: error.javaClass.simpleName
+                    ))
+                }
+            }
+        })
+    }
+
+    /**
      * 执行字符串动作中的控制指令。
      *
      * `wait`、`return`、`actions`、`page`、`stop-current-task` 会影响执行序列本身，
@@ -707,12 +826,34 @@ object MenuActions {
         context: ActionExecutionContext,
         action: String
     ): CompletableFuture<Boolean> {
-        val controlAction = TextResolver.resolve(context.player, action, context.variables, context.config).trim()
+        val modifiers = parseActionModifiers(action)
+        if (modifiers.action.isEmpty() || !passesActionChance(context, modifiers.chance)) {
+            return CompletableFuture.completedFuture(false)
+        }
+        val actionDelay = parseActionDelay(context, modifiers.delay)
+        if (actionDelay > 0L) {
+            scheduleDetachedAction(context, modifiers.action, actionDelay)
+            return CompletableFuture.completedFuture(false)
+        }
+
+        val controlAction = TextResolver.resolve(
+            context.player,
+            modifiers.action,
+            context.variables,
+            context.config
+        ).trim()
 
         return when {
             controlAction.startsWith("wait:", ignoreCase = true) -> {
                 val ticks = controlAction.substringAfter(":", "").trim().toLongOrNull() ?: 0L
                 delayTicks(context.player, ticks).thenApply { false }
+            }
+            controlAction.startsWith("refresh:", ignoreCase = true) -> {
+                val target = controlAction.substringAfter(":", "").trim()
+                plugin?.takeIf { it.containerMenusReady }
+                    ?.containerMenuService
+                    ?.refreshFromAction(context.player, target)
+                CompletableFuture.completedFuture(false)
             }
             controlAction.equals("return", ignoreCase = true) -> {
                 CompletableFuture.completedFuture(true)
@@ -749,7 +890,7 @@ object MenuActions {
             else -> {
                 executeSingleAction(
                     context.player,
-                    action,
+                    modifiers.action,
                     context.variables,
                     context.menuOpener,
                     context.config,
@@ -985,6 +1126,8 @@ object MenuActions {
             return
         }
 
+        val pointsAlias = parsePointsAlias(finalCmd)
+
         when {
             // tell: 普通消息
             finalCmd.startsWith("tell:") ->
@@ -1092,19 +1235,42 @@ object MenuActions {
 
             // open: 打开另一个对话框（会执行 Events.Open）
             finalCmd.startsWith("open:") -> {
-                val menuName = finalCmd.removePrefix("open:").trim()
-                handledMenuLifecycle?.set(true)
-                menuOpener(player, menuName)
+                val request = parseMenuOpenRequest(finalCmd.removePrefix("open:").trim())
+                if (request != null) {
+                    handledMenuLifecycle?.set(true)
+                    val kaMenu = plugin
+                    if (kaMenu != null) {
+                        KaScheduler.runPlayer(player, Runnable {
+                            MenuUI.openMenu(
+                                player,
+                                request.menuId,
+                                kaMenu.menuManager,
+                                kaMenu,
+                                request.arguments,
+                                variables
+                            )
+                        })
+                    } else if (request.arguments.isEmpty()) {
+                        menuOpener(player, request.menuId)
+                    }
+                }
             }
 
             // force-open: 强制打开菜单（不执行 Events.Open）
             finalCmd.startsWith("force-open:") -> {
-                val menuName = finalCmd.removePrefix("force-open:").trim()
-                val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
-                if (kaMenu != null) {
+                val request = parseMenuOpenRequest(finalCmd.removePrefix("force-open:").trim())
+                val kaMenu = plugin
+                if (request != null && kaMenu != null) {
+                    handledMenuLifecycle?.set(true)
                     KaScheduler.runPlayer(player, Runnable {
-                        handledMenuLifecycle?.set(true)
-                        MenuUI.forceOpenMenu(player, menuName, kaMenu.menuManager, kaMenu)
+                        MenuUI.forceOpenMenu(
+                            player,
+                            request.menuId,
+                            kaMenu.menuManager,
+                            kaMenu,
+                            request.arguments,
+                            variables
+                        )
                     })
                 }
             }
@@ -1115,15 +1281,28 @@ object MenuActions {
                     val kaMenu = Bukkit.getPluginManager().getPlugin("KaMenu") as? KaMenu
                     if (kaMenu != null) {
                         val currentMenuId = kaMenu.menuManager.getMenuId(config)
+                        val currentArguments = MenuArgumentManager.current(player)
                         if (currentMenuId != null) {
                             KaScheduler.runPlayer(player, Runnable {
                                 handledMenuLifecycle?.set(true)
-                                MenuUI.forceOpenMenu(player, currentMenuId, kaMenu.menuManager, kaMenu)
+                                MenuUI.forceOpenMenu(
+                                    player,
+                                    currentMenuId,
+                                    kaMenu.menuManager,
+                                    kaMenu,
+                                    currentArguments
+                                )
                             })
                         } else {
                             KaScheduler.runPlayer(player, Runnable {
                                 handledMenuLifecycle?.set(true)
-                                MenuUI.forceOpenConfig(player, config, kaMenu, contextId ?: "external")
+                                MenuUI.forceOpenConfig(
+                                    player,
+                                    config,
+                                    kaMenu,
+                                    contextId ?: "external",
+                                    currentArguments
+                                )
                             })
                         }
                     }
@@ -1137,6 +1316,7 @@ object MenuActions {
                     DialogSessionManager.cancel(player)
                     MenuTaskManager.cancel(player)
                     MenuUI.closeDialog(player)
+                    MenuArgumentManager.clear(player)
                 })
             }
 
@@ -1148,6 +1328,11 @@ object MenuActions {
                     // 检查是否有 Close 事件
                     val hasCloseEvent = config.contains("Events.Close")
                     if (hasCloseEvent) {
+                        val argumentContext = MenuArgumentManager.currentContext(player)
+                        val containerSessionId = plugin
+                            ?.takeIf { it.containerMenusReady }
+                            ?.containerMenuService
+                            ?.currentSessionId(player)
                         // 异步执行 Close 事件，不等待结果（避免阻塞）
                         executeEvent(player, config, "Close").whenComplete { result, error ->
                             if (error != null) {
@@ -1156,21 +1341,47 @@ object MenuActions {
                             } else if (!result) {
                                 // Close 事件中没有 return，关闭菜单
                                 KaScheduler.runPlayer(player, Runnable {
+                                    if (containerSessionId != null) {
+                                        if (plugin?.containerMenuService?.closeSilentlyIfCurrent(player, containerSessionId) == true) {
+                                            MenuArgumentManager.clearIfCurrent(player, argumentContext)
+                                        }
+                                        return@Runnable
+                                    }
                                     DialogSessionManager.cancel(player)
                                     MenuTaskManager.cancel(player)
                                     MenuUI.closeDialog(player)
+                                    MenuArgumentManager.clearIfCurrent(player, argumentContext)
+                                })
+                            } else if (containerSessionId != null) {
+                                // Container 的 Close 被 return 拦截时保留当前会话，并重新解析完整显示状态。
+                                KaScheduler.runPlayer(player, Runnable {
+                                    val service = plugin?.containerMenuService ?: return@Runnable
+                                    if (service.currentSessionId(player) == containerSessionId) {
+                                        service.refreshFromAction(player, "*")
+                                    }
                                 })
                             }
-                            // 如果 result 为 true（Close 事件中遇到 return），不关闭菜单
                         }
                         return  // 提前返回，不在这里关闭菜单
                     }
                 }
                 // 没有 Close 事件，直接关闭菜单
+                val argumentContext = MenuArgumentManager.currentContext(player)
                 KaScheduler.runPlayer(player, Runnable {
+                    val containerSessionId = plugin
+                        ?.takeIf { it.containerMenusReady }
+                        ?.containerMenuService
+                        ?.currentSessionId(player)
+                    if (containerSessionId != null) {
+                        if (plugin?.containerMenuService?.closeSilentlyIfCurrent(player, containerSessionId) == true) {
+                            MenuArgumentManager.clearIfCurrent(player, argumentContext)
+                        }
+                        return@Runnable
+                    }
                     DialogSessionManager.cancel(player)
                     MenuTaskManager.cancel(player)
                     MenuUI.closeDialog(player)
+                    MenuArgumentManager.clearIfCurrent(player, argumentContext)
                 })
             }
 
@@ -1513,6 +1724,26 @@ object MenuActions {
                 })
             }
 
+            // points: 使用 PlayerPoints 增减点券
+            finalCmd.startsWith("points:") -> {
+                val args = finalCmd.removePrefix("points:").trim()
+                KaScheduler.runPlayer(player, Runnable {
+                    ActionHandlers.parseAndHandlePoints(player, args, variables)
+                })
+            }
+
+            // add-points/take-points 等 TrMenu 兼容别名
+            pointsAlias != null -> {
+                KaScheduler.runPlayer(player, Runnable {
+                    ActionHandlers.parseAndHandlePoints(
+                        player,
+                        pointsAlias.second,
+                        variables,
+                        forcedType = pointsAlias.first
+                    )
+                })
+            }
+
             // stock-item: 物品给予/扣除
             finalCmd.startsWith("stock-item:") -> {
                 val args = finalCmd.removePrefix("stock-item:").trim()
@@ -1750,7 +1981,7 @@ object MenuActions {
             )
             if (player != null && hoverItem.isNotBlank()) {
                 resolveHoverItem(player, hoverItem)?.let { item ->
-                    component = component.hoverEvent(item.asHoverEvent())
+                    component = component.hoverEvent(MenuUI.itemHover(item))
                 }
             }
             component

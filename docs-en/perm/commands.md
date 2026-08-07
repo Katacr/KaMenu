@@ -130,6 +130,7 @@ Opens the built-in getting started guide menu.
 
 **Notes:**
 - The guide menu is loaded from inside the plugin jar into memory and is not written to the `menus` directory
+- Servers with Dialog support open the Dialog guide; older platforms without Dialog support automatically open the container guide
 - It helps with first-time language setup, example release, and example menu descriptions
 - When no menus are loaded and an OP player joins the server, KaMenu sends a clickable prompt to open this guide
 
@@ -177,6 +178,9 @@ Releases built-in sample menus for the selected language to `plugins/KaMenu/menu
 **Notes:**
 - If no language is specified, KaMenu uses the current `language` in `config.yml`
 - Both Chinese and English examples are released to `menus/example/`; no runtime `exampleEN` directory is created
+- Older platforms without Dialog support release only four Container examples: `container_main`, `container_actions`, `container_furnace`, and `container_anvil`
+- Platforms with Dialog support release those Container examples plus all Dialog examples
+- Changing platforms does not delete files that already exist under `menus/example/`
 - Existing files are skipped by default
 - Add `overwrite` to replace existing sample menus with the same names
 - Menus are automatically reloaded after release
@@ -196,6 +200,39 @@ Releases built-in sample menus for the selected language to `plugins/KaMenu/menu
 # Overwrite Chinese examples
 /km examples zh_CN overwrite
 ```
+
+---
+
+### /km migrate dm
+
+Converts DeluxeMenus chest menus into KaMenu V2 Container menus. The converter does not load DeluxeMenus or execute source actions; review third-party item, economy, and command integrations on a test server after generation.
+
+**Format:** `/km migrate dm [source-file-or-directory] [output-directory] [overwrite]`
+
+**Permission:** `kamenu.admin`
+
+**Notes:**
+- When the source is omitted, KaMenu scans `plugins/DeluxeMenus/gui_menus` by default
+- The source may be one `.yml` file or a directory containing YAML files
+- The output directory is relative to `plugins/KaMenu/menus/`; the default is `dm_migrated`
+- Existing files and same-name custom commands are preserved by default; use `overwrite` to replace both
+- `open_command` is converted into `custom_commands.yml > custom-commands`; every command in a DM list is mapped to the migrated menu ID
+- Existing same-name custom commands are preserved and reported as conflicts by default, avoiding accidental replacement of menu or action commands
+- KaMenu reloads menus, custom commands, and online players' client command trees after migration
+- The command reports per-file success and WARNING/ERROR entries with source YAML paths
+
+**Examples:**
+
+```bash
+/km migrate dm
+/km migrate dm overwrite
+/km migrate dm /path/to/DeluxeMenus/gui_menus
+/km migrate dm /path/to/DeluxeMenus/gui_menus overwrite
+/km migrate dm /path/to/DeluxeMenus/gui_menus dm_migrated overwrite
+/km open dm_migrated/requirements_menu
+```
+
+See [KaMenu V2 DeluxeMenus Migration](../../V2_DELUXEMENUS_MIGRATION.md) for field mappings, same-slot `priority` merging, action conversion, and unsupported features.
 
 ---
 
@@ -250,7 +287,7 @@ Reloads plugin configuration, menus, or package folders without restarting the s
 | `actions` | Reload only global action packages under `plugins/KaMenu/actions/` |
 | `js` | Reload only global JavaScript packages under `plugins/KaMenu/js/` |
 | `lang` | Reload only the current language file |
-| `config` | Reload `config.yml`, language files, and custom commands |
+| `config` | Reload `config.yml`, `custom_commands.yml`, language files, and custom commands |
 
 Each target returns its own statistics: total, success, failed, and elapsed ms. For `config`, the counted items are custom commands under `custom-commands`. When no target is provided, or when `all` is used, KaMenu prints each module's reload result in sequence.
 
@@ -389,7 +426,7 @@ This command supports all built-in variables (`{data:var}`, `{gdata:var}`, `{met
 
 ## Custom Quick Commands
 
-In addition to `/km open`, you can register custom quick commands in `config.yml` that map a short command directly to opening a specific menu:
+In addition to `/km open`, you can register custom quick commands in the plugin root file `custom_commands.yml` that map a short command directly to opening a specific menu:
 
 ```yaml
 custom-commands:

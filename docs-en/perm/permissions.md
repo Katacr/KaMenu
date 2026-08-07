@@ -84,7 +84,7 @@ KaMenu implements menu access control through multiple configuration methods, wi
 
 ### 1. Custom Commands — Who Can Use a Command to Open a Menu?
 
-Register custom commands via `custom-commands` in `config.yml`. By default, all players can use them.
+Register custom commands via the `custom-commands` section in the plugin root file `custom_commands.yml`. By default, all players can use them.
 
 ```yaml
 custom-commands:

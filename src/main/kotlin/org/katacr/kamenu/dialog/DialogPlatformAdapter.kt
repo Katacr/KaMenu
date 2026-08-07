@@ -1,6 +1,8 @@
 package org.katacr.kamenu.dialog
 
+import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.HoverEvent
 import org.bukkit.command.CommandSender
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
@@ -55,6 +57,10 @@ interface DialogPlatformAdapter {
 
     /** 读取物品 ItemModel 的完整命名空间键。 */
     fun itemModel(meta: ItemMeta): String?
+
+    /** 构造物品悬浮事件；现代适配器可以额外写入完整物品数据。 */
+    fun itemHover(item: ItemStack): HoverEvent<HoverEvent.ShowItem> =
+        HoverEvent.showItem(Key.key(item.type.key.toString()), item.amount)
 
     /** 插件关闭时释放平台实现持有的状态。 */
     fun shutdown()

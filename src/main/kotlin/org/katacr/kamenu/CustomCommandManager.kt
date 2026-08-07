@@ -7,12 +7,13 @@ import org.bukkit.command.Command
 import org.bukkit.command.CommandMap
 import org.bukkit.command.SimpleCommandMap
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.configuration.file.YamlConfiguration
 import java.lang.reflect.Field
 
 /**
  * 自定义指令注册管理器。
  *
- * 读取 config.yml 的 `custom-commands`，通过 Bukkit CommandMap 动态注册命令。
+ * 读取插件根目录 custom_commands.yml，通过 Bukkit CommandMap 动态注册命令。
  * 支持旧格式 `cmd: menu/id`，也支持新格式 `cmd.actions` 动作列表和 `cmd.args` 动态补全。
  *
  * 注销时只移除本管理器记录过的 Command 实例，避免 reload 时误删其他插件的同名命令。
@@ -71,13 +72,16 @@ class CustomCommandManager(private val plugin: KaMenu) {
     /**
      * 重新注册全部自定义指令并返回统计。
      *
-     * 会先注销本插件上一次注册的命令，再按当前 config.yml 重新解析。
+     * 会先注销本插件上一次注册的命令，再重新读取 custom_commands.yml。
      */
     fun registerCustomCommandsWithResult(): RegistrationResult {
         // 先清除所有已注册的自定义指令
         unregisterAllCustomCommands()
 
-        val customCommandsSection = plugin.config.getConfigurationSection("custom-commands") ?: return RegistrationResult()
+        val customCommandsSection = CustomCommandFileManager
+            .load(plugin)
+            .getConfigurationSection("custom-commands")
+            ?: return RegistrationResult()
 
         // 获取所有自定义指令配置
         val commands = customCommandsSection.getKeys(false)
@@ -105,6 +109,14 @@ class CustomCommandManager(private val plugin: KaMenu) {
         }
 
         return RegistrationResult(total = commands.size, success = successCount, failed = failedCount)
+    }
+
+    /** 读取当前独立自定义指令配置，供迁移器写入后保存。 */
+    fun loadConfiguration(): YamlConfiguration = CustomCommandFileManager.load(plugin)
+
+    /** 保存自定义指令配置，并让下一次注册读取最新内容。 */
+    fun saveConfiguration(configuration: YamlConfiguration) {
+        CustomCommandFileManager.save(plugin, configuration)
     }
 
     /**

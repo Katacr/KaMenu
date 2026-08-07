@@ -76,18 +76,6 @@ listeners:
     #   menu: 'server_shop'
     #   require-sneaking: false
 
-# Custom command registration
-# Legacy form: command_name: menu_id
-# Action form: configure actions under command_name
-custom-commands:
-  zcd: 'example/main_menu'
-  shop: 'server_shop'
-  menu: 'example/main_menu'
-  test:
-    actions:
-      - "tell: Hey, you ran /test"
-      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
-      - "tell: What would you like to test?"
 ```
 
 ---
@@ -274,7 +262,7 @@ Enabling `require-sneaking` prevents the menu from opening accidentally during n
 
 #### item-lore — Right-Click Item with Lore Trigger
 
-Opens a menu when the player right-clicks while holding an item of a specified material that contains specific Lore text.
+Opens a menu when the player right-clicks while holding an item of a specified material, with optional Lore text matching.
 
 **Configuration Format:**
 
@@ -284,7 +272,7 @@ listeners:
     config_name:           # Custom name to differentiate entries
       enabled: true        # Whether to enable this entry
       material: 'CLOCK'              # Item material (must match)
-      target-lore: 'Menu'            # Target Lore text
+      target-lore: 'Menu'            # Optional target Lore text
       menu: 'main_menu'              # Menu ID to open on trigger
       require-sneaking: false        # Whether sneaking is required
 ```
@@ -295,7 +283,7 @@ listeners:
 |-------|-------------|------|---------|
 | `enabled` | Whether to enable this listener entry | `Boolean` | `true` |
 | `material` | Item material (Material enum value, must match) | `String` | — |
-| `target-lore` | Text that must be present in item Lore (partial match) | `String` | — |
+| `target-lore` | Optional Lore text filter; omit it or use `''` / `[]` to match material only | `String` / `[]` | — |
 | `menu` | Menu ID to open on trigger | `String` | — |
 | `require-sneaking` | Whether the player must hold Sneak (Shift) to trigger | `Boolean` | `false` |
 
@@ -308,6 +296,19 @@ listeners:
       enabled: true
       material: 'CLOCK'
       target-lore: 'Server Menu'
+      menu: 'server_menu'
+      require-sneaking: false
+```
+
+To match only the held item material, leave `target-lore` empty, use an empty list, or omit the field:
+
+```yaml
+listeners:
+  item-lore:
+    material-only:
+      enabled: true
+      material: 'CLOCK'
+      target-lore: []
       menu: 'server_menu'
       require-sneaking: false
 ```
@@ -350,7 +351,8 @@ listeners:
 
 {% hint style="info" %}
 - Multiple item-lore listeners are supported, each with different items and menus
-- `target-lore` is a partial match — triggers as long as the item Lore contains the text
+- A non-empty `target-lore` uses partial matching and triggers when any Lore line contains the text
+- An omitted `target-lore`, `''`, or `[]` disables Lore matching and checks only `material`
 - Use unique Lore text for functional items to avoid conflicts with other items
 {% endhint %}
 
@@ -456,42 +458,8 @@ Body:
 
 ---
 
-### custom-commands — Custom Commands
+### custom_commands.yml — Custom Commands
 
-Registers short custom commands as shortcuts to open specified menus, or to run an actions list directly, without any additional permission configuration.
+Custom commands are stored separately from `config.yml` in the plugin root file `custom_commands.yml`. The file keeps the `custom-commands` root section and supports menu shortcuts, action queues, and Tab completion.
 
-**Format:**
-
-- `command_name: menu_id`
-- configure `actions: action list` under `command_name:`
-- object-form commands may also configure `args` for argument Tab completion
-
-**Example:**
-
-```yaml
-custom-commands:
-  shop: 'server_shop'       # /shop -> opens server_shop menu
-  menu: 'main_menu'         # /menu -> opens main_menu menu
-  hub: 'hub/main'           # /hub  -> opens hub/main menu (subdirectory)
-  profile:
-    menu: 'player/profile'
-    args:
-      0: '%kamenu_online_players%'
-  test:
-    args:
-      0: '[hello, info]'
-      1: '{list:friends}'
-    actions:
-      - "tell: Hey, you ran /test"
-      - "tell: Arguments: {args}"
-      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
-      - condition: "hasPerm.test.admin"
-        allow:
-          - "tell: &aYou have the test permission"
-        deny:
-          - "tell: &cYou do not have the test permission"
-```
-Action queues support the same conditional branches, nested lists, `wait`, `return`, and complex logic as button actions. Command arguments are available through `{arg:0}`, `{arg:1}`, `{args}`, `{arg_count}`, and `{command}`.
-`args` indexes also start at `0` and support YAML lists, comma-separated strings, PAPI placeholders, and KaMenu built-in variables. PAPI and built-in variables are resolved in real time when the player presses Tab.
-
-To learn more about custom commands and their advantages, see [Custom Commands](customCommands.md)
+See [Custom Commands](customCommands.md) for fields, action parameters, and migration details. Run `/km reload config` after editing to apply changes immediately.

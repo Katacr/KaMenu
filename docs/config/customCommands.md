@@ -22,7 +22,7 @@ KaMenu 提供了强大的自定义指令功能，让你能够为每个菜单创�
 
 ## 配置自定义指令
 
-在 `config.yml` 中配置自定义指令：
+在插件根目录的 `custom_commands.yml` 中配置 `custom-commands` 节：
 
 ```yaml
 custom-commands:
@@ -237,7 +237,7 @@ Events:
 
 ### 3. 重载指令
 
-修改 `config.yml` 后，执行以下指令重载：
+修改 `custom_commands.yml` 后，执行以下指令重载：
 
 ```
 /kamenu reload config

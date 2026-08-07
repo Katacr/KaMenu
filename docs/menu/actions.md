@@ -37,6 +37,7 @@ Bottom:
 | `tppos`       | 传送到指定坐标                         | ✅ |
 | `sound`       | 在玩家位置播放声音                       | ✅ |
 | `money`       | 操作玩家金币（需要 Vault）                | ✅ |
+| `points`      | 增加或扣除玩家点券（需要 PlayerPoints）    | ✅ |
 | `stock-item`  | 存储库物品给予/扣除                      | ✅ |
 | `item`        | 物品给予/扣除                         | ✅ |
 | `open`        | 为玩家打开另一个菜单                      | ✅ |
@@ -136,6 +137,37 @@ Bottom:
 - `server`、`actions`、`js`、`wait`、`return`、任务控制类动作不支持目标选择器，会忽略目标参数
 - ✅ `open`、`close`、`force-open`、`force-close`、`reset` 支持目标选择器，可用于刷新或关闭指定玩家的菜单
 - ✅ 选择器条件中可以使用 `{data:*}`、`{gdata:*}`、`{meta:*}` 等变量，例如：`open: xiangqi{player: {meta:xiangqi-viewer} == true}`
+
+---
+
+## 单行动作修饰符
+
+概率和独立延迟可以直接附加到任意一行动作末尾。推荐使用尖括号格式：
+
+```yaml
+# 25% 概率执行该行
+- 'tell: &a你触发了随机奖励 <chance=25>'
+
+# 20 tick 后执行该行，但下一行动作会立即继续
+- 'tell: &e这条消息将在 1 秒后显示 <delay=20>'
+- 'tell: &a这条消息立即显示'
+
+# 同时使用概率、延迟和动态变量
+- 'points: type=add;num={data:reward} <chance=%player_luck%> <delay=10>'
+```
+
+| 修饰符 | 别名 | 说明 |
+| --- | --- | --- |
+| `<chance=数值>` | `rate`、`rand`、`random` | `0..100` 概率，支持小数、末尾 `%`、PAPI 和内置变量 |
+| `<delay=tick>` | `wait` | 只延迟当前行动作，tick 必须是大于或等于 `0` 的整数 |
+
+为兼容 TrMenu，也支持 `{chance=25}`、`{delay=20}` 以及使用 `:` 代替 `=`。同一修饰符重复填写时，以第一个值为准。
+
+执行顺序为：先计算概率，通过后再调度延迟。概率未通过时只跳过当前行，后续动作继续执行。
+
+{% hint style="warning" %}
+`<delay=20>` 不会阻塞动作列表。需要“等待 20 tick 后再继续执行所有后续动作”时，应使用独立的 `wait: 20` 动作。不要给 `return` 或 `wait:` 添加独立延迟，因为延迟后的控制结果无法回传到已经继续执行的原动作链。
+{% endhint %}
 
 ---
 
@@ -539,7 +571,7 @@ Events:
 
 为玩家打开另一个菜单，当前菜单会自动关闭。
 
-**格式：** `open: <菜单ID>`
+**格式：** `open: <菜单ID> [参数...]`
 
 **示例：**
 
@@ -547,9 +579,12 @@ Events:
 - 'open: main_menu'
 - 'open: shop/weapons'
 - 'open: admin/tools'
+- 'open: profile/detail {meta:target} vip'
+- 'open: search/result,`钻石 剑`'
 ```
 
 **注意：** 菜单 ID 规则与 `/km open` 指令相同，子文件夹用 `/` 分隔，不包含 `.yml` 扩展名。
+目标菜单可以通过 `Settings.pass_arguments` 声明默认值和最少参数数量，并在菜单内部使用 `{arg:0}`、`{arg:1}` 读取参数。
 
 ---
 
@@ -572,7 +607,7 @@ Events:
 
 强制为玩家打开指定菜单，**跳过目标菜单的 Events.Open 动作列表**。与 `open` 动作不同之处在于不会触发目标菜单的打开事件。
 
-**格式：** `force-open: <菜单ID>`
+**格式：** `force-open: <菜单ID> [参数...]`
 
 **示例：**
 
@@ -582,6 +617,7 @@ Events:
 
 # 强制打开（跳过 Open 事件）
 - 'force-open: shop'
+- 'force-open: profile/detail {meta:target} vip'
 ```
 
 **使用场景：**
@@ -1036,6 +1072,42 @@ Bottom:
 
 ---
 
+### points - PlayerPoints 点券操作
+
+增加或扣除玩家的 PlayerPoints 点券。
+
+**标准格式：** `points: type=add|take;num=数量`
+
+```yaml
+# 增加 100 点券
+- 'points: type=add;num=100'
+
+# 扣除动态数量
+- 'points: type=take;num={data:price}'
+```
+
+为了便于迁移 TrMenu，也支持以下单行动作别名：
+
+```yaml
+- 'add-points: 100'
+- 'give-points: 100'
+- 'deposit-points: 100'
+- 'take-points: 50'
+- 'remove-points: 50'
+- 'withdraw-points: 50'
+```
+
+别名中的连字符和末尾复数 `s` 均可省略，例如 `addpoints:`、`takepoint:`。
+
+**注意：**
+
+- PlayerPoints 是可选依赖；未安装或未启用时，该动作不会执行并在控制台输出本地化警告
+- 点券数量必须是大于 `0` 的整数，支持 PAPI、内置变量和动作参数
+- `take` 会先检查当前点券，余额不足时不会扣除
+- 此动作不会自动向玩家发送成功或失败消息，需要时请配合条件与 `tell`、`actionbar` 等动作
+
+---
+
 ### stock-item - 物品给予/扣除
 
 给予玩家或从玩家背包中扣除指定数量的数据库的物品。
@@ -1175,7 +1247,7 @@ Bottom:
 - 'title: title=&c出发！;in=5;keep=30;out=10'
 ```
 
-**注意：** `wait` 只影响其**之后**的动作；不会阻塞其他正在执行的任务。
+**注意：** `wait` 会暂停当前动作链并影响其**之后**的动作，但不会阻塞服务器线程或其他正在执行的任务。只延迟某一行时使用 `<delay=tick>` 修饰符。
 
 ---
 

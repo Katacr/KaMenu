@@ -26,6 +26,7 @@ object ActionHandlers {
     private var databaseManager: DatabaseManager? = null
     private var metaDataManager: MetaDataManager? = null
     private var economy: Economy? = null
+    private var pointsService: PointsService? = null
     private var plugin: KaMenu? = null
     private var itemManager: ItemManager? = null
     private var bungeeCordEnabled: Boolean = false
@@ -50,6 +51,11 @@ object ActionHandlers {
 
     fun setEconomy(econ: Economy?) {
         economy = econ
+    }
+
+    /** 注入可选的 PlayerPoints 点券服务。 */
+    internal fun setPointsService(service: PointsService?) {
+        pointsService = service
     }
 
     fun setItemManager(manager: ItemManager) {
@@ -112,7 +118,8 @@ object ActionHandlers {
                             "player" -> SoundCategory.PLAYERS
                             "ambient" -> SoundCategory.AMBIENT
                             "voice" -> SoundCategory.VOICE
-                            "ui" -> SoundCategory.UI
+                            "ui" -> runCatching { SoundCategory.valueOf("UI") }
+                                .getOrDefault(SoundCategory.MASTER)
                             else -> {
                                 player.sendMessage(languageManager?.getMessage("actions.unknown_sound_category", cat) ?: "§c未知的声音类别: $cat")
                                 SoundCategory.MASTER
@@ -128,38 +135,16 @@ object ActionHandlers {
 
         if (soundName.isNotEmpty()) {
             val normalizedSoundName = soundName.lowercase()
-            val sound = listOf(
-                normalizedSoundName,
-                normalizedSoundName.replace('_', '.')
-            ).asSequence()
-                .distinct()
-                .mapNotNull { key -> parseSoundKey(key)?.let { org.bukkit.Registry.SOUNDS.get(it) } }
-                .firstOrNull()
+            val sound = runCatching {
+                org.bukkit.Sound.valueOf(soundName.uppercase())
+            }.getOrNull()
 
             if (sound != null) {
                 player.playSound(player.location, sound, category, volume, pitch)
             } else {
-                // Registry 中不存在的声音可能来自资源包 sounds.json，字符串 API 可直接转发给客户端播放。
+                // NamespacedKey 和资源包声音直接交给客户端解析，避免依赖不同版本的声音 Registry 字段。
                 player.playSound(player.location, normalizedSoundName, category, volume, pitch)
             }
-        }
-    }
-
-    /**
-     * 解析原版或带命名空间的声音 Key。
-     *
-     * 原版声音使用 minecraft namespace；资源包自定义声音可能是 `namespace:path`，
-     * 这类声音通常不会存在于服务端 Registry 中，但解析时也不能让非法 Key 中断动作执行。
-     */
-    private fun parseSoundKey(soundName: String): NamespacedKey? {
-        return try {
-            if (soundName.contains(":")) {
-                NamespacedKey.fromString(soundName)
-            } else {
-                NamespacedKey.minecraft(soundName)
-            }
-        } catch (_: IllegalArgumentException) {
-            null
         }
     }
 
@@ -201,13 +186,6 @@ object ActionHandlers {
      * 解析并发送 Toast 通知
      */
     fun parseAndSendToast(player: Player, args: String) {
-        if (!MenuUI.paperPlatform) {
-            val warning = languageManager?.getMessage("actions.toast_unsupported_platform")
-                ?: "§cThe toast action is not supported by this server platform."
-            MenuUI.sendMessage(player, TextParser.parseText(warning, player))
-            return
-        }
-
         var frameType = "task"
         var iconItem = "minecraft:stone"
         var title = "提示"
@@ -233,12 +211,13 @@ object ActionHandlers {
 
         val titleJson = GsonComponentSerializer.gson().serialize(TextParser.parseText(title))
         val descJson = GsonComponentSerializer.gson().serialize(TextParser.parseText(description))
+        val iconKey = if (Bukkit.getUnsafe().dataVersion >= 3837) "id" else "item"
 
         val advancementJson = """
     {
       "display": {
         "icon": {
-          "id": "${iconItem.lowercase()}"
+          "$iconKey": "${iconItem.lowercase()}"
         },
         "title": $titleJson,
         "description": $descJson,
@@ -324,6 +303,85 @@ object ActionHandlers {
             else -> {
                 plugin?.logger?.warning("无效的金币操作类型: $type。玩家: ${player.name}")
             }
+        }
+    }
+
+    /**
+     * 解析并执行 PlayerPoints 点券增减动作。
+     *
+     * 标准格式为 `points: type=add|take;num=数量`；[forcedType] 用于兼容
+     * TrMenu 的 `add-points:`、`take-points:` 等单动作别名。
+     */
+    fun parseAndHandlePoints(
+        player: Player,
+        args: String,
+        variables: Map<String, String> = emptyMap(),
+        forcedType: String? = null
+    ) {
+        val service = pointsService
+        if (service == null) {
+            plugin?.logger?.warning(languageManager?.getMessage("actions.points_unavailable", player.name)
+                ?: "[KaMenu] PlayerPoints is not available. Player: ${player.name}")
+            return
+        }
+
+        var type = forcedType.orEmpty().lowercase()
+        var amountText = if (forcedType == null) "" else args.trim()
+        if (forcedType == null) {
+            args.split(";").forEach { parameter ->
+                val parts = parameter.split("=", limit = 2)
+                if (parts.size != 2) return@forEach
+                when (parts[0].trim().lowercase()) {
+                    "type" -> type = parts[1].trim().lowercase()
+                    "num", "amount" -> amountText = parts[1].trim()
+                }
+            }
+        }
+
+        val resolvedAmount = resolveVariablesWithInput(player, amountText, variables)
+        val amount = resolvedAmount.toIntOrNull()
+        if (amount == null || amount <= 0) {
+            plugin?.logger?.warning(languageManager?.getMessage(
+                "actions.points_invalid_amount",
+                resolvedAmount,
+                player.name
+            ) ?: "[KaMenu] Invalid PlayerPoints amount '$resolvedAmount'. Player: ${player.name}")
+            return
+        }
+
+        val normalizedType = when (type) {
+            "add", "give", "deposit" -> "add"
+            "take", "remove", "withdraw" -> "take"
+            else -> {
+                plugin?.logger?.warning(languageManager?.getMessage(
+                    "actions.points_invalid_type",
+                    type,
+                    player.name
+                ) ?: "[KaMenu] Invalid PlayerPoints operation '$type'. Player: ${player.name}")
+                return
+            }
+        }
+
+        if (normalizedType == "take" && service.balance(player.uniqueId) < amount) {
+            plugin?.logger?.warning(languageManager?.getMessage(
+                "actions.points_insufficient",
+                player.name,
+                amount.toString()
+            ) ?: "[KaMenu] Player ${player.name} does not have $amount points.")
+            return
+        }
+
+        val success = when (normalizedType) {
+            "add" -> service.add(player.uniqueId, amount)
+            else -> service.take(player.uniqueId, amount)
+        }
+        if (!success) {
+            plugin?.logger?.warning(languageManager?.getMessage(
+                "actions.points_operation_failed",
+                normalizedType,
+                amount.toString(),
+                player.name
+            ) ?: "[KaMenu] PlayerPoints operation failed: $normalizedType $amount. Player: ${player.name}")
         }
     }
 

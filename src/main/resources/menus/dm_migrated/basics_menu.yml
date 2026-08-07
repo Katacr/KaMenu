@@ -1,0 +1,22 @@
+# Migrated from DeluxeMenus. Review the migration report before using this menu.
+
+Type: CHEST
+Title: Basics Menu
+Layout:
+- '`dm_slot_0`        '
+Events:
+  Open:
+  - condition: hasPerm.deluxemenus.admin
+    allow: []
+    deny:
+    - 'tell: &cYou don''t have permission to do that!'
+    - return
+Buttons:
+  dm_slot_0:
+    display:
+      material: STONE
+      name: '&aThis is a special stone'
+      lore:
+      - '&aTest1'
+      - '&cTest2'
+      - '&eTest3'

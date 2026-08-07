@@ -1,0 +1,88 @@
+# KaMenu V2 箱子菜单基础示例
+# 打开方式: /km open example/container_main
+
+Type: CHEST
+Title: '&8KaMenu 箱子示例 | &f%player_name%'
+
+Settings:
+  min_click_delay: 200
+
+Layout:
+  - '#########'
+  - '#P A F V#'
+  - '#   R   #'
+  - '####X####'
+
+Events:
+  Open:
+    - 'actionbar: &a箱子示例已打开'
+  Close:
+    - 'actionbar: &7箱子示例已关闭'
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  P:
+    display:
+      material: PLAYER_HEAD
+      skull_owner: '%player_name%'
+      name: '&a%player_name%'
+      lore:
+        - '&7语言: &f{language}'
+        - '&7主手物品: &f{checkitem:[hand;name]}'
+        - '&8该按钮展示 PAPI 与 KaMenu 内置变量'
+    actions:
+      all:
+        - 'actionbar: &a你好，%player_name%！'
+
+  A:
+    display:
+      material: REDSTONE
+      name: '&d动作与点击示例'
+      lore:
+        - '&7打开不同点击类型和刷新示例'
+    actions:
+      all:
+        - 'open: example/container_actions'
+
+  F:
+    display:
+      material: FURNACE
+      name: '&6熔炉进度示例'
+      lore:
+        - '&7控制火焰和加工箭头进度'
+    actions:
+      all:
+        - 'open: example/container_furnace'
+
+  V:
+    display:
+      material: ANVIL
+      name: '&e铁砧输入示例'
+      lore:
+        - '&7读取并处理玩家输入内容'
+    actions:
+      all:
+        - 'open: example/container_anvil'
+
+  R:
+    display:
+      material: CLOCK
+      name: '&b刷新菜单'
+      lore:
+        - '&7重新渲染标题、属性和全部按钮'
+    actions:
+      all:
+        - 'refresh: *'
+        - 'actionbar: &b菜单已刷新'
+
+  X:
+    display:
+      material: BARRIER
+      name: '&c关闭菜单'
+    actions:
+      all:
+        - 'close'

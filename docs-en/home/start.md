@@ -8,19 +8,22 @@ This guide will help you quickly install and configure the KaMenu plugin.
 
 | Item | Details |
 |------|---------|
-| Minecraft Version | 1.21.7+ |
-| Java Version | Java 21+ |
+| Minecraft Version | 1.16.5+ |
+| Java Version | Java 16+ |
 | Server Type | **Paper**, **Folia**, **Spigot**, and compatible forks |
 | Database | SQLite (default), MySQL 5.7+ |
 
 {% hint style="info" %}
 **Version Feature Support**: 
 
-- ✅ Paper 1.21.7+: Full basic functionality
+- ✅ Java 16+: The shared plugin runtime can load on Java 16 and newer
+- ✅ Bukkit/Spigot/Paper-compatible core 1.16.5+: Container menus, actions, variables, JavaScript, storage, and custom commands
+- ✅ Paper/Folia 1.21.7+: Native Dialogs enabled
 - Paper 1.21.8+: Recommended — more stable API
 - Minecraft 1.21.9+: Supports sprite and other newer client text components with the same menu syntax on Paper, Folia, and Spigot
 - Folia 1.21.7+: Region-threaded scheduling support; use a current build matching the target Minecraft version
 - Spigot 1.21.6+: Native Dialogs plus server-side actions, Events, Inputs, Tasks, JavaScript, storage, and external APIs
+- Cores below the native Dialog minimum: Dialog menus and the ESC Dialog entry are disabled automatically; shared features remain available
 {% endhint %}
 
 {% hint style="info" %}
@@ -68,11 +71,11 @@ ItemsAdder, Oraxen, and CraftEngine are soft dependencies; KaMenu still starts w
    - Initialize the database (SQLite by default)
 
 {% hint style="info" %}
-The first startup requires Maven repository access. The server downloads Kotlin and Adventure before loading KaMenu's main class, then KaMenu downloads runtime libraries such as database drivers and the JavaScript engine. Cached dependencies are not downloaded again on later startups.
+KaMenu bundles only Libby in the plugin JAR. During `onLoad`, Libby hot-loads Kotlin first and then mounts Adventure/MiniMessage, database drivers, the JavaScript engine, and other runtime libraries. The first startup requires Maven repository access; cached dependencies are not downloaded again on later startups.
 {% endhint %}
 
 {% hint style="info" %}
-For first-time setup, run `/kamenu guide` (or `/km guide`) in game to open the getting started guide. The guide menu is loaded directly from inside the plugin jar into memory and is not written to the `menus` directory.
+For first-time setup, run `/kamenu guide` (or `/km guide`) in game. Platforms with Dialog support open the Dialog guide, while older platforms without Dialog support automatically fall back to the container guide. The guide is loaded directly from inside the plugin jar into memory and is not written to the `menus` directory.
 {% endhint %}
 
 ### 4. Open the Getting Started Guide
@@ -83,7 +86,7 @@ After the server starts, a player with the `kamenu.admin` permission can run:
 /kamenu guide
 ```
 
-The guide helps you set the plugin language and release sample menus for the selected language. Sample menus are written to:
+The guide helps you set the plugin language and release sample menus for the selected language. Older platforms without Dialog support release only chest, furnace, and anvil Container examples. Platforms with Dialog support release both Container and Dialog examples. Sample menus are written to:
 
 ```text
 plugins/KaMenu/menus/example/
@@ -118,7 +121,7 @@ You can also verify in-game with:
 /kamenu guide
 ```
 
-If the guide opens, the installation is working correctly. After releasing the examples, you can also run `/km open example/actions_demo` to open the actions demo menu.
+If the guide opens, the installation is working correctly. On older platforms, run `/km open example/container_main` after releasing examples to open the container example. Platforms with Dialog support can also run `/km open example/actions_demo` for the Dialog actions example.
 
 ---
 
@@ -134,7 +137,7 @@ Common targeted reloads:
 
 ```bash
 /km reload menu      # Reload menus only
-/km reload config    # Reload config.yml, language files, and custom commands
+/km reload config    # Reload config.yml, custom_commands.yml, language files, and custom commands
 /km reload actions   # Reload global action packages only
 /km reload js        # Reload global JavaScript packages only
 /km reload lang      # Reload the current language file only

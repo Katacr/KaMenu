@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.HoverEvent
 import org.bukkit.command.CommandSender
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
@@ -8,7 +9,9 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.ItemMeta
 import org.katacr.kamenu.dialog.DialogPlatformAdapter
+import org.katacr.kamenu.dialog.NoDialogPlatformAdapter
 import org.katacr.kamenu.dialog.bedrock.BedrockFormAdapter
+import org.katacr.kamenu.container.ContainerMenuParser
 
 /**
  * KaMenu 的平台中立 Dialog 入口。
@@ -18,7 +21,7 @@ import org.katacr.kamenu.dialog.bedrock.BedrockFormAdapter
  */
 object MenuUI {
     private lateinit var plugin: KaMenu
-    private lateinit var adapter: DialogPlatformAdapter
+    private var adapter: DialogPlatformAdapter = NoDialogPlatformAdapter()
     private var bedrockAdapter: BedrockFormAdapter? = null
 
     val platformName: String
@@ -26,6 +29,10 @@ object MenuUI {
 
     val paperPlatform: Boolean
         get() = adapter.platformName == "Paper"
+
+    /** 当前核心是否具备可渲染原生 Dialog 的平台适配器。 */
+    val dialogSupported: Boolean
+        get() = adapter !is NoDialogPlatformAdapter
 
     /** 探测并初始化当前服务器可用的 Dialog 适配器。 */
     fun init(kaMenu: KaMenu) {
@@ -39,26 +46,57 @@ object MenuUI {
                 classAvailable("org.bukkit.event.player.PlayerCustomClickEvent", classLoader) ->
                 "org.katacr.kamenu.dialog.spigot.SpigotDialogPlatformAdapter"
 
-            else -> throw IllegalStateException("No compatible Paper or Spigot Dialog API was found")
+            else -> null
         }
 
-        try {
-            val adapterClass = Class.forName(adapterClassName, true, classLoader)
-            adapter = adapterClass.getDeclaredConstructor().newInstance() as DialogPlatformAdapter
+        if (adapterClassName == null) {
+            adapter = NoDialogPlatformAdapter()
             adapter.initialize(kaMenu)
-        } catch (error: ReflectiveOperationException) {
-            throw IllegalStateException("Failed to initialize Dialog platform adapter: $adapterClassName", error)
-        } catch (error: LinkageError) {
-            throw IllegalStateException("Failed to link Dialog platform adapter: $adapterClassName", error)
+            kaMenu.logger.warning(kaMenu.languageManager.getMessage("dialog.unavailable_startup"))
+        } else {
+            try {
+                val adapterClass = Class.forName(adapterClassName, true, classLoader)
+                adapter = adapterClass.getDeclaredConstructor().newInstance() as DialogPlatformAdapter
+                adapter.initialize(kaMenu)
+            } catch (error: ReflectiveOperationException) {
+                throw IllegalStateException("Failed to initialize Dialog platform adapter: $adapterClassName", error)
+            } catch (error: LinkageError) {
+                throw IllegalStateException("Failed to link Dialog platform adapter: $adapterClassName", error)
+            }
         }
 
         initializeBedrockAdapter(kaMenu, classLoader)
     }
 
-    /** 打开菜单管理器中的菜单。 */
-    fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
+    /** 打开菜单管理器中的菜单，并在打开前解析目标菜单参数。 */
+    fun openMenu(
+        player: Player,
+        menuId: String,
+        manager: MenuManager,
+        plugin: KaMenu,
+        arguments: List<String> = emptyList(),
+        sourceVariables: Map<String, String> = emptyMap()
+    ) {
         val config = manager.getMenuConfig(menuId)
-        if (config != null && bedrockAdapter?.tryOpen(
+        if (config == null) {
+            player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
+            return
+        }
+        val resolution = MenuArgumentResolver.resolve(player, config, arguments, sourceVariables)
+        if (!resolution.sufficient) {
+            sendInsufficientArguments(player, plugin, menuId, resolution)
+            return
+        }
+        activateArguments(player, resolution)
+
+        if (manager.getMenuKind(menuId) == MenuKind.CONTAINER) {
+            plugin.containerMenuService.openMenu(player, menuId)
+            return
+        }
+        if (plugin.containerMenusReady) {
+            plugin.containerMenuService.closeSilently(player)
+        }
+        if (bedrockAdapter?.tryOpen(
                 player,
                 config,
                 menuId,
@@ -70,8 +108,29 @@ object MenuUI {
         adapter.openMenu(player, menuId, manager, plugin)
     }
 
-    /** 打开外部插件提供的内存 YAML 菜单。 */
-    fun openConfig(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
+    /** 打开外部插件提供的内存 YAML 菜单，并在打开前解析目标菜单参数。 */
+    fun openConfig(
+        player: Player,
+        config: YamlConfiguration,
+        plugin: KaMenu,
+        contextId: String = "external",
+        arguments: List<String> = emptyList(),
+        sourceVariables: Map<String, String> = emptyMap()
+    ) {
+        val resolution = MenuArgumentResolver.resolve(player, config, arguments, sourceVariables)
+        if (!resolution.sufficient) {
+            sendInsufficientArguments(player, plugin, contextId, resolution)
+            return
+        }
+        activateArguments(player, resolution)
+
+        if (ContainerMenuParser.isContainerMenu(config)) {
+            plugin.containerMenuService.openConfig(player, config, contextId)
+            return
+        }
+        if (plugin.containerMenusReady) {
+            plugin.containerMenuService.closeSilently(player)
+        }
         if (bedrockAdapter?.tryOpen(
                 player,
                 config,
@@ -84,10 +143,35 @@ object MenuUI {
         adapter.openConfig(player, config, plugin, contextId)
     }
 
-    /** 强制重新打开已加载菜单。 */
-    fun forceOpenMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
+    /** 强制重新打开已加载菜单，并在打开前解析目标菜单参数。 */
+    fun forceOpenMenu(
+        player: Player,
+        menuId: String,
+        manager: MenuManager,
+        plugin: KaMenu,
+        arguments: List<String> = emptyList(),
+        sourceVariables: Map<String, String> = emptyMap()
+    ) {
         val config = manager.getMenuConfig(menuId)
-        if (config != null && bedrockAdapter?.tryOpen(
+        if (config == null) {
+            player.sendMessage(plugin.languageManager.getMessage("menu.not_found", menuId))
+            return
+        }
+        val resolution = MenuArgumentResolver.resolve(player, config, arguments, sourceVariables)
+        if (!resolution.sufficient) {
+            sendInsufficientArguments(player, plugin, menuId, resolution)
+            return
+        }
+        activateArguments(player, resolution)
+
+        if (manager.getMenuKind(menuId) == MenuKind.CONTAINER) {
+            plugin.containerMenuService.forceOpenMenu(player, menuId)
+            return
+        }
+        if (plugin.containerMenusReady) {
+            plugin.containerMenuService.closeSilently(player)
+        }
+        if (bedrockAdapter?.tryOpen(
                 player,
                 config,
                 menuId,
@@ -99,8 +183,29 @@ object MenuUI {
         adapter.forceOpenMenu(player, menuId, manager, plugin)
     }
 
-    /** 强制重新打开内存菜单，不重复执行 Events.Open。 */
-    fun forceOpenConfig(player: Player, config: YamlConfiguration, plugin: KaMenu, contextId: String = "external") {
+    /** 强制重新打开内存菜单，不重复执行 Events.Open，并重新解析目标菜单参数。 */
+    fun forceOpenConfig(
+        player: Player,
+        config: YamlConfiguration,
+        plugin: KaMenu,
+        contextId: String = "external",
+        arguments: List<String> = emptyList(),
+        sourceVariables: Map<String, String> = emptyMap()
+    ) {
+        val resolution = MenuArgumentResolver.resolve(player, config, arguments, sourceVariables)
+        if (!resolution.sufficient) {
+            sendInsufficientArguments(player, plugin, contextId, resolution)
+            return
+        }
+        activateArguments(player, resolution)
+
+        if (ContainerMenuParser.isContainerMenu(config)) {
+            plugin.containerMenuService.forceOpenConfig(player, config, contextId)
+            return
+        }
+        if (plugin.containerMenusReady) {
+            plugin.containerMenuService.closeSilently(player)
+        }
         if (bedrockAdapter?.tryOpen(
                 player,
                 config,
@@ -115,6 +220,9 @@ object MenuUI {
 
     /** 通过当前平台 API 关闭 Dialog。 */
     fun closeDialog(player: Player) {
+        if (plugin.containerMenusReady && plugin.containerMenuService.closeSilently(player)) {
+            return
+        }
         if (bedrockAdapter?.close(player) != true) {
             adapter.close(player)
         }
@@ -122,7 +230,11 @@ object MenuUI {
 
     /** 玩家离线时丢弃可选基岩表单状态。 */
     fun discardPlayer(player: Player) {
+        if (plugin.containerMenusReady) {
+            plugin.containerMenuService.discard(player)
+        }
         bedrockAdapter?.discard(player)
+        MenuArgumentManager.clear(player)
     }
 
     /** 使用当前平台支持的文本协议发送富文本消息。 */
@@ -154,12 +266,43 @@ object MenuUI {
     /** 读取当前平台的 ItemModel 键。 */
     fun itemModel(meta: ItemMeta): String? = adapter.itemModel(meta)
 
+    /** 构造当前平台可发送的物品悬浮事件。 */
+    fun itemHover(item: ItemStack): HoverEvent<HoverEvent.ShowItem> = adapter.itemHover(item)
+
     /** 释放平台适配器状态。 */
     fun shutdown() {
         bedrockAdapter?.shutdown()
         bedrockAdapter = null
-        if (::adapter.isInitialized) {
-            adapter.shutdown()
+        adapter.shutdown()
+        MenuArgumentManager.clearAll()
+    }
+
+    /** 向玩家说明目标菜单缺少必需的传入参数。 */
+    private fun sendInsufficientArguments(
+        player: Player,
+        plugin: KaMenu,
+        menuId: String,
+        resolution: MenuArgumentResolver.Resolution
+    ) {
+        sendMessage(
+            player,
+            TextParser.parseText(
+                plugin.languageManager.getMessage(
+                    "menu.pass_arguments_insufficient",
+                    menuId,
+                    resolution.required,
+                    resolution.arguments.size
+                )
+            )
+        )
+    }
+
+    /** 根据目标菜单开关激活或移除参数上下文。 */
+    private fun activateArguments(player: Player, resolution: MenuArgumentResolver.Resolution) {
+        if (resolution.enabled) {
+            MenuArgumentManager.activate(player, resolution.arguments)
+        } else {
+            MenuArgumentManager.clear(player)
         }
     }
 

@@ -22,7 +22,7 @@ Using registered commands to open menus instead:
 
 ## Configuring Custom Commands
 
-Configure custom commands in `config.yml`:
+Configure the `custom-commands` section in the plugin root file `custom_commands.yml`:
 
 ```yaml
 custom-commands:
@@ -237,7 +237,7 @@ Events:
 
 ### 3. Reloading Commands
 
-After modifying `config.yml`, run the following command to reload:
+After modifying `custom_commands.yml`, run the following command to reload:
 
 ```
 /kamenu reload config

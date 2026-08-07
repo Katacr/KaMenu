@@ -1,0 +1,81 @@
+# KaMenu V2 furnace progress example
+# Open with: /km open example/container_furnace
+
+Type: FURNACE
+Title: '&8Furnace Progress Example'
+Progress-Update: 5
+
+Properties:
+  burn_progress: '{meta:example_burn_progress}'
+  cook_progress: '{meta:example_cook_progress}'
+
+Events:
+  Open:
+    - 'meta: type=set;key=example_burn_progress;var=`75%`'
+    - 'meta: type=set;key=example_cook_progress;var=`25%`'
+    - 'actionbar: &aClick the slot buttons to change furnace progress'
+  Progress:
+    cook_complete:
+      source: cook_progress
+      condition: '{progress.current} >= 100'
+      trigger_initial: false
+      actions:
+        - 'actionbar: &aCooking progress reached 100%'
+        - 'sound: BLOCK_NOTE_BLOCK_PLING;volume=1;pitch=1.4'
+    fuel_empty:
+      source: burn_progress
+      condition: '{progress.current} <= 0'
+      trigger_initial: false
+      actions:
+        - 'actionbar: &cThe fuel has run out'
+
+Layout:
+  - 'IFR'
+
+Buttons:
+  I:
+    display:
+      material: IRON_ORE
+      name: '&eCooking: &f{meta:example_cook_progress}'
+      lore:
+        - '&7Left: increase to 100%'
+        - '&7Right: reset to 25%'
+    actions:
+      left:
+        - 'meta: type=set;key=example_cook_progress;var=`100%`'
+        - 'refresh: properties'
+        - 'refresh: I'
+      right:
+        - 'meta: type=set;key=example_cook_progress;var=`25%`'
+        - 'refresh: properties'
+        - 'refresh: I'
+
+  F:
+    display:
+      material: COAL
+      name: '&6Fuel: &f{meta:example_burn_progress}'
+      lore:
+        - '&7Left: set to 100%'
+        - '&7Right: set to 0%'
+    actions:
+      left:
+        - 'meta: type=set;key=example_burn_progress;var=`100%`'
+        - 'refresh: properties'
+        - 'refresh: F'
+      right:
+        - 'meta: type=set;key=example_burn_progress;var=`0%`'
+        - 'refresh: properties'
+        - 'refresh: F'
+
+  R:
+    display:
+      material: IRON_INGOT
+      name: '&aBack to Container Example'
+      lore:
+        - '&7Left: return to the basic menu'
+        - '&7Right: close the menu'
+    actions:
+      left:
+        - 'open: example/container_main'
+      right:
+        - 'close'

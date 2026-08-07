@@ -24,23 +24,25 @@ object KaMenuAPI {
     }
 
     /**
-     * 打开已加载的菜单文件。
+     * 打开已加载的菜单文件，并向目标菜单传入参数。
      *
      * 菜单 ID 与 `plugins/KaMenu/menus` 下的相对路径一致，不包含 `.yml` 后缀。
      * 例如 `menus/example/main_menu.yml` 对应 `example/main_menu`。
      *
      * @param player 目标玩家
      * @param menuId 菜单 ID（如 "main_menu" 或 "shop/weapons"）
+     * @param arguments 传入目标菜单的参数列表
      * @return 是否成功打开菜单
      */
     @JvmStatic
-    fun openMenu(player: Player, menuId: String): Boolean {
+    @JvmOverloads
+    fun openMenu(player: Player, menuId: String, arguments: List<String> = emptyList()): Boolean {
         if (plugin == null) {
             return false
         }
         try {
             val menuManager = plugin!!.menuManager
-            MenuUI.openMenu(player, menuId, menuManager, plugin!!)
+            MenuUI.openMenu(player, menuId, menuManager, plugin!!, arguments)
             return true
         } catch (e: Exception) {
             plugin!!.logger.warning("打开菜单失败: $menuId, 错误: ${e.message}")
@@ -56,12 +58,17 @@ object KaMenuAPI {
      */
     @JvmStatic
     @JvmOverloads
-    fun openYaml(player: Player, yaml: String, contextId: String = "external"): Boolean {
+    fun openYaml(
+        player: Player,
+        yaml: String,
+        contextId: String = "external",
+        arguments: List<String> = emptyList()
+    ): Boolean {
         val currentPlugin = plugin ?: return false
         return try {
             val config = YamlConfiguration()
             config.loadFromString(yaml)
-            openConfig(player, config, contextId)
+            openConfig(player, config, contextId, arguments)
         } catch (e: Exception) {
             currentPlugin.logger.warning("外部菜单 YAML 解析失败: contextId=$contextId, 错误: ${e.message}")
             false
@@ -76,18 +83,23 @@ object KaMenuAPI {
      */
     @JvmStatic
     @JvmOverloads
-    fun openConfig(player: Player, config: YamlConfiguration, contextId: String = "external"): Boolean {
+    fun openConfig(
+        player: Player,
+        config: YamlConfiguration,
+        contextId: String = "external",
+        arguments: List<String> = emptyList()
+    ): Boolean {
         val currentPlugin = plugin ?: return false
         return try {
             if (KaScheduler.folia) {
                 KaScheduler.runPlayer(player, Runnable {
-                    MenuUI.openConfig(player, config, currentPlugin, contextId)
+                    MenuUI.openConfig(player, config, currentPlugin, contextId, arguments)
                 })
             } else if (Bukkit.isPrimaryThread()) {
-                MenuUI.openConfig(player, config, currentPlugin, contextId)
+                MenuUI.openConfig(player, config, currentPlugin, contextId, arguments)
             } else {
                 KaScheduler.runPlayer(player, Runnable {
-                    MenuUI.openConfig(player, config, currentPlugin, contextId)
+                    MenuUI.openConfig(player, config, currentPlugin, contextId, arguments)
                 })
             }
             true

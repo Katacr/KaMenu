@@ -1,0 +1,24 @@
+# KaMenu Custom Commands
+# KaMenu 自定义指令
+#
+# This file is independent from config.yml and is reloaded by /km reload config.
+# 此文件独立于 config.yml，并通过 /km reload config 重载。
+#
+# Simple form: command_name: menu_id
+# 简单写法：指令名: 菜单ID
+custom-commands:
+  zcd: 'example/main_menu'          # /zcd
+  actions: 'example/actions_demo'   # /actions
+  menu: 'example/main_menu'         # /menu
+
+# Action form supports args suggestions and the same action queue as buttons.
+# 动作写法支持 args 补全，以及与按钮相同的动作队列。
+  test:
+    args:
+      0: "[hello, info]"
+      1: "%kamenu_online_players%"
+    actions:
+      - "tell: 嘿，你输入了/test指令"
+      - "tell: 参数：{args}"
+      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
+      - "tell: 你想测试什么内容呢？"

@@ -1,0 +1,546 @@
+package org.katacr.kamenu.container
+
+import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.configuration.file.YamlConfiguration
+
+/**
+ * 将容器菜单 YAML 编译为平台无关的 [ContainerMenuDefinition]。
+ *
+ * 此解析器只负责静态结构和类型校验，不访问玩家、库存或数据库。玩家变量、条件和物品创建留到渲染阶段。
+ */
+object ContainerMenuParser {
+    private val dialogOnlySections = listOf("Body", "Inputs", "Bottom")
+    private val knownDisplayProperties = setOf(
+        "material",
+        "name",
+        "lore",
+        "amount",
+        "custom_model_data",
+        "item_model",
+        "skull_owner",
+        "skull_texture",
+        "glow",
+        "unbreakable",
+        "enchantments",
+        "item_flags"
+    )
+    private val furnaceProperties = setOf("burn_progress", "cook_progress")
+    private val anvilProperties = setOf(
+        "input",
+        "remove_chars",
+        "repair_cost",
+        "maximum_repair_cost",
+        "repair_item_count"
+    )
+    private val knownContainerProperties = furnaceProperties + anvilProperties
+
+    /** 判断一份 YAML 是否使用 Container 菜单结构。 */
+    fun isContainerMenu(config: YamlConfiguration): Boolean {
+        if (config.contains("Layout")) return true
+        val type = config.getString("Type")?.trim().orEmpty()
+        return ContainerMenuType.entries.any { it.name.equals(type, ignoreCase = true) }
+    }
+
+    /** 解析一份容器菜单配置；任何 ERROR 都会使 definition 为空。 */
+    fun parse(menuId: String, config: YamlConfiguration): ContainerMenuParseResult {
+        val diagnostics = mutableListOf<ContainerMenuDiagnostic>()
+        validateMenuFamily(config, diagnostics)
+        val type = parseType(config, diagnostics)
+        val title = freeze(config.get("Title") ?: "KaMenu")
+        val minClickDelayMillis = parseMinClickDelay(
+            config.get("Settings.min_click_delay"),
+            diagnostics
+        )
+        val progressInterval = parseUpdateInterval(config.get("Progress-Update"), "Progress-Update", diagnostics)
+        if (progressInterval != null && type?.isFurnace != true) {
+            diagnostics += error(
+                "progress_update.unsupported_type",
+                "Progress-Update",
+                "Progress-Update is only supported by furnace container types."
+            )
+        }
+        val update = ContainerUpdateDefinition(
+            menuIntervalTicks = parseUpdateInterval(config.get("Update"), "Update", diagnostics),
+            titleIntervalTicks = parseUpdateInterval(config.get("Title-Update"), "Title-Update", diagnostics),
+            progressIntervalTicks = progressInterval
+        )
+        val properties = parseProperties(config, type, diagnostics)
+        val progressWatchers = parseProgressWatchers(config, type, properties, diagnostics)
+        val layoutRows = parseLayoutRows(config, diagnostics)
+        val layoutResult = if (layoutRows != null && type != null) {
+            ContainerLayoutParser.parse(layoutRows, type)
+        } else {
+            null
+        }
+        if (layoutResult != null) diagnostics += layoutResult.diagnostics
+        val layout = layoutResult?.definition
+        val buttons = parseButtons(config, diagnostics)
+
+        if (layout != null) {
+            validateButtonReferences(layout, buttons, diagnostics)
+        }
+
+        if (diagnostics.any { it.severity == ContainerDiagnosticSeverity.ERROR } || type == null || layout == null) {
+            return ContainerMenuParseResult(null, diagnostics.toList())
+        }
+        return ContainerMenuParseResult(
+            ContainerMenuDefinition(
+                id = menuId,
+                type = type,
+                title = title,
+                layout = layout,
+                properties = properties,
+                buttons = buttons.toMap(),
+                update = update,
+                minClickDelayMillis = minClickDelayMillis,
+                progressWatchers = progressWatchers
+            ),
+            diagnostics.toList()
+        )
+    }
+
+    /** 读取 Container 菜单的玩家点击最小间隔；单位为毫秒，0 表示不限制。 */
+    private fun parseMinClickDelay(
+        raw: Any?,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): Long {
+        if (raw == null) return 0L
+        val millis = when (raw) {
+            is Byte, is Short, is Int, is Long -> (raw as Number).toLong()
+            is Float, is Double -> {
+                val number = (raw as Number).toDouble()
+                if (number.isFinite() && number % 1.0 == 0.0) number.toLong() else null
+            }
+            is String -> raw.trim().toLongOrNull()
+            else -> null
+        }
+        if (millis == null) {
+            diagnostics += error(
+                "settings.invalid_min_click_delay",
+                "Settings.min_click_delay",
+                "Settings.min_click_delay must be a non-negative integer number of milliseconds."
+            )
+            return 0L
+        }
+        if (millis < 0L) {
+            diagnostics += error(
+                "settings.invalid_min_click_delay",
+                "Settings.min_click_delay",
+                "Settings.min_click_delay must be a non-negative integer number of milliseconds."
+            )
+            return 0L
+        }
+        return millis
+    }
+
+    /** 拒绝在同一文件中混用 Container 布局和 Dialog 专属组件，避免运行时错误分派。 */
+    private fun validateMenuFamily(
+        config: YamlConfiguration,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ) {
+        dialogOnlySections.filter(config::contains).forEach { section ->
+            diagnostics += error(
+                "menu.conflicting_dialog_section",
+                section,
+                "Container menus cannot define the Dialog-only section '$section'."
+            )
+        }
+    }
+
+    private fun parseType(
+        config: YamlConfiguration,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerMenuType? {
+        val raw = config.get("Type") ?: return ContainerMenuType.CHEST
+        if (raw !is String) {
+            diagnostics += error("menu.invalid_type_value", "Type", "Type must be a string.")
+            return null
+        }
+        return ContainerMenuType.entries.firstOrNull { it.name.equals(raw.trim(), ignoreCase = true) }
+            ?: run {
+                diagnostics += error(
+                    "menu.unsupported_type",
+                    "Type",
+                    "Unsupported container type '$raw'. Supported types: " +
+                        ContainerMenuType.entries.joinToString { it.name } + "."
+                )
+                null
+            }
+    }
+
+    /** 冻结并校验 `Properties` 中与容器类型相关的动态属性。 */
+    private fun parseProperties(
+        config: YamlConfiguration,
+        type: ContainerMenuType?,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerPropertiesDefinition {
+        val section = config.getConfigurationSection("Properties")
+        if (section == null) {
+            if (config.contains("Properties")) {
+                diagnostics += error("properties.invalid", "Properties", "Properties must be a YAML section.")
+            }
+            return ContainerPropertiesDefinition.EMPTY
+        }
+
+        val allowed = when {
+            type?.isFurnace == true -> furnaceProperties
+            type == ContainerMenuType.ANVIL -> anvilProperties
+            else -> emptySet()
+        }
+        val values = linkedMapOf<String, ContainerConfigValue>()
+        section.getKeys(false).forEach { property ->
+            values[property] = freeze(section.get(property))
+            when {
+                property in allowed -> Unit
+                property in knownContainerProperties -> diagnostics += warning(
+                    "properties.unsupported_for_type",
+                    "Properties.$property",
+                    "Property '$property' does not apply to container type ${type?.name ?: "UNKNOWN"}."
+                )
+                else -> diagnostics += warning(
+                    "properties.unknown",
+                    "Properties.$property",
+                    "Unknown container property '$property' is preserved but will not be applied."
+                )
+            }
+        }
+        return ContainerPropertiesDefinition(values.toMap())
+    }
+
+    /** 解析并校验 `Events.Progress` 下的会话级熔炉进度监听器。 */
+    private fun parseProgressWatchers(
+        config: YamlConfiguration,
+        type: ContainerMenuType?,
+        properties: ContainerPropertiesDefinition,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): Map<String, ContainerProgressWatcherDefinition> {
+        val section = config.getConfigurationSection("Events.Progress")
+        if (section == null) {
+            if (config.contains("Events.Progress")) {
+                diagnostics += error(
+                    "progress.invalid",
+                    "Events.Progress",
+                    "Events.Progress must be a YAML section."
+                )
+            }
+            return emptyMap()
+        }
+        if (type?.isFurnace != true) {
+            diagnostics += error(
+                "progress.unsupported_type",
+                "Events.Progress",
+                "Events.Progress is only supported by furnace container types."
+            )
+        }
+
+        val result = linkedMapOf<String, ContainerProgressWatcherDefinition>()
+        section.getKeys(false).forEach { id ->
+            val path = "Events.Progress.$id"
+            val watcher = section.getConfigurationSection(id)
+            if (watcher == null) {
+                diagnostics += error("progress.invalid_watcher", path, "Progress watcher '$id' must be a YAML section.")
+                return@forEach
+            }
+
+            val source = (watcher.get("source") as? String)?.trim()?.lowercase().orEmpty()
+            if (source !in furnaceProperties) {
+                diagnostics += error(
+                    "progress.invalid_source",
+                    "$path.source",
+                    "Progress source must be burn_progress or cook_progress."
+                )
+            } else if (!properties.contains(source)) {
+                diagnostics += error(
+                    "progress.source_not_configured",
+                    "$path.source",
+                    "Progress source '$source' is not configured under Properties."
+                )
+            }
+
+            val condition = (watcher.get("condition") as? String)?.takeIf { it.isNotBlank() }
+            if (condition == null) {
+                diagnostics += error(
+                    "progress.invalid_condition",
+                    "$path.condition",
+                    "Progress condition must be a non-empty string."
+                )
+            }
+
+            val triggerInitial = when (val raw = watcher.get("trigger_initial")) {
+                null -> false
+                is Boolean -> raw
+                else -> {
+                    diagnostics += error(
+                        "progress.invalid_trigger_initial",
+                        "$path.trigger_initial",
+                        "trigger_initial must be a boolean."
+                    )
+                    false
+                }
+            }
+
+            val actions = when (val raw = watcher.get("actions")) {
+                is String -> listOf(raw)
+                is List<*> -> raw.map(::freezeActionValue)
+                else -> {
+                    diagnostics += error(
+                        "progress.invalid_actions",
+                        "$path.actions",
+                        "Progress actions must be a string or list."
+                    )
+                    emptyList()
+                }
+            }
+            if (actions.isEmpty()) {
+                diagnostics += error(
+                    "progress.empty_actions",
+                    "$path.actions",
+                    "Progress actions cannot be empty."
+                )
+            }
+
+            if (source in furnaceProperties && condition != null && actions.isNotEmpty()) {
+                result[id] = ContainerProgressWatcherDefinition(
+                    id = id,
+                    source = source,
+                    condition = condition,
+                    triggerInitial = triggerInitial,
+                    actions = actions
+                )
+            }
+        }
+        return result.toMap()
+    }
+
+    private fun parseLayoutRows(
+        config: YamlConfiguration,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): List<String>? {
+        val raw = config.get("Layout")
+        if (raw !is List<*>) {
+            diagnostics += error("layout.missing", "Layout", "Layout must be a list of strings.")
+            return null
+        }
+        val invalidIndex = raw.indexOfFirst { it !is String }
+        if (invalidIndex >= 0) {
+            diagnostics += error(
+                "layout.invalid_row_type",
+                "Layout[$invalidIndex]",
+                "Every Layout row must be a string."
+            )
+            return null
+        }
+        return raw.filterIsInstance<String>()
+    }
+
+    private fun parseButtons(
+        config: YamlConfiguration,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): LinkedHashMap<String, ContainerButtonDefinition> {
+        val result = linkedMapOf<String, ContainerButtonDefinition>()
+        val section = config.getConfigurationSection("Buttons")
+        if (section == null) {
+            if (config.contains("Buttons")) {
+                diagnostics += error("buttons.invalid", "Buttons", "Buttons must be a YAML section.")
+            }
+            return result
+        }
+
+        section.getKeys(false).forEach { id ->
+            val buttonPath = "Buttons.$id"
+            val button = section.getConfigurationSection(id)
+            if (button == null) {
+                diagnostics += error("button.invalid", buttonPath, "Button '$id' must be a YAML section.")
+                return@forEach
+            }
+            parseButton(id, button, buttonPath, diagnostics)?.let { result[id] = it }
+        }
+        return result
+    }
+
+    private fun parseButton(
+        id: String,
+        section: ConfigurationSection,
+        path: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerButtonDefinition? {
+        val displaySection = section.getConfigurationSection("display")
+        if (displaySection == null) {
+            diagnostics += error("button.display_missing", "$path.display", "Button '$id' requires a display section.")
+            return null
+        }
+        if (!displaySection.contains("material")) {
+            diagnostics += error(
+                "button.material_missing",
+                "$path.display.material",
+                "Button '$id' requires a material."
+            )
+        }
+
+        val properties = linkedMapOf<String, ContainerConfigValue>()
+        displaySection.getKeys(false).forEach { property ->
+            properties[property] = freeze(displaySection.get(property))
+            if (property !in knownDisplayProperties) {
+                diagnostics += warning(
+                    "button.unknown_display_property",
+                    "$path.display.$property",
+                    "Unknown display property '$property' is preserved but may not be rendered."
+                )
+            }
+        }
+
+        val viewCondition = when (val raw = section.get("view_condition")) {
+            null -> null
+            is String -> raw.takeIf { it.isNotBlank() }
+            else -> {
+                diagnostics += error(
+                    "button.invalid_view_condition",
+                    "$path.view_condition",
+                    "view_condition must be a string."
+                )
+                null
+            }
+        }
+
+        val updateInterval = parseUpdateInterval(section.get("update"), "$path.update", diagnostics)
+        val actions = parseActions(section, path, diagnostics)
+        return ContainerButtonDefinition(
+            id = id,
+            viewCondition = viewCondition,
+            updateIntervalTicks = updateInterval,
+            display = ContainerItemDefinition(properties.toMap()),
+            actions = actions
+        )
+    }
+
+    /** 读取静态 tick 周期；0 和负数表示禁用，非整数配置属于错误。 */
+    private fun parseUpdateInterval(
+        raw: Any?,
+        path: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): Long? {
+        if (raw == null) return null
+        val ticks = when (raw) {
+            is Byte, is Short, is Int, is Long -> (raw as Number).toLong()
+            is Float, is Double -> {
+                val number = (raw as Number).toDouble()
+                if (!number.isFinite() || number % 1.0 != 0.0) null else number.toLong()
+            }
+            is String -> raw.trim().toLongOrNull()
+            else -> null
+        }
+        if (ticks == null) {
+            diagnostics += error(
+                "update.invalid_interval",
+                path,
+                "Update interval must be an integer number of ticks."
+            )
+            return null
+        }
+        if (ticks <= 0) return null
+        if (ticks < 5) {
+            diagnostics += warning(
+                "update.high_frequency",
+                path,
+                "Update interval $ticks is very frequent and may increase menu rendering cost."
+            )
+        }
+        return ticks
+    }
+
+    private fun parseActions(
+        button: ConfigurationSection,
+        buttonPath: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): Map<ContainerClickType, List<Any>> {
+        val section = button.getConfigurationSection("actions")
+        if (section == null) {
+            if (button.contains("actions")) {
+                diagnostics += error("button.invalid_actions", "$buttonPath.actions", "actions must be a YAML section.")
+            }
+            return emptyMap()
+        }
+
+        val result = linkedMapOf<ContainerClickType, List<Any>>()
+        section.getKeys(false).forEach { key ->
+            val clickType = ContainerClickType.fromConfigKey(key)
+            if (clickType == null) {
+                diagnostics += error(
+                    "button.unsupported_click_type",
+                    "$buttonPath.actions.$key",
+                    "Unsupported click type '$key'."
+                )
+                return@forEach
+            }
+
+            val actions = when (val raw = section.get(key)) {
+                is String -> listOf(raw)
+                is List<*> -> raw.map(::freezeActionValue)
+                else -> {
+                    diagnostics += error(
+                        "button.invalid_action_list",
+                        "$buttonPath.actions.$key",
+                        "Click actions must be a string or list."
+                    )
+                    emptyList()
+                }
+            }
+            result[clickType] = actions
+        }
+        return result.toMap()
+    }
+
+    private fun validateButtonReferences(
+        layout: ContainerLayoutDefinition,
+        buttons: Map<String, ContainerButtonDefinition>,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ) {
+        layout.slotsByButton.forEach { (id, slots) ->
+            if (id !in buttons) {
+                val first = layout.slots[slots.first()]
+                diagnostics += error(
+                    "layout.button_not_found",
+                    "Layout[${first.row}][${first.column}]",
+                    "Layout references button '$id', but Buttons.$id is not defined."
+                )
+            }
+        }
+        buttons.keys.filterNot(layout.slotsByButton::containsKey).forEach { id ->
+            diagnostics += warning(
+                "button.unused",
+                "Buttons.$id",
+                "Button '$id' is defined but not used by Layout."
+            )
+        }
+    }
+
+    /** 将 Bukkit YAML 值递归复制为只读配置值。 */
+    private fun freeze(value: Any?): ContainerConfigValue = when (value) {
+        null -> ContainerConfigValue.Null
+        is ConfigurationSection -> ContainerConfigValue.Mapping(
+            value.getKeys(false).associateWith { key -> freeze(value.get(key)) }
+        )
+        is Map<*, *> -> ContainerConfigValue.Mapping(
+            value.entries.associate { (key, child) -> key.toString() to freeze(child) }
+        )
+        is List<*> -> ContainerConfigValue.Sequence(value.map(::freeze))
+        is String, is Number, is Boolean -> ContainerConfigValue.Scalar(value)
+        else -> ContainerConfigValue.Scalar(value.toString())
+    }
+
+    /** 深复制动作条件 Map 和嵌套列表，使定义不依赖 SnakeYAML 返回的可变集合。 */
+    private fun freezeActionValue(value: Any?): Any = when (value) {
+        null -> ""
+        is ConfigurationSection -> value.getKeys(false).associateWith { key -> freezeActionValue(value.get(key)) }
+        is Map<*, *> -> value.entries.associate { (key, child) -> key.toString() to freezeActionValue(child) }
+        is List<*> -> value.map(::freezeActionValue)
+        is String, is Number, is Boolean -> value
+        else -> value.toString()
+    }
+
+    private fun error(code: String, path: String, message: String): ContainerMenuDiagnostic =
+        ContainerMenuDiagnostic(ContainerDiagnosticSeverity.ERROR, code, path, message)
+
+    private fun warning(code: String, path: String, message: String): ContainerMenuDiagnostic =
+        ContainerMenuDiagnostic(ContainerDiagnosticSeverity.WARNING, code, path, message)
+}

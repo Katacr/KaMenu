@@ -1,0 +1,61 @@
+# KaMenu V2 铁砧输入示例
+# 打开方式: /km open example/container_anvil
+
+Type: ANVIL
+Title: '&8铁砧输入示例'
+
+Properties:
+  input: 'KaMenu_Name'
+  remove_chars:
+    - '&'
+    - '_'
+  repair_cost: 0
+  maximum_repair_cost: 40
+  repair_item_count: 0
+
+Events:
+  Open:
+    - 'meta: type=delete;key=example_anvil_input'
+    - 'actionbar: &a在铁砧输入框中修改文本'
+
+Layout:
+  - 'IMR'
+
+Buttons:
+  I:
+    display:
+      material: PAPER
+      name: '&fKaMenu 输入'
+      lore:
+        - '&7初始值: KaMenu_Name'
+        - '&7输入中的 & 和 _ 会被移除'
+    actions:
+      right:
+        - 'reset'
+
+  M:
+    display:
+      material: NAME_TAG
+      name: '&e当前输入: &f$(input)'
+      lore:
+        - '&7左键刷新输入显示'
+    actions:
+      left:
+        - 'refresh: properties'
+        - 'refresh: M'
+
+  R:
+    view_condition: '!isPass.$(input)'
+    display:
+      material: EMERALD
+      name: '&a确认: &f$(input)'
+      lore:
+        - '&7左键保存输入并返回'
+        - '&7右键关闭菜单'
+    actions:
+      left:
+        - 'meta: type=set;key=example_anvil_input;var=`$(input)`'
+        - 'actionbar: &a已保存输入: $(input)'
+        - 'open: example/container_main'
+      right:
+        - 'close'

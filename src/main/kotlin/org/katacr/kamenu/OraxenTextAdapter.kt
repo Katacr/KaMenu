@@ -34,6 +34,7 @@ object OraxenTextAdapter {
      */
     fun parse(text: String, player: Player?, forceResolver: Boolean = false): Component? {
         if (!forceResolver && !containsGlyphTag(text)) return null
+        if (!AdventureCompatibility.supportsMiniMessage()) return null
         val oraxen = Bukkit.getPluginManager().getPlugin(PLUGIN_NAME)
         if (oraxen == null || !oraxen.isEnabled) return null
 

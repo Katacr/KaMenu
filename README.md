@@ -1,7 +1,7 @@
 # KaMenu
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-21%2B-orange.svg)](https://adoptium.net/)
+[![Java](https://img.shields.io/badge/Java-16%2B-orange.svg)](https://adoptium.net/)
 [![SpigotMC](https://img.shields.io/badge/SpigotMC-Resource-orange.svg)](https://www.spigotmc.org/resources/133736/)
 
 KaMenu is a YAML-based native Minecraft Dialog menu plugin. It provides body components, forms, button layouts, conditions, action workflows, periodic tasks, persistent storage, dynamic lists, JavaScript packages, custom commands, and an API for other plugins.
@@ -10,9 +10,14 @@ KaMenu is a YAML-based native Minecraft Dialog menu plugin. It provides body com
 
 ## Requirements
 
-- Java 21 or newer
-- Spigot 1.21.6+, or Paper/Folia 1.21.7+
+- Java 16 or newer for the plugin runtime
+- Bukkit/Spigot/Paper-compatible core 1.16.5+
+- Native Dialogs: Spigot 1.21.6+, or Paper/Folia 1.21.7+
 - Internet access during the first startup to download runtime libraries
+
+On cores below the native Dialog versions, KaMenu disables Dialog menus and the ESC Dialog
+entry automatically. Container menus, actions, variables, JavaScript, storage, and custom
+commands remain available. Paper/Folia 1.21.7+ still require Java 21 because of the server core itself.
 
 SQLite is used by default. MySQL 5.7+ is also supported.
 
@@ -27,7 +32,7 @@ Run `/kamenu guide` after installation to open the built-in setup guide and rele
 
 ## Building
 
-The project includes the Gradle wrapper and targets Java 21:
+The project includes the Gradle wrapper. The shared runtime targets Java 16 bytecode, while the isolated modern Dialog adapters target Java 21. The build environment uses Java 21:
 
 ```bash
 ./gradlew clean shadowJar

@@ -37,6 +37,7 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `tppos`       | Teleport to specified coordinates                              | ✅                        |
 | `sound`       | Play a sound at the player's location                          | ✅                        |
 | `money`       | Operate player coins (requires Vault)                          | ✅                        |
+| `points`      | Add or take player points (requires PlayerPoints)              | ✅                        |
 | `stock-item`  | Give/take stored items                                         | ✅                        |
 | `item`        | Give/take regular items                                        | ✅                        |
 | `open`        | Open another menu for the player                               | ✅                        |
@@ -136,6 +137,37 @@ Target selectors support all condition expressions supported by `Condition`:
 - `server`, `actions`, `js`, `wait`, `return`, and task-control actions don't support target selectors and will ignore the target parameter
 - ✅ `open`, `close`, `force-open`, `force-close`, and `reset` support target selectors and can refresh or close menus for selected players
 - ✅ Selector conditions can use variables such as `{data:*}`, `{gdata:*}`, and `{meta:*}`, for example: `open: xiangqi{player: {meta:xiangqi-viewer} == true}`
+
+---
+
+## Per-Action Modifiers
+
+Chance and detached delay modifiers can be appended to any action line. Angle brackets are recommended:
+
+```yaml
+# Run this line with a 25% chance
+- 'tell: &aYou triggered a random reward <chance=25>'
+
+# Run this line after 20 ticks while the next line continues immediately
+- 'tell: &eThis message appears after 1 second <delay=20>'
+- 'tell: &aThis message appears immediately'
+
+# Combine chance, delay, and dynamic variables
+- 'points: type=add;num={data:reward} <chance=%player_luck%> <delay=10>'
+```
+
+| Modifier | Aliases | Description |
+| --- | --- | --- |
+| `<chance=value>` | `rate`, `rand`, `random` | A `0..100` chance; accepts decimals, a trailing `%`, PAPI, and built-in variables |
+| `<delay=ticks>` | `wait` | Delays only this action line; ticks must be an integer greater than or equal to `0` |
+
+For TrMenu compatibility, `{chance=25}`, `{delay=20}`, and `:` in place of `=` are also accepted. If the same modifier is repeated, the first value is used.
+
+Chance is evaluated first. If it passes, the line is scheduled with its delay. A failed chance skips only that line and the following actions continue.
+
+{% hint style="warning" %}
+`<delay=20>` does not block the action list. Use the standalone `wait: 20` action when all following actions must wait 20 ticks. Do not add detached delay to `return` or `wait:` because the delayed control result cannot propagate back to the action chain that already continued.
+{% endhint %}
 
 ---
 
@@ -534,7 +566,7 @@ Play a sound at the player's location, supporting volume, pitch, sound category,
 
 Open another menu for the player, current menu closes automatically.
 
-**Format:** `open: <menu_id>`
+**Format:** `open: <menu_id> [arguments...]`
 
 **Example:**
 
@@ -542,9 +574,12 @@ Open another menu for the player, current menu closes automatically.
 - 'open: main_menu'
 - 'open: shop/weapons'
 - 'open: admin/tools'
+- 'open: profile/detail {meta:target} vip'
+- 'open: search/result,`Diamond Sword`'
 ```
 
 **Note:** Menu ID rules are the same as `/km open` command; subfolders are separated by `/`; no `.yml` extension.
+The target menu can declare fallback and minimum argument counts under `Settings.pass_arguments`, then read values with `{arg:0}`, `{arg:1}`, and so on.
 
 ---
 
@@ -567,7 +602,7 @@ Close the currently open menu (**executes Events.Close first**).
 
 Force open a specified menu for the player, **skipping the target menu's Events.Open action list**. Unlike `open`, this does not trigger the target menu's Open event.
 
-**Format:** `force-open: <menu_id>`
+**Format:** `force-open: <menu_id> [arguments...]`
 
 **Example:**
 
@@ -577,6 +612,7 @@ Force open a specified menu for the player, **skipping the target menu's Events.
 
 # Force open (skips Open event)
 - 'force-open: shop'
+- 'force-open: profile/detail {meta:target} vip'
 ```
 
 **Use Cases:**
@@ -1031,6 +1067,42 @@ Operate the player's coins (requires Vault economy plugin).
 
 ---
 
+### points - PlayerPoints Operation
+
+Add or take a player's PlayerPoints currency.
+
+**Standard format:** `points: type=add|take;num=amount`
+
+```yaml
+# Add 100 points
+- 'points: type=add;num=100'
+
+# Take a dynamic amount
+- 'points: type=take;num={data:price}'
+```
+
+The following single-action aliases are also supported for TrMenu migration:
+
+```yaml
+- 'add-points: 100'
+- 'give-points: 100'
+- 'deposit-points: 100'
+- 'take-points: 50'
+- 'remove-points: 50'
+- 'withdraw-points: 50'
+```
+
+The hyphen and trailing plural `s` are optional, for example `addpoints:` and `takepoint:`.
+
+**Notes:**
+
+- PlayerPoints is optional; when it is missing or disabled, the action is skipped and a localized warning is logged
+- The amount must be an integer greater than `0` and may use PAPI, built-in variables, or action arguments
+- `take` checks the current points balance before deducting
+- This action sends no automatic success or failure message; combine it with conditions and `tell` or `actionbar` when feedback is needed
+
+---
+
 ### stock-item - Item Give/Take (Storage)
 
 Give the player or take from the player's inventory an item from the database storage.
@@ -1170,7 +1242,7 @@ Insert a delay in the action list; subsequent actions will execute after the spe
 - 'title: title=&cGo!;in=5;keep=30;out=10'
 ```
 
-**Note:** `wait` only affects actions **after** it; does not block other tasks being executed.
+**Note:** `wait` pauses the current action chain and affects actions **after** it, but does not block the server thread or other tasks. Use the `<delay=ticks>` modifier to delay only one line.
 
 ---
 

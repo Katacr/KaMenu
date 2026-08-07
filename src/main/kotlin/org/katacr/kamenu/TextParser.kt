@@ -3,7 +3,6 @@
 package org.katacr.kamenu
 
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.entity.Player
 
@@ -16,7 +15,11 @@ import org.bukkit.entity.Player
 object TextParser {
 
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
-    private val miniMessage = MiniMessage.miniMessage()
+    // MiniMessage 4.26 无法运行在 Paper 1.16.5 内置的 Adventure 4.7.0 上。
+    // 延迟创建并统一走能力检测，避免仅使用 Legacy 文本时也触发链接错误。
+    private val miniMessage by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        AdventureCompatibility.createMiniMessage()
+    }
 
     // ==================== 预编译正则表达式（性能优化） ====================
 
@@ -87,7 +90,11 @@ object TextParser {
      * 支持丰富的格式：<red>、<gradient:red:blue>、<bold> 等
      */
     fun miniMessage(text: String?): Component =
-        if (text == null) Component.empty() else miniMessage.deserialize(text)
+        if (text == null) {
+            Component.empty()
+        } else {
+            miniMessage?.deserialize(text) ?: color(text)
+        }
 
     /**
      * 智能解析文本格式（自动检测 MiniMessage 或 Legacy）

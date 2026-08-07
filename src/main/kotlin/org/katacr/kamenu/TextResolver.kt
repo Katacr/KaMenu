@@ -40,19 +40,20 @@ object TextResolver {
      */
     fun resolve(player: Player, text: String?, variables: Map<String, String> = emptyMap(), menuConfig: YamlConfiguration? = null): String {
         var result = text ?: return ""
+        val resolvedVariables = MenuArgumentManager.merge(player, variables)
 
-        variables.forEach { (key, value) ->
+        resolvedVariables.forEach { (key, value) ->
             if (!key.startsWith("item.") && !key.startsWith("list.") && !key.startsWith("arg:")) {
                 result = result.replace("\$($key)", value)
             }
         }
 
-        variables.forEach { (key, value) ->
+        resolvedVariables.forEach { (key, value) ->
             result = result.replace("{$key}", value)
         }
 
         result = result.replace(argPattern) { match ->
-            variables["arg:${match.groupValues[1]}"] ?: ""
+            resolvedVariables["arg:${match.groupValues[1]}"] ?: ""
         }
 
         val currentPlugin = plugin
@@ -141,19 +142,20 @@ object TextResolver {
         dynamicResolver: (String) -> String?
     ): String {
         var result = text ?: return ""
+        val resolvedVariables = MenuArgumentManager.merge(player, variables)
 
-        variables.forEach { (key, value) ->
+        resolvedVariables.forEach { (key, value) ->
             if (!key.startsWith("item.") && !key.startsWith("list.") && !key.startsWith("arg:")) {
                 result = replaceConditionToken(result, "\$($key)", value)
             }
         }
 
-        variables.forEach { (key, value) ->
+        resolvedVariables.forEach { (key, value) ->
             result = replaceConditionToken(result, "{$key}", value)
         }
 
         result = replaceConditionRegex(result, argPattern) { match ->
-            variables["arg:${match.groupValues[1]}"] ?: ""
+            resolvedVariables["arg:${match.groupValues[1]}"] ?: ""
         }
 
         val currentPlugin = plugin

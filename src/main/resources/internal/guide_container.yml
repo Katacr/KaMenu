@@ -1,0 +1,172 @@
+Type: CHEST
+
+Title:
+  - condition: '{language} == zh_CN'
+    allow: '&8KaMenu 箱子入门向导'
+    deny: '&8KaMenu Container Guide'
+
+Settings:
+  min_click_delay: 200
+
+Layout:
+  - '#########'
+  - '#C     E#'
+  - '#   R   #'
+  - '#L M A  #'
+  - '# F V X #'
+  - '#########'
+
+Events:
+  Open:
+    - condition: '{language} == zh_CN'
+      allow:
+        - 'actionbar: &a欢迎使用 KaMenu，请按照菜单按钮完成初始配置。'
+      deny:
+        - 'actionbar: &aWelcome to KaMenu. Follow the menu buttons to finish setup.'
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  C:
+    view_condition: '{meta:guide_language_selected} == null'
+    display:
+      material: BOOK
+      name: '&a简体中文'
+      lore:
+        - '&7将插件语言切换为简体中文'
+        - '&7随后重新打开本向导'
+    actions:
+      all:
+        - 'command: km language zh_CN'
+        - 'set-meta: guide_language_selected true'
+        - 'wait: 2'
+        - 'command: km guide'
+
+  E:
+    view_condition: '{meta:guide_language_selected} == null'
+    display:
+      material: WRITABLE_BOOK
+      name: '&aEnglish'
+      lore:
+        - '&7Switch the plugin language to English'
+        - '&7and reopen this guide'
+    actions:
+      all:
+        - 'command: km language en_US'
+        - 'set-meta: guide_language_selected true'
+        - 'wait: 2'
+        - 'command: km guide'
+
+  R:
+    view_condition: '{meta:guide_language_selected} == true && {meta:guide_examples_released} != true'
+    display:
+      material: CHEST
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&e释放示例菜单'
+          deny: '&eRelease Examples'
+      lore:
+        - condition: '{language} == zh_CN'
+          allow:
+            - '&7将当前语言的示例释放到'
+            - '&fplugins/KaMenu/menus/example/'
+            - '&8不会覆盖已有文件'
+          deny:
+            - '&7Release examples for the current language to'
+            - '&fplugins/KaMenu/menus/example/'
+            - '&8Existing files will not be overwritten'
+    actions:
+      all:
+        - 'command: km examples {language}'
+        - 'set-meta: guide_examples_released true'
+        - 'wait: 2'
+        - 'command: km guide'
+
+  L:
+    view_condition: '{meta:guide_examples_released} == true'
+    display:
+      material: PAPER
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&6查看菜单列表'
+          deny: '&6Menu List'
+      lore:
+        - condition: '{language} == zh_CN'
+          allow:
+            - '&7在聊天栏列出已加载菜单'
+          deny:
+            - '&7List loaded menus in chat'
+    actions:
+      all:
+        - 'command: km list'
+
+  M:
+    view_condition: '{meta:guide_examples_released} == true'
+    display:
+      material: CHEST
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&a箱子主菜单'
+          deny: '&aContainer Main Menu'
+      lore:
+        - '&fexample/container_main'
+    actions:
+      all:
+        - 'open: example/container_main'
+
+  A:
+    view_condition: '{meta:guide_examples_released} == true'
+    display:
+      material: REDSTONE
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&d箱子动作示例'
+          deny: '&dContainer Actions'
+      lore:
+        - '&fexample/container_actions'
+    actions:
+      all:
+        - 'open: example/container_actions'
+
+  F:
+    view_condition: '{meta:guide_examples_released} == true'
+    display:
+      material: FURNACE
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&6熔炉进度示例'
+          deny: '&6Furnace Progress'
+      lore:
+        - '&fexample/container_furnace'
+    actions:
+      all:
+        - 'open: example/container_furnace'
+
+  V:
+    view_condition: '{meta:guide_examples_released} == true'
+    display:
+      material: ANVIL
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&e铁砧输入示例'
+          deny: '&eAnvil Input'
+      lore:
+        - '&fexample/container_anvil'
+    actions:
+      all:
+        - 'open: example/container_anvil'
+
+  X:
+    view_condition: '{meta:guide_examples_released} == true'
+    display:
+      material: BARRIER
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&c关闭向导'
+          deny: '&cClose Guide'
+    actions:
+      all:
+        - 'close'

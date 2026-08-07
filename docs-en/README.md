@@ -6,11 +6,14 @@ description: KaMenu - A modern Dialog menu plugin for Paper, Folia, and Spigot
 
 > A next-generation Minecraft GUI plugin powered by the native Dialog API — a fresh interactive experience beyond traditional chest menus
 
-**KaMenu** is a native Dialog menu plugin for modern Minecraft servers. Paper/Folia use the Paper Dialog API and Spigot 1.21.6+ uses the Bungee Dialog API. The same YAML configuration and plugin JAR run on all three server platforms.
+**KaMenu** is a Minecraft menu plugin with a Bukkit/Spigot 1.16.5 compatibility baseline. Paper/Folia use the Paper Dialog API and Spigot 1.21.6+ uses the Bungee Dialog API. On older cores, native Dialog menus are disabled automatically while Container menus, actions, variables, JavaScript, storage, and custom commands remain available.
 
 > **Important:**
+> - **Shared runtime minimum:** Bukkit/Spigot/Paper-compatible core 1.16.5
 > - **Paper/Folia minimum:** 1.21.7
 > - **Spigot Dialog minimum:** Spigot 1.21.6
+> - **Plugin Java runtime:** Java 16+
+> - **Paper/Folia 1.21.7+:** the server core itself still requires Java 21+
 > - **Recommended version:** Paper 1.21.8+
 > - **Advanced text components:** Minecraft 1.21.9+ (supports sprite and other newer client text components)
 > - **Supported server software:** Paper, Folia, Spigot, and compatible forks

@@ -5,7 +5,7 @@
 
 # Configuration file version (DO NOT MODIFY THIS VALUE)
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
-config-version: 5
+config-version: 6
 
 # Plugin language (must match a filename in the lang/ folder, without .yml)
 # Built-in languages: zh_CN (Chinese), en_US (English)
@@ -93,7 +93,7 @@ listeners:
     main-menu:
       enabled: true           # Enable this menu / 启用此菜单
       material: 'CLOCK'       # Item material to detect / 要检测的物品材质
-      target-lore: 'main menu'     # Lore text to match / 匹配的lore文本
+      target-lore: 'main menu'     # Optional; empty/[] only checks material / 可选；留空或[]时只检查材质
       menu: 'example/main_menu'       # Menu file path to open / 要打开的菜单文件路径
       require-sneaking: false # Require sneaking to trigger / 需要潜行才能触发
 
@@ -114,28 +114,6 @@ listeners:
       target-lore: 'teleport'    # Lore text to match / 匹配的lore文本
       menu: 'warp_menu'      # Menu file path to open / 要打开的菜单文件路径
       require-sneaking: false # Require sneaking to trigger / 需要潜行才能触发
-
-# ============================================
-# Custom Commands Registration
-# 自定义指令注册
-# ============================================
-# Format 1: command-name: menu-file-path
-# 格式 1: 指令名: 菜单文件路径
-# Format 2: command-name: { actions: [...] }
-# 格式 2: 指令名下配置 actions 动作队列
-custom-commands:
-  zcd: 'example/main_menu'       # /zcd command / zcd指令
-  actions: 'example/actions_demo'  # /actions command / actions指令
-  menu: 'example/main_menu'      # /menu command / menu指令
-  test:
-    args:
-      0: "[hello, info]"
-      1: "%kamenu_online_players%"
-    actions:
-      - "tell: 嘿，你输入了/test指令"
-      - "tell: 参数：{args}"
-      - "sound: entity.experience_orb.pickup;volume=1.0;pitch=1.3"
-      - "tell: 你想测试什么内容呢？"
 
 # ============================================
 # Update Checker

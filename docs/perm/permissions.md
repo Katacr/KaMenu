@@ -82,7 +82,7 @@ KaMenu 通过多种配置方式实现菜单访问控制，无需依赖权限系�
 
 ### 1. 自定义指令 - 谁可以使用指令打开菜单？
 
-通过 `config.yml` 中的 `custom-commands` 注册自定义指令，默认所有玩家都可以使用。
+通过插件根目录 `custom_commands.yml` 中的 `custom-commands` 节注册自定义指令，默认所有玩家都可以使用。
 
 ```yaml
 custom-commands:

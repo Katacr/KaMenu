@@ -1,0 +1,96 @@
+# Migrated from DeluxeMenus. Review the migration report before using this menu.
+
+Type: CHEST
+Title: Requirements Menu
+Layout:
+- '`dm_slot_0``dm_slot_1`       '
+Events:
+  Open:
+  - condition: hasPerm.deluxemenus.shop
+    allow: []
+    deny:
+    - 'tell: &cYou don''t have permission to do that!'
+    - return
+Buttons:
+  dm_slot_0:
+    display:
+      material: GOLD_BLOCK
+      lore:
+      - '&7Buy/Sell GOLD_BLOCK'
+      - ''
+      - '&7- Left-click: &bBuy 1 &7for &a$100'
+      - '&7- Right-click: &bSell 1 &7for &a$50'
+      - '&7- Shift-left-click: &bBuy 64 &7for &a6,400'
+      - '&7- Shift-right-click: &bSell 64 &7for &a$3,200'
+    actions:
+      left:
+      - condition: hasMoney.100
+        allow:
+        - 'console: give %player_name% GOLD_BLOCK 1'
+        - 'money: type=take;num=100'
+        - 'tell: &aYou bought 1 &6GOLD_BLOCK &afor $100'
+        deny:
+        - 'tell: &cYou don''t have enough money for this!'
+      right:
+      - condition: hasItem.[mats=GOLD_BLOCK;amount=1]
+        allow:
+        - 'console: clear %player_name% GOLD_BLOCK 1'
+        - 'money: type=add;num=50'
+        - 'tell: &aYou sold 1 &6GOLD_BLOCK &afor $50'
+        deny:
+        - 'tell: &cYou don''t have enough &6GOLD_BLOCK &cto sell! Required: 1'
+      shift_left:
+      - condition: hasMoney.6400
+        allow:
+        - 'console: give %player_name% GOLD_BLOCK 64'
+        - 'money: type=take;num=6400'
+        - 'tell: &aYou bought 64 &6GOLD_BLOCK &afor $6400'
+        deny:
+        - 'tell: &cYou don''t have enough money for this!'
+      shift_right:
+      - condition: hasItem.[mats=GOLD_BLOCK;amount=64]
+        allow:
+        - 'console: clear %player_name% GOLD_BLOCK 64'
+        - 'money: type=add;num=3200'
+        - 'tell: &aYou sold 64 &6GOLD_BLOCK &afor $3200'
+        deny:
+        - 'tell: &cYou don''t have enough &6GOLD_BLOCK &cto sell! Required: 64'
+  dm_slot_1:
+    display:
+      material:
+      - condition: '!hasPerm.deluxemenus.free_diamonds.cooldown'
+        allow: DIAMOND
+      - condition: true && !(!hasPerm.deluxemenus.free_diamonds.cooldown)
+        allow: STONE
+      lore:
+      - condition: '!hasPerm.deluxemenus.free_diamonds.cooldown'
+        allow:
+        - '&aFREE DIAMOND! [1/day]'
+        - ''
+        - '&7Click to get 1 free &bdiamond&7!'
+      - condition: true && !(!hasPerm.deluxemenus.free_diamonds.cooldown)
+        allow:
+        - '&aFREE DIAMOND! [1/day]'
+        - ''
+        - '&cYou''re currently on cooldown. Click to refresh.'
+    actions:
+      left:
+      - condition: '!hasPerm.deluxemenus.free_diamonds.cooldown'
+        allow:
+        - 'console: give %player_name% DIAMOND 1'
+        - 'console: lp user %player_name% permission settemp deluxemenus.free_diamonds.cooldown
+          true 1d'
+        - 'refresh: *'
+      - condition: true && !(!hasPerm.deluxemenus.free_diamonds.cooldown)
+        allow:
+        - 'refresh: *'
+      right:
+      - condition: '!hasPerm.deluxemenus.free_diamonds.cooldown'
+        allow:
+        - 'console: give %player_name% DIAMOND 1'
+        - 'console: lp user %player_name% permission settemp deluxemenus.free_diamonds.cooldown
+          true 1d'
+        - 'refresh: *'
+      - condition: true && !(!hasPerm.deluxemenus.free_diamonds.cooldown)
+        allow:
+        - 'refresh: *'

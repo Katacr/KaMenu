@@ -10,6 +10,7 @@ import org.katacr.kamenu.DialogSessionManager
 import org.katacr.kamenu.KaMenu
 import org.katacr.kamenu.KaScheduler
 import org.katacr.kamenu.MenuActions
+import org.katacr.kamenu.MenuArgumentManager
 import org.katacr.kamenu.MenuListManager
 import org.katacr.kamenu.MenuRequirementChecker
 import org.katacr.kamenu.MenuTaskManager
@@ -259,6 +260,7 @@ class FloodgateFormAdapter : BedrockFormAdapter {
     private fun finishClose(player: Player, session: ActiveForm) {
         if (!activeForms.remove(player.uniqueId, session)) return
         val initialTaskToken = MenuTaskManager.currentToken(player)
+        val argumentContext = MenuArgumentManager.currentContext(player)
         val finish = { shouldKeepOpen: Boolean ->
             runOnPlayerThread(player) {
                 if (shouldKeepOpen && player.isOnline && MenuTaskManager.currentToken(player) == initialTaskToken &&
@@ -266,10 +268,10 @@ class FloodgateFormAdapter : BedrockFormAdapter {
                 ) {
                     if (!send(player, session)) {
                         activeForms.remove(player.uniqueId, session)
-                        clearLifecycle(player, initialTaskToken)
+                        clearLifecycle(player, initialTaskToken, argumentContext)
                     }
                 } else {
-                    clearLifecycle(player, initialTaskToken)
+                    clearLifecycle(player, initialTaskToken, argumentContext)
                 }
             }
         }
@@ -294,11 +296,16 @@ class FloodgateFormAdapter : BedrockFormAdapter {
     }
 
     /** 仅在没有新基岩表单且任务 token 未变化时清理旧菜单生命周期。 */
-    private fun clearLifecycle(player: Player, initialTaskToken: Long?) {
+    private fun clearLifecycle(
+        player: Player,
+        initialTaskToken: Long?,
+        argumentContext: MenuArgumentManager.Context?
+    ) {
         if (activeForms.containsKey(player.uniqueId) || MenuTaskManager.currentToken(player) != initialTaskToken) return
         DialogSessionManager.cancel(player)
         MenuTaskManager.cancel(player)
         MenuListManager.clear(player)
+        MenuArgumentManager.clearIfCurrent(player, argumentContext)
     }
 
     /** SimpleForm 为纵向按钮列表，因此忽略只用于 Java Dialog 矩阵补齐的合成按钮。 */

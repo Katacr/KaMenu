@@ -12,6 +12,137 @@
 | `after_action` | `String` | `CLOSE` | 点击按钮执行动作后的客户端行为 |
 | `lifetime` | `Long` | `300` | 菜单最大存在时间，单位为秒 |
 | `need_placeholder` | `List<String>` | `null` | 菜单所需的 PlaceholderAPI 扩展列表 |
+| `min_click_delay` | `Long` | `0` | 仅 Container 菜单生效；同一会话中有效按钮点击的最小间隔，单位为毫秒 |
+| `pass_arguments` | `Section` | 禁用 | 目标菜单参数传递设置，Dialog 和 Container 均支持 |
+
+---
+
+## pass_arguments - 菜单参数
+
+`pass_arguments` 用于为目标菜单创建独立的参数上下文。参数不会写入 `meta`、数据库或共享 YAML，因此不会因为异步动作产生临时数据覆盖或读取延迟。
+
+> KaMenu 的标准配置节点名称是 `Settings`，完整路径为 `Settings.pass_arguments`。
+
+### 配置格式
+
+```yaml
+Settings:
+  pass_arguments:
+    enable: true
+    default:
+      - '默认值'
+      - '%player_name%'
+      - '{meta:test}'
+      - '{js:[hello]}'
+    must: 2
+```
+
+### 参数解析规则
+
+- `enable: false` 或未配置时，目标菜单不创建参数上下文
+- `default` 是按索引排列的默认参数列表
+- 打开目标菜单时，显式传入的参数优先
+- 显式参数数量不足时，缺少的位置使用 `default` 中同索引的值
+- 默认值在目标菜单打开前解析，支持 PlaceholderAPI、KaMenu 内置变量、MetaData 和 JavaScript
+- `must` 表示补充默认值后至少需要的参数数量；数量不足时阻止菜单打开
+- `must` 未配置或为 `0` 时不限制数量
+- 多出来的显式参数会保留
+
+### 传参动作
+
+`open` 和 `force-open` 支持在菜单 ID 后继续写参数，参数可以使用空格或英文逗号分隔；参数包含空格时使用单引号、双引号或反引号包裹：
+
+```yaml
+Buttons:
+  profile:
+    display:
+      material: PLAYER_HEAD
+      name: '&a打开资料'
+    actions:
+      left:
+        - 'open: profile/detail {meta:target} vip'
+  search:
+    display:
+      material: PAPER
+      name: '&a打开搜索'
+    actions:
+      left:
+        - 'open: search/result,`钻石 剑`'
+```
+
+目标菜单内部可以通过 `{arg:0}`、`{arg:1}` 读取参数，也可以使用 `{args}` 获取空格连接后的完整参数，使用 `{arg_count}` 获取参数数量。它们可用于标题、Body、按钮物品、条件、Events 和动作：
+
+```yaml
+Title: '&8查询：{arg:0}'
+
+Body:
+  info:
+    type: 'message'
+    text: '目标玩家：{arg:0}，模式：{arg:1}'
+
+Events:
+  Open:
+    - 'tell: &7正在打开 {arg:0} 的菜单'
+
+Buttons:
+  confirm:
+    display:
+      material: EMERALD
+      name: '&a确认 {arg:0}'
+    actions:
+      left:
+        - 'tell: &a参数数量：{arg_count}'
+        - 'close'
+```
+
+### reset 与菜单切换
+
+`reset` 会保留当前菜单已经解析完成的参数并重新渲染；使用 `open` 或 `force-open` 切换到新菜单时，新菜单会重新按照自身的 `default` 和 `must` 规则解析参数。
+
+---
+
+## Container 菜单的 Settings
+
+箱子、漏斗、发射器、投掷器、熔炉、高炉、烟熏炉和铁砧菜单目前支持以下 `Settings` 配置：
+
+```yaml
+Settings:
+  need_placeholder:
+    - 'player'
+    - 'vault'
+  min_click_delay: 200
+```
+
+### need_placeholder
+
+`need_placeholder` 是 Container 和 Dialog 共用的 PlaceholderAPI 前置检查。列表中的每一项是 PlaceholderAPI 扩展标识符，例如：
+
+- `%player_name%` 对应 `player`
+- `%vault_eco_balance%` 对应 `vault`
+
+打开菜单时，KaMenu 会先检查 PlaceholderAPI 是否启用，以及这些扩展是否已经注册。检查失败会阻止菜单渲染，避免玩家打开显示不完整或动作判断错误的菜单。管理员会收到缺失扩展的可点击下载提示，普通玩家只会收到依赖缺失提示。
+
+该配置不会自动扫描菜单中的所有 `%...%` 变量；菜单使用了 PlaceholderAPI 扩展时，应主动将扩展标识符写入列表。没有使用 PAPI 扩展的菜单无需配置 `need_placeholder`。
+
+### min_click_delay
+
+`min_click_delay` 用于限制同一玩家在当前 Container 菜单会话中的有效按钮点击频率，单位为毫秒，行为类似 TrMenu 的 `Options.Min-Click-Delay`：
+
+```yaml
+Settings:
+  min_click_delay: 200
+```
+
+- `0` 或未配置：不限制点击频率，默认保持当前行为
+- `200`：两次有效按钮点击之间至少间隔 200 毫秒
+- 只对按钮可见、且最终解析出动作的点击生效
+- 空槽位、不可见按钮和没有动作的按钮不会消耗冷却
+- 冷却按菜单会话记录；重新打开、`reset` 或切换到其他菜单后会重新计时
+- 被冷却拦截的点击不会执行任何按钮动作，也不会改变物品或刷新菜单
+
+建议将商店、领取奖励、扣除经济或点券等容易因重复点击产生重复执行的菜单设置为 `150` 至 `300` 毫秒。需要允许快速连续操作的菜单可以保持默认值 `0`。
+
+Container 菜单不使用 Dialog 专属的 `can_escape`、`after_action` 和 `lifetime` 设置。Container 的关闭、动作完成后的跳转以及生命周期请使用按钮动作和 `Events.Open` / `Events.Close` 配置。
 
 ---
 

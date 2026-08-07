@@ -6,13 +6,14 @@ KaMenu 提供公开 API，允许其他插件打开文件菜单、渲染内存 YA
 
 ### `org.katacr.kamenu.api.KaMenuAPI`
 
-#### `openMenu(Player player, String menuId)`
+#### `openMenu(Player player, String menuId, List<String> arguments = emptyList())`
 
 打开由 KaMenu `MenuManager` 加载的菜单。
 
 **参数：**
 - `player` - 目标玩家
 - `menuId` - 菜单 ID，例如 `"main_menu"` 或 `"shop/weapons"`
+- `arguments` - 按位置传入目标菜单的参数列表，可在菜单中使用 `{arg:0}`、`{arg:1}` 读取
 
 **返回值：**
 - `boolean` - 是否成功提交打开请求
@@ -21,17 +22,18 @@ KaMenu 提供公开 API，允许其他插件打开文件菜单、渲染内存 YA
 import org.katacr.kamenu.api.KaMenuAPI
 
 val success = KaMenuAPI.openMenu(player, "main_menu")
-KaMenuAPI.openMenu(player, "shop/weapons")
+KaMenuAPI.openMenu(player, "shop/weapons", listOf("weapons", "vip"))
 ```
 
 ```java
 import org.katacr.kamenu.api.KaMenuAPI;
+import java.util.List;
 
 boolean success = KaMenuAPI.openMenu(player, "main_menu");
-KaMenuAPI.openMenu(player, "shop/weapons");
+KaMenuAPI.openMenu(player, "shop/weapons", List.of("weapons", "vip"));
 ```
 
-#### `openYaml(Player player, String yaml, String contextId = "external")`
+#### `openYaml(Player player, String yaml, String contextId = "external", List<String> arguments = emptyList())`
 
 解析内存中的 YAML 字符串，并作为 KaMenu 菜单打开。该 YAML 不会写入 `menus` 目录，也不需要执行菜单重载。
 
@@ -39,6 +41,7 @@ KaMenuAPI.openMenu(player, "shop/weapons");
 - `player` - 目标玩家
 - `yaml` - 完整的 KaMenu 菜单 YAML 内容
 - `contextId` - 外部上下文标识，用于日志定位来源
+- `arguments` - 按位置传入目标菜单的参数列表
 
 **返回值：**
 - `boolean` - 是否成功解析 YAML 并提交打开请求
@@ -58,12 +61,12 @@ Bottom:
       - "kgc:join lobby"
 """.trimIndent()
 
-KaMenuAPI.openYaml(player, yaml, "kagamecenter:main")
+KaMenuAPI.openYaml(player, yaml, "kagamecenter:main", listOf("lobby", "solo"))
 ```
 
 如果 YAML 解析失败，KaMenu 会在警告日志中写入 `contextId`。
 
-#### `openConfig(Player player, YamlConfiguration config, String contextId = "external")`
+#### `openConfig(Player player, YamlConfiguration config, String contextId = "external", List<String> arguments = emptyList())`
 
 打开内存中的 `YamlConfiguration`。该配置不要求来自 `MenuManager`。
 
@@ -71,6 +74,7 @@ KaMenuAPI.openYaml(player, yaml, "kagamecenter:main")
 - `player` - 目标玩家
 - `config` - 完整的 KaMenu 菜单配置
 - `contextId` - 外部上下文标识，用于日志定位来源
+- `arguments` - 按位置传入目标菜单的参数列表
 
 **返回值：**
 - `boolean` - 是否成功提交打开请求
@@ -82,10 +86,12 @@ import org.katacr.kamenu.api.KaMenuAPI
 val config = YamlConfiguration()
 config.loadFromString(yaml)
 
-KaMenuAPI.openConfig(player, config, "myplugin:dynamic-shop")
+KaMenuAPI.openConfig(player, config, "myplugin:dynamic-shop", listOf("diamond", "buy"))
 ```
 
 三个平台都会在渲染前执行 `Events.Open`；若动作链执行 `return`，菜单不会继续打开。外部内存菜单使用 `reset` 时会重新打开当前内存 `YamlConfiguration`，不要求配置来自 `MenuManager`。
+
+目标菜单可通过 `Settings.pass_arguments` 设置默认参数和最少参数数量。显式传入参数优先按索引使用；缺少的索引会使用目标菜单的 `default` 补位。菜单配置中可使用 `{arg:0}`、`{arg:1}`、`{args}` 和 `{arg_count}`。当补位后的参数数量小于 `must` 时，菜单不会打开。
 
 #### `registerActionHandler(String namespace, KaMenuActionHandler handler)`
 

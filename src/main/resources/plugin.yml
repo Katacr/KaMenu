@@ -1,18 +1,12 @@
 name: KaMenu
 version: '${version}'
 main: org.katacr.kamenu.KaMenu
-api-version: '1.21'
+api-version: '1.16'
 folia-supported: true
-libraries:
-  - org.jetbrains.kotlin:kotlin-stdlib:2.3.20
-  - net.kyori:adventure-text-minimessage:4.26.1
-  - net.kyori:adventure-text-serializer-legacy:4.26.1
-  - net.kyori:adventure-text-serializer-plain:4.26.1
-  - net.kyori:adventure-text-serializer-gson:4.26.1
-  - net.kyori:adventure-text-serializer-bungeecord:4.4.1
 softdepend:
   - PlaceholderAPI
   - Vault
+  - PlayerPoints
   - ItemsAdder
   - Oraxen
   - CraftEngine

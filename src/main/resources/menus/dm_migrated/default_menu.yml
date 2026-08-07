@@ -1,0 +1,49 @@
+# Migrated from DeluxeMenus. Review the migration report before using this menu.
+
+Type: CHEST
+Title: Default Menu
+Layout:
+- '`dm_slot_0``dm_slot_1``dm_slot_2``dm_slot_3``dm_slot_4``dm_slot_5``dm_slot_6``dm_slot_7``dm_slot_8`'
+Events:
+  Open:
+  - condition: hasPerm.deluxemenus.admin
+    allow: []
+    deny:
+    - 'tell: &cYou don''t have permission to do that!'
+    - return
+Buttons:
+  dm_slot_0:
+    display:
+      material: DIRT
+  dm_slot_1:
+    display:
+      material: GRASS_BLOCK
+  dm_slot_2:
+    display:
+      material: GRAVEL
+  dm_slot_3:
+    display:
+      material: COBBLESTONE
+  dm_slot_4:
+    display:
+      material: STONE
+  dm_slot_5:
+    display:
+      material: COAL_ORE
+  dm_slot_6:
+    display:
+      material: IRON_ORE
+  dm_slot_7:
+    display:
+      material: GOLD_ORE
+  dm_slot_8:
+    display:
+      material: DIAMOND_ORE
+      name: Exit
+      lore:
+      - click to exit
+    actions:
+      left:
+      - close
+      right:
+      - close

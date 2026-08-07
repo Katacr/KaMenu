@@ -1,0 +1,107 @@
+# KaMenu V2 Container actions and lifecycle example
+# Open with: /km open example/container_actions
+
+Type: CHEST
+Title: '&8Actions | Clicks: &f{meta:container_clicks}'
+Title-Update: 20
+
+Settings:
+  min_click_delay: 250
+
+Layout:
+  - '#########'
+  - '#L S C R#'
+  - '#   B   #'
+  - '####X####'
+
+Events:
+  Open:
+    - 'meta: type=set;key=container_clicks;var=`0`'
+    - 'actionbar: &aEvents.Open executed'
+  Close:
+    - 'actionbar: &7Events.Close executed'
+  Click:
+    record:
+      - 'meta: type=add;key=container_clicks;var=`1`'
+      - 'refresh: *'
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  L:
+    display:
+      material: STONE_BUTTON
+      name: '&aLeft and Right Click'
+      lore:
+        - '&7Left: play a sound'
+        - '&7Right: show an ActionBar message'
+    actions:
+      all:
+        - 'actions: record'
+      left:
+        - 'sound: BLOCK_NOTE_BLOCK_PLING;volume=1;pitch=1.2'
+      right:
+        - 'actionbar: &eYou used right click'
+
+  S:
+    display:
+      material: LEVER
+      name: '&eShift Click'
+      lore:
+        - '&7Supports Shift+left and Shift+right click'
+    actions:
+      shift_left:
+        - 'actions: record'
+        - 'actionbar: &aShift+left click'
+      shift_right:
+        - 'actions: record'
+        - 'actionbar: &bShift+right click'
+
+  C:
+    display:
+      material:
+        - condition: '%player_is_op% == true'
+          allow: EMERALD
+          deny: REDSTONE
+      name: '&dConditional Action'
+      lore:
+        - '&7Branches according to %player_is_op%'
+    actions:
+      all:
+        - condition: '%player_is_op% == true'
+          allow:
+            - 'actionbar: &aCondition passed: you are an operator'
+          deny:
+            - 'actionbar: &cCondition denied: you are not an operator'
+        - 'actions: record'
+
+  R:
+    display:
+      material: CLOCK
+      name: '&breset Action'
+      lore:
+        - '&7Reopens this menu without Events.Open'
+        - '&7The click counter is therefore preserved'
+    actions:
+      all:
+        - 'actions: record'
+        - 'reset'
+
+  B:
+    display:
+      material: ARROW
+      name: '&fBack to Basic Example'
+    actions:
+      all:
+        - 'open: example/container_main'
+
+  X:
+    display:
+      material: BARRIER
+      name: '&cClose Menu'
+    actions:
+      all:
+        - 'close'

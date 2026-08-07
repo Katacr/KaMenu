@@ -663,7 +663,7 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
             "Static pause menu text does not support actions or hover_item"
         }
         val component = MenuActions.parseClickableText(text)
-        return JsonParser.parseString(COMPONENT_SERIALIZER.serialize(component))
+        return JsonParser().parse(COMPONENT_SERIALIZER.serialize(component))
     }
 
     /**
@@ -695,16 +695,16 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
         val pack = JsonObject().apply { addProperty("description", "KaMenu ESC pause menu entry") }
         val bukkitMeta = File(datapacksFolder(), "bukkit/pack.mcmeta")
         val sourcePack = runCatching {
-            JsonParser.parseString(bukkitMeta.readText(Charsets.UTF_8)).asJsonObject.getAsJsonObject("pack")
+            JsonParser().parse(bukkitMeta.readText(Charsets.UTF_8)).asJsonObject.getAsJsonObject("pack")
         }.getOrNull()
 
         when {
             sourcePack?.has("min_format") == true && sourcePack.has("max_format") -> {
-                pack.add("min_format", sourcePack.get("min_format").deepCopy())
-                pack.add("max_format", sourcePack.get("max_format").deepCopy())
+                pack.add("min_format", sourcePack.get("min_format"))
+                pack.add("max_format", sourcePack.get("max_format"))
             }
 
-            sourcePack?.has("pack_format") == true -> pack.add("pack_format", sourcePack.get("pack_format").deepCopy())
+            sourcePack?.has("pack_format") == true -> pack.add("pack_format", sourcePack.get("pack_format"))
             else -> pack.addProperty("pack_format", 81)
         }
         return JSON.toJson(JsonObject().apply { add("pack", pack) })
@@ -724,7 +724,7 @@ class PauseEntryDatapackManager(private val plugin: KaMenu) {
      */
     private fun validateJsonFiles(files: Map<File, String>) {
         files.forEach { (file, contents) ->
-            require(JsonParser.parseString(contents).isJsonObject) {
+            require(JsonParser().parse(contents).isJsonObject) {
                 "Generated JSON root must be an object: ${file.name}"
             }
         }

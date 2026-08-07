@@ -7,6 +7,8 @@ import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
+import org.katacr.kamenu.migration.DeluxeMenusMigration
+import java.io.File
 import java.io.InputStreamReader
 
 /**
@@ -20,7 +22,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
     /**
      * 可重载的运行时模块。
      *
-     * CONFIG 包含 config.yml 及依赖它的自定义指令注册。
+     * CONFIG 包含 config.yml、custom_commands.yml 及自定义指令注册。
      */
     private enum class ReloadTarget(val id: String) {
         ALL("all"),
@@ -86,9 +88,14 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 sender.sendMessage(plugin.languageManager.getMessage("command.player_only"))
                 return true
             }
-            val guideConfig = loadInternalGuide()
+            val guideResource = if (MenuUI.dialogSupported) {
+                "internal/guide.yml"
+            } else {
+                "internal/guide_container.yml"
+            }
+            val guideConfig = loadInternalGuide(guideResource)
             if (guideConfig == null) {
-                sender.sendMessage(plugin.languageManager.getMessage("command.guide_missing", "internal/guide.yml"))
+                sender.sendMessage(plugin.languageManager.getMessage("command.guide_missing", guideResource))
                 return true
             }
             MenuUI.openConfig(sender, guideConfig, plugin, "internal:guide")
@@ -150,6 +157,122 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                     menuCount.toString()
                 )
             )
+            return true
+        }
+
+        if (args[0].equals("migrate", ignoreCase = true)) {
+            if (!sender.hasPermission("kamenu.admin")) {
+                sender.sendMessage(plugin.languageManager.getMessage("command.no_permission"))
+                return true
+            }
+            if (args.size < 2) {
+                sender.sendMessage(plugin.languageManager.getMessage("migration.usage"))
+                return true
+            }
+            if (!args[1].equals("dm", ignoreCase = true) && !args[1].equals("deluxemenus", ignoreCase = true)) {
+                sender.sendMessage(plugin.languageManager.getMessage("migration.unsupported_format", args[1]))
+                sender.sendMessage(plugin.languageManager.getMessage("migration.usage"))
+                return true
+            }
+
+            val migrationArguments = args.drop(2)
+            val overwrite = migrationArguments.any {
+                it.equals("overwrite", ignoreCase = true)
+            }
+            val positionalArguments = migrationArguments.filterNot {
+                it.equals("overwrite", ignoreCase = true)
+            }
+            if (positionalArguments.size > 2) {
+                sender.sendMessage(plugin.languageManager.getMessage("migration.usage"))
+                return true
+            }
+
+            val source = positionalArguments
+                .getOrNull(0)
+                ?.let { File(it).absoluteFile }
+                ?: resolveDefaultDeluxeMenusSource()
+            val targetRoot = resolveMigrationTarget(positionalArguments.getOrNull(1))
+            val migrator = DeluxeMenusMigration()
+            val result = migrator.migrate(source, targetRoot, overwrite)
+            val customCommandsConfig = plugin.customCommandManager.loadConfiguration()
+            val commandMerge = migrator.mergeOpenCommands(
+                result,
+                File(plugin.dataFolder, "menus"),
+                customCommandsConfig,
+                overwrite
+            )
+            var configSaveError: String? = null
+            if (commandMerge.added > 0 || commandMerge.replaced > 0) {
+                runCatching { plugin.customCommandManager.saveConfiguration(customCommandsConfig) }.onFailure { error ->
+                    configSaveError = error.message ?: error.javaClass.simpleName
+                }
+            }
+            sender.sendMessage(
+                plugin.languageManager.getMessage(
+                    "migration.completed",
+                    result.migrated.toString(),
+                    result.failed.toString(),
+                    result.warnings.toString(),
+                    targetRoot.absolutePath
+                )
+            )
+            result.files.forEach { file ->
+                if (file.migrated) {
+                    sender.sendMessage(
+                        plugin.languageManager.getMessage(
+                            "migration.file_success",
+                            file.source.absolutePath,
+                            file.target?.absolutePath ?: ""
+                        )
+                    )
+                }
+                file.issues.forEach { issue ->
+                    val key = if (issue.severity == DeluxeMenusMigration.Severity.ERROR) {
+                        "migration.error"
+                    } else {
+                        "migration.warning"
+                    }
+                    sender.sendMessage(plugin.languageManager.getMessage(key, issue.path, issue.message))
+                }
+            }
+            sender.sendMessage(
+                plugin.languageManager.getMessage(
+                    "migration.commands_completed",
+                    commandMerge.total.toString(),
+                    commandMerge.added.toString(),
+                    commandMerge.replaced.toString(),
+                    commandMerge.unchanged.toString(),
+                    commandMerge.conflicts.size.toString()
+                )
+            )
+            commandMerge.conflicts.forEach { conflict ->
+                sender.sendMessage(
+                    plugin.languageManager.getMessage(
+                        "migration.command_conflict",
+                        conflict.command,
+                        conflict.existingValue,
+                        conflict.migratedMenuId
+                    )
+                )
+            }
+            configSaveError?.let { error ->
+                sender.sendMessage(plugin.languageManager.getMessage("migration.config_save_failed", error))
+            }
+
+            if (result.migrated > 0) {
+                val menuReload = reloadMenu(cancelTasks = true)
+                val commandRegistration = plugin.customCommandManager.registerCustomCommandsWithResult()
+                plugin.customCommandManager.refreshOnlinePlayerCommands()
+                sender.sendMessage(
+                    plugin.languageManager.getMessage(
+                        "migration.runtime_reloaded",
+                        menuReload.success.toString(),
+                        menuReload.failed.toString(),
+                        commandRegistration.success.toString(),
+                        commandRegistration.failed.toString()
+                    )
+                )
+            }
             return true
         }
 
@@ -407,7 +530,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
 
                             // 目标玩家收到 actionbar 提示和拾取音效
                             val actionbarMessage = plugin.languageManager.getMessage("actions.inventory_full_actionbar", droppedAmount.toString())
-                            targetPlayer.sendActionBar(org.bukkit.ChatColor.translateAlternateColorCodes('&', actionbarMessage))
+                            MenuUI.sendActionBar(targetPlayer, TextParser.parseText(actionbarMessage))
                             targetPlayer.playSound(targetPlayer.location, org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f)
                         }
                     } else {
@@ -468,6 +591,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         sender.sendMessage(plugin.languageManager.getMessage("command.help_guide"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_language"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_examples"))
+        sender.sendMessage(plugin.languageManager.getMessage("command.help_migrate"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_pause"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_reload"))
         sender.sendMessage(plugin.languageManager.getMessage("command.help_action"))
@@ -637,6 +761,9 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
 
     private fun reloadMenu(cancelTasks: Boolean): ReloadResult {
         val start = System.nanoTime()
+        if (plugin.containerMenusReady) {
+            plugin.containerMenuService.closeAllSilently()
+        }
         if (cancelTasks) {
             MenuTaskManager.cancelAll()
         }
@@ -676,8 +803,9 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         return (System.nanoTime() - startNanos) / 1_000_000
     }
 
-    private fun loadInternalGuide(): YamlConfiguration? {
-        val inputStream = plugin.getResource("internal/guide.yml") ?: return null
+    /** 从插件资源中读取指定平台使用的内存引导菜单。 */
+    private fun loadInternalGuide(resourcePath: String): YamlConfiguration? {
+        val inputStream = plugin.getResource(resourcePath) ?: return null
         return try {
             inputStream.use { stream ->
                 InputStreamReader(stream, Charsets.UTF_8).use { reader ->
@@ -698,9 +826,18 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         val keyword = args.lastOrNull() ?: ""
         
         if (args.size == 1) return filterByKeyword(
-            listOf("help", "open", "guide", "language", "examples", "pause", "reload", "action", "list", "item"),
+            listOf("help", "open", "guide", "language", "examples", "migrate", "pause", "reload", "action", "list", "item"),
             keyword
         )
+        if (args.size == 2 && args[0].equals("migrate", ignoreCase = true)) {
+            return filterByKeyword(listOf("dm", "deluxemenus"), keyword)
+        }
+        if (args.size == 3 && args[0].equals("migrate", ignoreCase = true)) {
+            return filterByKeyword(listOf("overwrite"), keyword)
+        }
+        if (args.size in 4..5 && args[0].equals("migrate", ignoreCase = true)) {
+            return filterByKeyword(listOf("overwrite"), keyword)
+        }
         if (args.size == 2 && args[0].equals("open", ignoreCase = true)) {
             // 这里动态获取所有已加载的菜单 ID，按输入关键字模糊匹配
             return filterByKeyword(plugin.menuManager.getAllMenuIds(), keyword)
@@ -780,5 +917,21 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
     private fun filterByKeyword(list: List<String>, keyword: String): List<String> {
         if (keyword.isEmpty()) return list
         return list.filter { it.contains(keyword, ignoreCase = true) }
+    }
+
+    /** 将迁移输出限制在 KaMenu menus 目录，避免管理员误写插件目录之外的文件。 */
+    private fun resolveMigrationTarget(raw: String?): File {
+        val base = File(plugin.dataFolder, "menus").absoluteFile.normalize()
+        val relative = raw?.takeIf { it.isNotBlank() } ?: "dm_migrated"
+        val candidate = File(base, relative).absoluteFile.normalize()
+        return if (candidate.toPath().startsWith(base.toPath())) candidate else File(base, "dm_migrated")
+    }
+
+    /** 返回 DeluxeMenus 默认私有菜单目录，避免将其 config.yml 等非菜单文件纳入迁移。 */
+    private fun resolveDefaultDeluxeMenusSource(): File {
+        val pluginsDirectory = plugin.dataFolder.parentFile ?: File("plugins")
+        return File(pluginsDirectory, "DeluxeMenus/gui_menus")
+            .absoluteFile
+            .normalize()
     }
 }

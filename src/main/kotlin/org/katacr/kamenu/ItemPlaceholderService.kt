@@ -5,7 +5,6 @@ package org.katacr.kamenu
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.Material
@@ -26,7 +25,10 @@ import java.math.RoundingMode
 class ItemPlaceholderService(private val itemManager: ItemManager) {
     private val plainSerializer = PlainTextComponentSerializer.plainText()
     private val legacySerializer = LegacyComponentSerializer.legacyAmpersand()
-    private val miniSerializer = MiniMessage.miniMessage()
+    // 旧 Paper 的 Adventure API 不满足新版 MiniMessage 的最低要求。
+    private val miniSerializer by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        AdventureCompatibility.createMiniMessage()
+    }
 
     /**
      * 解析查询并返回稳定的字符串结果。
@@ -134,7 +136,7 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
         val property = query.property.lowercase()
         if (item == null) return emptyValue(property)
 
-        val meta = item.itemMeta
+        val meta = item.itemMeta ?: return emptyValue(property)
         return when {
             property == "type" -> item.type.key.toString()
             property == "external_id" || property == "custom_id" || property == "item_id" ->
@@ -176,7 +178,8 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
         return when (format) {
             TextFormat.PLAIN -> plainSerializer.serialize(component)
             TextFormat.LEGACY -> legacySerializer.serialize(component)
-            TextFormat.MINI -> miniSerializer.serialize(component)
+            // 旧核心无法生成 MiniMessage 字符串时仍返回可用的 Legacy 文本。
+            TextFormat.MINI -> miniSerializer?.serialize(component) ?: legacySerializer.serialize(component)
         }
     }
 
@@ -207,7 +210,7 @@ class ItemPlaceholderService(private val itemManager: ItemManager) {
     /** 计算已损耗耐久、剩余耐久及剩余百分比。 */
     private fun damageValues(item: ItemStack): DamageValues {
         val damageable = item.itemMeta as? Damageable ?: return DamageValues.EMPTY
-        val maxDamage = if (damageable.hasMaxDamage()) damageable.maxDamage else item.type.maxDurability.toInt()
+        val maxDamage = BukkitItemMetaCompat.maxDamage(damageable, item.type.maxDurability.toInt())
         if (maxDamage <= 0) return DamageValues.EMPTY
 
         val damage = damageable.damage.coerceAtLeast(0)

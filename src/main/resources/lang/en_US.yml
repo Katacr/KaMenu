@@ -26,6 +26,11 @@ logo:
   action_package_count: "§bLoaded Action Packages: §a{0}"
   javascript_package_count: "§bLoaded JavaScript Packages: §a{0}"
 
+# Dialog platform compatibility
+dialog:
+  unavailable_startup: "[KaMenu] The current server does not provide a compatible native Dialog API. Dialog menus are disabled; Container menus, actions, variables, and custom commands remain available."
+  unsupported: "§cThe current server platform does not support native Dialog menus. Use a Container menu or upgrade to a server core with Dialog API support."
+
 # Command Messages
 command:
   player_only: "§cOnly players can execute this command!"
@@ -42,6 +47,7 @@ command:
   help_guide: "§a/km guide §7- Open the getting started guide menu"
   help_language: "§a/km language <language_id> §7- Set language and reload"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- Release examples in a language"
+  help_migrate: "§a/km migrate dm [source-file-or-directory] [output-directory] [overwrite] §7- Migrate DeluxeMenus menus"
   help_pause: "§a/km pause <register|unregister|info> §7- Manage the ESC pause screen entry"
   help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- Reload all modules or a selected module"
   help_action: "§a/km action <player> <action> §7- Test execute action"
@@ -67,7 +73,21 @@ command:
   reload_actions_success: "§a[KaMenu] Action package reload complete: total {0}, success {1}, failed {2}, took {3}ms."
   reload_js_success: "§a[KaMenu] JavaScript package reload complete: total {0}, success {1}, failed {2}, took {3}ms."
   reload_lang_success: "§a[KaMenu] Language reload complete: total {0}, success {1}, failed {2}, took {3}ms, current language {4}."
-  reload_config_success: "§a[KaMenu] Config reload complete: custom commands total {0}, success {1}, failed {2}, took {3}ms."
+  reload_config_success: "§a[KaMenu] config.yml and custom_commands.yml reload complete: custom commands total {0}, success {1}, failed {2}, took {3}ms."
+
+# DeluxeMenus migration
+migration:
+  usage: "§eUsage: /km migrate dm [source-file-or-directory] [output-directory] [overwrite]; omitted source defaults to plugins/DeluxeMenus/gui_menus"
+  unsupported_format: "§cMigration format is not supported: {0}"
+  completed: "§aDeluxeMenus migration complete: {0} succeeded, {1} failed, {2} warning(s). Output: {3}"
+  file_success: "§aGenerated migrated menu: §f{1} §7(source: {0})"
+  warning: "§eMigration warning §7[{0}]§e: {1}"
+  error: "§cMigration failed §7[{0}]§c: {1}"
+  commands_completed: "§aDM open command migration complete: total {0}, added {1}, replaced {2}, unchanged {3}, conflicts {4}."
+  command_conflict: "§eSkipped conflicting command /{0}: existing value is {1}, migrated target is {2}. Use overwrite to replace it."
+  commands_invalid_config: "§cCannot migrate open commands because custom_commands.yml is not a valid configuration file."
+  config_save_failed: "§cMigrated menus were generated, but custom_commands.yml could not be saved: {0}"
+  runtime_reloaded: "§aMigration runtime reloaded: menus {0} succeeded, {1} failed; custom commands {2} succeeded, {3} failed."
 
 # ESC Pause Screen Entry
 pause_entry:
@@ -104,6 +124,8 @@ paper_dialog:
 
 # Custom Commands
 custom_commands:
+  legacy_migrated: "[KaMenu] Migrated {0} custom command(s) from config.yml to custom_commands.yml. Legacy backup: {1}"
+  legacy_migration_failed: "[KaMenu] Failed to migrate custom commands; the legacy config section was kept: {0}"
   manager_initialize_failed: "[KaMenu] Failed to initialize CustomCommandManager: {0}"
   invalid_config: "[KaMenu] Invalid custom command config: {0}"
   register_failed: "[KaMenu] Failed to register custom command /{0}: {1}"
@@ -135,6 +157,7 @@ menu:
   reloaded: "§a[KaMenu] Menus reloaded, loaded {0} menus and {1} custom commands."
   missing_dependencies: "§cThis menu is missing required dependencies, please contact an administrator."
   missing_papi_extensions_prefix: "§cThis menu requires the following PlaceholderAPI extensions:"
+  pass_arguments_insufficient: "§cMenu '{0}' requires at least {1} arguments, but only {2} remain after applying defaults."
 
 # Menu Manager
 manager:
@@ -145,6 +168,25 @@ manager:
   file_saved: "Saved default menu file: {0}/{1}"
   jar_extract_error: "Failed to extract files from jar: {0}"
   menu_load_failed: "Failed to load menu file: {0}, error: {1}"
+  container_diagnostic_warning: "Container menu {0} configuration warning [{1}] at {2}: {3}"
+  container_diagnostic_error: "Container menu {0} configuration error [{1}] at {2}: {3}"
+  container_load_failed: "Container menu {0} was not loaded because {1} configuration error(s) were found. File: {2}"
+
+item_renderer:
+  invalid_material: "Menu {0} component {1} uses an invalid material: {2}; falling back to PAPER"
+  invalid_item_property: "Menu {0} component {1} uses an invalid item property {2}: {3}"
+  invalid_item_slot: "Menu {0} component {1} cannot resolve player item slot: {2}"
+
+container:
+  config_invalid: "§cThe container menu configuration is invalid and cannot be opened: §f{0}"
+  open_event_failed: "Container menu {0} failed to execute its Open event: {1}"
+  close_event_failed: "Container menu {0} failed to execute its Close event: {1}"
+  render_failed: "Container menu {0} failed to render: {1}"
+  refresh_failed: "Container menu {0} failed to refresh: {1}"
+  refresh_target_not_found: "Container menu {0} cannot find refresh button: {1}"
+  anvil_input_unsupported: "[KaMenu] Container menu {0} fell back to a display-only anvil; this platform has no public API for reading rename input"
+  furnace_progress_unsupported: "[KaMenu] Container menu {0} cannot set the {1} progress display on this platform"
+  progress_action_failed: "Container menu {0} progress watcher {1} failed to execute its actions: {2}"
 
 # Menu UI
 ui:
@@ -179,6 +221,14 @@ actions:
   item_unknown_type: "[KaMenu] item unknown operation type: {0}, supported types: give, take. Player: {1}"
   item_missing_material: "[KaMenu] item operation failed: missing mats parameter. Player: {0}"
   item_invalid_material: "[KaMenu] item invalid material: {0}. Player: {1}"
+  points_unavailable: "[KaMenu] PlayerPoints is not installed or enabled; the points action cannot run. Player: {0}"
+  points_invalid_amount: "[KaMenu] Invalid points amount '{0}'; it must be an integer greater than 0. Player: {1}"
+  points_invalid_type: "[KaMenu] Invalid points operation '{0}'; supported types: add, take. Player: {1}"
+  points_insufficient: "[KaMenu] Player {0} does not have enough points to take {1}."
+  points_operation_failed: "[KaMenu] PlayerPoints operation failed: type {0}, amount {1}, player {2}."
+  modifier_invalid_chance: "[KaMenu] Invalid action chance '{0}'; this action was skipped. Player: {1}"
+  modifier_invalid_delay: "[KaMenu] Invalid per-action delay '{0}'; the action will run immediately. Player: {1}"
+  delayed_action_failed: "[KaMenu] Delayed action failed for player {0}: {1}"
   inventory_full_actionbar: "§cInventory full, {0} items dropped on the ground"
   action_list_not_found: "§cError: Action list '{0}' not found"
   action_list_not_found_with_global: "§cError: Action list '{0}' not found (checked current menu Events.Click.{0} and global actions/{0}.yml)"

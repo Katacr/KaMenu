@@ -1,26 +1,16 @@
 package org.katacr.kamenu.dialog
 
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
-import org.bukkit.Bukkit
-import org.bukkit.Material
-import org.bukkit.NamespacedKey
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
-import org.bukkit.inventory.ItemStack
-import org.bukkit.inventory.meta.SkullMeta
 import org.katacr.kamenu.ConditionUtils
-import org.katacr.kamenu.ExternalItemAdapter
 import org.katacr.kamenu.InputCaptureUtils
 import org.katacr.kamenu.JavaScriptManager
 import org.katacr.kamenu.KaMenu
-import org.katacr.kamenu.MaterialUtils
+import org.katacr.kamenu.MenuItemFactory
+import org.katacr.kamenu.MenuItemSpec
 import org.katacr.kamenu.MenuListManager
-import org.katacr.kamenu.TextParser
 import org.katacr.kamenu.TextResolver
-import java.net.URL
-import java.util.Base64
-import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -32,6 +22,7 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
     private data class DropdownOption(val id: String, val display: String)
     private data class RepeatItem(val values: Map<String, String>)
     private val reportedLimitations = ConcurrentHashMap.newKeySet<String>()
+    private val itemFactory = MenuItemFactory(plugin)
 
     /** 编译一份已加载或内存中的菜单配置。 */
     fun compile(player: Player, config: YamlConfiguration, contextId: String): DialogDefinition {
@@ -107,16 +98,45 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
             contextId,
             config = config
         )
-        val item = resolveItemStack(
-            player,
-            configuredMaterial,
-            getInt(player, section, "$key.amount", 1),
-            contextId,
-            key
+        val item = itemFactory.create(
+            player = player,
+            spec = MenuItemSpec(
+                source = configuredMaterial,
+                amount = getInt(player, section, "$key.amount", 1),
+                name = resolve(player, getString(player, section, "$key.name", ""), contextId, config = config)
+                    .takeIf(String::isNotEmpty),
+                lore = getStringList(player, section, "$key.lore")
+                    .map { resolve(player, it, contextId, config = config) }
+                    .takeIf(List<String>::isNotEmpty),
+                customModelData = resolve(
+                    player,
+                    getString(player, section, "$key.custom_model_data", ""),
+                    contextId,
+                    config = config
+                ).takeIf(String::isNotEmpty),
+                itemModel = resolve(
+                    player,
+                    getString(player, section, "$key.item_model", ""),
+                    contextId,
+                    config = config
+                ).takeIf(String::isNotEmpty),
+                skullOwner = resolve(
+                    player,
+                    getString(player, section, "$key.skull_owner", ""),
+                    contextId,
+                    config = config
+                ).takeIf(String::isNotEmpty),
+                skullTexture = resolve(
+                    player,
+                    getString(player, section, "$key.skull_texture", ""),
+                    contextId,
+                    config = config
+                ).takeIf(String::isNotEmpty)
+            ),
+            contextId = contextId,
+            componentId = key,
+            applyOverridesToSlotSource = false
         )
-        if (!isSlotReference(configuredMaterial)) {
-            applyConfiguredItemMeta(player, item, section, key, contextId, config)
-        }
         val description = getString(player, section, "$key.description", "")
             .takeIf { it.isNotEmpty() }
             ?.let { resolve(player, it, contextId, config = config) }
@@ -132,114 +152,6 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         )
     }
 
-    /** 将菜单中显式配置的名称、Lore、模型和头颅属性覆盖到物品上。 */
-    private fun applyConfiguredItemMeta(
-        player: Player,
-        item: ItemStack,
-        section: ConfigurationSection,
-        key: String,
-        contextId: String,
-        config: YamlConfiguration
-    ) {
-        val meta = item.itemMeta ?: return
-        val name = resolve(player, getString(player, section, "$key.name", ""), contextId, config = config)
-        if (name.isNotEmpty()) {
-            meta.setDisplayName(toLegacy(player, name))
-        }
-        val lore = getStringList(player, section, "$key.lore")
-        if (lore.isNotEmpty()) {
-            meta.lore = lore.map { toLegacy(player, resolve(player, it, contextId, config = config)) }
-        }
-
-        val customModelData = resolve(
-            player,
-            getString(player, section, "$key.custom_model_data", ""),
-            contextId,
-            config = config
-        )
-        if (customModelData.isNotEmpty()) {
-            customModelData.toIntOrNull()?.let(meta::setCustomModelData) ?: warnOnce(
-                "$contextId:$key:custom-model-data:$customModelData",
-                "spigot_dialog.invalid_item_property",
-                contextId,
-                key,
-                "custom_model_data",
-                customModelData
-            )
-        }
-
-        val itemModel = resolve(
-            player,
-            getString(player, section, "$key.item_model", ""),
-            contextId,
-            config = config
-        )
-        if (itemModel.isNotEmpty()) {
-            val modelKey = if (':' in itemModel) NamespacedKey.fromString(itemModel) else NamespacedKey.minecraft(itemModel)
-            if (modelKey != null) {
-                meta.itemModel = modelKey
-            } else {
-                warnOnce(
-                    "$contextId:$key:item-model:$itemModel",
-                    "spigot_dialog.invalid_item_property",
-                    contextId,
-                    key,
-                    "item_model",
-                    itemModel
-                )
-            }
-        }
-
-        if (meta is SkullMeta) {
-            val texture = resolve(
-                player,
-                getString(player, section, "$key.skull_texture", ""),
-                contextId,
-                config = config
-            )
-            val owner = resolve(
-                player,
-                getString(player, section, "$key.skull_owner", ""),
-                contextId,
-                config = config
-            )
-            when {
-                texture.isNotEmpty() -> applySkullTexture(meta, texture, contextId, key)
-                owner.isNotEmpty() -> meta.owningPlayer = Bukkit.getOfflinePlayer(owner)
-            }
-        }
-        item.itemMeta = meta
-    }
-
-    /** 将 Base64 头颅纹理转换为 Bukkit PlayerProfile，避免依赖 Paper ProfileProperty。 */
-    private fun applySkullTexture(meta: SkullMeta, texture: String, contextId: String, componentId: String) {
-        val skinUrl = runCatching {
-            val decoded = String(Base64.getDecoder().decode(texture), Charsets.UTF_8)
-            val rawUrl = Regex("\\\"url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
-                .find(decoded)?.groupValues?.get(1)
-                ?: error("texture URL is missing")
-            URL(rawUrl.replace("\\\\/", "/"))
-        }.getOrElse {
-            warnOnce(
-                "$contextId:$componentId:skull-texture",
-                "spigot_dialog.invalid_item_property",
-                contextId,
-                componentId,
-                "skull_texture",
-                "invalid Base64 texture"
-            )
-            return
-        }
-        val profile = Bukkit.createPlayerProfile(UUID.nameUUIDFromBytes(texture.toByteArray()), "custom_head")
-        val textures = profile.textures
-        textures.skin = skinUrl
-        profile.setTextures(textures)
-        meta.ownerProfile = profile
-    }
-
-    private fun toLegacy(player: Player, text: String): String =
-        LegacyComponentSerializer.legacySection().serialize(TextParser.parseText(text, player))
-
     /** 对同一菜单组件的兼容限制只输出一次本地化警告。 */
     private fun warnOnce(id: String, messageKey: String, vararg args: Any) {
         if (reportedLimitations.add(id)) {
@@ -247,99 +159,6 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         }
     }
 
-    /** 解析槽位、手持、外部物品 ID 或原版材质为完整 ItemStack。 */
-    private fun resolveItemStack(
-        player: Player,
-        source: String,
-        defaultAmount: Int,
-        contextId: String,
-        componentId: String
-    ): ItemStack {
-        val normalized = source.trim()
-        val slot = normalized.substringAfter("slot:", missingDelimiterValue = "").trim().toIntOrNull()
-        val bracketItem = resolveBracketSlot(player, normalized, contextId, componentId)
-        val inventoryItem = bracketItem ?: when {
-            normalized.equals("hand", true) || normalized.equals("mainhand", true) || normalized.equals("main_hand", true) ->
-                player.inventory.itemInMainHand
-            normalized.equals("offhand", true) || normalized.equals("off_hand", true) -> player.inventory.itemInOffHand
-            slot != null && slot in 0 until player.inventory.size -> player.inventory.getItem(slot)
-            else -> null
-        }
-        if (inventoryItem != null && inventoryItem.type != Material.AIR && inventoryItem.amount > 0) {
-            return inventoryItem.clone()
-        }
-
-        if (normalized.startsWith("stock:", ignoreCase = true)) {
-            val itemName = normalized.substringAfter(':').trim()
-            plugin.itemManager.getItem(itemName)?.let { savedItem ->
-                return savedItem.apply {
-                    amount = defaultAmount.coerceAtLeast(1).coerceAtMost(maxStackSize)
-                }
-            }
-        }
-
-        return ExternalItemAdapter.create(normalized, defaultAmount, player)
-            ?: ItemStack(MaterialUtils.matchMaterial(normalized) ?: Material.PAPER, defaultAmount.coerceAtLeast(1))
-    }
-
-    /** 解析 Paper 既有的 [HEAD:Player]、[MAINHAND] 等装备槽位写法。 */
-    private fun resolveBracketSlot(
-        player: Player,
-        source: String,
-        contextId: String,
-        componentId: String
-    ): ItemStack? {
-        if (!isSlotReference(source)) return null
-        val parts = source.substring(1, source.length - 1).split(':', limit = 2)
-        val targetName = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
-        val target = targetName?.let(Bukkit::getPlayer) ?: if (targetName == null) player else null
-        if (target == null || !target.isOnline) {
-            warnOnce(
-                "$contextId:$componentId:offline-slot:$targetName",
-                "spigot_dialog.invalid_item_slot",
-                contextId,
-                componentId,
-                targetName ?: ""
-            )
-            return ItemStack(Material.PAPER)
-        }
-        val slotName = parts[0].uppercase()
-        val slotItem = when (slotName) {
-            "HEAD" -> target.inventory.helmet
-            "CHEST" -> target.inventory.chestplate
-            "LEGGINGS" -> target.inventory.leggings
-            "BOOTS" -> target.inventory.boots
-            "MAINHAND" -> target.inventory.itemInMainHand
-            "OFFHAND" -> target.inventory.itemInOffHand
-            else -> {
-                warnOnce(
-                    "$contextId:$componentId:unknown-slot:$slotName",
-                    "spigot_dialog.invalid_item_slot",
-                    contextId,
-                    componentId,
-                    slotName
-                )
-                return ItemStack(Material.PAPER)
-            }
-        }
-        if (slotItem != null && slotItem.type != Material.AIR && slotItem.amount > 0) {
-            return slotItem.clone()
-        }
-        if (slotName == "HEAD") {
-            return ItemStack(Material.PLAYER_HEAD).apply {
-                val skullMeta = itemMeta as SkullMeta
-                skullMeta.owningPlayer = target
-                itemMeta = skullMeta
-            }
-        }
-        return ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE).apply {
-            val emptyMeta = itemMeta
-            emptyMeta?.setDisplayName("无")
-            itemMeta = emptyMeta
-        }
-    }
-
-    private fun isSlotReference(source: String): Boolean = source.startsWith('[') && source.endsWith(']')
 
     private fun compileInputs(
         player: Player,

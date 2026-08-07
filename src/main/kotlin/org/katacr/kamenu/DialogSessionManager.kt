@@ -65,6 +65,11 @@ object DialogSessionManager {
         activeDialogs.remove(player.uniqueId)?.timeoutTask?.cancel()
     }
 
+    /** 判断玩家当前是否存在已登记的 Dialog 会话。 */
+    fun isActive(player: Player): Boolean {
+        return activeDialogs.containsKey(player.uniqueId)
+    }
+
     /**
      * 插件关闭时清理全部菜单超时任务。
      */
@@ -74,6 +79,7 @@ object DialogSessionManager {
     }
 
     private fun closeSession(player: Player, session: ActiveDialog) {
+        val argumentContext = MenuArgumentManager.currentContext(player)
         MenuTaskManager.cancel(player)
         MenuListManager.clear(player)
         MenuUI.closeDialog(player)
@@ -85,7 +91,10 @@ object DialogSessionManager {
                         plugin.logger.severe("Dialog 超时关闭时执行 Close 事件失败: contextId=${session.contextId}, 错误=${error.message}")
                         error.printStackTrace()
                     }
+                    MenuArgumentManager.clearIfCurrent(player, argumentContext)
                 }
+        } else {
+            MenuArgumentManager.clearIfCurrent(player, argumentContext)
         }
     }
 }

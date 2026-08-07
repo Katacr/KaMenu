@@ -26,6 +26,11 @@ logo:
   action_package_count: "§b已加载动作包: §a{0}个"
   javascript_package_count: "§b已加载 JavaScript 包: §a{0}个"
 
+# Dialog 平台兼容
+dialog:
+  unavailable_startup: "[KaMenu] 当前核心未提供可用的原生 Dialog API，Dialog 菜单已禁用；Container、actions、变量和自定义指令仍可使用。"
+  unsupported: "§c当前服务器核心不支持原生 Dialog 菜单。请使用 Container 菜单，或升级到支持 Dialog API 的核心版本。"
+
 # 命令消息
 command:
   player_only: "§c只有玩家可以执行此指令！"
@@ -42,6 +47,7 @@ command:
   help_guide: "§a/km guide §7- 打开入门向导菜单"
   help_language: "§a/km language <语言ID> §7- 设置语言并重载"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- 释放指定语言示例菜单"
+  help_migrate: "§a/km migrate dm [源文件或目录] [输出目录] [overwrite] §7- 迁移 DeluxeMenus 菜单"
   help_pause: "§a/km pause <register|unregister|info> §7- 管理 ESC 暂停菜单入口"
   help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- 重载全部或指定模块"
   help_action: "§a/km action <玩家> <动作> §7- 测试执行动作"
@@ -67,7 +73,21 @@ command:
   reload_actions_success: "§a[KaMenu] 动作包重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
   reload_js_success: "§a[KaMenu] JavaScript 包重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
   reload_lang_success: "§a[KaMenu] 语言文件重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms，当前语言 {4}。"
-  reload_config_success: "§a[KaMenu] config 重载完成：自定义指令总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+  reload_config_success: "§a[KaMenu] config.yml 与 custom_commands.yml 重载完成：自定义指令总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+
+# DeluxeMenus 迁移
+migration:
+  usage: "§e用法: /km migrate dm [源文件或目录] [输出目录] [overwrite]；省略源目录时使用 plugins/DeluxeMenus/gui_menus"
+  unsupported_format: "§c暂不支持迁移格式: {0}"
+  completed: "§aDeluxeMenus 迁移完成：成功 {0} 个，失败 {1} 个，警告 {2} 个。输出目录: {3}"
+  file_success: "§a已生成迁移菜单: §f{1} §7(源文件: {0})"
+  warning: "§e迁移警告 §7[{0}]§e: {1}"
+  error: "§c迁移失败 §7[{0}]§c: {1}"
+  commands_completed: "§aDM 打开指令迁移完成：总数 {0}，新增 {1}，覆盖 {2}，已存在 {3}，冲突 {4}。"
+  command_conflict: "§e跳过冲突指令 /{0}：现有配置为 {1}，迁移目标为 {2}。使用 overwrite 可覆盖。"
+  commands_invalid_config: "§c无法迁移打开指令：custom_commands.yml 不是有效配置文件。"
+  config_save_failed: "§c迁移菜单已生成，但 custom_commands.yml 保存失败：{0}"
+  runtime_reloaded: "§a迁移运行时已重载：菜单成功 {0}，失败 {1}；自定义指令成功 {2}，失败 {3}。"
 
 # ESC 暂停菜单入口
 pause_entry:
@@ -104,6 +124,8 @@ paper_dialog:
 
 # 自定义指令
 custom_commands:
+  legacy_migrated: "[KaMenu] 已将 config.yml 中的 {0} 条自定义指令迁移到 custom_commands.yml。旧配置备份: {1}"
+  legacy_migration_failed: "[KaMenu] 自定义指令迁移失败，旧配置暂未移除: {0}"
   manager_initialize_failed: "[KaMenu] 自定义指令管理器初始化失败: {0}"
   invalid_config: "[KaMenu] 自定义指令配置无效: {0}"
   register_failed: "[KaMenu] 注册自定义指令 /{0} 失败: {1}"
@@ -135,6 +157,7 @@ menu:
   reloaded: "§a[KaMenu] 菜单已重载，共加载 {0} 个菜单和 {1} 个自定义指令。"
   missing_dependencies: "§c该菜单缺少必要的依赖文件，请联系管理员。"
   missing_papi_extensions_prefix: "§c该菜单需要以下PlaceholderAPI扩展才可使用："
+  pass_arguments_insufficient: "§c菜单 '{0}' 至少需要 {1} 个参数，补充默认值后只有 {2} 个，无法打开。"
 
 # 菜单管理器
 manager:
@@ -143,6 +166,25 @@ manager:
   save_error: "释放默认菜单文件时出错: {0}"
   jar_extract_error: "从 jar 包提取文件失败: {0}"
   menu_load_failed: "加载菜单文件失败: {0}，错误: {1}"
+  container_diagnostic_warning: "容器菜单 {0} 配置警告 [{1}]，位置 {2}: {3}"
+  container_diagnostic_error: "容器菜单 {0} 配置错误 [{1}]，位置 {2}: {3}"
+  container_load_failed: "容器菜单 {0} 未加载，共发现 {1} 个配置错误。文件: {2}"
+
+item_renderer:
+  invalid_material: "菜单 {0} 的组件 {1} 使用了无效材质: {2}，已回退为 PAPER"
+  invalid_item_property: "菜单 {0} 的组件 {1} 使用了无效物品属性 {2}: {3}"
+  invalid_item_slot: "菜单 {0} 的组件 {1} 无法读取玩家物品槽位: {2}"
+
+container:
+  config_invalid: "§c容器菜单配置存在错误，无法打开: §f{0}"
+  open_event_failed: "容器菜单 {0} 的 Open 事件执行失败: {1}"
+  close_event_failed: "容器菜单 {0} 的 Close 事件执行失败: {1}"
+  render_failed: "容器菜单 {0} 渲染失败: {1}"
+  refresh_failed: "容器菜单 {0} 刷新失败: {1}"
+  refresh_target_not_found: "容器菜单 {0} 找不到需要刷新的按钮: {1}"
+  anvil_input_unsupported: "[KaMenu] 容器菜单 {0} 已降级为仅展示铁砧；当前核心没有可读取重命名输入的公开 API"
+  furnace_progress_unsupported: "[KaMenu] 容器菜单 {0} 无法在当前核心设置 {1} 的进度显示"
+  progress_action_failed: "容器菜单 {0} 的进度监听器 {1} 执行动作失败: {2}"
 
 # 菜单UI
 ui:
@@ -177,6 +219,14 @@ actions:
   item_unknown_type: "[KaMenu] item 未知操作类型: {0}，支持的类型: give, take。玩家: {1}"
   item_missing_material: "[KaMenu] item 操作失败: 缺少 mats 参数。玩家: {0}"
   item_invalid_material: "[KaMenu] item 材质无效: {0}。玩家: {1}"
+  points_unavailable: "[KaMenu] PlayerPoints 未安装或尚未启用，无法执行点券动作。玩家: {0}"
+  points_invalid_amount: "[KaMenu] 点券数量 '{0}' 无效，必须是大于 0 的整数。玩家: {1}"
+  points_invalid_type: "[KaMenu] points 操作类型 '{0}' 无效，支持 add/take。玩家: {1}"
+  points_insufficient: "[KaMenu] 玩家 {0} 的点券不足，无法扣除 {1} 点。"
+  points_operation_failed: "[KaMenu] PlayerPoints 操作失败：类型 {0}，数量 {1}，玩家 {2}。"
+  modifier_invalid_chance: "[KaMenu] 动作概率 '{0}' 无效，该行动作已跳过。玩家: {1}"
+  modifier_invalid_delay: "[KaMenu] 单行动作延迟 '{0}' 无效，将立即执行。玩家: {1}"
+  delayed_action_failed: "[KaMenu] 玩家 {0} 的单行延迟动作执行失败: {1}"
   inventory_full_actionbar: "§c背包已满，{0}个物品掉在了地上"
   action_list_not_found: "§c错误: 找不到动作列表 '{0}'"
   action_list_not_found_with_global: "§c错误: 找不到动作列表 '{0}'（已检查当前菜单 Events.Click.{0} 和全局 actions/{0}.yml）"

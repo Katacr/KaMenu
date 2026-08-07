@@ -117,11 +117,5 @@ runs/
 
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
-/KaGuilds/
-/API/
-/NashornJS/
-/KaLogin/
-/DeluxeMenus-main/
 /paper-api-1.21.11/
-/Paper-main/
-/.qwen/
+/Agent/

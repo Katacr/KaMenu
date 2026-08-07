@@ -3,6 +3,7 @@
 package org.katacr.kamenu.dialog.paper
 
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.title.Title
 import org.bukkit.command.CommandSender
 import org.bukkit.configuration.file.YamlConfiguration
@@ -17,6 +18,7 @@ import org.katacr.kamenu.MenuRequirementChecker
 import org.katacr.kamenu.DialogSessionManager
 import org.katacr.kamenu.MenuTaskManager
 import org.katacr.kamenu.MenuUI
+import org.katacr.kamenu.PauseEntryListener
 import org.katacr.kamenu.dialog.DialogPlatformAdapter
 import org.katacr.kamenu.dialog.DialogDefinitionCompiler
 import java.time.Duration
@@ -36,6 +38,7 @@ class PaperDialogPlatformAdapter : DialogPlatformAdapter {
         this.plugin = plugin
         compiler = DialogDefinitionCompiler(plugin)
         renderer = PaperDialogRenderer(plugin)
+        plugin.server.pluginManager.registerEvents(PauseEntryListener(plugin), plugin)
     }
 
     override fun openMenu(player: Player, menuId: String, manager: MenuManager, plugin: KaMenu) {
@@ -160,6 +163,9 @@ class PaperDialogPlatformAdapter : DialogPlatformAdapter {
     override fun itemLore(meta: ItemMeta): List<Component> = meta.lore().orEmpty()
 
     override fun itemModel(meta: ItemMeta): String? = meta.itemModel?.toString()
+
+    /** Paper 可使用原生物品序列化，保留名称、Lore、组件和自定义模型等完整信息。 */
+    override fun itemHover(item: ItemStack): HoverEvent<HoverEvent.ShowItem> = item.asHoverEvent()
 
     override fun shutdown() = Unit
 }

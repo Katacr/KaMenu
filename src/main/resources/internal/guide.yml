@@ -75,6 +75,7 @@ Body:
           - '&fexample/repeat_buttons_demo &f- 动态列表按钮与分页 <text="&a[打开]";hover="&e打开 example/repeat_buttons_demo";command="/km open example/repeat_buttons_demo">'
           - '&fexample/target_selector_demo &f- 动作目标选择器 <text="&a[打开]";hover="&e打开 example/target_selector_demo";command="/km open example/target_selector_demo">'
           - '&fexample/inspect_player &f- Shift+右键玩家互动菜单 <text="&a[打开]";hover="&e打开 example/inspect_player";command="/km open example/inspect_player">'
+          - '&fexample/container_main &f- 箱子、熔炉和铁砧菜单入口 <text="&a[打开]";hover="&e打开 example/container_main";command="/km open example/container_main">'
         deny:
           - ""
           - "&bExample Menus"
@@ -88,6 +89,7 @@ Body:
           - '&fexample/repeat_buttons_demo &f- Dynamic repeat buttons and paging <text="&a[Open]";hover="&eOpen example/repeat_buttons_demo";command="/km open example/repeat_buttons_demo">'
           - '&fexample/target_selector_demo &f- Action target selectors <text="&a[Open]";hover="&eOpen example/target_selector_demo";command="/km open example/target_selector_demo">'
           - '&fexample/inspect_player &f- Shift+right-click player interaction menu <text="&a[Open]";hover="&eOpen example/inspect_player";command="/km open example/inspect_player">'
+          - '&fexample/container_main &f- Chest, furnace, and anvil menu entry <text="&a[Open]";hover="&eOpen example/container_main";command="/km open example/container_main">'
 
 Bottom:
   type: multi
@@ -192,6 +194,15 @@ Bottom:
           deny: "&b[ Repeat List ]"
       actions:
         - "command: km open example/repeat_buttons_demo"
+
+    open_container:
+      show-condition: "{meta:guide_examples_released} == true"
+      text:
+        - condition: "{language} == zh_CN"
+          allow: "&a[ 箱子示例 ]"
+          deny: "&a[ Container Examples ]"
+      actions:
+        - "command: km open example/container_main"
 
   exit:
     text:

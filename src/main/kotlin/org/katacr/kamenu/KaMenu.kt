@@ -9,6 +9,8 @@ import org.bstats.bukkit.Metrics
 import org.bstats.charts.SingleLineChart
 import org.bukkit.plugin.RegisteredServiceProvider
 import org.bukkit.plugin.java.JavaPlugin
+import org.katacr.kamenu.container.ContainerMenuListener
+import org.katacr.kamenu.container.ContainerMenuService
 import java.io.File
 
 /**
@@ -32,22 +34,26 @@ class KaMenu : JavaPlugin() {
     lateinit var actionPackageManager: ActionPackageManager
     lateinit var javaScriptPackageManager: JavaScriptPackageManager
     lateinit var pauseEntryDatapackManager: PauseEntryDatapackManager
+    lateinit var containerMenuService: ContainerMenuService
     var economy: Economy? = null
     var bungeeCordEnabled: Boolean = false
 
     /** 当前运行核心是否已初始化 ESC 暂停菜单数据包与平台回调。 */
     val pauseEntrySupported: Boolean
-        get() = ::pauseEntryDatapackManager.isInitialized
+        get() = ::pauseEntryDatapackManager.isInitialized && MenuUI.dialogSupported
+
+    /** Container 运行时是否已经完成初始化。 */
+    val containerMenusReady: Boolean
+        get() = ::containerMenuService.isInitialized
 
     /**
      * 在 Bukkit 启用插件前下载并挂载运行时依赖。
      *
-     * KaMenu 使用 Libby 将数据库驱动、连接池和 Nashorn 放到服务器共享 libraries 目录。
-     * Kotlin 与 Adventure 由 plugin.yml 的 libraries 在插件主类实例化前下载，不能放在此处自举。
-     * 这里不要访问依赖这些库的业务类，避免类加载顺序早于依赖注入。
+     * 该方法在 Kotlin stdlib 尚不可用时进入，因此加载 kotlin-stdlib 之前只能调用
+     * Java、Bukkit 和已随 JAR 提供的 Libby API。Kotlin 加载完成后才进入常规运行库加载流程。
      */
     override fun onLoad() {
-        // 创建共享的库目录（服务器根目录下的libraries文件夹）
+        // 此引导段必须保持 Kotlin-free；修改后需检查 onLoad 字节码中的首次 kotlin/ 引用。
         val librariesDir = File(dataFolder.parentFile.parentFile, "libraries")
         if (!librariesDir.exists()) {
             librariesDir.mkdirs()
@@ -55,69 +61,85 @@ class KaMenu : JavaPlugin() {
 
         val libraryManager = BukkitLibraryManager(this, librariesDir.absolutePath)
 
-        // 添加 Maven 中央仓库和阿里云镜像（加速国内下载）
-        libraryManager.addMavenCentral()
+        // 国内镜像优先，Maven Central 仅作为回退源。
         libraryManager.addRepository("https://maven.aliyun.com/repository/public")
-
-        // SQLite JDBC 驱动
-        val sqlite = Library.builder()
-            .groupId("org{}xerial")
-            .artifactId("sqlite-jdbc")
-            .version("3.46.1.0")
-            .build()
-
-        // MySQL Connector/J 驱动
-        val mysql = Library.builder()
-            .groupId("com{}mysql")
-            .artifactId("mysql-connector-j")
-            .version("9.1.0")
-            .build()
-
-        // HikariCP 连接池
-        val hikari = Library.builder()
-            .groupId("com{}zaxxer")
-            .artifactId("HikariCP")
-            .version("5.1.0")
-            .build()
-
-        // ASM 字节码操作库（Nashorn 依赖）
-        val asm = Library.builder()
-            .groupId("org{}ow2{}asm")
-            .artifactId("asm")
-            .version("9.5")
-            .build()
-
-        // ASM 工具库（Nashorn 需要 util.Printer 类）
-        val asmUtil = Library.builder()
-            .groupId("org{}ow2{}asm")
-            .artifactId("asm-util")
-            .version("9.5")
-            .build()
-
-        // Nashorn JavaScript 引擎
-        val nashorn = Library.builder()
-            .groupId("org{}openjdk{}nashorn")
-            .artifactId("nashorn-core")
-            .version("15.3")
-            .build()
+        libraryManager.addMavenCentral()
 
         logger.info("Checking and downloading necessary dependent libraries, please wait...")
 
-        libraryManager.loadLibrary(sqlite)
-        libraryManager.loadLibrary(mysql)
-        libraryManager.loadLibrary(hikari)
-        libraryManager.loadLibrary(asm)
-        libraryManager.loadLibrary(asmUtil)
-        libraryManager.loadLibrary(nashorn)
+        val kotlinStdlib = Library.builder()
+            .groupId("org{}jetbrains{}kotlin")
+            .artifactId("kotlin-stdlib")
+            .version("2.3.20")
+            .build()
+        libraryManager.loadLibrary(kotlinStdlib)
+
+        loadRuntimeLibraries(libraryManager)
+    }
+
+    /**
+     * 在 Kotlin stdlib 已挂载后加载 KaMenu 的常规运行库。
+     *
+     * Libby 1.3.0 不解析 Maven 传递依赖，因此 Adventure、bStats 等依赖按运行顺序显式列出。
+     */
+    private fun loadRuntimeLibraries(libraryManager: BukkitLibraryManager) {
+        val runtimeLibraries = listOf(
+            library("org{}jetbrains", "annotations", "13.0"),
+            library("net{}kyori", "adventure-api", "4.26.1"),
+            library("net{}kyori", "adventure-key", "4.26.1"),
+            library("net{}kyori", "adventure-text-minimessage", "4.26.1"),
+            library("net{}kyori", "adventure-text-serializer-legacy", "4.26.1"),
+            library("net{}kyori", "adventure-text-serializer-plain", "4.26.1"),
+            library("net{}kyori", "adventure-text-serializer-gson", "4.26.1"),
+            library("net{}kyori", "adventure-text-serializer-json", "4.26.1"),
+            library("net{}kyori", "adventure-text-serializer-commons", "4.26.1"),
+            library("net{}kyori", "adventure-text-serializer-bungeecord", "4.4.1"),
+            library("net{}kyori", "examination-api", "1.3.0"),
+            library("net{}kyori", "examination-string", "1.3.0"),
+            library("net{}kyori", "option", "1.1.0"),
+            relocatedLibrary("org{}bstats", "bstats-base", "3.1.0"),
+            relocatedLibrary("org{}bstats", "bstats-bukkit", "3.1.0"),
+            library("org{}xerial", "sqlite-jdbc", "3.46.1.0"),
+            library("com{}mysql", "mysql-connector-j", "9.1.0"),
+            library("com{}zaxxer", "HikariCP", "5.1.0"),
+            library("org{}ow2{}asm", "asm", "9.5"),
+            library("org{}ow2{}asm", "asm-util", "9.5"),
+            library("org{}openjdk{}nashorn", "nashorn-core", "15.3")
+        )
+        runtimeLibraries.forEach(libraryManager::loadLibrary)
+    }
+
+    /** 创建一项由 Libby 从 Maven 仓库下载的运行库描述。 */
+    private fun library(groupId: String, artifactId: String, version: String): Library {
+        return Library.builder()
+            .groupId(groupId)
+            .artifactId(artifactId)
+            .version(version)
+            .build()
+    }
+
+    /** 创建一项下载后重定位到 KaMenu 私有命名空间的运行库。 */
+    private fun relocatedLibrary(groupId: String, artifactId: String, version: String): Library {
+        return Library.builder()
+            .groupId(groupId)
+            .artifactId(artifactId)
+            .version(version)
+            .relocate("org{}bstats", "org{}katacr{}kamenu{}libs{}bstats")
+            .build()
     }
 
     override fun onEnable() {
         // 1. 保存并加载配置
         saveDefaultConfig()
 
-        // 1.5 检查并更新配置文件
+        // 1.5 在配置升级前迁移旧版 config.yml 中的自定义指令，避免旧值被升级器丢弃
         val configFile = File(dataFolder, "config.yml")
-        val configUpdated = ConfigUpdater.checkAndUpdateConfig(this, configFile)
+        val customCommandPreparation = CustomCommandFileManager.prepare(this, configFile)
+        val configUpdated = if (customCommandPreparation.error == null) {
+            ConfigUpdater.checkAndUpdateConfig(this, configFile)
+        } else {
+            false
+        }
 
         // 重新加载配置（如果已更新）
         if (configUpdated) {
@@ -138,6 +160,19 @@ class KaMenu : JavaPlugin() {
         MenuActions.setLanguageManager(languageManager)
         ActionHandlers.setLanguageManager(languageManager)
         ConfigUpdater.setLanguageManager(languageManager)
+
+        if (customCommandPreparation.legacyFound) {
+            logger.info(
+                languageManager.getMessage(
+                    "custom_commands.legacy_migrated",
+                    customCommandPreparation.migratedCount.toString(),
+                    customCommandPreparation.backupName ?: "none"
+                )
+            )
+        }
+        customCommandPreparation.error?.let { error ->
+            logger.warning(languageManager.getMessage("custom_commands.legacy_migration_failed", error))
+        }
 
         // 初始化 MenuUI
         KaScheduler.init(this)
@@ -195,9 +230,6 @@ class KaMenu : JavaPlugin() {
 
         // 5. 注册监听器
         server.pluginManager.registerEvents(MenuListener(this), this)
-        if (MenuUI.paperPlatform) {
-            server.pluginManager.registerEvents(PauseEntryListener(this), this)
-        }
 
         // 6. 初始化数据库管理器
         databaseManager = DatabaseManager(this)
@@ -216,6 +248,11 @@ class KaMenu : JavaPlugin() {
         MenuActions.setItemManager(itemManager)
         ActionHandlers.setItemManager(itemManager)
 
+        // 6.7 初始化 V2 Container 菜单运行时和只读库存监听器
+        containerMenuService = ContainerMenuService(this)
+        server.pluginManager.registerEvents(ContainerMenuListener(containerMenuService), this)
+        containerMenuService.cleanupOnlinePlayers()
+
         // 设置 ConditionUtils 插件引用
         ConditionUtils.setPlugin(this)
 
@@ -223,6 +260,7 @@ class KaMenu : JavaPlugin() {
         setupEconomy()
         MenuActions.setEconomy(economy)
         ActionHandlers.setEconomy(economy)
+        setupPlayerPoints()
 
         // 7.5 初始化 API
         org.katacr.kamenu.api.KaMenuAPI.init(this)
@@ -253,9 +291,13 @@ class KaMenu : JavaPlugin() {
             server.messenger.unregisterOutgoingPluginChannel(this, "BungeeCord")
         }
 
+        if (::containerMenuService.isInitialized) {
+            containerMenuService.shutdown()
+        }
         MenuTaskManager.cancelAll()
         DialogSessionManager.clearAll()
         MenuListManager.clearAll()
+        MenuArgumentManager.clearAll()
         MenuUI.shutdown()
         if (::menuManager.isInitialized) {
             menuManager.clear()
@@ -336,5 +378,17 @@ class KaMenu : JavaPlugin() {
         val rsp: RegisteredServiceProvider<Economy> = server.servicesManager.getRegistration(Economy::class.java) ?: return false
         economy = rsp.provider
         return true
+    }
+
+    /**
+     * 在 PlayerPoints 已启用时向动作模块注入点券服务。
+     *
+     * 先按插件名判断再加载 API 适配类，保证未安装 PlayerPoints 的服务器不解析其类引用。
+     */
+    private fun setupPlayerPoints() {
+        val pointsPlugin = server.pluginManager.getPlugin("PlayerPoints")
+            ?.takeIf { it.isEnabled }
+            ?: return
+        ActionHandlers.setPointsService(PlayerPointsService.create(pointsPlugin))
     }
 }

@@ -130,6 +130,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 **使用说明：**
 - 向导菜单从插件 jar 内部加载到内存，不会写入 `menus` 目录
+- 支持 Dialog 的服务器核心会打开 Dialog 向导；不支持 Dialog 的低版本核心会自动打开箱子向导
 - 可用于首次配置语言、释放示例菜单、查看示例菜单说明
 - 当服务器没有加载任何菜单且 OP 玩家进入服务器时，KaMenu 会发送可点击文本引导打开该菜单
 
@@ -177,6 +178,9 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 **使用说明：**
 - 不填写语言时，使用当前 `config.yml` 中的 `language`
 - 中文示例和英文示例都会释放到 `menus/example/`，不会生成 `exampleEN` 目录
+- 不支持 Dialog 的低版本核心只释放 `container_main`、`container_actions`、`container_furnace`、`container_anvil` 四个 Container 示例
+- 支持 Dialog 的核心会释放上述 Container 示例和全部 Dialog 示例
+- 平台变化不会删除 `menus/example/` 中已经存在的文件
 - 默认不会覆盖已有文件
 - 添加 `overwrite` 参数会覆盖已存在的同名示例菜单
 - 释放完成后会自动重载菜单
@@ -196,6 +200,39 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 # 覆盖释放中文示例
 /km examples zh_CN overwrite
 ```
+
+---
+
+### /km migrate dm
+
+将 DeluxeMenus 的箱子菜单转换为 KaMenu V2 Container 菜单。迁移器不会加载 DeluxeMenus，也不会执行源文件动作；生成后仍需在测试服中检查第三方物品、经济和指令插件行为。
+
+**格式：** `/km migrate dm [源文件或目录] [输出目录] [overwrite]`
+
+**权限：** `kamenu.admin`
+
+**说明：**
+- 省略源文件或目录时，默认扫描 `plugins/DeluxeMenus/gui_menus`
+- 源可以是单个 `.yml` 文件或包含多个 YAML 文件的目录
+- 输出目录相对于 `plugins/KaMenu/menus/`，省略时使用 `dm_migrated`
+- 默认不覆盖已有文件和同名自定义指令；使用 `overwrite` 才会覆盖两者
+- `open_command` 会转换为 `custom_commands.yml > custom-commands`，列表中的每个 DM 指令都会映射到迁移后的菜单 ID
+- 已有同名自定义指令默认保留并报告冲突，避免覆盖用户现有的菜单或动作指令
+- 迁移完成后会自动重载菜单、自定义指令和在线玩家的客户端命令树
+- 命令会逐文件输出成功结果和可定位到源 YAML 路径的 WARNING/ERROR
+
+**示例：**
+
+```bash
+/km migrate dm
+/km migrate dm overwrite
+/km migrate dm /path/to/DeluxeMenus/gui_menus
+/km migrate dm /path/to/DeluxeMenus/gui_menus overwrite
+/km migrate dm /path/to/DeluxeMenus/gui_menus dm_migrated overwrite
+/km open dm_migrated/requirements_menu
+```
+
+支持的字段映射、同槽位 `priority` 合并规则、动作转换和不支持内容见 [KaMenu V2 DeluxeMenus 迁移设计](../../V2_DELUXEMENUS_MIGRATION.md)。
 
 ---
 
@@ -250,7 +287,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 | `actions` | 仅重载 `plugins/KaMenu/actions/` 全局动作包 |
 | `js` | 仅重载 `plugins/KaMenu/js/` 全局 JavaScript 包 |
 | `lang` | 仅重载当前语言文件 |
-| `config` | 重载 `config.yml`、语言文件和自定义指令 |
+| `config` | 重载 `config.yml`、`custom_commands.yml`、语言文件和自定义指令 |
 
 每个目标都会返回独立统计：总数、成功、失败、耗时 ms。`config` 的统计对象是 `custom-commands` 中的自定义指令；不填写目标或使用 `all` 时，会依次输出各模块的重载结果。
 
@@ -389,7 +426,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 ## 自定义快捷指令
 
-除了 `/km open` 之外，你还可以在 `config.yml` 中注册自定义快捷指令，直接将一个简短的指令映射到打开某个菜单：
+除了 `/km open` 之外，你还可以在插件根目录的 `custom_commands.yml` 中注册自定义快捷指令，直接将一个简短的指令映射到打开某个菜单：
 
 ```yaml
 custom-commands:

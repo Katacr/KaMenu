@@ -52,11 +52,6 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
         val player = event.player
         val item = event.item ?: return
-
-        // 检查物品是否有 lore
-        if (!item.hasItemMeta() || !item.itemMeta.hasLore()) return
-
-        val lore = item.itemMeta.lore ?: return
         val config = plugin.config
 
         // 遍历 listeners.item-lore 下的所有配置项
@@ -68,7 +63,13 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
             // 获取配置参数
             val targetMaterial = config.getString("listeners.item-lore.$key.material") ?: continue
-            val targetLore = config.getString("listeners.item-lore.$key.target-lore") ?: continue
+            val rawTargetLore = config.get("listeners.item-lore.$key.target-lore")
+            val targetLore = when (rawTargetLore) {
+                null -> null
+                is String -> rawTargetLore.takeUnless(String::isBlank)
+                is Collection<*> -> if (rawTargetLore.isEmpty()) null else continue
+                else -> rawTargetLore.toString().takeUnless(String::isBlank)
+            }
             val menuName = config.getString("listeners.item-lore.$key.menu") ?: continue
             val requireSneaking = config.getBoolean("listeners.item-lore.$key.require-sneaking", false)
 
@@ -78,17 +79,16 @@ class MenuListener(private val plugin: KaMenu) : Listener {
             // 检查 material 是否匹配（使用规范化的材质匹配）
             if (!isMaterialMatch(item, targetMaterial)) continue
 
-            // 检查物品 lore 是否包含目标文本
-            val hasTargetLore = lore.any { loreLine ->
-                loreLine.contains(targetLore)
+            // target-lore 为空时只判断材质；非空时继续执行原有 Lore 包含匹配。
+            if (targetLore != null) {
+                val lore = item.itemMeta?.lore.orEmpty()
+                if (lore.none { loreLine -> loreLine.contains(targetLore) }) continue
             }
 
-            if (hasTargetLore) {
-                // 取消事件，打开菜单
-                event.isCancelled = true
-                MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
-                return // 找到匹配后立即返回
-            }
+            // 取消事件，打开菜单
+            event.isCancelled = true
+            MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
+            return // 找到匹配后立即返回
         }
     }
 
