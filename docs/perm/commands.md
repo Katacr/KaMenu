@@ -232,7 +232,40 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 /km open dm_migrated/requirements_menu
 ```
 
-支持的字段映射、同槽位 `priority` 合并规则、动作转换和不支持内容见 [KaMenu V2 DeluxeMenus 迁移设计](../../V2_DELUXEMENUS_MIGRATION.md)。
+同槽位 `priority` 合并和状态变体规则见 [Container Buttons](../container/buttons.md#variants-状态变体)。
+
+---
+
+### /km migrate trmenu
+
+将 TrMenu stable-v3 的经典库存菜单编译为 KaMenu V2 Container 标准菜单。迁移器只读取源 YAML，不加载 TrMenu，也不会执行 Kether、JavaScript、指令或点击动作。
+
+**格式：** `/km migrate trmenu [源文件或目录] [输出目录] [overwrite]`
+
+**别名：** `/km migrate trm`
+
+**权限：** `kamenu.admin`
+
+**说明：**
+- 省略源路径时，默认扫描 `plugins/TrMenu/menus`
+- 输出目录相对于 `plugins/KaMenu/menus/`，省略时使用 `trmenu_migrated`
+- 默认保留已有菜单、同名自定义指令和物品绑定；使用 `overwrite` 才会覆盖
+- 普通 `Bindings.Commands` 会合并到 `custom_commands.yml`；正则指令绑定不会自动迁移
+- 可兼容的 `Bindings.Items` 会合并到 `item_bindings.yml`；不安全的物品 trait 会跳过并输出警告
+- 迁移器先建立全批次菜单 ID 映射，再转换跨文件 `open:` 动作
+- 每个生成文件都会再次经过 KaMenu Container 解析器校验；存在 ERROR 时不会写入目标
+- 完成后自动重载菜单、自定义指令、物品绑定和在线玩家的客户端命令树
+
+**示例：**
+
+```bash
+/km migrate trmenu
+/km migrate trm overwrite
+/km migrate trmenu /path/to/TrMenu/menus trmenu_migrated overwrite
+/km open trmenu_migrated/example
+```
+
+支持范围、拒绝策略和诊断说明见 [TrMenu 迁移](../container/trmenu-migration.md)。
 
 ---
 
@@ -391,7 +424,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 - `wait`、`return`、`run-task:`、`stop-task:`、`stop-current-task`、`page:`、`actions:` 等动作链/菜单上下文动作可以输入，但部分效果依赖当前菜单配置或任务生命周期。
 - `url:` 和 `copy:` 是 Paper Dialog 按钮的静态点击事件，只在菜单按钮中作为单动作使用，不适合作为 `/km action` 测试目标。
 
-详细动作类型请参阅 [动作 (Actions)](../menu/actions.md)。
+详细动作类型请参阅 [动作 (Actions)](../modern-dialog/actions.md)。
 
 ---
 
@@ -434,4 +467,4 @@ custom-commands:
   menu: 'main_menu'     # 玩家执行 /menu 即打开 main_menu 菜单
 ```
 
-详细配置请参阅 [自定义指令](../home/commands.md)。
+详细配置请参阅 [自定义指令](../config/customCommands.md)。

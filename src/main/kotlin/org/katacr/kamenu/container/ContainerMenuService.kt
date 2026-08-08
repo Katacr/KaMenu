@@ -264,14 +264,14 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val session = validSession(player, inventory) ?: return
         val buttonId = session.definition.layout.buttonAt(slot) ?: return
         val button = session.definition.buttons[buttonId] ?: return
-        if (!isButtonVisible(player, session, button)) return
+        val variant = resolveButtonVariant(player, session, button) ?: return
 
         val actionTypes = linkedSetOf(ContainerClickType.ALL)
         if (clickType.name.startsWith("NUMBER_KEY")) {
             actionTypes += ContainerClickType.NUMBER_KEY
         }
         actionTypes += clickType
-        val actions = actionTypes.flatMap { button.actions[it].orEmpty() }
+        val actions = actionTypes.flatMap { variant.actions[it].orEmpty() }
         if (actions.isEmpty()) return
         if (!consumeClickCooldown(session)) return
 
@@ -332,9 +332,16 @@ class ContainerMenuService(private val plugin: KaMenu) {
 
         val buttonId = session.definition.layout.buttonAt(ANVIL_RESULT_SLOT) ?: return null
         val button = session.definition.buttons[buttonId] ?: return null
-        if (!isButtonVisible(player, session, button)) return null
+        val variant = resolveButtonVariant(player, session, button) ?: return null
         return markDisplayItem(
-            itemRenderer.render(player, session.config, session.menuId, button, sessionVariables(session)),
+            itemRenderer.render(
+                player,
+                session.config,
+                session.menuId,
+                button,
+                variant.display,
+                sessionVariables(session)
+            ),
             session.sessionId
         )
     }
@@ -349,15 +356,15 @@ class ContainerMenuService(private val plugin: KaMenu) {
     }
 
     /**
-     * 执行 `refresh:` 动作。
+     * 执行 `refresh` 动作。
      *
-     * `*` 刷新标题、属性和全部按钮，`title`、`properties` 可分别刷新，其他值匹配按钮 ID。
+     * 空目标刷新全部按钮，`*` 额外刷新标题和属性，`title`、`properties` 可分别刷新，其他值匹配按钮 ID。
      */
     fun refreshFromAction(player: Player, target: String): Boolean {
         val session = sessions[player.uniqueId] ?: return false
         val normalized = target.trim()
         val buttonIds = when {
-            normalized == "*" -> session.definition.buttons.keys
+            normalized.isEmpty() || normalized == "*" -> session.definition.buttons.keys
             normalized.equals("title", ignoreCase = true) -> emptySet()
             normalized.equals("properties", ignoreCase = true) -> emptySet()
             session.definition.buttons.containsKey(normalized) -> setOf(normalized)
@@ -601,9 +608,10 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val variables = sessionVariables(session)
         buttonIds.forEach { buttonId ->
             val button = session.definition.buttons[buttonId] ?: return@forEach
-            val item = if (isButtonVisible(player, session, button)) {
+            val variant = resolveButtonVariant(player, session, button)
+            val item = if (variant != null) {
                 markDisplayItem(
-                    itemRenderer.render(player, session.config, session.menuId, button, variables),
+                    itemRenderer.render(player, session.config, session.menuId, button, variant.display, variables),
                     session.sessionId
                 )
             } else {
@@ -626,19 +634,47 @@ class ContainerMenuService(private val plugin: KaMenu) {
         }
     }
 
-    /** 判断按钮当前是否对玩家可见。 */
-    private fun isButtonVisible(
+    /**
+     * 选择按钮当前生效的变体。
+     *
+     * 先判断按钮级 view_condition，再按解析阶段已排序的 variants 选择首个匹配项。
+     * 没有 variants 的旧格式会包装为一个始终匹配的兼容变体。
+     */
+    private fun resolveButtonVariant(
         player: Player,
         session: ActiveSession,
         button: ContainerButtonDefinition
-    ): Boolean {
-        val condition = button.viewCondition ?: return true
-        return org.katacr.kamenu.ConditionUtils.checkCondition(
-            player,
-            condition,
-            sessionVariables(session),
-            session.config
-        ) { null }
+    ): ContainerButtonVariantDefinition? {
+        val variables = sessionVariables(session)
+        val buttonCondition = button.viewCondition
+        if (buttonCondition != null && !org.katacr.kamenu.ConditionUtils.checkCondition(
+                player,
+                buttonCondition,
+                variables,
+                session.config
+            ) { null }
+        ) {
+            return null
+        }
+
+        if (button.variants.isEmpty()) {
+            return ContainerButtonVariantDefinition(
+                priority = null,
+                order = 0,
+                condition = null,
+                display = button.display,
+                actions = button.actions
+            )
+        }
+
+        return button.variants.firstOrNull { variant ->
+            variant.condition == null || org.katacr.kamenu.ConditionUtils.checkCondition(
+                player,
+                variant.condition,
+                variables,
+                session.config
+            ) { null }
+        }
     }
 
     /** 解析标题帧并在标题变化时原地更新或兼容性重绑库存。 */

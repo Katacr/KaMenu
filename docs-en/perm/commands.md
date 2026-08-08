@@ -232,7 +232,40 @@ Converts DeluxeMenus chest menus into KaMenu V2 Container menus. The converter d
 /km open dm_migrated/requirements_menu
 ```
 
-See [KaMenu V2 DeluxeMenus Migration](../../V2_DELUXEMENUS_MIGRATION.md) for field mappings, same-slot `priority` merging, action conversion, and unsupported features.
+See [Container Buttons](../container/buttons.md#variants) for same-slot `priority` merging and state variant rules.
+
+---
+
+### /km migrate trmenu
+
+Compiles classic TrMenu stable-v3 inventory menus into standard KaMenu V2 Container menus. The migrator only reads source YAML. It does not load TrMenu or execute Kether, JavaScript, commands, or click actions.
+
+**Format:** `/km migrate trmenu [source-file-or-directory] [output-directory] [overwrite]`
+
+**Alias:** `/km migrate trm`
+
+**Permission:** `kamenu.admin`
+
+**Notes:**
+- When the source is omitted, KaMenu scans `plugins/TrMenu/menus`
+- The output directory is relative to `plugins/KaMenu/menus/`; the default is `trmenu_migrated`
+- Existing menus, same-name custom commands, and item bindings are preserved unless `overwrite` is supplied
+- Plain `Bindings.Commands` entries are merged into `custom_commands.yml`; regex bindings are not converted automatically
+- Compatible `Bindings.Items` entries are merged into `item_bindings.yml`; unsafe item traits are skipped with diagnostics
+- The migrator builds the complete batch menu-ID map before converting cross-file `open:` actions
+- Every generated file is parsed again by KaMenu's Container parser; a file with any ERROR is not written
+- Menus, custom commands, item bindings, and online players' client command trees are reloaded after migration
+
+**Examples:**
+
+```bash
+/km migrate trmenu
+/km migrate trm overwrite
+/km migrate trmenu /path/to/TrMenu/menus trmenu_migrated overwrite
+/km open trmenu_migrated/example
+```
+
+See [TrMenu Migration](../container/trmenu-migration.md) for supported features, rejection rules, and diagnostics.
 
 ---
 
@@ -391,7 +424,7 @@ Test and execute a specified action for debugging and verifying action configura
 - Action-chain or menu-context actions such as `wait`, `return`, `run-task:`, `stop-task:`, `stop-current-task`, `page:`, and `actions:` can be entered, but some effects depend on the current menu config or task lifecycle.
 - `url:` and `copy:` are Paper Dialog static button click events. They only work as a single menu button action and are not useful `/km action` test targets.
 
-For a full list of action types, see [Actions](../menu/actions.md).
+For a full list of action types, see [Actions](../modern-dialog/actions.md).
 
 ---
 
@@ -434,4 +467,4 @@ custom-commands:
   menu: 'main_menu'     # Players run /menu to open main_menu
 ```
 
-For detailed configuration, see [Custom Commands](../home/commands.md).
+For detailed configuration, see [Custom Commands](../config/customCommands.md).

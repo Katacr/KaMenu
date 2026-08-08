@@ -170,6 +170,6 @@ Events:
 ## 相关文档
 
 - [自定义指令](../config/customCommands.md) - 了解如何注册自定义指令
-- [事件系统](../menu/events.md) - 了解 Events.open 的详细用法
-- [条件判断](../menu/conditions.md) - 了解各种条件判断方法
+- [事件系统](../modern-dialog/events.md) - 了解 Events.open 的详细用法
+- [条件判断](../modern-dialog/conditions.md) - 了解各种条件判断方法
 - [配置文件](../config/config.md) - 了解 config.yml 的完整配置

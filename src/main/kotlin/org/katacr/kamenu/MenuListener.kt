@@ -12,12 +12,11 @@ import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
 import org.bukkit.inventory.EquipmentSlot
-import org.bukkit.inventory.ItemStack
 
 /**
  * Bukkit 事件监听器。
  *
- * 根据 config.yml 中的 listeners 配置，把交换副手、右键物品 lore、右键玩家等入口映射为打开菜单。
+ * 根据 config.yml 和 item_bindings.yml，把交换副手、右键绑定物品、右键玩家等入口映射为打开菜单。
  * 同时负责玩家进服向导提示、更新提示，以及退出时清理菜单周期任务和临时元数据。
  */
 class MenuListener(private val plugin: KaMenu) : Listener {
@@ -52,44 +51,9 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
         val player = event.player
         val item = event.item ?: return
-        val config = plugin.config
-
-        // 遍历 listeners.item-lore 下的所有配置项
-        val itemLoreSection = config.getConfigurationSection("listeners.item-lore") ?: return
-
-        for (key in itemLoreSection.getKeys(false)) {
-            // 检查此配置是否启用
-            if (!config.getBoolean("listeners.item-lore.$key.enabled", false)) continue
-
-            // 获取配置参数
-            val targetMaterial = config.getString("listeners.item-lore.$key.material") ?: continue
-            val rawTargetLore = config.get("listeners.item-lore.$key.target-lore")
-            val targetLore = when (rawTargetLore) {
-                null -> null
-                is String -> rawTargetLore.takeUnless(String::isBlank)
-                is Collection<*> -> if (rawTargetLore.isEmpty()) null else continue
-                else -> rawTargetLore.toString().takeUnless(String::isBlank)
-            }
-            val menuName = config.getString("listeners.item-lore.$key.menu") ?: continue
-            val requireSneaking = config.getBoolean("listeners.item-lore.$key.require-sneaking", false)
-
-            // 判断潜行条件
-            if (requireSneaking && !player.isSneaking) continue
-
-            // 检查 material 是否匹配（使用规范化的材质匹配）
-            if (!isMaterialMatch(item, targetMaterial)) continue
-
-            // target-lore 为空时只判断材质；非空时继续执行原有 Lore 包含匹配。
-            if (targetLore != null) {
-                val lore = item.itemMeta?.lore.orEmpty()
-                if (lore.none { loreLine -> loreLine.contains(targetLore) }) continue
-            }
-
-            // 取消事件，打开菜单
-            event.isCancelled = true
-            MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
-            return // 找到匹配后立即返回
-        }
+        val menuName = plugin.itemBindingManager.findMenu(player, item) ?: return
+        event.isCancelled = true
+        MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
     }
 
     @EventHandler
@@ -142,6 +106,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
+        plugin.itemBindingManager.clear(event.player.uniqueId)
         MenuUI.discardPlayer(event.player)
         DialogSessionManager.cancel(event.player)
         MenuTaskManager.cancel(event.player)
@@ -150,16 +115,4 @@ class MenuListener(private val plugin: KaMenu) : Listener {
         plugin.metaDataManager.clearPlayerMeta(event.player.uniqueId)
     }
 
-    /**
-     * 检查两个材质名称是否匹配（使用规范化比较）
-     * @param item 当前交互物品
-     * @param targetMaterial 配置中的材质名称（可能包含短杠、空格、混合大小写）
-     * @return 是否匹配
-     */
-    private fun isMaterialMatch(item: ItemStack, targetMaterial: String): Boolean {
-        if (ExternalItemAdapter.matches(item, targetMaterial)) return true
-        // 尝试规范化目标材质名称并匹配
-        val normalizedTarget = MaterialUtils.normalizeMaterialName(targetMaterial)
-        return item.type.name.equals(normalizedTarget, ignoreCase = true)
-    }
 }

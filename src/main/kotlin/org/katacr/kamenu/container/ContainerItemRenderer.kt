@@ -17,10 +17,10 @@ class ContainerItemRenderer(private val plugin: KaMenu) {
         config: YamlConfiguration,
         menuId: String,
         button: ContainerButtonDefinition,
+        display: ContainerItemDefinition = button.display,
         variables: Map<String, String> = emptyMap()
     ): ItemStack {
         val values = ContainerValueResolver(player, config, variables)
-        val display = button.display
         val spec = MenuItemSpec(
             source = values.string(display["material"], "PAPER"),
             amount = values.int(display["amount"], 1),

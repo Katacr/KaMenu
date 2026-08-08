@@ -172,6 +172,6 @@ Events:
 ## Related Documentation
 
 - [Custom Commands](../config/customCommands.md) — Learn how to register custom commands
-- [Event System](../menu/events.md) — Learn about detailed usage of Events.open
-- [Conditions](../menu/conditions.md) — Learn about all condition check methods
+- [Event System](../modern-dialog/events.md) — Learn about detailed usage of Events.open
+- [Conditions](../modern-dialog/conditions.md) — Learn about all condition check methods
 - [Configuration File](../config/config.md) — Full reference for config.yml

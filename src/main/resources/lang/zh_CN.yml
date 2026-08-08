@@ -47,7 +47,7 @@ command:
   help_guide: "§a/km guide §7- 打开入门向导菜单"
   help_language: "§a/km language <语言ID> §7- 设置语言并重载"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- 释放指定语言示例菜单"
-  help_migrate: "§a/km migrate dm [源文件或目录] [输出目录] [overwrite] §7- 迁移 DeluxeMenus 菜单"
+  help_migrate: "§a/km migrate <dm|trmenu> [源文件或目录] [输出目录] [overwrite] §7- 迁移第三方菜单"
   help_pause: "§a/km pause <register|unregister|info> §7- 管理 ESC 暂停菜单入口"
   help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- 重载全部或指定模块"
   help_action: "§a/km action <玩家> <动作> §7- 测试执行动作"
@@ -73,20 +73,27 @@ command:
   reload_actions_success: "§a[KaMenu] 动作包重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
   reload_js_success: "§a[KaMenu] JavaScript 包重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
   reload_lang_success: "§a[KaMenu] 语言文件重载完成：总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms，当前语言 {4}。"
-  reload_config_success: "§a[KaMenu] config.yml 与 custom_commands.yml 重载完成：自定义指令总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
+  reload_config_success: "§a[KaMenu] config.yml、custom_commands.yml 与 item_bindings.yml 重载完成：自定义指令总数 {0}，成功 {1}，失败 {2}，耗时 {3}ms。"
 
-# DeluxeMenus 迁移
+# 菜单迁移
 migration:
-  usage: "§e用法: /km migrate dm [源文件或目录] [输出目录] [overwrite]；省略源目录时使用 plugins/DeluxeMenus/gui_menus"
+  usage: "§e用法: /km migrate <dm|trmenu> [源文件或目录] [输出目录] [overwrite]；省略源目录时使用对应插件的默认菜单目录"
   unsupported_format: "§c暂不支持迁移格式: {0}"
   completed: "§aDeluxeMenus 迁移完成：成功 {0} 个，失败 {1} 个，警告 {2} 个。输出目录: {3}"
   file_success: "§a已生成迁移菜单: §f{1} §7(源文件: {0})"
   warning: "§e迁移警告 §7[{0}]§e: {1}"
   error: "§c迁移失败 §7[{0}]§c: {1}"
   commands_completed: "§aDM 打开指令迁移完成：总数 {0}，新增 {1}，覆盖 {2}，已存在 {3}，冲突 {4}。"
+  trmenu_completed: "§aTrMenu 迁移完成：成功 {0} 个，失败 {1} 个，警告 {2} 个，错误 {3} 个，耗时 {4}ms。输出目录: {5}"
+  trmenu_issue: "§7[{0}/{1}/{2}] §f{3}§7: {4}"
+  trmenu_commands_completed: "§aTrMenu 绑定指令迁移完成：总数 {0}，新增 {1}，覆盖 {2}，已存在 {3}，冲突 {4}。"
+  trmenu_items_completed: "§aTrMenu 绑定物品迁移完成：总数 {0}，新增 {1}，覆盖 {2}，已存在 {3}，冲突 {4}。"
   command_conflict: "§e跳过冲突指令 /{0}：现有配置为 {1}，迁移目标为 {2}。使用 overwrite 可覆盖。"
+  item_binding_conflict: "§e跳过冲突物品绑定 {0}：现有目标为 {1}，迁移目标为 {2}。使用 overwrite 可覆盖。"
   commands_invalid_config: "§c无法迁移打开指令：custom_commands.yml 不是有效配置文件。"
+  item_bindings_invalid_config: "§c无法迁移绑定物品：item_bindings.yml 不是有效配置文件。"
   config_save_failed: "§c迁移菜单已生成，但 custom_commands.yml 保存失败：{0}"
+  item_bindings_save_failed: "§c迁移菜单已生成，但 item_bindings.yml 保存失败：{0}"
   runtime_reloaded: "§a迁移运行时已重载：菜单成功 {0}，失败 {1}；自定义指令成功 {2}，失败 {3}。"
 
 # ESC 暂停菜单入口

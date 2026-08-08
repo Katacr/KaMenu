@@ -8,6 +8,7 @@ import org.bukkit.command.TabExecutor
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.katacr.kamenu.migration.DeluxeMenusMigration
+import org.katacr.kamenu.migration.TrMenuMigration
 import java.io.File
 import java.io.InputStreamReader
 
@@ -168,6 +169,9 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             if (args.size < 2) {
                 sender.sendMessage(plugin.languageManager.getMessage("migration.usage"))
                 return true
+            }
+            if (args[1].equals("trmenu", ignoreCase = true) || args[1].equals("trm", ignoreCase = true)) {
+                return migrateTrMenu(sender, args.drop(2))
             }
             if (!args[1].equals("dm", ignoreCase = true) && !args[1].equals("deluxemenus", ignoreCase = true)) {
                 sender.sendMessage(plugin.languageManager.getMessage("migration.unsupported_format", args[1]))
@@ -680,6 +684,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 MenuTaskManager.cancelAll()
                 val configStart = System.nanoTime()
                 plugin.reloadConfig()
+                plugin.itemBindingManager.reload()
                 plugin.languageManager.reload()
                 UpdateChecker.reload(plugin)
                 val langDurationMs = elapsedMs(configStart)
@@ -792,6 +797,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
     private fun reloadConfig(): ReloadResult {
         val start = System.nanoTime()
         plugin.reloadConfig()
+        plugin.itemBindingManager.reload()
         plugin.languageManager.reload()
         val result = plugin.customCommandManager.registerCustomCommandsWithResult()
         plugin.customCommandManager.refreshOnlinePlayerCommands()
@@ -830,7 +836,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             keyword
         )
         if (args.size == 2 && args[0].equals("migrate", ignoreCase = true)) {
-            return filterByKeyword(listOf("dm", "deluxemenus"), keyword)
+            return filterByKeyword(listOf("dm", "deluxemenus", "trmenu", "trm"), keyword)
         }
         if (args.size == 3 && args[0].equals("migrate", ignoreCase = true)) {
             return filterByKeyword(listOf("overwrite"), keyword)
@@ -879,7 +885,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             return filterByKeyword(listOf(
                 "tell:", "actionbar:", "title:", "hovertext:",
                 "command:", "chat:", "console:", "sound:",
-                "open:", "force-open:", "close", "force-close", "reset",
+                "open:", "force-open:", "close", "force-close", "reset", "refresh", "refresh:",
                 "server:", "tppos:",
                 "data:", "gdata:", "list:", "glist:", "meta:",
                 "set-data:", "set-gdata:", "set-meta:",
@@ -920,11 +926,11 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
     }
 
     /** 将迁移输出限制在 KaMenu menus 目录，避免管理员误写插件目录之外的文件。 */
-    private fun resolveMigrationTarget(raw: String?): File {
+    private fun resolveMigrationTarget(raw: String?, defaultDirectory: String = "dm_migrated"): File {
         val base = File(plugin.dataFolder, "menus").absoluteFile.normalize()
-        val relative = raw?.takeIf { it.isNotBlank() } ?: "dm_migrated"
+        val relative = raw?.takeIf { it.isNotBlank() } ?: defaultDirectory
         val candidate = File(base, relative).absoluteFile.normalize()
-        return if (candidate.toPath().startsWith(base.toPath())) candidate else File(base, "dm_migrated")
+        return if (candidate.toPath().startsWith(base.toPath())) candidate else File(base, defaultDirectory)
     }
 
     /** 返回 DeluxeMenus 默认私有菜单目录，避免将其 config.yml 等非菜单文件纳入迁移。 */
@@ -933,5 +939,151 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         return File(pluginsDirectory, "DeluxeMenus/gui_menus")
             .absoluteFile
             .normalize()
+    }
+
+    /** 执行 TrMenu 批量迁移、指令合并和运行时重载。 */
+    private fun migrateTrMenu(sender: CommandSender, arguments: List<String>): Boolean {
+        val overwrite = arguments.any { it.equals("overwrite", ignoreCase = true) }
+        val positional = arguments.filterNot { it.equals("overwrite", ignoreCase = true) }
+        if (positional.size > 2) {
+            sender.sendMessage(plugin.languageManager.getMessage("migration.usage"))
+            return true
+        }
+
+        val source = positional.getOrNull(0)?.let { File(it).absoluteFile } ?: resolveDefaultTrMenuSource()
+        val menuRoot = File(plugin.dataFolder, "menus").absoluteFile.normalize()
+        val target = resolveMigrationTarget(positional.getOrNull(1), "trmenu_migrated")
+        val migrator = TrMenuMigration()
+        val result = migrator.migrate(source, target, menuRoot, overwrite)
+        val customCommands = plugin.customCommandManager.loadConfiguration()
+        val commandMerge = migrator.mergeBoundCommands(result, menuRoot, customCommands, overwrite)
+        val itemBindings = plugin.itemBindingManager.loadConfiguration()
+        val itemBindingMerge = migrator.mergeBoundItems(result, itemBindings, overwrite)
+        var configSaveError: String? = null
+        var itemBindingSaveError: String? = null
+        if (!commandMerge.invalidConfig && (commandMerge.added > 0 || commandMerge.replaced > 0)) {
+            runCatching { plugin.customCommandManager.saveConfiguration(customCommands) }.onFailure { error ->
+                configSaveError = error.message ?: error.javaClass.simpleName
+            }
+        }
+        if (!itemBindingMerge.invalidConfig && (itemBindingMerge.added > 0 || itemBindingMerge.replaced > 0)) {
+            runCatching { plugin.itemBindingManager.saveConfiguration(itemBindings) }.onFailure { error ->
+                itemBindingSaveError = error.message ?: error.javaClass.simpleName
+            }
+        }
+
+        sender.sendMessage(
+            plugin.languageManager.getMessage(
+                "migration.trmenu_completed",
+                result.migrated.toString(),
+                result.failed.toString(),
+                result.warnings.toString(),
+                result.errors.toString(),
+                result.elapsedMillis.toString(),
+                target.absolutePath
+            )
+        )
+        result.files.forEach { file ->
+            if (file.migrated) {
+                sender.sendMessage(
+                    plugin.languageManager.getMessage(
+                        "migration.file_success",
+                        file.source.absolutePath,
+                        file.target?.absolutePath ?: ""
+                    )
+                )
+            }
+            file.issues.forEach { issue ->
+                sender.sendMessage(
+                    plugin.languageManager.getMessage(
+                        "migration.trmenu_issue",
+                        issue.severity.name,
+                        issue.compatibility.name,
+                        issue.code,
+                        issue.path,
+                        issue.message
+                    )
+                )
+            }
+        }
+
+        if (commandMerge.invalidConfig) {
+            sender.sendMessage(plugin.languageManager.getMessage("migration.commands_invalid_config"))
+        } else {
+            sender.sendMessage(
+                plugin.languageManager.getMessage(
+                    "migration.trmenu_commands_completed",
+                    commandMerge.total.toString(),
+                    commandMerge.added.toString(),
+                    commandMerge.replaced.toString(),
+                    commandMerge.unchanged.toString(),
+                    commandMerge.conflicts.size.toString()
+                )
+            )
+            commandMerge.conflicts.forEach { conflict ->
+                sender.sendMessage(
+                    plugin.languageManager.getMessage(
+                        "migration.command_conflict",
+                        conflict.command,
+                        conflict.existingValue,
+                        conflict.migratedMenuId
+                    )
+                )
+            }
+        }
+        configSaveError?.let { error ->
+            sender.sendMessage(plugin.languageManager.getMessage("migration.config_save_failed", error))
+        }
+
+        if (itemBindingMerge.invalidConfig) {
+            sender.sendMessage(plugin.languageManager.getMessage("migration.item_bindings_invalid_config"))
+        } else {
+            sender.sendMessage(
+                plugin.languageManager.getMessage(
+                    "migration.trmenu_items_completed",
+                    itemBindingMerge.total.toString(),
+                    itemBindingMerge.added.toString(),
+                    itemBindingMerge.replaced.toString(),
+                    itemBindingMerge.unchanged.toString(),
+                    itemBindingMerge.conflicts.size.toString()
+                )
+            )
+            itemBindingMerge.conflicts.forEach { conflict ->
+                sender.sendMessage(
+                    plugin.languageManager.getMessage(
+                        "migration.item_binding_conflict",
+                        conflict.id,
+                        conflict.existingValue,
+                        conflict.migratedMenuId
+                    )
+                )
+            }
+        }
+        itemBindingSaveError?.let { error ->
+            sender.sendMessage(plugin.languageManager.getMessage("migration.item_bindings_save_failed", error))
+        }
+
+        if (result.migrated > 0) {
+            val menuReload = reloadMenu(cancelTasks = true)
+            val commandRegistration = plugin.customCommandManager.registerCustomCommandsWithResult()
+            plugin.itemBindingManager.reload()
+            plugin.customCommandManager.refreshOnlinePlayerCommands()
+            sender.sendMessage(
+                plugin.languageManager.getMessage(
+                    "migration.runtime_reloaded",
+                    menuReload.success.toString(),
+                    menuReload.failed.toString(),
+                    commandRegistration.success.toString(),
+                    commandRegistration.failed.toString()
+                )
+            )
+        }
+        return true
+    }
+
+    /** 返回 TrMenu 默认菜单目录，不把 settings.yml 等全局配置纳入迁移。 */
+    private fun resolveDefaultTrMenuSource(): File {
+        val pluginsDirectory = plugin.dataFolder.parentFile ?: File("plugins")
+        return File(pluginsDirectory, "TrMenu/menus").absoluteFile.normalize()
     }
 }

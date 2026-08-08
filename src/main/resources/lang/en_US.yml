@@ -47,7 +47,7 @@ command:
   help_guide: "§a/km guide §7- Open the getting started guide menu"
   help_language: "§a/km language <language_id> §7- Set language and reload"
   help_examples: "§a/km examples [zh_CN|en_US] [overwrite] §7- Release examples in a language"
-  help_migrate: "§a/km migrate dm [source-file-or-directory] [output-directory] [overwrite] §7- Migrate DeluxeMenus menus"
+  help_migrate: "§a/km migrate <dm|trmenu> [source-file-or-directory] [output-directory] [overwrite] §7- Migrate third-party menus"
   help_pause: "§a/km pause <register|unregister|info> §7- Manage the ESC pause screen entry"
   help_reload: "§a/km reload [all|menu|actions|js|lang|config] §7- Reload all modules or a selected module"
   help_action: "§a/km action <player> <action> §7- Test execute action"
@@ -73,20 +73,27 @@ command:
   reload_actions_success: "§a[KaMenu] Action package reload complete: total {0}, success {1}, failed {2}, took {3}ms."
   reload_js_success: "§a[KaMenu] JavaScript package reload complete: total {0}, success {1}, failed {2}, took {3}ms."
   reload_lang_success: "§a[KaMenu] Language reload complete: total {0}, success {1}, failed {2}, took {3}ms, current language {4}."
-  reload_config_success: "§a[KaMenu] config.yml and custom_commands.yml reload complete: custom commands total {0}, success {1}, failed {2}, took {3}ms."
+  reload_config_success: "§a[KaMenu] config.yml, custom_commands.yml, and item_bindings.yml reload complete: custom commands total {0}, success {1}, failed {2}, took {3}ms."
 
-# DeluxeMenus migration
+# Menu migration
 migration:
-  usage: "§eUsage: /km migrate dm [source-file-or-directory] [output-directory] [overwrite]; omitted source defaults to plugins/DeluxeMenus/gui_menus"
+  usage: "§eUsage: /km migrate <dm|trmenu> [source-file-or-directory] [output-directory] [overwrite]; omitted source uses that plugin's default menu directory"
   unsupported_format: "§cMigration format is not supported: {0}"
   completed: "§aDeluxeMenus migration complete: {0} succeeded, {1} failed, {2} warning(s). Output: {3}"
   file_success: "§aGenerated migrated menu: §f{1} §7(source: {0})"
   warning: "§eMigration warning §7[{0}]§e: {1}"
   error: "§cMigration failed §7[{0}]§c: {1}"
   commands_completed: "§aDM open command migration complete: total {0}, added {1}, replaced {2}, unchanged {3}, conflicts {4}."
+  trmenu_completed: "§aTrMenu migration complete: {0} succeeded, {1} failed, {2} warning(s), {3} error(s), took {4}ms. Output: {5}"
+  trmenu_issue: "§7[{0}/{1}/{2}] §f{3}§7: {4}"
+  trmenu_commands_completed: "§aTrMenu command binding migration complete: total {0}, added {1}, replaced {2}, unchanged {3}, conflicts {4}."
+  trmenu_items_completed: "§aTrMenu item binding migration complete: total {0}, added {1}, replaced {2}, unchanged {3}, conflicts {4}."
   command_conflict: "§eSkipped conflicting command /{0}: existing value is {1}, migrated target is {2}. Use overwrite to replace it."
+  item_binding_conflict: "§eSkipped conflicting item binding {0}: existing target is {1}, migrated target is {2}. Use overwrite to replace it."
   commands_invalid_config: "§cCannot migrate open commands because custom_commands.yml is not a valid configuration file."
+  item_bindings_invalid_config: "§cCannot migrate item bindings because item_bindings.yml is not a valid configuration file."
   config_save_failed: "§cMigrated menus were generated, but custom_commands.yml could not be saved: {0}"
+  item_bindings_save_failed: "§cMigrated menus were generated, but item_bindings.yml could not be saved: {0}"
   runtime_reloaded: "§aMigration runtime reloaded: menus {0} succeeded, {1} failed; custom commands {2} succeeded, {3} failed."
 
 # ESC Pause Screen Entry

@@ -18,6 +18,7 @@ import org.bukkit.entity.Player
  */
 object ConditionExpressionEngine {
     private var plugin: KaMenu? = null
+    private var pointsService: PointsService? = null
 
     private val builtinPredicates = mutableMapOf<String, (Player, String) -> Boolean>()
 
@@ -50,10 +51,19 @@ object ConditionExpressionEngine {
         registerBuiltinPredicate("isPosNum") { _, value -> value.toDoubleOrNull()?.let { it > 0 } ?: false }
         registerBuiltinPredicate("isInt") { _, value -> value.toIntOrNull() != null }
         registerBuiltinPredicate("isPosInt") { _, value -> value.toIntOrNull()?.let { it > 0 } ?: false }
+        registerBuiltinPredicate("isPlayerOnline") { player, value ->
+            val targetName = value.trim()
+            if (targetName.isEmpty()) player.isOnline else Bukkit.getPlayerExact(targetName)?.isOnline == true
+        }
         registerBuiltinPredicate("hasPerm") { player, value -> player.hasPermission(value) }
         registerBuiltinPredicate("hasMoney") { player, value ->
             val amount = value.toDoubleOrNull() ?: return@registerBuiltinPredicate false
             checkPlayerMoney(player, amount)
+        }
+        registerBuiltinPredicate("hasPoints") { player, value ->
+            val amount = value.toIntOrNull()?.takeIf { it >= 0 }
+                ?: return@registerBuiltinPredicate false
+            (pointsService?.balance(player.uniqueId) ?: return@registerBuiltinPredicate false) >= amount
         }
         registerBuiltinPredicate("hasStockItem") { player, value ->
             val params = value.split(";", limit = 2)
@@ -67,12 +77,18 @@ object ConditionExpressionEngine {
             if (!value.startsWith("[") || !value.endsWith("]")) false
             else checkPlayerHasItem(player, value.substring(1, value.length - 1).trim())
         }
+        registerBuiltinPredicate("hasEquipment") { player, value -> checkPlayerEquipment(player, value) }
         registerBuiltinPredicate("inList") { _, value -> checkValueInGroup(value) }
         registerBuiltinPredicate("inGlist") { _, value -> checkValueInGroup(value) }
     }
 
     fun setPlugin(kamenu: KaMenu) {
         plugin = kamenu
+    }
+
+    /** 注入可选 PlayerPoints 服务，供 `hasPoints.<数量>` 条件读取余额。 */
+    internal fun setPointsService(service: PointsService?) {
+        pointsService = service
     }
 
     /**
@@ -628,6 +644,26 @@ object ConditionExpressionEngine {
             addAll(inventory.armorContents.filterNotNull())
             add(inventory.itemInOffHand)
         }
+    }
+
+    /** 判断当前或指定在线玩家的 Bukkit 装备槽位中是否存在有效物品。 */
+    private fun checkPlayerEquipment(player: Player, raw: String): Boolean {
+        val value = raw.trim().removeSurrounding("[", "]")
+        val parts = value.split(";", limit = 2)
+        val slot = parts.firstOrNull()?.trim()?.uppercase().orEmpty()
+        val targetName = parts.getOrNull(1)?.trim().orEmpty()
+        val target = if (targetName.isEmpty()) player else Bukkit.getPlayerExact(targetName) ?: return false
+        if (!target.isOnline) return false
+        val item = when (slot) {
+            "HEAD", "HELMET" -> target.inventory.helmet
+            "CHEST", "CHESTPLATE" -> target.inventory.chestplate
+            "LEGS", "LEGGINGS" -> target.inventory.leggings
+            "FEET", "BOOTS" -> target.inventory.boots
+            "MAINHAND", "MAIN_HAND", "HAND" -> target.inventory.itemInMainHand
+            "OFFHAND", "OFF_HAND" -> target.inventory.itemInOffHand
+            else -> return false
+        }
+        return item != null && item.type != org.bukkit.Material.AIR && item.amount > 0
     }
 
     private fun compareEquals(left: String, right: String): Boolean {

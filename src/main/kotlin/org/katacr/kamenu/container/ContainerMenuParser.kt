@@ -364,29 +364,20 @@ object ContainerMenuParser {
         path: String,
         diagnostics: MutableList<ContainerMenuDiagnostic>
     ): ContainerButtonDefinition? {
-        val displaySection = section.getConfigurationSection("display")
-        if (displaySection == null) {
-            diagnostics += error("button.display_missing", "$path.display", "Button '$id' requires a display section.")
+        val hasVariants = section.contains("variants")
+        if (hasVariants && (section.contains("display") || section.contains("actions"))) {
+            diagnostics += error(
+                "button.mixed_variants",
+                path,
+                "Button '$id' cannot combine variants with top-level display or actions."
+            )
             return null
         }
-        if (!displaySection.contains("material")) {
-            diagnostics += error(
-                "button.material_missing",
-                "$path.display.material",
-                "Button '$id' requires a material."
-            )
-        }
 
-        val properties = linkedMapOf<String, ContainerConfigValue>()
-        displaySection.getKeys(false).forEach { property ->
-            properties[property] = freeze(displaySection.get(property))
-            if (property !in knownDisplayProperties) {
-                diagnostics += warning(
-                    "button.unknown_display_property",
-                    "$path.display.$property",
-                    "Unknown display property '$property' is preserved but may not be rendered."
-                )
-            }
+        val display = if (!hasVariants) {
+            parseDisplay(section.get("display"), "$path.display", id, diagnostics)
+        } else {
+            null
         }
 
         val viewCondition = when (val raw = section.get("view_condition")) {
@@ -403,14 +394,130 @@ object ContainerMenuParser {
         }
 
         val updateInterval = parseUpdateInterval(section.get("update"), "$path.update", diagnostics)
-        val actions = parseActions(section, path, diagnostics)
+        val actions = if (!hasVariants) parseActions(section.get("actions"), "$path.actions", diagnostics) else emptyMap()
+        val variants = if (hasVariants) parseVariants(section.get("variants"), path, diagnostics) else emptyList()
+        if (display == null && variants.isEmpty()) {
+            diagnostics += error(
+                "button.display_missing",
+                "$path.display",
+                "Button '$id' requires a display section or at least one variant."
+            )
+            return null
+        }
         return ContainerButtonDefinition(
             id = id,
             viewCondition = viewCondition,
             updateIntervalTicks = updateInterval,
-            display = ContainerItemDefinition(properties.toMap()),
-            actions = actions
+            display = display ?: ContainerItemDefinition(emptyMap()),
+            actions = actions,
+            variants = variants
         )
+    }
+
+    /** 解析按钮的单一 display 区段，供旧格式和 variants 共同使用。 */
+    private fun parseDisplay(
+        raw: Any?,
+        path: String,
+        buttonId: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerItemDefinition? {
+        val values = asStringKeyedMap(raw)
+        if (values == null) {
+            diagnostics += error("button.display_missing", path, "Button '$buttonId' requires a display section.")
+            return null
+        }
+        if (!values.containsKey("material")) {
+            diagnostics += error(
+                "button.material_missing",
+                "$path.material",
+                "Button '$buttonId' requires a material."
+            )
+        }
+
+        val properties = linkedMapOf<String, ContainerConfigValue>()
+        values.forEach { (property, value) ->
+            properties[property] = freeze(value)
+            if (property !in knownDisplayProperties) {
+                diagnostics += warning(
+                    "button.unknown_display_property",
+                    "$path.$property",
+                    "Unknown display property '$property' is preserved but may not be rendered."
+                )
+            }
+        }
+        return ContainerItemDefinition(properties.toMap())
+    }
+
+    /** 解析并按 priority、声明顺序稳定排序按钮变体。 */
+    private fun parseVariants(
+        raw: Any?,
+        buttonPath: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): List<ContainerButtonVariantDefinition> {
+        val entries = raw as? List<*>
+        if (entries == null) {
+            diagnostics += error(
+                "button.invalid_variants",
+                "$buttonPath.variants",
+                "variants must be a YAML list."
+            )
+            return emptyList()
+        }
+
+        val parsed = entries.mapIndexedNotNull { index, entry ->
+            val path = "$buttonPath.variants[$index]"
+            val values = asStringKeyedMap(entry)
+            if (values == null) {
+                diagnostics += error("button.invalid_variant", path, "Each variant must be a YAML section.")
+                return@mapIndexedNotNull null
+            }
+            val display = parseDisplay(values["display"], "$path.display", "$buttonPath variant $index", diagnostics)
+                ?: return@mapIndexedNotNull null
+            val priority = parsePriority(values["priority"], "$path.priority", diagnostics)
+            val condition = when (val value = values["condition"]) {
+                null -> null
+                is String -> value.trim().takeIf { it.isNotEmpty() }
+                else -> {
+                    diagnostics += error("button.invalid_variant_condition", "$path.condition", "condition must be a string.")
+                    null
+                }
+            }
+            ContainerButtonVariantDefinition(
+                priority = priority,
+                order = index,
+                condition = condition,
+                display = display,
+                actions = parseActions(values["actions"], "$path.actions", diagnostics)
+            )
+        }
+
+        return parsed.sortedWith(
+            compareBy<ContainerButtonVariantDefinition> { it.priority ?: Int.MAX_VALUE }
+                .thenBy { it.order }
+        )
+    }
+
+    /** 解析变体 priority；未配置时返回 null，交由声明顺序决定。 */
+    private fun parsePriority(
+        raw: Any?,
+        path: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): Int? {
+        if (raw == null) return null
+        val priority = when (raw) {
+            is Byte, is Short, is Int, is Long -> (raw as Number).toLong().takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt()
+            is Float, is Double -> (raw as Number).toDouble().takeIf { it.isFinite() && it % 1.0 == 0.0 }?.toInt()
+            is String -> raw.trim().toIntOrNull()
+            else -> null
+        }
+        if (priority == null) {
+            diagnostics += error(
+                "button.invalid_variant_priority",
+                path,
+                "priority must be an integer."
+            )
+        }
+        return priority
     }
 
     /** 读取静态 tick 周期；0 和负数表示禁用，非整数配置属于错误。 */
@@ -449,37 +556,36 @@ object ContainerMenuParser {
     }
 
     private fun parseActions(
-        button: ConfigurationSection,
-        buttonPath: String,
+        raw: Any?,
+        actionsPath: String,
         diagnostics: MutableList<ContainerMenuDiagnostic>
     ): Map<ContainerClickType, List<Any>> {
-        val section = button.getConfigurationSection("actions")
-        if (section == null) {
-            if (button.contains("actions")) {
-                diagnostics += error("button.invalid_actions", "$buttonPath.actions", "actions must be a YAML section.")
-            }
+        if (raw == null) return emptyMap()
+        val values = asStringKeyedMap(raw)
+        if (values == null) {
+            diagnostics += error("button.invalid_actions", actionsPath, "actions must be a YAML section.")
             return emptyMap()
         }
 
         val result = linkedMapOf<ContainerClickType, List<Any>>()
-        section.getKeys(false).forEach { key ->
+        values.forEach { (key, rawActions) ->
             val clickType = ContainerClickType.fromConfigKey(key)
             if (clickType == null) {
                 diagnostics += error(
                     "button.unsupported_click_type",
-                    "$buttonPath.actions.$key",
+                    "$actionsPath.$key",
                     "Unsupported click type '$key'."
                 )
                 return@forEach
             }
 
-            val actions = when (val raw = section.get(key)) {
-                is String -> listOf(raw)
-                is List<*> -> raw.map(::freezeActionValue)
+            val actions = when (rawActions) {
+                is String -> listOf(rawActions)
+                is List<*> -> rawActions.map(::freezeActionValue)
                 else -> {
                     diagnostics += error(
                         "button.invalid_action_list",
-                        "$buttonPath.actions.$key",
+                        "$actionsPath.$key",
                         "Click actions must be a string or list."
                     )
                     emptyList()
@@ -488,6 +594,15 @@ object ContainerMenuParser {
             result[clickType] = actions
         }
         return result.toMap()
+    }
+
+    /** 将 ConfigurationSection 或变体 Map 统一转换为字符串键 Map。 */
+    private fun asStringKeyedMap(raw: Any?): Map<String, Any?>? {
+        return when (raw) {
+            is ConfigurationSection -> raw.getKeys(false).associateWith { key -> raw.get(key) }
+            is Map<*, *> -> raw.entries.associate { (key, value) -> key.toString() to value }
+            else -> null
+        }
     }
 
     private fun validateButtonReferences(

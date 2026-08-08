@@ -264,6 +264,8 @@ Enabling `require-sneaking` prevents the menu from opening accidentally during n
 
 Opens a menu when the player right-clicks while holding an item of a specified material, with optional Lore text matching.
 
+This is the legacy basic listener format. Use the separate [item_bindings.yml](item-bindings.md) when matching names, damage values, CustomModelData, applying millisecond cooldowns, or storing migrated TrMenu bindings.
+
 **Configuration Format:**
 
 ```yaml
@@ -281,7 +283,7 @@ listeners:
 
 | Field | Description | Type | Default |
 |-------|-------------|------|---------|
-| `enabled` | Whether to enable this listener entry | `Boolean` | `true` |
+| `enabled` | Whether to enable this listener entry | `Boolean` | `false` |
 | `material` | Item material (Material enum value, must match) | `String` | — |
 | `target-lore` | Optional Lore text filter; omit it or use `''` / `[]` to match material only | `String` / `[]` | — |
 | `menu` | Menu ID to open on trigger | `String` | — |
@@ -358,7 +360,7 @@ listeners:
 
 {% hint style="warning" %}
 **Notes:**
-- Color codes in item Lore are stripped during matching (raw text match)
+- The legacy listener uses raw substring matching. It neither strips item colors nor converts configured `&` codes to actual color codes
 - Ensure Lore text is unique enough to prevent unintended triggers
 {% endhint %}
 

@@ -452,32 +452,63 @@ class DeluxeMenusMigration {
         issues: MutableList<Issue>
     ) {
         candidates.forEach { (slot, slotCandidates) ->
-            val conditions = buildCandidateConditions(slotCandidates, issues)
-            val button = linkedMapOf<String, Any>(
-                "display" to buildDisplay(slotCandidates, conditions, issues)
-            )
-            val visible = if (conditions.any { it.raw == "true" }) {
-                null
+            val button = linkedMapOf<String, Any>()
+            if (slotCandidates.size > 1) {
+                button["variants"] = buildVariants(slotCandidates, issues)
             } else {
-                conditions.map { it.raw }.distinct().joinToString(" || ")
+                val conditions = buildCandidateConditions(slotCandidates, issues)
+                button["display"] = buildDisplay(slotCandidates, conditions, issues)
+                val visible = if (conditions.any { it.raw == "true" }) {
+                    null
+                } else {
+                    conditions.map { it.raw }.distinct().joinToString(" || ")
+                }
+                if (visible != null) button["view_condition"] = visible
+
+                val actions = linkedMapOf<String, Any>()
+                supportedClickTypes.forEach { clickType ->
+                    val clickActions = buildClickActions(slotCandidates, conditions, clickType, issues)
+                    if (clickActions.isNotEmpty()) actions[clickKey(clickType)] = clickActions
+                }
+                if (actions.isNotEmpty()) button["actions"] = actions
             }
-            if (visible != null) button["view_condition"] = visible
             if (itemUpdateInterval != null && slotCandidates.any { it.section.getBoolean("update", false) }) {
                 button["update"] = itemUpdateInterval
             }
-
-            val actions = linkedMapOf<String, Any>()
-            supportedClickTypes.forEach { clickType ->
-                val clickActions = buildClickActions(slotCandidates, conditions, clickType, issues)
-                if (clickActions.isNotEmpty()) actions[clickKey(clickType)] = clickActions
-            }
-            if (actions.isNotEmpty()) button["actions"] = actions
             output.set("Buttons.dm_slot_$slot", button)
         }
 
         val highestSlot = candidates.keys.maxOrNull()
         if (highestSlot != null && highestSlot >= size) {
             issues += issue(Severity.ERROR, "items", "A generated button exceeded the target inventory size.")
+        }
+    }
+
+    /** 将同一 DM 槽位的候选项转换为完整的 KaMenu 按钮变体。 */
+    private fun buildVariants(
+        candidates: List<Candidate>,
+        issues: MutableList<Issue>
+    ): List<Map<String, Any>> {
+        return candidates.map { candidate ->
+            val variant = linkedMapOf<String, Any>(
+                // DM 未配置 priority 时的有效值也是 1，这里显式写出以保持 DM 语义。
+                "priority" to candidate.priority,
+                "display" to buildDisplayForCandidate(candidate, issues)
+            )
+            candidate.viewCondition?.let { variant["condition"] = it }
+
+            val actions = linkedMapOf<String, Any>()
+            supportedClickTypes.forEach { clickType ->
+                val clickActions = buildClickActions(
+                    candidates = listOf(candidate),
+                    conditions = listOf(CandidateCondition("true", "true")),
+                    clickType = clickType,
+                    issues = issues
+                )
+                if (clickActions.isNotEmpty()) actions[clickKey(clickType)] = clickActions
+            }
+            if (actions.isNotEmpty()) variant["actions"] = actions
+            variant
         }
     }
 
@@ -524,6 +555,39 @@ class DeluxeMenusMigration {
         if (!display.containsKey("material")) {
             display["material"] = "PAPER"
             issues += issue(Severity.WARNING, "items", "A generated button has no material and was set to PAPER.")
+        }
+        return display
+    }
+
+    /** 将单个 DM 候选项完整转换为一个无属性级条件的 display。 */
+    private fun buildDisplayForCandidate(
+        candidate: Candidate,
+        issues: MutableList<Issue>
+    ): Map<String, Any> {
+        val display = linkedMapOf<String, Any>()
+        val properties = listOf(
+            "material",
+            "name",
+            "lore",
+            "amount",
+            "item_flags",
+            "enchantments",
+            "custom_model_data",
+            "item_model",
+            "skull_owner",
+            "skull_texture",
+            "unbreakable"
+        )
+        properties.forEach { property ->
+            readDisplayValue(candidate.section, property, issues)?.let { display[property] = it }
+        }
+        if (!display.containsKey("material")) {
+            display["material"] = "PAPER"
+            issues += issue(
+                Severity.WARNING,
+                "items.${candidate.id}",
+                "A generated variant has no material and was set to PAPER."
+            )
         }
         return display
     }

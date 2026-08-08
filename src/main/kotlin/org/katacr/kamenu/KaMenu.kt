@@ -29,6 +29,7 @@ class KaMenu : JavaPlugin() {
     lateinit var databaseManager: DatabaseManager
     lateinit var metaDataManager: MetaDataManager
     lateinit var customCommandManager: CustomCommandManager
+    lateinit var itemBindingManager: ItemBindingManager
     lateinit var itemManager: ItemManager
     lateinit var itemPlaceholderService: ItemPlaceholderService
     lateinit var actionPackageManager: ActionPackageManager
@@ -221,6 +222,10 @@ class KaMenu : JavaPlugin() {
         customCommandManager = CustomCommandManager(this)
         customCommandManager.registerCustomCommands()
 
+        // 3.6 初始化主配置与独立文件中的物品右键菜单绑定
+        itemBindingManager = ItemBindingManager(this)
+        itemBindingManager.reload()
+
         // 4. 注册主指令
         getCommand("km")?.let { cmd ->
             val menuCommand = MenuCommand(this)
@@ -389,6 +394,8 @@ class KaMenu : JavaPlugin() {
         val pointsPlugin = server.pluginManager.getPlugin("PlayerPoints")
             ?.takeIf { it.isEnabled }
             ?: return
-        ActionHandlers.setPointsService(PlayerPointsService.create(pointsPlugin))
+        val service = PlayerPointsService.create(pointsPlugin)
+        ActionHandlers.setPointsService(service)
+        ConditionExpressionEngine.setPointsService(service)
     }
 }

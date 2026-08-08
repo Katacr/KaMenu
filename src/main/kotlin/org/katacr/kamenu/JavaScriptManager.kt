@@ -79,6 +79,15 @@ object JavaScriptManager {
             return __kamenu_js_manager.resolvePapi(__kamenu_target_player(targetPlayer), String(placeholder));
         }
 
+        function vars(text, targetPlayer) {
+            var menuConfig = typeof __kamenu_menu_config !== "undefined" ? __kamenu_menu_config : null;
+            return __kamenu_js_manager.resolveText(
+                __kamenu_target_player(targetPlayer),
+                String(text),
+                menuConfig
+            );
+        }
+
         function kvar(variable, targetPlayer) {
             return __kamenu_js_manager.resolveKaMenuVariable(__kamenu_target_player(targetPlayer), String(variable));
         }
@@ -279,6 +288,22 @@ object JavaScriptManager {
     }
 
     /**
+     * JS helper：解析一段同时包含 PAPI、KaMenu 变量和菜单 JavaScript 调用的文本。
+     *
+     * 该入口主要供迁移后的 TrMenu `vars(...)` 使用；只执行 KaMenu 已有文本解析流程。
+     */
+    fun resolveText(
+        player: org.bukkit.entity.Player?,
+        text: String?,
+        menuConfig: org.bukkit.configuration.file.YamlConfiguration?
+    ): String {
+        if (player == null || text == null) {
+            return ""
+        }
+        return TextResolver.resolve(player, text, menuConfig = menuConfig)
+    }
+
+    /**
      * JS 辅助 API：解析 KaMenu 内置变量。
      *
      * 脚本内可写 `kvar("gdata:key")`、`data("coins")`、`glist("players")`。
@@ -411,7 +436,7 @@ object JavaScriptManager {
             return null
         }
 
-        return evaluateWithContext(player, source.code, args, source.label)
+        return evaluateWithContext(player, source.code, args, source.label, menuConfig)
     }
 
     private fun findScriptSource(
@@ -433,11 +458,12 @@ object JavaScriptManager {
         player: org.bukkit.entity.Player,
         script: String,
         args: List<String>,
-        sourceLabel: String
+        sourceLabel: String,
+        menuConfig: org.bukkit.configuration.file.YamlConfiguration?
     ): Any? {
         return synchronized(scriptLock) {
             try {
-                scriptEngine!!.eval(buildScript(script, args), createBindings(player))
+                scriptEngine!!.eval(buildScript(script, args), createBindings(player, menuConfig))
             } catch (e: ScriptException) {
                 warn("javascript.execution_error_source_player", sourceLabel, player.name, e.message ?: e.javaClass.simpleName)
                 null
@@ -453,11 +479,15 @@ object JavaScriptManager {
      *
      * 不复用全局 Bindings，避免不同玩家同时执行脚本时互相覆盖上下文。
      */
-    private fun createBindings(player: org.bukkit.entity.Player? = null): Bindings {
+    private fun createBindings(
+        player: org.bukkit.entity.Player? = null,
+        menuConfig: org.bukkit.configuration.file.YamlConfiguration? = null
+    ): Bindings {
         val bindings = scriptEngine!!.createBindings()
         bindings["server"] = Bukkit.getServer()
         bindings["__kamenu_js_manager"] = this
         bindings["__kamenu_plugin"] = plugin
+        bindings["__kamenu_menu_config"] = menuConfig
 
         if (player != null) {
             bindings["player"] = player

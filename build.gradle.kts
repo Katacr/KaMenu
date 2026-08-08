@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "org.katacr"
-version = "2.0.0"
+version = "2.0.1"
 
 repositories {
     mavenCentral()
@@ -95,6 +95,9 @@ dependencies {
     compileOnly("net.kyori:examination-api:1.3.0")
     compileOnly("net.kyori:examination-string:1.3.0")
     compileOnly("net.kyori:option:1.1.0")
+    testImplementation(kotlin("stdlib"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testImplementation("org.spigotmc:spigot-api:1.16.5-R0.1-SNAPSHOT")
     add(spigotAdapter.compileOnlyConfigurationName, "org.spigotmc:spigot-api:1.21.6-R0.1-SNAPSHOT")
     add(spigotAdapter.compileOnlyConfigurationName, "net.kyori:adventure-text-serializer-legacy:4.26.1")
     add(spigotAdapter.compileOnlyConfigurationName, "net.kyori:adventure-text-serializer-bungeecord:4.4.1")
@@ -118,6 +121,10 @@ dependencies {
 }
 
 tasks {
+    test {
+        useJUnitPlatform()
+    }
+
     runServer {
         // Configure the Minecraft version for our task.
         // This is the only required configuration besides applying the plugin.

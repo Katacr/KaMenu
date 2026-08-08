@@ -264,6 +264,8 @@ listeners:
 
 玩家右键持有指定材质的物品时触发打开菜单，并可选择额外匹配 Lore 文本。
 
+这是保留兼容的基础监听格式。需要匹配物品名称、损伤值、自定义模型 ID、设置毫秒冷却，或保存 TrMenu 迁移结果时，请使用独立的 [item_bindings.yml](item-bindings.md)。
+
 **配置格式：**
 
 ```yaml
@@ -281,7 +283,7 @@ listeners:
 
 | 字段 | 说明 | 类型 | 默认值 |
 |------|------|------|--------|
-| `enabled` | 是否启用此监听配置 | `Boolean` | `true` |
+| `enabled` | 是否启用此监听配置 | `Boolean` | `false` |
 | `material` | 物品材质（Material 枚举值，必须匹配） | `String` | 无 |
 | `target-lore` | 可选的 Lore 包含文本；缺失、`''` 或 `[]` 时只匹配材质 | `String` / `[]` | 无 |
 | `menu` | 触发时打开的菜单 ID | `String` | 无 |
@@ -358,7 +360,7 @@ listeners:
 
 {% hint style="warning" %}
 **注意事项：**
-- 物品 Lore 的颜色代码会被忽略进行匹配（原始文本匹配）
+- 旧监听器按原始文本进行包含匹配，不会自动移除颜色，也不会把配置中的 `&` 转换为实际颜色代码
 - 确保物品 Lore 文本足够独特，避免误触发
 {% endhint %}
 

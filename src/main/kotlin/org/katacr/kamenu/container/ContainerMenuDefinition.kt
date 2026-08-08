@@ -133,6 +133,21 @@ data class ContainerButtonDefinition(
     val viewCondition: String?,
     val updateIntervalTicks: Long?,
     val display: ContainerItemDefinition,
+    val actions: Map<ContainerClickType, List<Any>>,
+    val variants: List<ContainerButtonVariantDefinition> = emptyList()
+)
+
+/**
+ * Container 按钮的完整显示变体。
+ *
+ * 变体按 priority 升序选择；priority 相同或均未指定时保持 YAML 中的顺序。
+ * 每个变体同时拥有 display 和 actions，避免同一槽位的物品属性被不同条件分别选中。
+ */
+data class ContainerButtonVariantDefinition(
+    val priority: Int?,
+    val order: Int,
+    val condition: String?,
+    val display: ContainerItemDefinition,
     val actions: Map<ContainerClickType, List<Any>>
 )
 

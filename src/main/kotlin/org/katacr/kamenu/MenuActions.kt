@@ -208,6 +208,8 @@ object MenuActions {
             trimmedAction.startsWith("stop-task:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("stop-current-task") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("page:") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("set-args:") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("del-args") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("wait:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("return") -> ActionType.SINGLE_TARGET_ONLY
 
@@ -848,7 +850,8 @@ object MenuActions {
                 val ticks = controlAction.substringAfter(":", "").trim().toLongOrNull() ?: 0L
                 delayTicks(context.player, ticks).thenApply { false }
             }
-            controlAction.startsWith("refresh:", ignoreCase = true) -> {
+            controlAction.equals("refresh", ignoreCase = true) ||
+                controlAction.startsWith("refresh:", ignoreCase = true) -> {
                 val target = controlAction.substringAfter(":", "").trim()
                 plugin?.takeIf { it.containerMenusReady }
                     ?.containerMenuService
@@ -1308,6 +1311,21 @@ object MenuActions {
                     }
                 }
             }
+
+            // set-args: 替换当前菜单参数，并刷新当前 Container 或 Dialog
+            finalCmd.startsWith("set-args:", ignoreCase = true) -> {
+                val arguments = ActionArgumentParser.splitArguments(finalCmd.substringAfter(":", ""))
+                replaceMenuArgumentsAndRefresh(
+                    player,
+                    arguments,
+                    config,
+                    contextId,
+                    handledMenuLifecycle
+                )
+            }
+
+            // del-args: 清理当前菜单参数，不主动刷新菜单
+            finalCmd.equals("del-args", ignoreCase = true) -> MenuArgumentManager.clear(player)
 
             // force-close: 强制关闭菜单（不执行 Events.Close）
             finalCmd.trim() == "force-close" -> {
@@ -1776,6 +1794,34 @@ object MenuActions {
                 })
             }
         }
+    }
+
+    /** 替换当前菜单参数，并按当前 UI 类型选择原地刷新或强制重开。 */
+    private fun replaceMenuArgumentsAndRefresh(
+        player: Player,
+        arguments: List<String>,
+        config: YamlConfiguration?,
+        contextId: String?,
+        handledMenuLifecycle: AtomicBoolean?
+    ) {
+        MenuArgumentManager.activate(player, arguments)
+        val kaMenu = plugin ?: return
+        val containerService = kaMenu.takeIf { it.containerMenusReady }?.containerMenuService
+        if (containerService?.currentSessionId(player) != null) {
+            containerService.refreshFromAction(player, "*")
+            return
+        }
+        if (config == null) return
+
+        handledMenuLifecycle?.set(true)
+        val menuId = kaMenu.menuManager.getMenuId(config)
+        KaScheduler.runPlayer(player, Runnable {
+            if (menuId != null) {
+                MenuUI.forceOpenMenu(player, menuId, kaMenu.menuManager, kaMenu, arguments)
+            } else {
+                MenuUI.forceOpenConfig(player, config, kaMenu, contextId ?: "external", arguments)
+            }
+        })
     }
 
     /**
