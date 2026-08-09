@@ -1,12 +1,12 @@
 package org.katacr.kamenu.migration
 
-/** 一层待转换的 TrMenu 点击动作来源，顺序即最终动作拼接顺序。 */
+/** 一层待转换的 源菜单 点击动作来源，顺序即最终动作拼接顺序。 */
 internal data class TrMenuActionLayer(
     val raw: Any?,
     val path: String
 )
 
-/** 已展开继承语义的 TrMenu 图标状态。 */
+/** 已展开继承语义的 源菜单 图标状态。 */
 internal data class TrMenuButtonStateConversion(
     val path: String,
     val priority: Int?,
@@ -15,7 +15,7 @@ internal data class TrMenuButtonStateConversion(
     val actionLayers: List<TrMenuActionLayer>
 )
 
-/** 一个 TrMenu 图标的默认状态、条件变体和目标刷新周期。 */
+/** 一个 源菜单 图标的默认状态、条件变体和目标刷新周期。 */
 internal data class TrMenuButtonVisualConversion(
     val placement: TrMenuButtonPlacement,
     val viewCondition: String?,
@@ -25,7 +25,7 @@ internal data class TrMenuButtonVisualConversion(
 )
 
 /**
- * 将 TrMenu 图标显示字段和 nested icons 展开为 KaMenu 按钮状态。
+ * 将 源菜单 图标显示字段和 nested icons 展开为 KaMenu 按钮状态。
  *
  * 该转换器不会执行材质来源脚本，也不转换动作和条件；它只保留动作层与原始条件，
  * 供后续专用转换器处理。

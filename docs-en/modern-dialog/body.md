@@ -180,6 +180,36 @@ Body:
 - Supports nested condition checks
 - Both formats can be mixed (one uses a list, the other uses a string)
 
+#### Mixing Static And Conditional Lines
+
+A `text` list may mix plain strings and conditional maps in YAML order. The selected `allow` or `deny` value is inserted at the condition's position, and a branch may return either one string or several lines.
+
+```yaml
+Body:
+  ordered_status:
+    type: 'message'
+    text:
+      - '&7Fixed heading'
+      - condition: 'hasPerm.kamenu.admin'
+        allow:
+          - '&aAdministrator status'
+          - '&7Management tools enabled'
+        deny: '&7Regular player status'
+      - '&7Fixed footer'
+```
+
+When every list entry is a conditional map, KaMenu keeps treating the list as candidates and uses the first condition that returns non-empty content. If any plain string is present, entries are expanded in YAML order instead.
+
+To include or exclude only one line, append an inline condition to a `Body.message.text` string:
+
+```yaml
+text:
+  - '&7Public description'
+  - '&cAdministrator description {condition: hasPerm.kamenu.admin}'
+```
+
+The complete line is skipped when the condition fails. See [Conditions](conditions.md#inline-line-conditions) for the exact syntax, variable context, and action usage.
+
 ---
 
 ### Advanced Examples
@@ -502,6 +532,23 @@ Body:
     width: 16
     height: 16
 ```
+
+`lore` also supports mixing static lines and conditional maps in order:
+
+```yaml
+lore:
+  - '&7Fixed lore 1'
+  - condition: '%player_is_op% == true'
+    allow:
+      - '&aAdministrator lore 1'
+      - '&aAdministrator lore 2'
+    deny: '&7Regular player lore'
+  - '&7Fixed lore 2'
+```
+
+The selected branch is inserted at its original position. A list made entirely of conditional maps still uses first-non-empty candidate selection, matching `Body.message.text`.
+
+For one Lore line, you may instead write `- '&aVIP lore {condition: hasPerm.shop.vip}'`. The condition must be at the end of the line.
 
 **`amount` property:**
 

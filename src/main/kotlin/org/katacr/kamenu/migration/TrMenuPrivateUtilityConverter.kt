@@ -1,10 +1,10 @@
 package org.katacr.kamenu.migration
 
 /**
- * 将已知 TrMenu `utils` 只读调用转换为 KaMenu 标准条件和物品来源。
+ * 将已知 源菜单 `utils` 只读调用转换为 KaMenu 标准条件和物品来源。
  *
  * 这里只接受参数结构和返回语义都能静态证明等价的调用；未知方法、目标玩家经济判断和
- * 带算术表达式的参数会交回通用迁移流程报告，而不会执行 TrMenu 私有 JavaScript。
+ * 带算术表达式的参数会交回通用迁移流程报告，而不会执行 源菜单 私有 JavaScript。
  */
 internal class TrMenuPrivateUtilityConverter(
     private val variables: TrMenuVariableConverter

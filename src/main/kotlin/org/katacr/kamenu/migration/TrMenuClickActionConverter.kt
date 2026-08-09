@@ -2,7 +2,7 @@ package org.katacr.kamenu.migration
 
 import java.util.LinkedHashMap
 
-/** 将 TrMenu 图标点击类型和 Reaction 层合并为 KaMenu Container actions。 */
+/** 将 源菜单 图标点击类型和 Reaction 层合并为 KaMenu Container actions。 */
 internal class TrMenuClickActionConverter(
     private val reactionConverter: TrMenuEventConverter
 ) {

@@ -21,6 +21,29 @@ Conditions can be used in the following locations:
 
 ---
 
+## Inline Line Conditions
+
+The following string lists may append `{condition: expression}` at the end of a line:
+
+- Dialog `Body.message.text`, Body item `lore`, and Bottom button `tooltip`
+- Container button `display.lore`
+- Any string action list
+
+```yaml
+text:
+  - '&7Visible to every player'
+  - '&cVisible only to administrators {condition: hasPerm.kamenu.admin}'
+
+actions:
+  - 'tell: &aRuns only at the required level {condition: %player_level% >= 10}'
+```
+
+When the condition passes, KaMenu removes the suffix and keeps the content. When it fails, the complete line or action is skipped. The modifier must be at the end of the line, must use the exact `{condition: expression}` form, and each line should contain only one inline condition. Expressions support PAPI, KaMenu variables, menu references, action arguments, and the current component's `self` context.
+
+Use inline conditions to include or exclude one line. Continue using conditional maps when replacement content, `deny` actions, or nested branches are required.
+
+---
+
 ## Text Field Conditions
 
 ### Syntax

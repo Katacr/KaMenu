@@ -1,10 +1,10 @@
 package org.katacr.kamenu.migration
 
-/** 将 TrMenu ItemMatcher 的可证明兼容子集转换为 KaMenu item/hasItem 语法。 */
+/** 将 源菜单 ItemMatcher 的可证明兼容子集转换为 KaMenu item/hasItem 语法。 */
 internal class TrMenuItemMatcherConverter(
     private val variables: TrMenuVariableConverter
 ) {
-    /** 转换 give-item/take-item；一条 TrMenu 多组 matcher 会展开为多条 KaMenu 动作。 */
+    /** 转换 give-item/take-item；一条 源菜单 多组 matcher 会展开为多条 KaMenu 动作。 */
     fun convertAction(
         raw: String,
         operation: String,
@@ -35,7 +35,7 @@ internal class TrMenuItemMatcherConverter(
         }
     }
 
-    /** 转换 Kether `item <matcher>` 条件；多组 matcher 使用 AND 保持 TrMenu 语义。 */
+    /** 转换 Kether `item <matcher>` 条件；多组 matcher 使用 AND 保持 源菜单 语义。 */
     fun convertCondition(
         raw: String,
         path: String,
@@ -59,7 +59,7 @@ internal class TrMenuItemMatcherConverter(
         return if (groups.size == 1) groups.single() else groups.joinToString(" && ", "(", ")")
     }
 
-    /** 将 TrMenu 右键绑定 ItemMatcher 转换为 KaMenu 独立物品绑定字段。 */
+    /** 将 源菜单 右键绑定 ItemMatcher 转换为 KaMenu 独立物品绑定字段。 */
     fun convertBinding(
         raw: String,
         path: String,

@@ -290,7 +290,7 @@ object JavaScriptManager {
     /**
      * JS helper：解析一段同时包含 PAPI、KaMenu 变量和菜单 JavaScript 调用的文本。
      *
-     * 该入口主要供迁移后的 TrMenu `vars(...)` 使用；只执行 KaMenu 已有文本解析流程。
+     * 该入口主要供迁移后的 源菜单 `vars(...)` 使用；只执行 KaMenu 已有文本解析流程。
      */
     fun resolveText(
         player: org.bukkit.entity.Player?,

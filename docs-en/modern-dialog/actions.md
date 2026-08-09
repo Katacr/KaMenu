@@ -145,31 +145,35 @@ Target selectors support all condition expressions supported by `Condition`:
 
 ## Per-Action Modifiers
 
-Chance and detached delay modifiers can be appended to any action line. Angle brackets are recommended:
+Chance, detached delay, and inline conditions can be appended to an action line using the fixed brace syntax:
 
 ```yaml
 # Run this line with a 25% chance
-- 'tell: &aYou triggered a random reward <chance=25>'
+- 'tell: &aYou triggered a random reward {chance: 25}'
 
 # Run this line after 20 ticks while the next line continues immediately
-- 'tell: &eThis message appears after 1 second <delay=20>'
+- 'tell: &eThis message appears after 1 second {wait: 20}'
 - 'tell: &aThis message appears immediately'
 
 # Combine chance, delay, and dynamic variables
-- 'points: type=add;num={data:reward} <chance=%player_luck%> <delay=10>'
+- 'points: type=add;num={data:reward} {chance: %player_luck%} {wait: 10}'
+
+# Run only when the condition passes
+- 'tell: &aYou can use the shop {condition: hasPerm.shop.use}'
 ```
 
-| Modifier | Aliases | Description |
-| --- | --- | --- |
-| `<chance=value>` | `rate`, `rand`, `random` | A `0..100` chance; accepts decimals, a trailing `%`, PAPI, and built-in variables |
-| `<delay=ticks>` | `wait` | Delays only this action line; ticks must be an integer greater than or equal to `0` |
+| Modifier | Description |
+| --- | --- |
+| `{chance: value}` | A `0..100` chance; accepts decimals, a trailing `%`, PAPI, and built-in variables |
+| `{wait: ticks}` | Delays only this action line; ticks must be an integer greater than or equal to `0` |
+| `{condition: expression}` | Skips the complete action when false; supports PAPI, built-in variables, references, action arguments, and component context |
 
-For TrMenu compatibility, `{chance=25}`, `{delay=20}`, and `:` in place of `=` are also accepted. If the same modifier is repeated, the first value is used.
+Modifiers must be at the end of the line, and several modifiers may be appended in sequence. Only the names, braces, and colon forms shown above are recognized.
 
-Chance is evaluated first. If it passes, the line is scheduled with its delay. A failed chance skips only that line and the following actions continue.
+The condition and chance are evaluated before an independent delay is scheduled. A failed check skips only that line and the following actions continue. Use a conditional map when `allow` and `deny` branches are needed.
 
 {% hint style="warning" %}
-`<delay=20>` does not block the action list. Use the standalone `wait: 20` action when all following actions must wait 20 ticks. Do not add detached delay to `return` or `wait:` because the delayed control result cannot propagate back to the action chain that already continued.
+`{wait: 20}` does not block the action list. Use the standalone `wait: 20` action when all following actions must wait 20 ticks. Do not add detached delay to `return` or `wait:` because the delayed control result cannot propagate back to the action chain that already continued.
 {% endhint %}
 
 ---
@@ -1286,7 +1290,7 @@ Insert a delay in the action list; subsequent actions will execute after the spe
 - 'title: title=&cGo!;in=5;keep=30;out=10'
 ```
 
-**Note:** `wait` pauses the current action chain and affects actions **after** it, but does not block the server thread or other tasks. Use the `<delay=ticks>` modifier to delay only one line.
+**Note:** `wait` pauses the current action chain and affects actions **after** it, but does not block the server thread or other tasks. Use the `{wait: ticks}` modifier to delay only one line.
 
 ---
 

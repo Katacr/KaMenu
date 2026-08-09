@@ -1,7 +1,7 @@
 package org.katacr.kamenu.migration
 
 /**
- * 将受限 TrMenu Kether 条件转换为 KaMenu 条件表达式。
+ * 将受限 源菜单 Kether 条件转换为 KaMenu 条件表达式。
  *
  * 解析器只接受迁移蓝图声明的纯判断子集；任何未完全消费或无法识别的语法都会安全失败，
  * 不会删除条件后放行原动作。

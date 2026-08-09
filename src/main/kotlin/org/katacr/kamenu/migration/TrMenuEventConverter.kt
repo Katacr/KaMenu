@@ -10,9 +10,9 @@ internal data class TrMenuEventConversion(
 )
 
 /**
- * 将 TrMenu Reaction 和 Tasks 转换为 KaMenu Container 生命周期动作。
+ * 将 源菜单 Reaction 和 Tasks 转换为 KaMenu Container 生命周期动作。
  *
- * TrMenu Close 中的 return 只截断动作，不阻止窗口关闭，因此此处会专门移除该语义冲突。
+ * 源菜单 Close 中的 return 只截断动作，不阻止窗口关闭，因此此处会专门移除该语义冲突。
  */
 internal class TrMenuEventConverter(
     private val actionConverter: TrMenuActionConverter,

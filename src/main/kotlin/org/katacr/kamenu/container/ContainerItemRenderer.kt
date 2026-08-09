@@ -25,7 +25,7 @@ class ContainerItemRenderer(private val plugin: KaMenu) {
             source = values.string(display["material"], "PAPER"),
             amount = values.int(display["amount"], 1),
             name = display["name"]?.let { values.string(it) },
-            lore = display["lore"]?.let(values::strings),
+            lore = display["lore"]?.let(values::inlineConditionalStrings),
             customModelData = display["custom_model_data"]?.let { values.string(it) },
             itemModel = display["item_model"]?.let { values.string(it) },
             skullOwner = display["skull_owner"]?.let { values.string(it) },

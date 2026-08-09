@@ -42,6 +42,8 @@ object TextResolver {
         var result = text ?: return ""
         val resolvedVariables = MenuArgumentManager.merge(player, variables)
 
+        result = MenuReferenceResolver.resolve(result, menuConfig, resolvedVariables)
+
         resolvedVariables.forEach { (key, value) ->
             if (!key.startsWith("item.") && !key.startsWith("list.") && !key.startsWith("arg:")) {
                 result = result.replace("\$($key)", value)
@@ -143,6 +145,15 @@ object TextResolver {
     ): String {
         var result = text ?: return ""
         val resolvedVariables = MenuArgumentManager.merge(player, variables)
+
+        val sourceWithReferences = result
+        result = MenuReferenceResolver.resolve(result, menuConfig, resolvedVariables) { value, index ->
+            encodeConditionReplacement(
+                sourceWithReferences,
+                index,
+                resolve(player, value, resolvedVariables, menuConfig)
+            )
+        }
 
         resolvedVariables.forEach { (key, value) ->
             if (!key.startsWith("item.") && !key.startsWith("list.") && !key.startsWith("arg:")) {

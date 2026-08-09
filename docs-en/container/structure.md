@@ -1,10 +1,13 @@
 # Container Structure
 
+## Top-Level Keys
+
 | Key | Required | Purpose | Reference |
 |---|---|---|---|
 | `Type` | No | Selects the inventory type; defaults to `CHEST` when `Layout` is present | [Type](type.md) |
 | `Title` | No | Sets the inventory title; defaults to `KaMenu` | [Title](title.md) |
 | `Settings` | No | Dependency checks, click throttling, and argument rules | [Settings](settings.md) |
+| `References` | No | Shared text and templates for the current menu | [Menu References](../config/references.md) |
 | `Layout` | Yes | Maps buttons to physical slots | [Layout](layout.md) |
 | `Buttons` | No | Defines buttons referenced by Layout; may be omitted for an entirely empty layout | [Buttons](buttons.md) |
 | `Properties` | No | Furnace progress, anvil input, and other type-specific values | [Properties](properties.md) |
@@ -12,6 +15,32 @@
 | `Title-Update` | No | Refreshes only the title | [Refresh](refresh.md) |
 | `Progress-Update` | No | Refreshes furnace progress and evaluates progress events | [Refresh](refresh.md) |
 | `Events` | No | Open, close, reusable click groups, tasks, and progress events | [Events](events.md) |
+
+## Configuration Hierarchy
+
+```yaml
+Type: CHEST                    # Inventory type
+Title: '&8Menu title'          # Top inventory title
+Settings:                       # Prerequisites, throttle, and arguments
+References:                     # Optional shared text and templates
+Layout:                         # Slot layout; always required
+Update: 20                      # Optional full refresh interval in ticks
+Title-Update: 40                # Optional title refresh interval in ticks
+Progress-Update: 5              # Optional furnace progress interval in ticks
+Properties:                     # Optional furnace/anvil fields
+Events:                         # Optional lifecycle and action groups
+Buttons:                        # Optional buttons referenced by Layout
+```
+
+Recommended authoring order:
+
+1. Select the inventory and slot dimensions with `Type`.
+2. Place each button in a physical slot with `Layout`.
+3. Define `Buttons.<id>.display.material` for every ID referenced by the layout.
+4. Add click interaction under `Buttons.<id>.actions`.
+5. Add `Settings`, `Properties`, refresh fields, and `Events` only when needed.
+
+## Complete Skeleton
 
 ```yaml
 Type: CHEST
@@ -21,6 +50,9 @@ Settings:
   need_placeholder:
     - player
   min_click_delay: 200
+
+References:
+  product_name: '&bProduct'
 
 Update: 20
 Title-Update: 40
@@ -42,10 +74,14 @@ Buttons:
   shop:
     display:
       material: DIAMOND
-      name: '&bProduct'
+      name: '{ref:product_name}'
     actions:
       left:
         - 'close'
 ```
 
+Use `{ref:path}` to read shared values from `References`. Container buttons may also use `{self:id}` and `{self:<field-path>}` to read their own node. See [Menu References](../config/references.md) for the complete rules.
+
 `Body`, `Inputs`, and `Bottom` are Dialog sections and cannot be added to a Container file. Common events, actions, and conditions are documented under [Events](events.md), [Actions](../modern-dialog/actions.md), and [Conditions](../modern-dialog/conditions.md).
+
+`Layout` is the only top-level key that every Container menu must define. All other keys are optional. A useful menu normally includes a valid layout and definitions for every button ID referenced by that layout.

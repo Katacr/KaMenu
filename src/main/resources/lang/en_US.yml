@@ -95,6 +95,8 @@ migration:
   config_save_failed: "§cMigrated menus were generated, but custom_commands.yml could not be saved: {0}"
   item_bindings_save_failed: "§cMigrated menus were generated, but item_bindings.yml could not be saved: {0}"
   runtime_reloaded: "§aMigration runtime reloaded: menus {0} succeeded, {1} failed; custom commands {2} succeeded, {3} failed."
+  log_saved: "§7Full migration log: §f{0}"
+  log_failed: "§cCould not write the migration log; the full report was written to the server console instead: {0}"
 
 # ESC Pause Screen Entry
 pause_entry:

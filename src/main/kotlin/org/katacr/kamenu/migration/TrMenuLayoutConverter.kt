@@ -2,7 +2,7 @@ package org.katacr.kamenu.migration
 
 import org.katacr.kamenu.container.ContainerMenuType
 
-/** TrMenu 图标在目标 Container 布局中的静态位置。 */
+/** 源菜单 图标在目标 Container 布局中的静态位置。 */
 internal data class TrMenuButtonPlacement(
     val sourceId: String,
     val targetId: String,
@@ -12,7 +12,7 @@ internal data class TrMenuButtonPlacement(
     val slots: List<Int>
 )
 
-/** 已转换并静态化的 TrMenu Container 布局。 */
+/** 已转换并静态化的 源菜单 Container 布局。 */
 internal data class TrMenuLayoutConversion(
     val type: ContainerMenuType,
     val rows: List<String>,
@@ -20,7 +20,7 @@ internal data class TrMenuLayoutConversion(
 )
 
 /**
- * 将 TrMenu 单页布局和图标位置转换为 KaMenu Container 静态布局。
+ * 将 源菜单 单页布局和图标位置转换为 KaMenu Container 静态布局。
  *
  * 多页、动态槽位和移动槽位动画没有等价运行时语义，因此按严格策略报告，
  * 不会在此处静默拆页或猜测目标位置。

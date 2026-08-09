@@ -5,7 +5,7 @@ KaMenu 的现代 Dialog 菜单基于 Minecraft 原生 Dialog API，支持多层�
 ## 功能导航
 
 - [菜单文件结构](structure.md)：了解菜单 ID、文件目录、顶层节点和基础 YAML 结构。
-- [Container 菜单](../container/README.md)：配置箱子等容器界面、按钮状态变体、优先级和刷新。
+- [容器类菜单](../container/README.md)：配置箱子等容器界面、按钮状态变体、优先级和刷新。
 - [全局设置](setting.md)：配置 ESC 关闭、按钮动作后的客户端行为和菜单所需 PlaceholderAPI 扩展。
 - [JavaScript 功能](javascript.md)：定义可复用脚本，并通过 `{js:...}` 在文本、条件和动作中输出动态值。
 - [actions 文件夹](../config/actions-packages.md)、[js 文件夹](../config/javascript-packages.md)：管理跨菜单复用的全局动作包和 JavaScript 包。

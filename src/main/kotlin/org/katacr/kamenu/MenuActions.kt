@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * 动作执行是“异步串行”的：每个节点按顺序执行，遇到 `wait:` 会返回一个 future，
  * 后续动作会在等待完成后继续，因此变量和条件会在真正执行到该节点时才解析；
- * `<delay=...>` 则把当前行独立调度，不等待该行完成。
+ * `{wait: ...}` 则把当前行独立调度，不等待该行完成。
  */
 object MenuActions {
     private var languageManager: LanguageManager? = null
@@ -45,9 +45,10 @@ object MenuActions {
         val targetSelector: String?
     )
 
-    /** 单行动作中提取出的概率与独立延迟修饰符。 */
+    /** 单行动作中提取出的条件、概率与独立延迟修饰符。 */
     private data class ActionModifiers(
         val action: String,
+        val condition: String?,
         val chance: String?,
         val delay: String?
     )
@@ -93,10 +94,6 @@ object MenuActions {
         SINGLE_TARGET_ONLY  // 只对单个玩家有意义的动作
     }
 
-    private val actionModifierPattern = Regex(
-        """(?:<\s*(chance|rate|rand(?:om)?|delay|wait)\s*[=:]\s*([^>]*)>|\{\s*(chance|rate|rand(?:om)?|delay|wait)\s*[=:]\s*([^{}]*)})""",
-        RegexOption.IGNORE_CASE
-    )
     private val pointsAliasPattern = Regex(
         """^(give|add|deposit|take|remove|withdraw)-?points?\s*:\s*(.*)$""",
         RegexOption.IGNORE_CASE
@@ -218,7 +215,7 @@ object MenuActions {
         }
     }
 
-    /** 将 TrMenu 风格的点券动作名转换为 KaMenu 的 add/take 操作。 */
+    /** 将 源菜单 风格的点券动作名转换为 KaMenu 的 add/take 操作。 */
     private fun parsePointsAlias(action: String): Pair<String, String>? {
         val match = pointsAliasPattern.matchEntire(action.trim()) ?: return null
         val type = when (match.groupValues[1].lowercase()) {
@@ -749,24 +746,40 @@ object MenuActions {
     }
 
     /**
-     * 提取 TrMenu 风格的单行动作修饰符。
+     * 提取单行动作修饰符。
      *
-     * 支持 `<chance=50>`、`{chance=50}`、`<delay=20>` 及其 rate/random/wait 别名；
+     * 支持行尾 `{condition: ...}`、`{chance: ...}` 和 `{wait: ...}`；
      * 修饰符会在动作交给变量解析器前移除，避免被当作内置变量或 MiniMessage 标签。
      */
     private fun parseActionModifiers(action: String): ActionModifiers {
+        var remaining = action.trimEnd()
+        var condition: String? = null
         var chance: String? = null
         var delay: String? = null
-        actionModifierPattern.findAll(action).forEach { match ->
-            val key = match.groupValues[1].ifEmpty { match.groupValues[3] }.lowercase()
-            val value = match.groupValues[2].ifEmpty { match.groupValues[4] }.trim()
-            when (key) {
-                "chance", "rate", "rand", "random" -> if (chance == null) chance = value
-                "delay", "wait" -> if (delay == null) delay = value
+        while (remaining.isNotEmpty()) {
+            val parsedCondition = InlineConditionResolver.parse(remaining)
+            if (parsedCondition != null) {
+                condition = parsedCondition.condition
+                remaining = parsedCondition.content
+                continue
             }
+            val parsedChance = InlineConditionResolver.parseTrailingModifier(remaining, "chance")
+            if (parsedChance != null) {
+                chance = parsedChance.second
+                remaining = parsedChance.first
+                continue
+            }
+            val parsedWait = InlineConditionResolver.parseTrailingModifier(remaining, "wait")
+            if (parsedWait != null) {
+                delay = parsedWait.second
+                remaining = parsedWait.first
+                continue
+            }
+            break
         }
         return ActionModifiers(
-            action = actionModifierPattern.replace(action, "").trim(),
+            action = remaining.trim(),
+            condition = condition,
             chance = chance,
             delay = delay
         )
@@ -829,7 +842,15 @@ object MenuActions {
         action: String
     ): CompletableFuture<Boolean> {
         val modifiers = parseActionModifiers(action)
-        if (modifiers.action.isEmpty() || !passesActionChance(context, modifiers.chance)) {
+        if (modifiers.action.isEmpty() ||
+            (modifiers.condition != null && !ConditionExpressionEngine.checkCondition(
+                context.player,
+                modifiers.condition,
+                context.variables,
+                context.config
+            ) { null }) ||
+            !passesActionChance(context, modifiers.chance)
+        ) {
             return CompletableFuture.completedFuture(false)
         }
         val actionDelay = parseActionDelay(context, modifiers.delay)
@@ -1750,7 +1771,7 @@ object MenuActions {
                 })
             }
 
-            // add-points/take-points 等 TrMenu 兼容别名
+            // add-points/take-points 等 源菜单 兼容别名
             pointsAlias != null -> {
                 KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndHandlePoints(

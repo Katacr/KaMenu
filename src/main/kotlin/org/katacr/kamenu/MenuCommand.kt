@@ -8,9 +8,11 @@ import org.bukkit.command.TabExecutor
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.katacr.kamenu.migration.DeluxeMenusMigration
+import org.katacr.kamenu.migration.MigrationLogWriter
 import org.katacr.kamenu.migration.TrMenuMigration
 import java.io.File
 import java.io.InputStreamReader
+import java.util.logging.Level
 
 /**
  * `/km` / `/kamenu` 主命令处理器。
@@ -19,6 +21,7 @@ import java.io.InputStreamReader
  * reload 支持第三层目标：all/menu/actions/js/lang/config；不传目标时等同 all。
  */
 class MenuCommand(private val plugin: KaMenu) : TabExecutor {
+    private val migrationLogWriter = MigrationLogWriter(File(plugin.dataFolder, "logs/migration"))
 
     /**
      * 可重载的运行时模块。
@@ -198,6 +201,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             val targetRoot = resolveMigrationTarget(positionalArguments.getOrNull(1))
             val migrator = DeluxeMenusMigration()
             val result = migrator.migrate(source, targetRoot, overwrite)
+            val logLines = mutableListOf<String>()
             val customCommandsConfig = plugin.customCommandManager.loadConfiguration()
             val commandMerge = migrator.mergeOpenCommands(
                 result,
@@ -211,72 +215,66 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                     configSaveError = error.message ?: error.javaClass.simpleName
                 }
             }
-            sender.sendMessage(
-                plugin.languageManager.getMessage(
-                    "migration.completed",
-                    result.migrated.toString(),
-                    result.failed.toString(),
-                    result.warnings.toString(),
-                    targetRoot.absolutePath
-                )
+            val completedMessage = plugin.languageManager.getMessage(
+                "migration.completed",
+                result.migrated.toString(),
+                result.failed.toString(),
+                result.warnings.toString(),
+                targetRoot.absolutePath
             )
+            sender.sendMessage(completedMessage)
+            logLines += completedMessage
             result.files.forEach { file ->
-                if (file.migrated) {
-                    sender.sendMessage(
-                        plugin.languageManager.getMessage(
-                            "migration.file_success",
-                            file.source.absolutePath,
-                            file.target?.absolutePath ?: ""
-                        )
-                    )
-                }
+                logLines += "[FILE/${if (file.migrated) "SUCCESS" else "FAILED"}] ${file.source.absolutePath}"
+                file.target?.let { target -> logLines += "  Target: ${target.absolutePath}" }
                 file.issues.forEach { issue ->
                     val key = if (issue.severity == DeluxeMenusMigration.Severity.ERROR) {
                         "migration.error"
                     } else {
                         "migration.warning"
                     }
-                    sender.sendMessage(plugin.languageManager.getMessage(key, issue.path, issue.message))
+                    logLines += plugin.languageManager.getMessage(key, issue.path, issue.message)
                 }
             }
-            sender.sendMessage(
-                plugin.languageManager.getMessage(
-                    "migration.commands_completed",
-                    commandMerge.total.toString(),
-                    commandMerge.added.toString(),
-                    commandMerge.replaced.toString(),
-                    commandMerge.unchanged.toString(),
-                    commandMerge.conflicts.size.toString()
-                )
+            val commandsMessage = plugin.languageManager.getMessage(
+                "migration.commands_completed",
+                commandMerge.total.toString(),
+                commandMerge.added.toString(),
+                commandMerge.replaced.toString(),
+                commandMerge.unchanged.toString(),
+                commandMerge.conflicts.size.toString()
             )
+            sender.sendMessage(commandsMessage)
+            logLines += commandsMessage
             commandMerge.conflicts.forEach { conflict ->
-                sender.sendMessage(
-                    plugin.languageManager.getMessage(
-                        "migration.command_conflict",
-                        conflict.command,
-                        conflict.existingValue,
-                        conflict.migratedMenuId
-                    )
+                logLines += plugin.languageManager.getMessage(
+                    "migration.command_conflict",
+                    conflict.command,
+                    conflict.existingValue,
+                    conflict.migratedMenuId
                 )
             }
             configSaveError?.let { error ->
-                sender.sendMessage(plugin.languageManager.getMessage("migration.config_save_failed", error))
+                val message = plugin.languageManager.getMessage("migration.config_save_failed", error)
+                sender.sendMessage(message)
+                logLines += message
             }
 
             if (result.migrated > 0) {
                 val menuReload = reloadMenu(cancelTasks = true)
                 val commandRegistration = plugin.customCommandManager.registerCustomCommandsWithResult()
                 plugin.customCommandManager.refreshOnlinePlayerCommands()
-                sender.sendMessage(
-                    plugin.languageManager.getMessage(
-                        "migration.runtime_reloaded",
-                        menuReload.success.toString(),
-                        menuReload.failed.toString(),
-                        commandRegistration.success.toString(),
-                        commandRegistration.failed.toString()
-                    )
+                val reloadMessage = plugin.languageManager.getMessage(
+                    "migration.runtime_reloaded",
+                    menuReload.success.toString(),
+                    menuReload.failed.toString(),
+                    commandRegistration.success.toString(),
+                    commandRegistration.failed.toString()
                 )
+                sender.sendMessage(reloadMessage)
+                logLines += reloadMessage
             }
+            writeMigrationLog(sender, "DeluxeMenus", source, targetRoot, overwrite, logLines)
             return true
         }
 
@@ -933,6 +931,36 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         return if (candidate.toPath().startsWith(base.toPath())) candidate else File(base, defaultDirectory)
     }
 
+    /** 保存完整迁移报告；写入失败时将报告回退到服务器控制台。 */
+    private fun writeMigrationLog(
+        sender: CommandSender,
+        migrationType: String,
+        source: File,
+        target: File,
+        overwrite: Boolean,
+        lines: List<String>
+    ) {
+        runCatching {
+            migrationLogWriter.write(migrationType, source, target, overwrite, lines)
+        }.onSuccess { logFile ->
+            sender.sendMessage(plugin.languageManager.getMessage("migration.log_saved", logFile.absolutePath))
+        }.onFailure { error ->
+            plugin.logger.log(Level.WARNING, "Failed to write $migrationType migration log", error)
+            plugin.logger.warning(
+                "[$migrationType migration] Source: ${source.absolutePath}; output: ${target.absolutePath}; overwrite: $overwrite"
+            )
+            lines.forEach { line ->
+                plugin.logger.warning("[$migrationType migration] ${MigrationLogWriter.stripLegacyFormatting(line)}")
+            }
+            sender.sendMessage(
+                plugin.languageManager.getMessage(
+                    "migration.log_failed",
+                    error.message ?: error.javaClass.simpleName
+                )
+            )
+        }
+    }
+
     /** 返回 DeluxeMenus 默认私有菜单目录，避免将其 config.yml 等非菜单文件纳入迁移。 */
     private fun resolveDefaultDeluxeMenusSource(): File {
         val pluginsDirectory = plugin.dataFolder.parentFile ?: File("plugins")
@@ -941,7 +969,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             .normalize()
     }
 
-    /** 执行 TrMenu 批量迁移、指令合并和运行时重载。 */
+    /** 执行 源菜单 批量迁移、指令合并和运行时重载。 */
     private fun migrateTrMenu(sender: CommandSender, arguments: List<String>): Boolean {
         val overwrite = arguments.any { it.equals("overwrite", ignoreCase = true) }
         val positional = arguments.filterNot { it.equals("overwrite", ignoreCase = true) }
@@ -955,6 +983,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         val target = resolveMigrationTarget(positional.getOrNull(1), "trmenu_migrated")
         val migrator = TrMenuMigration()
         val result = migrator.migrate(source, target, menuRoot, overwrite)
+        val logLines = mutableListOf<String>()
         val customCommands = plugin.customCommandManager.loadConfiguration()
         val commandMerge = migrator.mergeBoundCommands(result, menuRoot, customCommands, overwrite)
         val itemBindings = plugin.itemBindingManager.loadConfiguration()
@@ -972,95 +1001,90 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             }
         }
 
-        sender.sendMessage(
-            plugin.languageManager.getMessage(
-                "migration.trmenu_completed",
-                result.migrated.toString(),
-                result.failed.toString(),
-                result.warnings.toString(),
-                result.errors.toString(),
-                result.elapsedMillis.toString(),
-                target.absolutePath
-            )
+        val completedMessage = plugin.languageManager.getMessage(
+            "migration.trmenu_completed",
+            result.migrated.toString(),
+            result.failed.toString(),
+            result.warnings.toString(),
+            result.errors.toString(),
+            result.elapsedMillis.toString(),
+            target.absolutePath
         )
+        sender.sendMessage(completedMessage)
+        logLines += completedMessage
         result.files.forEach { file ->
-            if (file.migrated) {
-                sender.sendMessage(
-                    plugin.languageManager.getMessage(
-                        "migration.file_success",
-                        file.source.absolutePath,
-                        file.target?.absolutePath ?: ""
-                    )
-                )
-            }
+            logLines += "[FILE/${if (file.migrated) "SUCCESS" else "FAILED"}] ${file.source.absolutePath}"
+            file.target?.let { fileTarget -> logLines += "  Target: ${fileTarget.absolutePath}" }
             file.issues.forEach { issue ->
-                sender.sendMessage(
-                    plugin.languageManager.getMessage(
-                        "migration.trmenu_issue",
-                        issue.severity.name,
-                        issue.compatibility.name,
-                        issue.code,
-                        issue.path,
-                        issue.message
-                    )
+                logLines += plugin.languageManager.getMessage(
+                    "migration.trmenu_issue",
+                    issue.severity.name,
+                    issue.compatibility.name,
+                    issue.code,
+                    issue.path,
+                    issue.message
                 )
             }
         }
 
         if (commandMerge.invalidConfig) {
-            sender.sendMessage(plugin.languageManager.getMessage("migration.commands_invalid_config"))
+            val message = plugin.languageManager.getMessage("migration.commands_invalid_config")
+            sender.sendMessage(message)
+            logLines += message
         } else {
-            sender.sendMessage(
-                plugin.languageManager.getMessage(
-                    "migration.trmenu_commands_completed",
-                    commandMerge.total.toString(),
-                    commandMerge.added.toString(),
-                    commandMerge.replaced.toString(),
-                    commandMerge.unchanged.toString(),
-                    commandMerge.conflicts.size.toString()
-                )
+            val message = plugin.languageManager.getMessage(
+                "migration.trmenu_commands_completed",
+                commandMerge.total.toString(),
+                commandMerge.added.toString(),
+                commandMerge.replaced.toString(),
+                commandMerge.unchanged.toString(),
+                commandMerge.conflicts.size.toString()
             )
+            sender.sendMessage(message)
+            logLines += message
             commandMerge.conflicts.forEach { conflict ->
-                sender.sendMessage(
-                    plugin.languageManager.getMessage(
-                        "migration.command_conflict",
-                        conflict.command,
-                        conflict.existingValue,
-                        conflict.migratedMenuId
-                    )
+                logLines += plugin.languageManager.getMessage(
+                    "migration.command_conflict",
+                    conflict.command,
+                    conflict.existingValue,
+                    conflict.migratedMenuId
                 )
             }
         }
         configSaveError?.let { error ->
-            sender.sendMessage(plugin.languageManager.getMessage("migration.config_save_failed", error))
+            val message = plugin.languageManager.getMessage("migration.config_save_failed", error)
+            sender.sendMessage(message)
+            logLines += message
         }
 
         if (itemBindingMerge.invalidConfig) {
-            sender.sendMessage(plugin.languageManager.getMessage("migration.item_bindings_invalid_config"))
+            val message = plugin.languageManager.getMessage("migration.item_bindings_invalid_config")
+            sender.sendMessage(message)
+            logLines += message
         } else {
-            sender.sendMessage(
-                plugin.languageManager.getMessage(
-                    "migration.trmenu_items_completed",
-                    itemBindingMerge.total.toString(),
-                    itemBindingMerge.added.toString(),
-                    itemBindingMerge.replaced.toString(),
-                    itemBindingMerge.unchanged.toString(),
-                    itemBindingMerge.conflicts.size.toString()
-                )
+            val message = plugin.languageManager.getMessage(
+                "migration.trmenu_items_completed",
+                itemBindingMerge.total.toString(),
+                itemBindingMerge.added.toString(),
+                itemBindingMerge.replaced.toString(),
+                itemBindingMerge.unchanged.toString(),
+                itemBindingMerge.conflicts.size.toString()
             )
+            sender.sendMessage(message)
+            logLines += message
             itemBindingMerge.conflicts.forEach { conflict ->
-                sender.sendMessage(
-                    plugin.languageManager.getMessage(
-                        "migration.item_binding_conflict",
-                        conflict.id,
-                        conflict.existingValue,
-                        conflict.migratedMenuId
-                    )
+                logLines += plugin.languageManager.getMessage(
+                    "migration.item_binding_conflict",
+                    conflict.id,
+                    conflict.existingValue,
+                    conflict.migratedMenuId
                 )
             }
         }
         itemBindingSaveError?.let { error ->
-            sender.sendMessage(plugin.languageManager.getMessage("migration.item_bindings_save_failed", error))
+            val message = plugin.languageManager.getMessage("migration.item_bindings_save_failed", error)
+            sender.sendMessage(message)
+            logLines += message
         }
 
         if (result.migrated > 0) {
@@ -1068,20 +1092,21 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             val commandRegistration = plugin.customCommandManager.registerCustomCommandsWithResult()
             plugin.itemBindingManager.reload()
             plugin.customCommandManager.refreshOnlinePlayerCommands()
-            sender.sendMessage(
-                plugin.languageManager.getMessage(
-                    "migration.runtime_reloaded",
-                    menuReload.success.toString(),
-                    menuReload.failed.toString(),
-                    commandRegistration.success.toString(),
-                    commandRegistration.failed.toString()
-                )
+            val message = plugin.languageManager.getMessage(
+                "migration.runtime_reloaded",
+                menuReload.success.toString(),
+                menuReload.failed.toString(),
+                commandRegistration.success.toString(),
+                commandRegistration.failed.toString()
             )
+            sender.sendMessage(message)
+            logLines += message
         }
+        writeMigrationLog(sender, "TrMenu", source, target, overwrite, logLines)
         return true
     }
 
-    /** 返回 TrMenu 默认菜单目录，不把 settings.yml 等全局配置纳入迁移。 */
+    /** 返回 源菜单 默认菜单目录，不把 settings.yml 等全局配置纳入迁移。 */
     private fun resolveDefaultTrMenuSource(): File {
         val pluginsDirectory = plugin.dataFolder.parentFile ?: File("plugins")
         return File(pluginsDirectory, "TrMenu/menus").absoluteFile.normalize()

@@ -163,6 +163,33 @@ This example generates buttons in `shop → profile → settings → admin` orde
 | `tooltip` | List | Optional exit button hover tooltip, one string per line |
 | `actions` | List | Optional action list; commonly uses `close`, `open`, or `force-open` |
 
+#### Conditional Tooltip Lines
+
+Button and exit-button `tooltip` lists may mix static lines and conditional maps in order. The selected branch may return one or several lines:
+
+```yaml
+tooltip:
+  - '&7Fixed tooltip'
+  - condition: 'hasPerm.shop.vip'
+    allow:
+      - '&aVIP discount enabled'
+      - '&7Current discount: 20%'
+    deny: '&7No VIP discount'
+  - '&8Click to continue'
+```
+
+A list made entirely of conditional maps still uses first-non-empty candidate selection. Once a plain string is present, entries are expanded in YAML order.
+
+Use an inline suffix when only one tooltip line needs a condition:
+
+```yaml
+tooltip:
+  - '&7Public tooltip'
+  - '&aVIP discount enabled {condition: hasPerm.shop.vip}'
+```
+
+The line is omitted when the condition fails. Inline conditions use the exact `{condition: expression}` form and must be at the end of the line.
+
 #### Display Conditions
 
 Normal buttons can use `show-condition` to control visibility:

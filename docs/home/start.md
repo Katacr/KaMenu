@@ -17,7 +17,7 @@
 **版本功能支持**： 
 
 - ✅ Java 16+：插件公共运行时可在 Java 16 及以上版本加载
-- ✅ Bukkit/Spigot/Paper-compatible core 1.16.5+：Container、actions、变量、JavaScript、存储和自定义指令等公共功能
+- ✅ 兼容 Bukkit/Spigot/Paper 的 1.16.5+ 核心：容器类菜单、actions、变量、JavaScript、存储和自定义指令等公共功能
 - ✅ Paper/Folia 1.21.7+：启用原生 Dialog
 - Paper 1.21.8+：推荐版本，API 更加稳定
 - Minecraft 1.21.9+：支持 sprite 等新版客户端文本组件；Paper、Folia 与 Spigot 使用相同菜单语法
@@ -87,7 +87,7 @@ KaMenu 只将 Libby 随插件 JAR 提供，并在插件 `onLoad` 阶段优先热
 /kamenu guide
 ```
 
-入门向导会引导你设置插件语言，并按语言释放示例菜单。不支持 Dialog 的低版本核心只释放箱子、熔炉和铁砧等 Container 示例；支持 Dialog 的核心会同时释放 Container 与 Dialog 示例。示例菜单会写入：
+入门向导会引导你设置插件语言，并按语言释放示例菜单。不支持 Dialog 的低版本核心只释放箱子、熔炉和铁砧等容器类菜单示例；支持 Dialog 的核心会同时释放容器类菜单与 Dialog 示例。示例菜单会写入：
 
 ```text
 plugins/KaMenu/menus/example/

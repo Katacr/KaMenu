@@ -232,7 +232,7 @@ Converts DeluxeMenus chest menus into KaMenu V2 Container menus. The converter d
 /km open dm_migrated/requirements_menu
 ```
 
-See [Container Buttons](../container/buttons.md#variants) for same-slot `priority` merging and state variant rules.
+See [Menu Migration Overview](../container/migration.md#deluxemenus-migration-tutorial) for the complete workflow, incompatibilities, and report format. See [Container Buttons](../container/buttons.md#variants) for same-slot `priority` merging and state variant rules.
 
 ---
 
@@ -265,7 +265,7 @@ Compiles classic TrMenu stable-v3 inventory menus into standard KaMenu V2 Contai
 /km open trmenu_migrated/example
 ```
 
-See [TrMenu Migration](../container/trmenu-migration.md) for supported features, rejection rules, and diagnostics.
+See [Menu Migration Overview](../container/migration.md#trmenu-migration) for supported features, rejection rules, and `TRM_*` diagnostic codes.
 
 ---
 

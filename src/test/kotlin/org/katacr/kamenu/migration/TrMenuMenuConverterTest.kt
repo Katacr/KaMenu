@@ -36,6 +36,9 @@ class TrMenuMenuConverterTest {
                 display:
                   material: PAPER
                   name: '&a${'$'}{label_default}'
+                  lore:
+                    - '&7Visible {condition=perm *shop.view}'
+                    - '&eAdmin {requirement=perm *shop.admin}'
                 actions:
                   all: ['function: label ok', 'tell: default']
                 icons:
@@ -57,7 +60,16 @@ class TrMenuMenuConverterTest {
         assertEquals(listOf("shop", "shop-admin"), result.boundCommands)
         assertTrue(config.contains("JavaScript.__trmenu_guard.label"))
         assertEquals("hasPerm.shop.view", config.getString("Buttons.A.view_condition"))
-        assertEquals(2, config.getMapList("Buttons.A.variants").size)
+        val variants = config.getMapList("Buttons.A.variants")
+        val fallbackDisplay = variants[1]["display"] as Map<*, *>
+        assertEquals(
+            listOf(
+                "&7Visible {condition: hasPerm.shop.view}",
+                "&eAdmin {condition: hasPerm.shop.admin}"
+            ),
+            fallbackDisplay["lore"]
+        )
+        assertEquals(2, variants.size)
         assertNotNull(ContainerMenuParser.parse("trmenu_migrated/shop", config).definition)
     }
 
@@ -110,6 +122,78 @@ class TrMenuMenuConverterTest {
         )
         assertTrue(diagnostics.issues.none { it.code == "TRM_ITEM_SOURCE_UNSUPPORTED" })
         assertTrue(diagnostics.issues.none { it.code == "TRM_CONDITION_UNSUPPORTED" })
+    }
+
+    @Test
+    fun `migrates node references templates and icon id paths`() {
+        val (result, diagnostics) = convert(
+            """
+            Title: '{node:Shared.Title}'
+            Shared:
+              Title: '&8Reference Shop'
+              Message: '&aBuy {0} for {1}'
+            Layout: ['A        ']
+            Icons:
+              A:
+                display:
+                  material: PAPER
+                  name: '{node:Shared.Title}'
+                  lore:
+                    - '{node:Icons.@iconId@.display.material}'
+                    - '{node:Shared.Message_five_10 coins}'
+                actions:
+                  left: ['tell: {node:Shared.Title}']
+            """
+        )
+
+        assertNotNull(result)
+        assertFalse(diagnostics.hasErrors)
+        val config = result!!.config
+        assertEquals("{ref:trmenu.Shared.Title}", config.getString("Title"))
+        assertEquals("&8Reference Shop", config.getString("References.trmenu.Shared.Title"))
+        assertEquals("&aBuy {refarg:0} for {refarg:1}", config.getString("References.trmenu.Shared.Message"))
+        assertEquals("PAPER", config.getString("References.trmenu.Icons.A.display.material"))
+        val display = config.get("Buttons.A.display") as Map<*, *>
+        assertEquals(
+            listOf(
+                "{ref:trmenu.Icons.A.display.material}",
+                "{ref:[trmenu.Shared.Message;`five`;`10 coins`]}"
+            ),
+            display["lore"]
+        )
+        val actions = config.get("Buttons.A.actions") as Map<*, *>
+        assertEquals(
+            listOf("tell: {ref:trmenu.Shared.Title}"),
+            actions["left"]
+        )
+        assertTrue(diagnostics.issues.none { it.code == "TRM_VARIABLE_UNSUPPORTED" })
+    }
+
+    @Test
+    fun `keeps underscores introduced by icon id out of node arguments`() {
+        val (result, diagnostics) = convert(
+            """
+            Layout: ['         ']
+            Icons:
+              shop_item:
+                display:
+                  material: PAPER
+                  slot: 0
+                  lore:
+                    - '{node:Icons.@iconId@.display.material}'
+            """
+        )
+
+        assertNotNull(result)
+        assertFalse(diagnostics.hasErrors)
+        val config = result!!.config
+        assertEquals("PAPER", config.getString("References.trmenu.Icons.shop_item.display.material"))
+        val display = config.get("Buttons.shop_item.display") as Map<*, *>
+        assertEquals(
+            listOf("{ref:trmenu.Icons.shop_item.display.material}"),
+            display["lore"]
+        )
+        assertTrue(diagnostics.issues.none { it.code.startsWith("TRM_NODE_") })
     }
 
     @Test

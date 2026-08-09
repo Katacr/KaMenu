@@ -1,9 +1,16 @@
 package org.katacr.kamenu.migration
 
-/** 统一改写 TrMenu 参数、数据变量和已迁移的菜单 Function 调用。 */
+/** 统一改写 源菜单 参数、数据变量和已迁移的菜单 Function 调用。 */
 internal class TrMenuVariableConverter(
-    private val functions: TrMenuFunctionRegistry? = null
+    private val functions: TrMenuFunctionRegistry? = null,
+    private val nodeReferences: TrMenuNodeReferenceConverter? = null,
+    private val sourceIconId: String? = null
 ) {
+    /** 创建共享函数和节点收集器、但绑定到指定源图标的转换器。 */
+    fun scopedToIcon(iconId: String): TrMenuVariableConverter {
+        return TrMenuVariableConverter(functions, nodeReferences, iconId)
+    }
+
     /** strict 模式遇到私有表达式或未知 Function 时返回 null。 */
     fun rewrite(
         raw: String,
@@ -22,6 +29,21 @@ internal class TrMenuVariableConverter(
             .replace(Regex("\\{(g|gdata|globaldata):\\s*(.+?)}", RegexOption.IGNORE_CASE)) { match ->
                 "{gdata:${match.groupValues[2].trim()}" + "}"
             }
+
+        if (NODE_EXPRESSION.containsMatchIn(rewritten)) {
+            if (nodeReferences == null) {
+                diagnostics.add(
+                    code = "TRM_NODE_REFERENCE_UNSUPPORTED",
+                    severity = TrMenuMigrationSeverity.WARNING,
+                    compatibility = TrMenuMigrationCompatibility.UNSUPPORTED,
+                    path = path,
+                    message = "TrMenu node reference in '$raw' has no source menu context."
+                )
+                if (strict) return null
+            } else {
+                rewritten = nodeReferences.rewrite(rewritten, sourceIconId, path, diagnostics, strict) ?: return null
+            }
+        }
 
         if (PRIVATE_EXPRESSION.containsMatchIn(rewritten)) {
             diagnostics.add(
@@ -72,7 +94,11 @@ internal class TrMenuVariableConverter(
 
     companion object {
         private val PRIVATE_EXPRESSION = Regex(
-            "(?:\\$?\\{(?:ke|kether|node|jexl|nova|novalang|novascript|javascript|js):)",
+            "(?:\\$?\\{(?:ke|kether|jexl|nova|novalang|novascript|javascript|js):)",
+            RegexOption.IGNORE_CASE
+        )
+        private val NODE_EXPRESSION = Regex(
+            "\\$?\\{(?:node|nodes|n):",
             RegexOption.IGNORE_CASE
         )
     }

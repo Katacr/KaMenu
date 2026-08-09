@@ -3,6 +3,7 @@ package org.katacr.kamenu.container
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.katacr.kamenu.ConditionUtils
+import org.katacr.kamenu.InlineConditionResolver
 import org.katacr.kamenu.TextResolver
 
 /**
@@ -18,11 +19,24 @@ class ContainerValueResolver(
 
     /** 解析任意冻结值，并保留普通 Map/List 的结构。 */
     fun resolve(value: ContainerConfigValue?): Any? {
+        return resolveValue(value, resolveText = true)
+    }
+
+    /** 先判断 Lore 行尾条件，再解析保留正文中的变量。 */
+    fun inlineConditionalStrings(value: ContainerConfigValue?): List<String> {
+        return flatten(resolveValue(value, resolveText = false))
+            .map(Any::toString)
+            .mapNotNull { InlineConditionResolver.resolve(player, it, variables, config) }
+            .map { TextResolver.resolve(player, it, variables, menuConfig = config).replace("\\n", "\n") }
+    }
+
+    /** 按调用场景选择保留原始字符串或立即解析文本变量。 */
+    private fun resolveValue(value: ContainerConfigValue?, resolveText: Boolean): Any? {
         return when (value) {
             null, ContainerConfigValue.Null -> null
-            is ContainerConfigValue.Scalar -> resolveScalar(value.value)
-            is ContainerConfigValue.Mapping -> resolveMapping(value)
-            is ContainerConfigValue.Sequence -> resolveSequence(value)
+            is ContainerConfigValue.Scalar -> resolveScalar(value.value, resolveText)
+            is ContainerConfigValue.Mapping -> resolveMapping(value, resolveText)
+            is ContainerConfigValue.Sequence -> resolveSequence(value, resolveText)
         }
     }
 
@@ -75,8 +89,8 @@ class ContainerValueResolver(
     }
 
     /** 解析字符串、数字和布尔标量；仅字符串需要变量替换。 */
-    private fun resolveScalar(value: Any): Any {
-        return if (value is String) {
+    private fun resolveScalar(value: Any, resolveText: Boolean): Any {
+        return if (value is String && resolveText) {
             TextResolver.resolve(player, value, variables, menuConfig = config).replace("\\n", "\n")
         } else {
             value
@@ -84,29 +98,30 @@ class ContainerValueResolver(
     }
 
     /** 解析普通映射或条件分支映射。 */
-    private fun resolveMapping(value: ContainerConfigValue.Mapping): Any? {
+    private fun resolveMapping(value: ContainerConfigValue.Mapping, resolveText: Boolean): Any? {
         if (value.values.containsKey("condition")) {
-            return resolveConditional(value)
+            return resolveConditional(value, resolveText)
         }
-        return value.values.mapValues { (_, child) -> resolve(child) }
+        return value.values.mapValues { (_, child) -> resolveValue(child, resolveText) }
     }
 
-    /** 解析普通列表；首项为条件 Map 时沿用 KaMenu 的“首个非空分支”规则。 */
-    private fun resolveSequence(value: ContainerConfigValue.Sequence): Any? {
-        if (value.values.firstOrNull() is ContainerConfigValue.Mapping &&
-            (value.values.first() as ContainerConfigValue.Mapping).values.containsKey("condition")
-        ) {
+    /** 解析普通列表；列表全部为条件 Map 时沿用 KaMenu 的“首个非空分支”规则。 */
+    private fun resolveSequence(value: ContainerConfigValue.Sequence, resolveText: Boolean): Any? {
+        val isConditionCandidateList = value.values.isNotEmpty() && value.values.all { child ->
+            child is ContainerConfigValue.Mapping && child.values.containsKey("condition")
+        }
+        if (isConditionCandidateList) {
             value.values.filterIsInstance<ContainerConfigValue.Mapping>().forEach { condition ->
-                val resolved = resolveConditional(condition)
+                val resolved = resolveConditional(condition, resolveText)
                 if (isMeaningful(resolved)) return resolved
             }
             return emptyList<Any>()
         }
-        return value.values.mapNotNull(::resolve)
+        return value.values.mapNotNull { resolveValue(it, resolveText) }
     }
 
     /** 使用现有条件引擎选择 allow 或 deny，并继续递归解析选中值。 */
-    private fun resolveConditional(value: ContainerConfigValue.Mapping): Any? {
+    private fun resolveConditional(value: ContainerConfigValue.Mapping, resolveText: Boolean): Any? {
         val conditionValue = value.values["condition"]
         val condition = (conditionValue as? ContainerConfigValue.Scalar)?.value?.toString()
             ?: string(conditionValue)
@@ -115,7 +130,7 @@ class ContainerValueResolver(
         } else {
             value.values["deny"]
         }
-        return resolve(branch)
+        return resolveValue(branch, resolveText)
     }
 
     /** 判断条件列表中的结果是否足以结束首匹配搜索。 */

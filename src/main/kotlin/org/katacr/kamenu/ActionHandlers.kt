@@ -310,7 +310,7 @@ object ActionHandlers {
      * 解析并执行 PlayerPoints 点券增减动作。
      *
      * 标准格式为 `points: type=add|take;num=数量`；[forcedType] 用于兼容
-     * TrMenu 的 `add-points:`、`take-points:` 等单动作别名。
+     * 源菜单 的 `add-points:`、`take-points:` 等单动作别名。
      */
     fun parseAndHandlePoints(
         player: Player,

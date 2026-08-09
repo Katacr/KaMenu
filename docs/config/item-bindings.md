@@ -59,7 +59,7 @@ KaMenu 仍会读取 `config.yml > listeners.item-lore`。旧监听器要求填�
 
 ## TrMenu 迁移
 
-`/km migrate trmenu` 会把可安全映射的 `Bindings.Items` 合并到该文件，并绑定到迁移后的 Container 菜单。支持 `material`、`lore`、`name`、`data` 和 `model-data`；TrMenu 在右键绑定中忽略 `amount`，KaMenu 迁移时也会忽略它。
+`/km migrate trmenu` 会把可安全映射的 `Bindings.Items` 合并到该文件，并绑定到迁移后的容器类菜单。支持 `material`、`lore`、`name`、`data` 和 `model-data`；TrMenu 在右键绑定中忽略 `amount`，KaMenu 迁移时也会忽略它。
 
 TrMenu 默认的 `Bound-Item-Interval` 为 `2000` 毫秒，因此迁移结果默认写入 `cooldown-ms: 2000`。迁移器不读取 TrMenu 的全局 `settings.yml`；如果原服务器修改过该值，需要手工同步调整。
 

@@ -1,6 +1,18 @@
 # Settings
 
-Container 使用部分通用 `Settings`，并增加库存界面专用的防点击设置。Dialog 专属的 `can_escape`、`after_action` 和 `lifetime` 不用于 Container，关闭和跳转由动作及 `Events.Close` 处理。
+容器类菜单使用部分通用 `Settings`，并增加库存界面专用的防点击设置。Dialog 专属的 `can_escape`、`after_action` 和 `lifetime` 不用于容器类菜单，关闭和跳转由动作及 `Events.Close` 处理。
+
+## 字段一览
+
+| 键 | 类型 | 默认行为 | 主要用途 |
+|---|---|---|---|
+| `need_placeholder` | 字符串列表 | 不检查 | 打开前确认 PAPI 扩展可用 |
+| `min_click_delay` | 非负整数 | `0`，单位毫秒 | 防止按钮被快速重复点击 |
+| `pass_arguments.enable` | 布尔值 | 关闭 | 是否启用目标菜单参数补位 |
+| `pass_arguments.default` | 列表 | 空列表 | 调用参数不足时按索引提供默认值 |
+| `pass_arguments.must` | 非负整数 | 不限制 | 补位后至少需要的参数数量 |
+
+`Settings` 只负责菜单会话级规则；它不会定义槽位或物品。槽位写在 `Layout`，物品和动作写在 `Buttons`。
 
 ## need_placeholder
 
@@ -22,7 +34,7 @@ Settings:
   min_click_delay: 200
 ```
 
-单位为绝对毫秒数，按玩家和当前 Container 会话记录：
+单位为绝对毫秒数，按玩家和当前容器类菜单会话记录：
 
 - `0` 或未配置表示不限制。
 - 只限制最终存在动作的有效按钮点击。
@@ -33,7 +45,7 @@ Settings:
 
 ## pass_arguments
 
-Container 与 Dialog 共用菜单参数传递配置：
+容器类菜单与 Dialog 共用菜单参数传递配置：
 
 ```yaml
 Settings:
@@ -44,3 +56,33 @@ Settings:
 ```
 
 `default` 会在调用方参数不足时按索引补位，并支持 PAPI 和 KaMenu 内置变量；`must` 是完成补位后仍必须存在的最少参数数量，不满足时阻止菜单打开。打开动作中的参数由目标菜单解析；`open`、`force-open` 和 `reset` 的生命周期行为参见[动作](../modern-dialog/actions.md)与[事件](events.md)。
+
+## 使用案例：商店防连点和参数传递
+
+```yaml
+Type: CHEST
+Title: '&8购买 {arg:0}'
+Settings:
+  need_placeholder:
+    - vault
+  min_click_delay: 250
+  pass_arguments:
+    enable: true
+    default: ['DIAMOND', '1']
+    must: 1
+Layout:
+  - '         '
+  - '    `buy`    '
+  - '         '
+
+Buttons:
+  buy:
+    display:
+      material: DIAMOND
+      name: '&b购买 {arg:1} 个 {arg:0}'
+    actions:
+      left:
+        - 'actionbar: &a已提交购买请求'
+```
+
+调用 `open: shop DIAMOND 16` 时，菜单收到两个参数；调用 `open: shop` 时使用默认值。`min_click_delay` 只限制真正执行动作的按钮，不会限制空槽位。

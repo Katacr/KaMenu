@@ -12,7 +12,7 @@ internal data class TrMenuMenuConversion(
     val boundItems: List<TrMenuBoundItem>
 )
 
-/** 将一个已读取的 TrMenu 源菜单组装为 KaMenu V2 Container 标准 YAML。 */
+/** 将一个已读取的 源菜单 源菜单组装为 KaMenu V2 Container 标准 YAML。 */
 internal class TrMenuMenuConverter(
     private val menuIdResolver: (String) -> String?,
     private val syntaxValidator: (String) -> String? = { null }
@@ -25,7 +25,8 @@ internal class TrMenuMenuConverter(
     ): TrMenuMenuConversion? {
         val layout = TrMenuLayoutConverter().convert(source, diagnostics) ?: return null
         val functions = TrMenuFunctionRegistry.create(source.root, diagnostics, syntaxValidator)
-        val variables = TrMenuVariableConverter(functions)
+        val nodeReferences = TrMenuNodeReferenceConverter(source.root)
+        val variables = TrMenuVariableConverter(functions, nodeReferences)
         val conditionConverter = TrMenuConditionConverter(variables)
         val iconIds = layout.buttons.associate { it.sourceId to it.targetId }
         val actionConverter = TrMenuActionConverter(
@@ -35,7 +36,6 @@ internal class TrMenuMenuConverter(
             variableConverter = variables
         )
         val eventConverter = TrMenuEventConverter(actionConverter, conditionConverter)
-        val clickConverter = TrMenuClickActionConverter(eventConverter)
         val visuals = TrMenuItemConverter().convert(layout, diagnostics)
         val events = eventConverter.convert(source.root, diagnostics)
 
@@ -55,8 +55,9 @@ internal class TrMenuMenuConverter(
         writeSettings(output, source.root, variables, diagnostics)
         writeProperties(output, source.root, layout.type, diagnostics)
         writeEvents(output, events)
-        writeButtons(output, visuals, variables, conditionConverter, clickConverter, diagnostics)
+        writeButtons(output, visuals, variables, actionConverter, diagnostics)
         functions.scripts().forEach { (id, script) -> output.set("JavaScript.$id", script) }
+        nodeReferences.writeReferences(output, variables, diagnostics)
         reportUnsupportedRootFeatures(source.root, diagnostics)
 
         if (diagnostics.hasErrors) return null
@@ -171,7 +172,7 @@ internal class TrMenuMenuConverter(
         }
     }
 
-    /** 记录没有可移植 Container 映射的 TrMenu 选项。 */
+    /** 记录没有可移植 Container 映射的 源菜单 选项。 */
     private fun reportUnsupportedOption(
         value: Any?,
         path: String,
@@ -257,41 +258,58 @@ internal class TrMenuMenuConverter(
         output: YamlConfiguration,
         visuals: List<TrMenuButtonVisualConversion>,
         variables: TrMenuVariableConverter,
-        conditions: TrMenuConditionConverter,
-        clicks: TrMenuClickActionConverter,
+        actionConverter: TrMenuActionConverter,
         diagnostics: TrMenuMigrationDiagnostics
     ) {
         visuals.forEach { visual ->
+            val scopedVariables = variables.scopedToIcon(visual.placement.sourceId)
+            val scopedConditions = TrMenuConditionConverter(scopedVariables)
+            val scopedClicks = TrMenuClickActionConverter(
+                TrMenuEventConverter(
+                    actionConverter.scopedToIcon(visual.placement.sourceId),
+                    scopedConditions
+                )
+            )
             val path = "Buttons.${visual.placement.targetId}"
             visual.viewCondition?.let { raw ->
-                val condition = conditions.convert(raw, "${visual.placement.path}.condition", diagnostics) ?: "false"
+                val condition = scopedConditions.convert(raw, "${visual.placement.path}.condition", diagnostics) ?: "false"
                 output.set("$path.view_condition", condition)
             }
             visual.updateIntervalTicks?.let { output.set("$path.update", it) }
             if (visual.variants.isEmpty()) {
-                val display = rewriteDisplay(visual.defaultState, variables, diagnostics) ?: return@forEach
+                val display = rewriteDisplay(
+                    visual.defaultState,
+                    scopedVariables,
+                    scopedConditions,
+                    diagnostics
+                ) ?: return@forEach
                 output.set("$path.display", display)
-                val actions = clicks.convert(visual.defaultState.actionLayers, diagnostics)
+                val actions = scopedClicks.convert(visual.defaultState.actionLayers, diagnostics)
                 if (actions.isNotEmpty()) output.set("$path.actions", actions)
                 return@forEach
             }
 
             val variants = mutableListOf<Map<String, Any>>()
             visual.variants.forEach { state ->
-                val condition = conditions.convert(state.condition, "${state.path}.condition", diagnostics)
+                val condition = scopedConditions.convert(state.condition, "${state.path}.condition", diagnostics)
                     ?: return@forEach
-                val display = rewriteDisplay(state, variables, diagnostics) ?: return@forEach
+                val display = rewriteDisplay(state, scopedVariables, scopedConditions, diagnostics) ?: return@forEach
                 variants += linkedMapOf<String, Any>().also { target ->
                     state.priority?.let { target["priority"] = it }
                     target["condition"] = condition
                     target["display"] = display
-                    val actions = clicks.convert(state.actionLayers, diagnostics)
+                    val actions = scopedClicks.convert(state.actionLayers, diagnostics)
                     if (actions.isNotEmpty()) target["actions"] = actions
                 }
             }
-            val fallbackDisplay = rewriteDisplay(visual.defaultState, variables, diagnostics) ?: return@forEach
+            val fallbackDisplay = rewriteDisplay(
+                visual.defaultState,
+                scopedVariables,
+                scopedConditions,
+                diagnostics
+            ) ?: return@forEach
             variants += linkedMapOf<String, Any>("display" to fallbackDisplay).also { target ->
-                val actions = clicks.convert(visual.defaultState.actionLayers, diagnostics)
+                val actions = scopedClicks.convert(visual.defaultState.actionLayers, diagnostics)
                 if (actions.isNotEmpty()) target["actions"] = actions
             }
             output.set("$path.variants", variants)
@@ -301,12 +319,18 @@ internal class TrMenuMenuConverter(
     private fun rewriteDisplay(
         state: TrMenuButtonStateConversion,
         variables: TrMenuVariableConverter,
+        conditions: TrMenuConditionConverter,
         diagnostics: TrMenuMigrationDiagnostics
     ): Map<String, Any>? {
         val output = linkedMapOf<String, Any>()
         state.display.forEach { (key, value) ->
             val strict = key in STRICT_DISPLAY_FIELDS
-            val rewritten = variables.rewriteValue(value, "${state.path}.display.$key", diagnostics, strict)
+            val fieldPath = "${state.path}.display.$key"
+            val rewritten = if (key == "lore") {
+                rewriteLore(value, fieldPath, variables, conditions, diagnostics)
+            } else {
+                variables.rewriteValue(value, fieldPath, diagnostics, strict)
+            }
             if (rewritten == null && strict) {
                 diagnostics.add(
                     "TRM_ITEM_DYNAMIC_PROPERTY_UNSUPPORTED",
@@ -320,6 +344,41 @@ internal class TrMenuMenuConverter(
             if (rewritten != null) output[key] = rewritten
         }
         return output
+    }
+
+    /** 将源菜单 Lore 的内联条件转换为 KaMenu 行尾快捷条件，并过滤无法安全转换的行。 */
+    private fun rewriteLore(
+        raw: Any?,
+        path: String,
+        variables: TrMenuVariableConverter,
+        conditions: TrMenuConditionConverter,
+        diagnostics: TrMenuMigrationDiagnostics
+    ): List<String> {
+        val lines = if (raw is List<*>) raw else listOf(raw)
+        return lines.mapIndexedNotNull { index, value ->
+            val source = value?.toString() ?: return@mapIndexedNotNull null
+            val linePath = "$path[$index]"
+            val inline = parseTrMenuLoreCondition(source)
+            val content = variables.rewrite(inline?.first ?: source, linePath, diagnostics, strict = false)
+                ?: return@mapIndexedNotNull null
+            val condition = inline?.second ?: return@mapIndexedNotNull content
+            val expression = conditions.convert(condition, "$linePath.<condition>", diagnostics)
+                ?: return@mapIndexedNotNull null
+            if (content.isEmpty()) "{condition: $expression}" else "$content {condition: $expression}"
+        }
+    }
+
+    /** 提取源菜单 Lore 行尾的 condition/requirement 修饰符，供迁移为 KaMenu 标准语法。 */
+    private fun parseTrMenuLoreCondition(source: String): Pair<String, String>? {
+        val value = source.trimEnd()
+        val match = TRMENU_LORE_CONDITION_START.findAll(value).lastOrNull() ?: return null
+        val opening = value[match.range.first]
+        val closing = if (opening == '{') '}' else '>'
+        if (value.lastOrNull() != closing) return null
+        val condition = value.substring(match.range.last + 1, value.lastIndex).trim()
+        if (condition.isEmpty()) return null
+        val content = value.substring(0, match.range.first).trimEnd()
+        return content to condition
     }
 
     private fun parseBoundCommands(
@@ -411,6 +470,10 @@ internal class TrMenuMenuConverter(
 
     companion object {
         private val COMMAND_PATTERN = Regex("^[a-z0-9][a-z0-9_-]*$")
+        private val TRMENU_LORE_CONDITION_START = Regex(
+            """[{<]\s*(?:condition|requirement)\s*[:=]\s*""",
+            RegexOption.IGNORE_CASE
+        )
         private val STRICT_DISPLAY_FIELDS = setOf("material", "amount", "custom_model_data", "item_model")
         private val FURNACE_PROPERTY_KEYS = setOf(
             "FURNACE_BURN_TIME",

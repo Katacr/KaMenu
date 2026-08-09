@@ -2,12 +2,16 @@
 
 Container refresh intervals use ticks. Values below 5 generate a warning; prefer targeted refreshes instead of rebuilding the whole inventory every tick.
 
-| Key | Effect |
-|---|---|
-| `Update` | Refreshes title, button display/visibility, and container properties |
-| `Title-Update` | Refreshes only the title |
-| `Progress-Update` | Refreshes furnace properties and checks `Events.Progress` |
-| `Buttons.<id>.update` | Refreshes only the slots occupied by that button |
+## Field Overview
+
+| Key | Refresh scope | Unit | Typical use |
+|---|---|---|---|
+| `Update` | Title, all buttons, and container properties | Ticks | Whole-page state synchronization |
+| `Title-Update` | Title and one title-list frame | Ticks | Rotation, balance, time, or state in the title |
+| `Progress-Update` | Furnace properties and `Events.Progress` | Ticks | Flame/arrow progress |
+| `Buttons.<id>.update` | One button's slots | Ticks | One dynamic button |
+| `refresh` | Every button in the active session | Action | Immediate button update after a click |
+| `refresh: *` | Title, properties, and every button | Action | Full update after arguments or global state changes |
 
 ```yaml
 Update: 20
@@ -36,6 +40,8 @@ Action refresh targets are:
 - `refresh: title` and `refresh: properties` refresh only that part.
 - `refresh: <buttonId>` refreshes only the selected button.
 
+When `Title` is a string list, only the periodic `Title-Update` advances to the next item and loops. `Update`, `refresh: title`, and `refresh: *` only re-resolve the current item.
+
 Refreshing re-resolves PlaceholderAPI, built-in variables, conditions, `view_condition`, and `variants`. Database-backed `data`, `gdata`, `list`, and `glist` operations may be asynchronous; prefer `meta` for high-frequency state and wait a few ticks after persistent writes when the new value must be observed.
 
 ## Furnace Progress Events
@@ -52,3 +58,11 @@ Events:
 ```
 
 A progress event runs when its condition changes from false to true. `trigger_initial: true` also permits a match on the first evaluation. See [Events](events.md) for the shared event syntax.
+
+## Choosing A Refresh Method
+
+- Use `Buttons.<id>.update` or `refresh: <id>` when only one balance or inventory button changes.
+- Use `Title-Update` or `refresh: title` when the title is dynamic.
+- Use `Progress-Update` or `refresh: properties` for furnace properties.
+- Use `refresh` after several button variants or menu arguments change; use `refresh: *` only when the title and properties must update too.
+- Do not rebuild a Container every few ticks with `reset` inside `Events.Tasks`; use the dedicated Container refresh fields.

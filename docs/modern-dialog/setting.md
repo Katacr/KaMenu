@@ -12,8 +12,8 @@
 | `after_action` | `String` | `CLOSE` | 点击按钮执行动作后的客户端行为 |
 | `lifetime` | `Long` | `300` | 菜单最大存在时间，单位为秒 |
 | `need_placeholder` | `List<String>` | `null` | 菜单所需的 PlaceholderAPI 扩展列表 |
-| `min_click_delay` | `Long` | `0` | 仅 Container 菜单生效；同一会话中有效按钮点击的最小间隔，单位为毫秒 |
-| `pass_arguments` | `Section` | 禁用 | 目标菜单参数传递设置，Dialog 和 Container 均支持 |
+| `min_click_delay` | `Long` | `0` | 仅容器类菜单生效；同一会话中有效按钮点击的最小间隔，单位为毫秒 |
+| `pass_arguments` | `Section` | 禁用 | 目标菜单参数传递设置，Dialog 和容器类菜单均支持 |
 
 ---
 
@@ -101,7 +101,7 @@ Buttons:
 
 ---
 
-## Container 菜单的 Settings
+## 容器类菜单的 Settings
 
 箱子、漏斗、发射器、投掷器、熔炉、高炉、烟熏炉和铁砧菜单目前支持以下 `Settings` 配置：
 
@@ -115,7 +115,7 @@ Settings:
 
 ### need_placeholder
 
-`need_placeholder` 是 Container 和 Dialog 共用的 PlaceholderAPI 前置检查。列表中的每一项是 PlaceholderAPI 扩展标识符，例如：
+`need_placeholder` 是容器类菜单和 Dialog 共用的 PlaceholderAPI 前置检查。列表中的每一项是 PlaceholderAPI 扩展标识符，例如：
 
 - `%player_name%` 对应 `player`
 - `%vault_eco_balance%` 对应 `vault`
@@ -126,7 +126,7 @@ Settings:
 
 ### min_click_delay
 
-`min_click_delay` 用于限制同一玩家在当前 Container 菜单会话中的有效按钮点击频率，单位为毫秒，行为类似 TrMenu 的 `Options.Min-Click-Delay`：
+`min_click_delay` 用于限制同一玩家在当前容器类菜单会话中的有效按钮点击频率，单位为毫秒，行为类似 TrMenu 的 `Options.Min-Click-Delay`：
 
 ```yaml
 Settings:
@@ -142,7 +142,7 @@ Settings:
 
 建议将商店、领取奖励、扣除经济或点券等容易因重复点击产生重复执行的菜单设置为 `150` 至 `300` 毫秒。需要允许快速连续操作的菜单可以保持默认值 `0`。
 
-Container 菜单不使用 Dialog 专属的 `can_escape`、`after_action` 和 `lifetime` 设置。Container 的关闭、动作完成后的跳转以及生命周期请使用按钮动作和 `Events.Open` / `Events.Close` 配置。
+容器类菜单不使用 Dialog 专属的 `can_escape`、`after_action` 和 `lifetime` 设置。容器类菜单的关闭、动作完成后的跳转以及生命周期请使用按钮动作和 `Events.Open` / `Events.Close` 配置。
 
 ---
 

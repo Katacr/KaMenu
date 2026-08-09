@@ -52,8 +52,8 @@ class TrMenuActionConverterTest {
 
         assertEquals(
             listOf(
-                "tell: one <chance=25> <delay=20>",
-                "sound: ENTITY_EXPERIENCE_ORB_PICKUP;volume=1.0;pitch=1.0 <chance=25> <delay=20>"
+                "tell: one {chance: 25} {wait: 20}",
+                "sound: ENTITY_EXPERIENCE_ORB_PICKUP;volume=1.0;pitch=1.0 {chance: 25} {wait: 20}"
             ),
             result
         )

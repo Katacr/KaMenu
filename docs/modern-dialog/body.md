@@ -180,6 +180,36 @@ Body:
 - 支持嵌套条件判断
 - 两种格式可以混合使用（一个用列表，一个用字符串）
 
+#### 静态行与条件行混写
+
+`text` 列表可以按顺序混写普通字符串和条件 Map。条件成立后，选中的 `allow` 或 `deny` 内容会插入条件所在位置；分支可以返回一个字符串或多行列表。
+
+```yaml
+Body:
+  ordered_status:
+    type: 'message'
+    text:
+      - '&7固定标题'
+      - condition: 'hasPerm.kamenu.admin'
+        allow:
+          - '&a管理员状态'
+          - '&7管理工具已启用'
+        deny: '&7普通玩家状态'
+      - '&7固定结尾'
+```
+
+当列表全部由条件 Map 组成时，KaMenu 仍将它视为候选列表，并使用首个返回非空内容的条件分支。只要列表中存在普通字符串，就会改为按 YAML 顺序逐项展开。
+
+仅需控制单行是否显示时，可以在 `Body.message.text` 的字符串行尾使用快捷条件：
+
+```yaml
+text:
+  - '&7公共说明'
+  - '&c管理员说明 {condition: hasPerm.kamenu.admin}'
+```
+
+条件不成立时整行会被跳过。固定格式、变量上下文和动作中的用法参见[条件判断](conditions.md#单行快捷条件)。
+
 ---
 
 ### 高级示例
@@ -505,6 +535,23 @@ Body:
     width: 16
     height: 16
 ```
+
+`lore` 同样支持静态行与条件 Map 按顺序混写：
+
+```yaml
+lore:
+  - '&7固定 Lore 1'
+  - condition: '%player_is_op% == true'
+    allow:
+      - '&a管理员 Lore 1'
+      - '&a管理员 Lore 2'
+    deny: '&7普通玩家 Lore'
+  - '&7固定 Lore 2'
+```
+
+选中的分支会插入原位置。纯条件 Map 列表仍使用首个非空候选，规则与 `Body.message.text` 一致。
+
+只控制一行 Lore 时，也可以直接写成 `- '&aVIP Lore {condition: hasPerm.shop.vip}'`。条件必须位于行尾。
 
 **amount 属性说明：**
 

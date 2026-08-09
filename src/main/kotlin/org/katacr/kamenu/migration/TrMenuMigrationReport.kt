@@ -2,7 +2,7 @@ package org.katacr.kamenu.migration
 
 import java.io.File
 
-/** TrMenu 迁移项相对源菜单行为的兼容程度。 */
+/** 源菜单 迁移项相对源菜单行为的兼容程度。 */
 enum class TrMenuMigrationCompatibility {
     EXACT,
     APPROXIMATE,
@@ -10,14 +10,14 @@ enum class TrMenuMigrationCompatibility {
     INVALID
 }
 
-/** TrMenu 迁移诊断级别；ERROR 会阻止对应目标文件生成。 */
+/** 源菜单 迁移诊断级别；ERROR 会阻止对应目标文件生成。 */
 enum class TrMenuMigrationSeverity {
     INFO,
     WARNING,
     ERROR
 }
 
-/** 带稳定代码和源配置路径的 TrMenu 迁移诊断。 */
+/** 带稳定代码和源配置路径的 源菜单 迁移诊断。 */
 data class TrMenuMigrationIssue(
     val code: String,
     val severity: TrMenuMigrationSeverity,
@@ -26,13 +26,13 @@ data class TrMenuMigrationIssue(
     val message: String
 )
 
-/** 一条可写入 KaMenu `item_bindings.yml` 的 TrMenu 菜单物品绑定。 */
+/** 一条可写入 KaMenu `item_bindings.yml` 的 源菜单 菜单物品绑定。 */
 data class TrMenuBoundItem(
     val id: String,
     val values: Map<String, Any>
 )
 
-/** 单个 TrMenu 文件的迁移结果。 */
+/** 单个 源菜单 文件的迁移结果。 */
 data class TrMenuMigrationFileResult(
     val source: File,
     val target: File?,
@@ -48,7 +48,7 @@ data class TrMenuMigrationFileResult(
         get() = issues.count { it.severity == TrMenuMigrationSeverity.ERROR }
 }
 
-/** 批量 TrMenu 迁移结果及汇总计数。 */
+/** 批量 源菜单 迁移结果及汇总计数。 */
 data class TrMenuMigrationBatchResult(
     val files: List<TrMenuMigrationFileResult>,
     val elapsedMillis: Long

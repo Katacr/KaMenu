@@ -4,10 +4,10 @@ import org.bukkit.configuration.ConfigurationSection
 import java.util.LinkedHashMap
 
 /**
- * 保留 YAML 声明顺序的 TrMenu 中立源节点。
+ * 保留 YAML 声明顺序的 源菜单 中立源节点。
  *
  * Bukkit `ConfigurationSection` 只在读取入口使用；后续转换器通过该节点访问属性，
- * 从而统一执行 TrMenu 正则键解析和别名冲突诊断。
+ * 从而统一执行 源菜单 正则键解析和别名冲突诊断。
  */
 internal class TrMenuSourceSection private constructor(
     private val values: LinkedHashMap<String, Any?>
@@ -21,7 +21,7 @@ internal class TrMenuSourceSection private constructor(
     /** 按源文件中的精确键读取动态节点，例如图标 ID、任务 ID 或函数 ID。 */
     fun value(key: String): Any? = values[key]
 
-    /** 按 TrMenu 语义键读取值，并在同义键冲突时记录所采用的首个键。 */
+    /** 按 源菜单 语义键读取值，并在同义键冲突时记录所采用的首个键。 */
     fun value(
         property: TrMenuSourceProperty,
         path: String,
@@ -36,7 +36,7 @@ internal class TrMenuSourceSection private constructor(
         return resolution.selectedKey?.let(values::get)
     }
 
-    /** 按 TrMenu 语义键读取子节点；标量值由调用方根据字段要求报告类型错误。 */
+    /** 按 源菜单 语义键读取子节点；标量值由调用方根据字段要求报告类型错误。 */
     fun section(
         property: TrMenuSourceProperty,
         path: String,
@@ -45,6 +45,28 @@ internal class TrMenuSourceSection private constructor(
 
     /** 返回当前节点中保持声明顺序的全部原始条目。 */
     fun entries(): List<Pair<String, Any?>> = values.entries.map { it.key to it.value }
+
+    /** 一次不区分大小写的点路径查找结果。 */
+    data class LocatedValue(val path: String, val value: Any?)
+
+    /** 按 源菜单 配置语义查找任意深层节点，并返回源文件中的实际键大小写。 */
+    fun find(path: String): LocatedValue? {
+        val segments = path.split('.').map(String::trim).filter(String::isNotEmpty)
+        if (segments.isEmpty()) return null
+        var section = this
+        val actualSegments = mutableListOf<String>()
+        segments.forEachIndexed { index, segment ->
+            val actualKey = section.values.keys.firstOrNull { it.equals(segment, ignoreCase = true) }
+                ?: return null
+            actualSegments += actualKey
+            val value = section.values[actualKey]
+            if (index == segments.lastIndex) {
+                return LocatedValue(actualSegments.joinToString("."), value)
+            }
+            section = value as? TrMenuSourceSection ?: return null
+        }
+        return null
+    }
 
     private fun reportCollision(
         resolution: TrMenuKeyResolver.Resolution,

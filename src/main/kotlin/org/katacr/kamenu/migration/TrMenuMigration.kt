@@ -10,7 +10,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.Locale
 
-/** 批量扫描、转换、校验并原子写入 TrMenu 菜单。 */
+/** 批量扫描、转换、校验并原子写入 源菜单 菜单。 */
 class TrMenuMigration(
     private val syntaxValidator: (String) -> String? = JavaScriptManager::validateSyntax
 ) {
@@ -21,7 +21,7 @@ class TrMenuMigration(
         val migratedMenuId: String
     )
 
-    /** TrMenu Bindings.Commands 合并结果。 */
+    /** 源菜单 Bindings.Commands 合并结果。 */
     data class CommandMergeResult(
         val total: Int = 0,
         val added: Int = 0,
@@ -38,7 +38,7 @@ class TrMenuMigration(
         val migratedMenuId: String
     )
 
-    /** TrMenu Bindings.Items 合并结果。 */
+    /** 源菜单 Bindings.Items 合并结果。 */
     data class ItemBindingMergeResult(
         val total: Int = 0,
         val added: Int = 0,

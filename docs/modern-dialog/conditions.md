@@ -21,6 +21,29 @@ KaMenu 提供了强大的通用条件判断系统，可以在菜单的**任意�
 
 ---
 
+## 单行快捷条件
+
+以下字符串列表可以在单行末尾追加 `{condition: 条件表达式}`：
+
+- Dialog 的 `Body.message.text`、Body 物品 `lore` 和 Bottom 按钮 `tooltip`
+- 容器类菜单按钮的 `display.lore`
+- 任意字符串动作列表
+
+```yaml
+text:
+  - '&7所有玩家都能看到'
+  - '&c仅管理员可见 {condition: hasPerm.kamenu.admin}'
+
+actions:
+  - 'tell: &a仅在等级足够时执行 {condition: %player_level% >= 10}'
+```
+
+条件成立时会移除行尾修饰符并保留正文；条件不成立时跳过整行或整条动作。修饰符必须位于行尾，固定写作 `{condition: 表达式}`，每行只应配置一个快捷条件。表达式支持 PAPI、KaMenu 变量、菜单引用、动作参数和当前组件的 `self` 上下文。
+
+快捷条件适合控制一行内容或动作是否存在。需要输出替代内容、执行 `deny` 动作或嵌套多个分支时，继续使用下方的条件 Map。
+
+---
+
 ## 文本字段条件判断
 
 ### 语法

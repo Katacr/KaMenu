@@ -4,7 +4,9 @@ import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.katacr.kamenu.ConditionUtils
+import org.katacr.kamenu.ConditionValueResolver
 import org.katacr.kamenu.InputCaptureUtils
+import org.katacr.kamenu.InlineConditionResolver
 import org.katacr.kamenu.JavaScriptManager
 import org.katacr.kamenu.KaMenu
 import org.katacr.kamenu.MenuItemFactory
@@ -64,8 +66,11 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                 "none" -> Unit
                 "message" -> {
                     val path = "$key.text"
-                    val raw = getString(player, section, path, "")
-                    val resolved = resolve(player, raw, contextId, config = config)
+                    val resolved = if (section.isList(path)) {
+                        getInlineConditionalStringList(player, section, path, contextId).joinToString("\n")
+                    } else {
+                        resolve(player, getString(player, section, path, ""), contextId, config = config)
+                    }
                     val text = normalizeMessageText(section.isList(path), resolved)
                     val width = getInt(player, section, "$key.width", 0).takeIf { it > 0 }
                     result += DialogBodyDefinition.Message(text, width)
@@ -105,8 +110,7 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                 amount = getInt(player, section, "$key.amount", 1),
                 name = resolve(player, getString(player, section, "$key.name", ""), contextId, config = config)
                     .takeIf(String::isNotEmpty),
-                lore = getStringList(player, section, "$key.lore")
-                    .map { resolve(player, it, contextId, config = config) }
+                lore = getInlineConditionalStringList(player, section, "$key.lore", contextId)
                     .takeIf(List<String>::isNotEmpty),
                 customModelData = resolve(
                     player,
@@ -283,7 +287,8 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                     continue
                 }
                 val showCondition = buttonSection.getString("$key.show-condition") ?: buttonSection.getString("$key.show_condition")
-                if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition, emptyMap(), config) {
+                val selfVariables = selfVariables(buttonSection, "$key.show-condition")
+                if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition, selfVariables, config) {
                         dynamicVariable(player, contextId, it)
                     }) continue
                 buttons += button(player, config, buttonSection, key, "按钮", "Bottom.buttons.$key.actions", emptyMap(), contextId)
@@ -328,7 +333,8 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                 put("list.total", page.total.toString())
             }
             val showCondition = itemSection.getString("show-condition") ?: itemSection.getString("show_condition")
-            if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition, variables, config) {
+            val contextualVariables = variables + selfVariables(section, "item.show-condition")
+            if (showCondition != null && !ConditionUtils.checkCondition(player, showCondition, contextualVariables, config) {
                     dynamicVariable(player, contextId, it)
                 }) null
             else button(player, config, section, "item", "{item.text}", "Bottom.buttons.$listId.item.actions", variables, contextId)
@@ -368,9 +374,9 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         contextId: String
     ): DialogButtonDefinition {
         val actualSection = section ?: config
-        val text = resolve(player, getString(player, actualSection, "$key.text", defaultText), contextId, variables, config)
-        val tooltip = getStringList(player, actualSection, "$key.tooltip")
-            .map { resolve(player, it, contextId, variables, config) }
+        val contextualVariables = variables + selfVariables(actualSection, "$key.text")
+        val text = resolve(player, getString(player, actualSection, "$key.text", defaultText), contextId, contextualVariables, config)
+        val tooltip = getInlineConditionalStringList(player, actualSection, "$key.tooltip", contextId, variables)
             .joinToString("\n")
             .takeIf { it.isNotEmpty() }
         return DialogButtonDefinition(
@@ -378,8 +384,8 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
             tooltip = tooltip,
             width = getInt(player, actualSection, "$key.width", 0).takeIf { it > 0 },
             actionPath = actionPath,
-            variables = variables,
-            icon = buttonIcon(player, actualSection, key, contextId, variables, config)
+            variables = contextualVariables,
+            icon = buttonIcon(player, actualSection, key, contextId, contextualVariables, config)
         )
     }
 
@@ -543,21 +549,43 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
         }
     }
 
+    /** 根据字段所在组件生成 `{self:*}` 所需的 ID 与 YAML 根路径。 */
+    private fun selfVariables(section: ConfigurationSection, path: String): Map<String, String> {
+        val componentId = path.substringBefore('.').trim()
+        val parentPath = section.currentPath.orEmpty().trim('.')
+        val componentPath = listOf(parentPath, componentId).filter(String::isNotEmpty).joinToString(".")
+        return mapOf("self:id" to componentId, "self:path" to componentPath)
+    }
+
     private fun getString(player: Player, section: ConfigurationSection, path: String, default: String): String =
-        ConditionUtils.getString(player, section, path, default)
+        ConditionValueResolver.getString(player, section, path, default, selfVariables(section, path))
 
     private fun getStringList(player: Player, section: ConfigurationSection, path: String): List<String> =
-        ConditionUtils.getStringList(player, section, path)
+        ConditionValueResolver.getStringList(player, section, path, emptyList(), selfVariables(section, path))
+
+    /** 解析展示列表，并按当前组件上下文过滤带行尾条件的字符串。 */
+    private fun getInlineConditionalStringList(
+        player: Player,
+        section: ConfigurationSection,
+        path: String,
+        contextId: String,
+        extraVariables: Map<String, String> = emptyMap()
+    ): List<String> {
+        val variables = extraVariables + selfVariables(section, path)
+        return ConditionValueResolver.getInlineConditionalStringList(player, section, path, variables) { key ->
+            dynamicVariable(player, contextId, key)
+        }
+    }
 
     private fun getBoolean(player: Player, section: ConfigurationSection, path: String, default: Boolean): Boolean =
-        ConditionUtils.getBoolean(player, section, path, default)
+        ConditionValueResolver.getBoolean(player, section, path, default, selfVariables(section, path))
 
     private fun getInt(player: Player, section: ConfigurationSection, path: String, default: Int): Int =
-        ConditionUtils.getInt(player, section, path, default)
+        ConditionValueResolver.getInt(player, section, path, default, selfVariables(section, path))
 
     private fun getDouble(player: Player, section: ConfigurationSection, path: String, default: Double): Double =
-        ConditionUtils.getDouble(player, section, path, default)
+        ConditionValueResolver.getDouble(player, section, path, default, selfVariables(section, path))
 
     private fun getType(player: Player, section: ConfigurationSection, path: String, default: String): String =
-        ConditionUtils.getType(player, section, path, default)
+        ConditionValueResolver.getType(player, section, path, default, selfVariables(section, path))
 }

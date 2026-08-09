@@ -10,10 +10,10 @@ import java.io.File
 /** 验证 TrMenu 物品来源、动画降级及 nested icons 继承展开。 */
 class TrMenuItemConverterTest {
     @Test
-    fun `converts head external source and material model data`() {
+    fun `converts head external item sources and material model data`() {
         val (buttons, diagnostics) = convert(
             """
-            Layout: ['ABC      ']
+            Layout: ['ABCDEFGH ']
             Icons:
               A:
                 display:
@@ -23,6 +23,21 @@ class TrMenuItemConverterTest {
                   material: 'source:IA:example:item'
               C:
                 display:
+                  material: 'source:ORX:oraxen_item'
+              D:
+                display:
+                  material: 'source:CE:example:engine_item'
+              E:
+                display:
+                  material: 'source:ITEMSADDER:example:long_item'
+              F:
+                display:
+                  material: 'source:ORAXEN:long_oraxen_item'
+              G:
+                display:
+                  material: 'source:CRAFTENGINE:example:long_engine_item'
+              H:
+                display:
                   material: 'STONE{model-data:42}'
             """
         )
@@ -31,8 +46,13 @@ class TrMenuItemConverterTest {
         assertEquals("PLAYER_HEAD", buttons[0].defaultState.display["material"])
         assertEquals("Steve", buttons[0].defaultState.display["skull_owner"])
         assertEquals("itemsadder:example:item", buttons[1].defaultState.display["material"])
-        assertEquals("STONE", buttons[2].defaultState.display["material"])
-        assertEquals("42", buttons[2].defaultState.display["custom_model_data"])
+        assertEquals("oraxen:oraxen_item", buttons[2].defaultState.display["material"])
+        assertEquals("craftengine:example:engine_item", buttons[3].defaultState.display["material"])
+        assertEquals("itemsadder:example:long_item", buttons[4].defaultState.display["material"])
+        assertEquals("oraxen:long_oraxen_item", buttons[5].defaultState.display["material"])
+        assertEquals("craftengine:example:long_engine_item", buttons[6].defaultState.display["material"])
+        assertEquals("STONE", buttons[7].defaultState.display["material"])
+        assertEquals("42", buttons[7].defaultState.display["custom_model_data"])
     }
 
     @Test

@@ -78,12 +78,16 @@ Title: '&6Menu Title'
 Settings:
   can_escape: true      # Whether pressing ESC closes the menu
   after_action: CLOSE   # Client behavior after a button action is executed
-  
+
+# Optional: reusable text and templates in this menu
+References:
+  confirm: '&aConfirm'
+
 # Optional: menu-local JavaScript packages
 JavaScript:
   test: |
     player.sendMessage("§aHello, " + name + "!");
-    
+
 # Optional: menu events
 Events:
   Open:                # Actions executed when the menu opens
@@ -108,7 +112,10 @@ Inputs:
 # Optional: bottom button area (confirm/cancel/multi-button)
 Bottom:
   type: 'notice'       # notice | confirmation | multi
-  ...
+  confirm:
+    text: '{ref:confirm}'
+    actions:
+      - 'close'
 ```
 
 {% hint style="info" %}
@@ -150,6 +157,12 @@ Configures the menu's global behaviour.
 | `after_action` | `String` | `CLOSE` | Client-side behaviour after a button action is executed |
 
 **Detailed description and examples:** See [Global Settings (Settings)](setting.md)
+
+### References — Menu References
+
+Defines reusable text, simple lists, and parameterized templates in the current menu. Use `{ref:path}` for shared values and `{config:path}` for the current menu root. Body, Inputs, and Bottom components may also use `{self:id}` and `{self:<field-path>}` to read their own node.
+
+**Detailed description and examples:** See [Menu References (References)](../config/references.md)
 
 ### JavaScript — Menu JavaScript Packages
 

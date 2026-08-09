@@ -178,8 +178,8 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 **使用说明：**
 - 不填写语言时，使用当前 `config.yml` 中的 `language`
 - 中文示例和英文示例都会释放到 `menus/example/`，不会生成 `exampleEN` 目录
-- 不支持 Dialog 的低版本核心只释放 `container_main`、`container_actions`、`container_furnace`、`container_anvil` 四个 Container 示例
-- 支持 Dialog 的核心会释放上述 Container 示例和全部 Dialog 示例
+- 不支持 Dialog 的低版本核心只释放 `container_main`、`container_actions`、`container_furnace`、`container_anvil` 四个容器类菜单示例
+- 支持 Dialog 的核心会释放上述容器类菜单示例和全部 Dialog 示例
 - 平台变化不会删除 `menus/example/` 中已经存在的文件
 - 默认不会覆盖已有文件
 - 添加 `overwrite` 参数会覆盖已存在的同名示例菜单
@@ -205,7 +205,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 
 ### /km migrate dm
 
-将 DeluxeMenus 的箱子菜单转换为 KaMenu V2 Container 菜单。迁移器不会加载 DeluxeMenus，也不会执行源文件动作；生成后仍需在测试服中检查第三方物品、经济和指令插件行为。
+将 DeluxeMenus 的箱子菜单转换为 KaMenu V2 容器类菜单。迁移器不会加载 DeluxeMenus，也不会执行源文件动作；生成后仍需在测试服中检查第三方物品、经济和指令插件行为。
 
 **格式：** `/km migrate dm [源文件或目录] [输出目录] [overwrite]`
 
@@ -232,13 +232,13 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 /km open dm_migrated/requirements_menu
 ```
 
-同槽位 `priority` 合并和状态变体规则见 [Container Buttons](../container/buttons.md#variants-状态变体)。
+完整操作步骤、不兼容内容和报告说明见[菜单迁移总览](../container/migration.md#deluxemenus-迁移教程)。同槽位 `priority` 合并和状态变体规则见[容器类菜单按钮](../container/buttons.md#variants-状态变体)。
 
 ---
 
 ### /km migrate trmenu
 
-将 TrMenu stable-v3 的经典库存菜单编译为 KaMenu V2 Container 标准菜单。迁移器只读取源 YAML，不加载 TrMenu，也不会执行 Kether、JavaScript、指令或点击动作。
+将 TrMenu stable-v3 的经典库存菜单编译为 KaMenu V2 标准容器类菜单。迁移器只读取源 YAML，不加载 TrMenu，也不会执行 Kether、JavaScript、指令或点击动作。
 
 **格式：** `/km migrate trmenu [源文件或目录] [输出目录] [overwrite]`
 
@@ -253,7 +253,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 - 普通 `Bindings.Commands` 会合并到 `custom_commands.yml`；正则指令绑定不会自动迁移
 - 可兼容的 `Bindings.Items` 会合并到 `item_bindings.yml`；不安全的物品 trait 会跳过并输出警告
 - 迁移器先建立全批次菜单 ID 映射，再转换跨文件 `open:` 动作
-- 每个生成文件都会再次经过 KaMenu Container 解析器校验；存在 ERROR 时不会写入目标
+- 每个生成文件都会再次经过 KaMenu 容器类菜单解析器校验；存在 ERROR 时不会写入目标
 - 完成后自动重载菜单、自定义指令、物品绑定和在线玩家的客户端命令树
 
 **示例：**
@@ -265,7 +265,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 /km open trmenu_migrated/example
 ```
 
-支持范围、拒绝策略和诊断说明见 [TrMenu 迁移](../container/trmenu-migration.md)。
+支持范围、拒绝策略和 `TRM_*` 诊断代码说明见[菜单迁移总览](../container/migration.md#trmenu-迁移)。
 
 ---
 

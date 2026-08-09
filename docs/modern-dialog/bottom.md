@@ -163,6 +163,33 @@ Bottom:
 | `tooltip` | List | 可选，退出按钮悬停提示（每行一个字符串）|
 | `actions` | List | 可选，点击时执行的动作列表；通常使用 `close`、`open` 或 `force-open` |
 
+#### tooltip 条件行
+
+按钮和退出按钮的 `tooltip` 可以按顺序混写静态行与条件 Map，选中的分支可以返回一行或多行：
+
+```yaml
+tooltip:
+  - '&7固定提示'
+  - condition: 'hasPerm.shop.vip'
+    allow:
+      - '&aVIP 折扣已启用'
+      - '&7当前折扣：八折'
+    deny: '&7当前无 VIP 折扣'
+  - '&8点击继续'
+```
+
+列表全部由条件 Map 组成时仍按首个非空候选处理；混入普通字符串后按 YAML 顺序逐项展开。
+
+只控制一行提示时可使用行尾快捷条件：
+
+```yaml
+tooltip:
+  - '&7公共提示'
+  - '&aVIP 折扣已启用 {condition: hasPerm.shop.vip}'
+```
+
+条件不成立时整行不显示。快捷条件固定使用 `{condition: 表达式}`，并且必须位于行尾。
+
 #### 使用显示条件
 
 普通按钮可使用 `show-condition` 控制是否显示：

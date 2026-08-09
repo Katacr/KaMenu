@@ -2,6 +2,17 @@
 
 `Layout` 把按钮 ID 映射到容器的物理槽位。每一行代表一行库存；空格表示空槽位，普通单字符是按钮 ID，反引号包裹的多字符内容作为一个逻辑槽位。
 
+## 字段一览
+
+| 写法 | 占用逻辑槽位 | 作用 |
+|---|---:|---|
+| `Layout` | 整个布局 | 必须是字符串列表，每行对应一行库存 |
+| 空格 | 1 | 保持为空，不渲染按钮 |
+| 普通字符，如 `A`、`#` | 1 | 引用 `Buttons.A` 或 `Buttons.#` |
+| 反引号，如 `` `shop` `` | 1 | 引用多字符按钮 ID `Buttons.shop` |
+
+布局只负责“按钮放在哪里”，不负责“按钮显示什么”或“点击做什么”。后两项分别写在 `Buttons.<id>.display` 和 `Buttons.<id>.actions`。
+
 ```yaml
 Type: CHEST
 Layout:
@@ -17,6 +28,26 @@ Layout:
 - 普通箱子为 9 列，允许 1 至 6 行；漏斗为 5 槽；发射器和投掷器为 3 x 3；熔炉类和铁砧为 3 槽。
 - 行数或槽位数量不符合 `Type` 时，菜单解析失败，不会打开残缺菜单。
 - 按钮 ID 建议使用字母、数字、`_`、`-` 和 `/`；多字符 ID 必须使用反引号。
-- 不要把 Dialog 的 `Bottom` 矩阵写进 Container `Layout`；Container 按钮矩阵由库存槽位决定。
+- 不要把 Dialog 的 `Bottom` 矩阵写进容器类菜单的 `Layout`；容器类菜单的按钮矩阵由库存槽位决定。
 
-按钮定义参见[Buttons](buttons.md)，Container 类型限制参见[Type](type.md)。
+按钮定义参见[Buttons](buttons.md)，容器类型限制参见[Type](type.md)。
+
+## 使用案例：箱子和漏斗
+
+```yaml
+# CHEST 必须有 9 个逻辑槽位，每行 9 列
+Type: CHEST
+Layout:
+  - '# # # # #'
+  - '    `shop`    '
+  - 'A B C D E'
+```
+
+```yaml
+# HOPPER 必须只有 5 个逻辑槽位
+Type: HOPPER
+Layout:
+  - 'ABCDE'
+```
+
+解析器按逻辑槽位计数，而不是简单按按钮名称长度计数。因此 `` `shop` `` 和一个普通字符都只占一个槽位；行数或列数错误会阻止菜单打开。

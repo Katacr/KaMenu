@@ -275,7 +275,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         if (actions.isEmpty()) return
         if (!consumeClickCooldown(session)) return
 
-        val variables = sessionVariables(session) + mapOf(
+        val variables = buttonVariables(session, buttonId) + mapOf(
             "slot" to slot.toString(),
             "button" to buttonId,
             "click" to clickType.configKey,
@@ -340,7 +340,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
                 session.menuId,
                 button,
                 variant.display,
-                sessionVariables(session)
+                buttonVariables(session, buttonId)
             ),
             session.sessionId
         )
@@ -605,9 +605,9 @@ class ContainerMenuService(private val plugin: KaMenu) {
     /** 重新计算按钮显示条件和物品，仅写入实际发生变化的槽位。 */
     private fun refreshButtons(player: Player, session: ActiveSession, buttonIds: Collection<String>) {
         val inventory = session.holder.inventory
-        val variables = sessionVariables(session)
         buttonIds.forEach { buttonId ->
             val button = session.definition.buttons[buttonId] ?: return@forEach
+            val variables = buttonVariables(session, buttonId)
             val variant = resolveButtonVariant(player, session, button)
             val item = if (variant != null) {
                 markDisplayItem(
@@ -645,7 +645,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         session: ActiveSession,
         button: ContainerButtonDefinition
     ): ContainerButtonVariantDefinition? {
-        val variables = sessionVariables(session)
+        val variables = buttonVariables(session, button.id)
         val buttonCondition = button.viewCondition
         if (buttonCondition != null && !org.katacr.kamenu.ConditionUtils.checkCondition(
                 player,
@@ -1056,6 +1056,14 @@ class ContainerMenuService(private val plugin: KaMenu) {
         } else {
             emptyMap()
         }
+    }
+
+    /** 为按钮渲染、条件和点击动作补充稳定的当前组件引用上下文。 */
+    private fun buttonVariables(session: ActiveSession, buttonId: String): Map<String, String> {
+        return sessionVariables(session) + mapOf(
+            "self:id" to buttonId,
+            "self:path" to "Buttons.$buttonId"
+        )
     }
 
     /** 校验库存是否属于玩家当前且仍在本代际的活动会话。 */

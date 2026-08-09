@@ -1,9 +1,9 @@
 package org.katacr.kamenu.migration
 
 /**
- * TrMenu stable-v3 源配置的语义键定义。
+ * 源菜单 stable-v3 源配置的语义键定义。
  *
- * 每个正则来自当前分析的 TrMenu `Property` 源码快照，仅供迁移器读取源菜单；
+ * 每个正则来自当前分析的 源菜单 `Property` 源码快照，仅供迁移器读取源菜单；
  * 生成的 KaMenu 菜单始终使用标准键名。
  */
 internal enum class TrMenuSourceProperty(

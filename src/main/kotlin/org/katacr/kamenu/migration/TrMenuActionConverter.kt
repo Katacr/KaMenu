@@ -3,9 +3,9 @@ package org.katacr.kamenu.migration
 import org.katacr.kamenu.ActionArgumentParser
 
 /**
- * 将 TrMenu 动作列表转换为 KaMenu 标准动作。
+ * 将 源菜单 动作列表转换为 KaMenu 标准动作。
  *
- * 未注册、私有脚本或无法完整解析的动作会被过滤并报告，绝不会沿用 TrMenu 的默认
+ * 未注册、私有脚本或无法完整解析的动作会被过滤并报告，绝不会沿用 源菜单 的默认
  * tell 行为。菜单和图标 ID 通过构造参数中的映射器统一改写。
  */
 internal class TrMenuActionConverter(
@@ -14,6 +14,16 @@ internal class TrMenuActionConverter(
     private val functionGuardConverter: ((String, String, TrMenuMigrationDiagnostics) -> Map<String, Any>?)? = null,
     private val variableConverter: TrMenuVariableConverter = TrMenuVariableConverter()
 ) {
+    /** 复制动作转换依赖，并切换到指定按钮的变量引用上下文。 */
+    fun scopedToIcon(iconId: String): TrMenuActionConverter {
+        return TrMenuActionConverter(
+            menuIdResolver,
+            iconIdResolver,
+            functionGuardConverter,
+            variableConverter.scopedToIcon(iconId)
+        )
+    }
+
     private data class Modifiers(
         val chance: String? = null,
         val delay: String? = null,
@@ -127,8 +137,8 @@ internal class TrMenuActionConverter(
             return action
         }
         val suffix = buildList {
-            modifiers.chance?.let { add("<chance=$it>") }
-            modifiers.delay?.let { add("<delay=$it>") }
+            modifiers.chance?.let { add("{chance: $it}") }
+            modifiers.delay?.let { add("{wait: $it}") }
         }
         return if (suffix.isEmpty()) action else "$action ${suffix.joinToString(" ")}"
     }

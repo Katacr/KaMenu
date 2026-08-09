@@ -78,12 +78,16 @@ Title: '&6菜单标题'
 Settings:
   can_escape: true      # 是否允许按 ESC 关闭
   after_action: CLOSE   # 按钮动作执行后的行为
-  
+
+# 可选：当前菜单内可复用的文本和模板
+References:
+  confirm: '&a确认'
+
 # 可选：菜单内 JavaScript 包
 JavaScript:
   test: |
     player.sendMessage("§aHello, " + name + "!");
-    
+
 # 可选：菜单事件
 Events:
   Open:                # 开启菜单时执行的动作
@@ -108,7 +112,10 @@ Inputs:
 # 可选：底部按钮区（确认/取消/多按钮等）
 Bottom:
   type: 'notice'       # notice | confirmation | multi
-  ...
+  confirm:
+    text: '{ref:confirm}'
+    actions:
+      - 'close'
 ```
 
 {% hint style="info" %}
@@ -150,6 +157,12 @@ Title:
 | `after_action` | `String` | `CLOSE` | 点击按钮执行动作后的客户端行为 |
 
 **详细说明和示例：** 详见 [全局设置 (Settings)](setting.md)
+
+### References - 菜单引用
+
+定义当前菜单内可复用的文本、简单列表和参数模板。通过 `{ref:path}` 读取公共值，通过 `{config:path}` 读取当前菜单根配置；Body、Inputs 和 Bottom 组件还可以使用 `{self:id}` 与 `{self:<字段路径>}` 读取自身节点。
+
+**详细说明和示例：** 详见 [菜单引用 (References)](../config/references.md)
 
 ### JavaScript - 菜单 JavaScript 包
 

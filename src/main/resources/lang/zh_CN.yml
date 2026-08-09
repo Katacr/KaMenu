@@ -95,6 +95,8 @@ migration:
   config_save_failed: "§c迁移菜单已生成，但 custom_commands.yml 保存失败：{0}"
   item_bindings_save_failed: "§c迁移菜单已生成，但 item_bindings.yml 保存失败：{0}"
   runtime_reloaded: "§a迁移运行时已重载：菜单成功 {0}，失败 {1}；自定义指令成功 {2}，失败 {3}。"
+  log_saved: "§7完整迁移日志: §f{0}"
+  log_failed: "§c无法写入迁移日志，完整报告已回退到服务器控制台：{0}"
 
 # ESC 暂停菜单入口
 pause_entry:

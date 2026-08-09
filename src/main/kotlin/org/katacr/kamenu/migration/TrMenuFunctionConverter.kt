@@ -16,7 +16,7 @@ internal class TrMenuFunctionRegistry private constructor(
     fun scripts(): Map<String, String> = LinkedHashMap(scriptsById)
 
     /**
-     * 将文本中的 TrMenu `${function_arg}` 调用改写为 KaMenu 菜单 JavaScript 调用。
+     * 将文本中的 源菜单 `${function_arg}` 调用改写为 KaMenu 菜单 JavaScript 调用。
      *
      * strict 为 true 时，未知或不安全函数会让整个值转换失败；展示文本可使用 false 保留原文并报警。
      */
