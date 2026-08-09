@@ -23,6 +23,32 @@ Both commands use the same complete form:
 - Per-file results, all warnings/errors, and configuration conflicts are written to a separate `.log` file under `plugins/KaMenu/logs/migration/` for every run.
 - Successful generation does not guarantee identical behavior. Review every `WARNING`.
 
+## YAML Anchors And Repeated Content
+
+Both TrMenu and KaMenu use standard YAML parsing, so a Map or list can be defined with `&name` and reused with `*name`:
+
+```yaml
+Events:
+  Click:
+    buy: &buy_actions
+      - 'tell: &aPurchase successful'
+      - 'close'
+
+Buttons:
+  product_a:
+    display: &product_display
+      material: DIAMOND
+      name: '&bProduct'
+    actions:
+      left: *buy_actions
+  product_b:
+    display: *product_display
+    actions:
+      left: *buy_actions
+```
+
+The migrator converts the anchor content after YAML parsing, rather than treating the `*name` reference text as an action. Actions, conditions, variables, and item fields inside an anchor are still converted to KaMenu syntax. The original anchor names are not guaranteed to be preserved; the generated file may expand the content or let the YAML serializer assign new anchor names. Review the report and target menu when reused content depends on button-specific context variables.
+
 ## DeluxeMenus Migration Tutorial
 
 ### 1. Migrate The Default Directory

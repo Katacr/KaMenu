@@ -151,6 +151,37 @@ class TrMenuActionConverterTest {
     }
 
     @Test
+    fun `unwraps yaml anchor action list wrappers`() {
+        val config = YamlConfiguration()
+        config.loadFromString(
+            """
+            defaultActions: &defaultActions
+              actions:
+                - 'set-meta: mode sell'
+                - 'wait: 1'
+                - 'sound: BLOCK_NOTE_BLOCK_PLING-1-1'
+            button:
+              actions:
+                - *defaultActions
+            """.trimIndent()
+        )
+        val diagnostics = TrMenuMigrationDiagnostics()
+        val section = TrMenuSourceSection.from(config).value("button")
+
+        val result = converter.convert(section, "actions[0]", diagnostics)
+
+        assertEquals(
+            listOf(
+                "meta: type=set;key=mode;var=`sell`",
+                "wait: 1",
+                "sound: BLOCK_NOTE_BLOCK_PLING;volume=1.0;pitch=1.0"
+            ),
+            result
+        )
+        assertTrue(diagnostics.issues.isEmpty())
+    }
+
+    @Test
     fun `does not silently drop modifiers from structured guards`() {
         val guarded = TrMenuActionConverter(
             functionGuardConverter = { _, _, _ ->

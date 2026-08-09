@@ -62,6 +62,18 @@ internal class TrMenuActionConverter(
         diagnostics: TrMenuMigrationDiagnostics
     ): List<Any> {
         val entry = section.entries().firstOrNull() ?: return emptyList()
+        if (entry.first.equals("actions", ignoreCase = true)) {
+            if (section.entries().size > 1) {
+                diagnostics.add(
+                    code = "TRM_ACTION_MAP_EXTRA_KEYS",
+                    severity = TrMenuMigrationSeverity.WARNING,
+                    compatibility = TrMenuMigrationCompatibility.APPROXIMATE,
+                    path = path,
+                    message = "TrMenu action wrapper uses only its 'actions' entry; extra keys were ignored."
+                )
+            }
+            return convert(entry.second, "$path.${entry.first}", diagnostics)
+        }
         if (section.entries().size > 1) {
             diagnostics.add(
                 code = "TRM_ACTION_MAP_EXTRA_KEYS",
@@ -154,7 +166,7 @@ internal class TrMenuActionConverter(
         val content = if (separator >= 0) trimmed.substring(separator + 1).trim() else ""
         return when {
             key.matches(Regex("tell|message|msg|talk")) -> convertTextAction("tell", content, path, diagnostics)
-            key.matches(Regex("action(bar)?s?")) -> convertTextAction("actionbar", content, path, diagnostics)
+            key.matches(Regex("action-?bars?")) -> convertTextAction("actionbar", content, path, diagnostics)
             key.matches(Regex("command|cmd|player|execute")) -> convertTextAction("command", content, path, diagnostics)
             key == "console" -> convertTextAction("console", content, path, diagnostics)
             key.matches(Regex("chat|send|say")) -> convertTextAction("chat", content, path, diagnostics)

@@ -23,6 +23,32 @@ KaMenu 可以将 DeluxeMenus 和 TrMenu 的库存菜单转换为 KaMenu V2 标�
 - 每次迁移的逐文件结果、全部警告/错误和配置冲突会写入 `plugins/KaMenu/logs/migration/` 下的独立 `.log` 文件。
 - 生成成功不代表行为完全一致，所有 `WARNING` 都需要人工复核。
 
+## YAML 锚点与重复内容
+
+TrMenu 和 KaMenu 都使用标准 YAML 解析，因此可以使用 `&名称` 定义锚点，使用 `*名称` 复用已经定义的 Map 或列表：
+
+```yaml
+Events:
+  Click:
+    buy: &buy_actions
+      - 'tell: &a购买成功'
+      - 'close'
+
+Buttons:
+  product_a:
+    display: &product_display
+      material: DIAMOND
+      name: '&b商品'
+    actions:
+      left: *buy_actions
+  product_b:
+    display: *product_display
+    actions:
+      left: *buy_actions
+```
+
+迁移器处理的是 YAML 解析后的锚点内容，而不是 `*名称` 这段引用文本。锚点中的动作、条件、变量和物品字段仍会按 KaMenu 规则转换；源文件的锚点名称不保证原样保留，生成文件可能会展开内容或由 YAML 序列化器重新命名锚点。迁移后请检查报告和目标菜单，确认复用内容的上下文变量仍然正确。
+
 ## DeluxeMenus 迁移教程
 
 ### 1. 使用默认目录迁移
