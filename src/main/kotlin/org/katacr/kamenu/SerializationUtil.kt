@@ -5,9 +5,9 @@ import org.bukkit.Location
 import org.bukkit.inventory.ItemStack
 import org.bukkit.util.io.BukkitObjectInputStream
 import org.bukkit.util.io.BukkitObjectOutputStream
-import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.util.Base64
 
 /**
  * 序列化工具类。
@@ -30,7 +30,7 @@ object SerializationUtil {
                     dataOutput.writeObject(item)
                 }
             }
-            return Base64Coder.encodeLines(outputStream.toByteArray())
+            return encodeBase64(outputStream.toByteArray())
         } catch (e: Exception) {
             throw IllegalStateException("无法序列化物品栏", e)
         }
@@ -40,7 +40,7 @@ object SerializationUtil {
      * 反序列化：Base64字符串 -> 物品数组
      */
     fun itemStackArrayFromBase64(data: String): Array<ItemStack?> {
-        val inputStream = ByteArrayInputStream(Base64Coder.decodeLines(data))
+        val inputStream = ByteArrayInputStream(decodeBase64(data))
         BukkitObjectInputStream(inputStream).use { dataInput ->
             val size = dataInput.readInt()
             val items = arrayOfNulls<ItemStack>(size)
@@ -67,6 +67,12 @@ object SerializationUtil {
         val items = itemStackArrayFromBase64(data)
         return items.firstOrNull()
     }
+
+    /** 使用 JDK 公共 API 生成不换行的 Base64，避免依赖 SnakeYAML 私有实现。 */
+    internal fun encodeBase64(data: ByteArray): String = Base64.getEncoder().encodeToString(data)
+
+    /** 解码当前及旧版带换行的 Base64 持久化内容。 */
+    internal fun decodeBase64(data: String): ByteArray = Base64.getMimeDecoder().decode(data)
 
     /**
      * Location 序列化 (格式: world,x,y,z,yaw,pitch)

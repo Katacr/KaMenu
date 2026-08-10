@@ -94,6 +94,22 @@ class DatabaseManager(val plugin: KaMenu) {
                     update_time BIGINT
                 )
             """)
+
+            // Container 自由槽位托管账本；物品恢复记录不能与普通 data/list 混用。
+            statement.execute("""
+                CREATE TABLE IF NOT EXISTS free_slot_escrow (
+                    session_id VARCHAR(36) NOT NULL,
+                    player_uuid VARCHAR(36) NOT NULL,
+                    menu_id VARCHAR(255) NOT NULL,
+                    menu_generation BIGINT NOT NULL,
+                    free_slot_id VARCHAR(64) NOT NULL,
+                    inventory_slot INTEGER NOT NULL,
+                    item_data TEXT NOT NULL,
+                    state VARCHAR(32) NOT NULL,
+                    update_time BIGINT NOT NULL,
+                    PRIMARY KEY (session_id, inventory_slot)
+                )
+            """)
         }
     }
 

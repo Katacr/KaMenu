@@ -21,6 +21,7 @@
 - [Title](title.md)：容器标题和动态解析。
 - [Settings](settings.md)：依赖检查、参数传递和防频繁点击。
 - [Layout](layout.md)：库存行、槽位、空格和多字符按钮 ID。
+- [自由槽位](free-slots.md)：接收真实物品、条件、预览、原子消费和异常返还。
 - [Buttons](buttons.md)：物品显示、显示条件、点击动作和 `variants`。
 - [Properties](properties.md)：熔炉进度、铁砧输入和容器专属属性。
 - [刷新机制](refresh.md)：整体、标题、按钮和进度刷新。
@@ -31,7 +32,7 @@
 
 容器类菜单文件使用 `Type`、`Layout`、`Buttons` 和可选的 `Properties`，不能同时配置 Dialog 专用的 `Body`、`Inputs` 或 `Bottom`。`Events`、动作、条件、变量、PlaceholderAPI 和 JavaScript 仍复用 KaMenu 的通用运行时。
 
-Paper/Folia 和支持适配器的 Spigot 核心可以使用 Dialog；低版本核心会禁用 Dialog，但容器类菜单仍可用。`toast` 依赖 Paper/Folia，跨平台菜单应使用 `actionbar` 或 `title` 反馈。
+Paper/Folia 和支持适配器的 Spigot 核心可以使用 Dialog；低版本核心会禁用 Dialog，但容器类菜单仍可用。`toast` 依赖 Paper/Folia，跨平台菜单应使用 `actionbar` 或 `title` 反馈。需要接收玩家真实物品时使用 `Free-Slots`，不要把普通展示按钮当作可取出的物品。
 
 ## 最小示例
 

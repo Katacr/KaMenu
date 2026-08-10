@@ -37,7 +37,7 @@ import kotlin.math.roundToInt
 /**
  * Container 菜单运行时服务。
  *
- * 负责打开只读 Bukkit 库存、维护玩家会话、执行点击动作与菜单事件，并调度整体、标题和按钮刷新。
+ * 负责打开 Bukkit 虚拟库存、维护普通按钮与受控自由槽会话，并调度事件、标题和按钮刷新。
  */
 class ContainerMenuService(private val plugin: KaMenu) {
     /** 一次待打开的库存及其可选真实视图能力。 */
@@ -59,6 +59,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val supportsAnvilInput: Boolean,
         val refreshHandles: MutableList<KaTaskHandle> = mutableListOf(),
         val refreshRunning: AtomicBoolean = AtomicBoolean(false),
+        val freeSlotTransactionRunning: AtomicBoolean = AtomicBoolean(false),
         val lastClickAtMillis: AtomicLong = AtomicLong(0L),
         @Volatile var titleFrame: Int = 0,
         @Volatile var currentTitle: String = "",
@@ -77,8 +78,12 @@ class ContainerMenuService(private val plugin: KaMenu) {
     )
 
     private val sessions = ConcurrentHashMap<UUID, ActiveSession>()
+    private val recoveryRunning = ConcurrentHashMap.newKeySet<UUID>()
     private val itemRenderer = ContainerItemRenderer(plugin)
+    private val freeSlotRecoveryStore = FreeSlotRecoveryStore(plugin.databaseManager)
+    private val freeSlotTransactions = FreeSlotTransactionService(plugin, freeSlotRecoveryStore)
     private val displayMarkerKey = NamespacedKey(plugin, "container_display")
+    @Volatile private var shuttingDown = false
 
     /** 普通打开已加载容器菜单，并执行依赖检查和 Events.Open。 */
     fun openMenu(player: Player, menuId: String) {
@@ -264,7 +269,8 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val session = validSession(player, inventory) ?: return
         val buttonId = session.definition.layout.buttonAt(slot) ?: return
         val button = session.definition.buttons[buttonId] ?: return
-        val variant = resolveButtonVariant(player, session, button) ?: return
+        val baseVariables = buttonVariables(session, buttonId)
+        val variant = resolveButtonVariant(player, session, button, baseVariables) ?: return
 
         val actionTypes = linkedSetOf(ContainerClickType.ALL)
         if (clickType.name.startsWith("NUMBER_KEY")) {
@@ -275,7 +281,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         if (actions.isEmpty()) return
         if (!consumeClickCooldown(session)) return
 
-        val variables = buttonVariables(session, buttonId) + mapOf(
+        val variables = baseVariables + mapOf(
             "slot" to slot.toString(),
             "button" to buttonId,
             "click" to clickType.configKey,
@@ -287,6 +293,38 @@ class ContainerMenuService(private val plugin: KaMenu) {
             actions = actions,
             variables = variables,
             contextId = session.menuId
+        )
+    }
+
+    /** 先处理自由槽位事务；不属于自由槽时继续交给普通按钮点击逻辑。 */
+    fun handleInventoryClick(
+        player: Player,
+        inventory: Inventory,
+        request: FreeSlotTransactionService.ClickRequest
+    ): FreeSlotTransactionService.Result {
+        val session = validSession(player, inventory) ?: return FreeSlotTransactionService.Result.NOT_HANDLED
+        return freeSlotTransactions.handleClick(
+            player,
+            freeSlotContext(session),
+            request,
+            isCurrent = { validSession(player, session.holder.inventory) === session },
+            onChanged = { refreshButtons(player, session, session.definition.buttons.keys) }
+        )
+    }
+
+    /** 处理自由槽位拖拽事务。 */
+    fun handleInventoryDrag(
+        player: Player,
+        inventory: Inventory,
+        request: FreeSlotTransactionService.DragRequest
+    ): FreeSlotTransactionService.Result {
+        val session = validSession(player, inventory) ?: return FreeSlotTransactionService.Result.NOT_HANDLED
+        return freeSlotTransactions.handleDrag(
+            player,
+            freeSlotContext(session),
+            request,
+            isCurrent = { validSession(player, session.holder.inventory) === session },
+            onChanged = { refreshButtons(player, session, session.definition.buttons.keys) }
         )
     }
 
@@ -332,7 +370,8 @@ class ContainerMenuService(private val plugin: KaMenu) {
 
         val buttonId = session.definition.layout.buttonAt(ANVIL_RESULT_SLOT) ?: return null
         val button = session.definition.buttons[buttonId] ?: return null
-        val variant = resolveButtonVariant(player, session, button) ?: return null
+        val variables = buttonVariables(session, buttonId)
+        val variant = resolveButtonVariant(player, session, button, variables) ?: return null
         return markDisplayItem(
             itemRenderer.render(
                 player,
@@ -340,7 +379,10 @@ class ContainerMenuService(private val plugin: KaMenu) {
                 session.menuId,
                 button,
                 variant.display,
-                buttonVariables(session, buttonId)
+                variables,
+                freeSlotItem = { id ->
+                    FreeSlotItemContext.firstItem(session.definition.freeSlots, session.holder.inventory, id)
+                }
             ),
             session.sessionId
         )
@@ -388,6 +430,19 @@ class ContainerMenuService(private val plugin: KaMenu) {
         return true
     }
 
+    /** 执行当前 Container 会话的 `free-slot` 动作，并把失败映射为动作链中断。 */
+    fun executeFreeSlotAction(player: Player, arguments: String): java.util.concurrent.CompletableFuture<Boolean> {
+        val session = sessions[player.uniqueId]
+            ?: return java.util.concurrent.CompletableFuture.completedFuture(true)
+        return freeSlotTransactions.executeAction(
+            player = player,
+            session = freeSlotContext(session),
+            rawArguments = arguments,
+            isCurrent = { validSession(player, session.holder.inventory) === session },
+            onChanged = { refreshButtons(player, session, session.definition.buttons.keys) }
+        )
+    }
+
     /** 玩家主动关闭库存时结束会话，并执行一次 Events.Close。 */
     fun handleClose(player: Player, inventory: Inventory) {
         val session = sessions[player.uniqueId] ?: return
@@ -395,6 +450,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         if (!sessions.remove(player.uniqueId, session)) return
         val argumentContext = MenuArgumentManager.currentContext(player)
         val sessionArguments = argumentContext?.arguments.orEmpty()
+        releaseFreeSlotItems(player, session)
         cleanupSession(session, clearInventory = true)
         MenuTaskManager.cancel(player)
         MenuListManager.clear(player)
@@ -495,6 +551,77 @@ class ContainerMenuService(private val plugin: KaMenu) {
         terminate(player.uniqueId, closeInventory = false, clearInventory = true)
     }
 
+    /** 异步加载玩家未完成的自由槽托管记录，并在玩家线程尽量返还背包。 */
+    fun recoverPending(player: Player) {
+        if (!recoveryRunning.add(player.uniqueId)) return
+        freeSlotRecoveryStore.loadRecoverableAsync(player.uniqueId).whenComplete { records, error ->
+            runOnPlayerThread(player) {
+                try {
+                    if (error != null) {
+                        plugin.logger.severe(
+                            "Failed to load free-slot recovery records for ${player.uniqueId}: ${error.message}"
+                        )
+                        recoveryRunning.remove(player.uniqueId)
+                        return@runOnPlayerThread
+                    }
+                    if (!player.isOnline || records.isNullOrEmpty()) {
+                        recoveryRunning.remove(player.uniqueId)
+                        return@runOnPlayerThread
+                    }
+                    val returned = linkedMapOf<UUID, MutableSet<Int>>()
+                    val persistence = mutableListOf<java.util.concurrent.CompletableFuture<Unit>>()
+                    records.forEach { record ->
+                        val item = runCatching { org.katacr.kamenu.SerializationUtil.itemFromBase64(record.itemData) }
+                            .getOrElse { deserializeError ->
+                                plugin.logger.severe(
+                                    "Failed to deserialize free-slot item ${record.sessionId}/${record.inventorySlot}: " +
+                                        deserializeError.message
+                                )
+                                null
+                            }
+                            ?.takeIf { it.type != Material.AIR && it.amount > 0 }
+                            ?: return@forEach
+                        val remaining = player.inventory.addItem(item.clone()).values.firstOrNull()
+                        if (remaining == null || remaining.type == Material.AIR || remaining.amount <= 0) {
+                            returned.computeIfAbsent(record.sessionId) { linkedSetOf() }.add(record.inventorySlot)
+                        } else {
+                            persistence += persistPendingRecord(
+                                sessionId = record.sessionId,
+                                playerId = record.playerId,
+                                menuId = record.menuId,
+                                generation = record.generation,
+                                freeSlotId = record.freeSlotId,
+                                slot = record.inventorySlot,
+                                item = remaining
+                            )
+                        }
+                    }
+                    returned.forEach { (sessionId, slots) ->
+                        persistence += freeSlotRecoveryStore.deleteSlotsAsync(sessionId, slots)
+                    }
+                    player.updateInventory()
+                    if (persistence.isEmpty()) {
+                        recoveryRunning.remove(player.uniqueId)
+                    } else {
+                        java.util.concurrent.CompletableFuture.allOf(*persistence.toTypedArray())
+                            .whenComplete { _, persistenceError ->
+                                if (persistenceError != null) {
+                                    plugin.logger.severe(
+                                        "Failed to finalize free-slot recovery for ${player.uniqueId}: " +
+                                            persistenceError.message
+                                    )
+                                }
+                                recoveryRunning.remove(player.uniqueId)
+                            }
+                    }
+                } catch (error: Throwable) {
+                    recoveryRunning.remove(player.uniqueId)
+                    throw error
+                }
+            }
+        }
+    }
+
     /** 清理因异常热卸载等情况进入玩家库存或光标的展示物品。 */
     fun removeLeakedItems(player: Player) {
         val topInventory = player.openInventory.topInventory
@@ -512,13 +639,20 @@ class ContainerMenuService(private val plugin: KaMenu) {
 
     /** 插件停用时关闭全部容器会话。 */
     fun shutdown() {
+        shuttingDown = true
         closeAllSilently()
+        if (!freeSlotRecoveryStore.awaitPending(3_000L)) {
+            plugin.logger.warning("Timed out while waiting for free-slot persistence during shutdown; HELD records were retained.")
+        }
     }
 
     /** 插件热加载时为当前在线玩家安排展示物品恢复检查。 */
     fun cleanupOnlinePlayers() {
         Bukkit.getOnlinePlayers().forEach { player ->
-            runOnPlayerThread(player) { removeLeakedItems(player) }
+            runOnPlayerThread(player) {
+                removeLeakedItems(player)
+                recoverPending(player)
+            }
         }
     }
 
@@ -605,13 +739,24 @@ class ContainerMenuService(private val plugin: KaMenu) {
     /** 重新计算按钮显示条件和物品，仅写入实际发生变化的槽位。 */
     private fun refreshButtons(player: Player, session: ActiveSession, buttonIds: Collection<String>) {
         val inventory = session.holder.inventory
+        val sessionVariables = sessionVariables(session)
         buttonIds.forEach { buttonId ->
             val button = session.definition.buttons[buttonId] ?: return@forEach
-            val variables = buttonVariables(session, buttonId)
-            val variant = resolveButtonVariant(player, session, button)
+            val variables = buttonVariables(session, buttonId, sessionVariables)
+            val variant = resolveButtonVariant(player, session, button, variables)
             val item = if (variant != null) {
                 markDisplayItem(
-                    itemRenderer.render(player, session.config, session.menuId, button, variant.display, variables),
+                    itemRenderer.render(
+                        player,
+                        session.config,
+                        session.menuId,
+                        button,
+                        variant.display,
+                        variables,
+                        freeSlotItem = { id ->
+                            FreeSlotItemContext.firstItem(session.definition.freeSlots, inventory, id)
+                        }
+                    ),
                     session.sessionId
                 )
             } else {
@@ -643,9 +788,9 @@ class ContainerMenuService(private val plugin: KaMenu) {
     private fun resolveButtonVariant(
         player: Player,
         session: ActiveSession,
-        button: ContainerButtonDefinition
+        button: ContainerButtonDefinition,
+        variables: Map<String, String>
     ): ContainerButtonVariantDefinition? {
-        val variables = buttonVariables(session, button.id)
         val buttonCondition = button.viewCondition
         if (buttonCondition != null && !org.katacr.kamenu.ConditionUtils.checkCondition(
                 player,
@@ -1051,18 +1196,40 @@ class ContainerMenuService(private val plugin: KaMenu) {
 
     /** 返回当前菜单可供显示、条件和动作统一读取的会话变量。 */
     private fun sessionVariables(session: ActiveSession): Map<String, String> {
-        return if (session.definition.type == ContainerMenuType.ANVIL) {
+        val variables = if (session.definition.type == ContainerMenuType.ANVIL) {
             mapOf("input" to session.anvilInput)
         } else {
             emptyMap()
         }
+        return variables + FreeSlotItemContext.sessionVariables(
+            session.definition.freeSlots,
+            session.holder.inventory
+        )
     }
 
     /** 为按钮渲染、条件和点击动作补充稳定的当前组件引用上下文。 */
-    private fun buttonVariables(session: ActiveSession, buttonId: String): Map<String, String> {
-        return sessionVariables(session) + mapOf(
+    private fun buttonVariables(
+        session: ActiveSession,
+        buttonId: String,
+        sessionVariables: Map<String, String> = sessionVariables(session)
+    ): Map<String, String> {
+        return sessionVariables + mapOf(
             "self:id" to buttonId,
             "self:path" to "Buttons.$buttonId"
+        )
+    }
+
+    /** 将私有 Container 会话投影为自由槽位事务服务所需的最小上下文。 */
+    private fun freeSlotContext(session: ActiveSession): FreeSlotTransactionService.SessionContext {
+        return FreeSlotTransactionService.SessionContext(
+            sessionId = session.sessionId,
+            playerId = session.playerId,
+            menuId = session.menuId,
+            generation = session.generation,
+            config = session.config,
+            freeSlots = session.definition.freeSlots,
+            inventory = session.holder.inventory,
+            transactionRunning = session.freeSlotTransactionRunning
         )
     }
 
@@ -1087,6 +1254,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val session = sessions[playerId] ?: return null
         if (expectedSessionId != null && session.sessionId != expectedSessionId) return null
         if (!sessions.remove(playerId, session)) return null
+        releaseFreeSlotItems(Bukkit.getPlayer(playerId), session)
         cleanupSession(session, clearInventory)
         if (closeInventory) {
             Bukkit.getPlayer(playerId)?.takeIf(Player::isOnline)?.closeInventory()
@@ -1101,6 +1269,73 @@ class ContainerMenuService(private val plugin: KaMenu) {
         if (clearInventory) {
             session.holder.inventory.clear()
         }
+    }
+
+    /** 在清空虚拟顶部库存前返还全部真实自由槽物品，或写入待领取记录。 */
+    private fun releaseFreeSlotItems(player: Player?, session: ActiveSession) {
+        if (session.definition.freeSlots.byId.isEmpty()) return
+        if (shuttingDown) {
+            session.definition.freeSlots.idBySlot.keys.forEach { slot ->
+                session.holder.inventory.setItem(slot, null)
+            }
+            return
+        }
+        val returnedSlots = linkedSetOf<Int>()
+        session.definition.freeSlots.byId.values.forEach { freeSlot ->
+            freeSlot.slots.forEach { slot ->
+                val item = session.holder.inventory.getItem(slot)
+                    ?.takeIf { it.type != Material.AIR && it.amount > 0 }
+                    ?.clone()
+                    ?: return@forEach
+                val canReturnNow = player?.isOnline == true && freeSlot.returnRule.onClose
+                val remaining = if (canReturnNow) {
+                    player.inventory.addItem(item.clone()).values.firstOrNull()
+                } else {
+                    item
+                }
+                if (remaining == null || remaining.type == Material.AIR || remaining.amount <= 0) {
+                    returnedSlots += slot
+                } else {
+                    persistPendingRecord(
+                        sessionId = session.sessionId,
+                        playerId = session.playerId,
+                        menuId = session.menuId,
+                        generation = session.generation,
+                        freeSlotId = freeSlot.id,
+                        slot = slot,
+                        item = remaining
+                    )
+                }
+                session.holder.inventory.setItem(slot, null)
+            }
+        }
+        if (returnedSlots.isNotEmpty()) {
+            freeSlotRecoveryStore.deleteSlotsAsync(session.sessionId, returnedSlots)
+        }
+        if (player?.isOnline == true) player.updateInventory()
+    }
+
+    /** 将未能立即返还的单个物理槽位写为 RETURN_PENDING。 */
+    private fun persistPendingRecord(
+        sessionId: UUID,
+        playerId: UUID,
+        menuId: String,
+        generation: Long,
+        freeSlotId: String,
+        slot: Int,
+        item: ItemStack
+    ): java.util.concurrent.CompletableFuture<Unit> {
+        return freeSlotRecoveryStore.replaceSlotsAsync(
+            sessionId = sessionId,
+            playerId = playerId,
+            menuId = menuId,
+            generation = generation,
+            slotRecords = mapOf(
+                slot to (freeSlotId to org.katacr.kamenu.SerializationUtil.itemToBase64(item.clone()))
+            ),
+            affectedSlots = setOf(slot),
+            state = FreeSlotRecoveryStore.State.RETURN_PENDING
+        )
     }
 
     /** 给展示物品写入不可转移的会话标记。 */

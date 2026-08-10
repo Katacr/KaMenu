@@ -1,0 +1,127 @@
+# KaMenu V2 complete Free-Slots example
+# Open with: /km open example/container_free_slots
+# Release with: /km examples en_US
+
+Type: CHEST
+Title: '&8Free-Slots Example'
+
+Settings:
+  min_click_delay: 150
+
+Layout:
+  - '#########'
+  - '#  D E  #'
+  - '#  C R  #'
+  - '#   X   #'
+  - '#########'
+
+Events:
+  Open:
+    - 'actionbar: &aFree-Slots example opened'
+  Close:
+    - 'actionbar: &7Items in free slots are returned on close'
+
+Free-Slots:
+  diamond:
+    slots: [10, 11]
+    place:
+      enabled: true
+      condition: '{free:incoming.material} == DIAMOND'
+    take:
+      enabled: true
+    events:
+      place:
+        - 'actionbar: &aDiamond placed: &f{free:diamond.amount}'
+      take:
+        - 'actionbar: &eDiamond taken'
+      deny_place:
+        - 'actionbar: &cDiamond slots only accept DIAMOND'
+    return:
+      on_close: true
+      overflow: pending
+
+  emerald:
+    slots: [13]
+    place:
+      enabled: true
+      condition: '{free:incoming.material} == EMERALD'
+    take:
+      enabled: true
+    events:
+      place:
+        - 'actionbar: &aEmerald placed: &f{free:emerald.amount}'
+      take:
+        - 'actionbar: &eEmerald taken'
+      deny_place:
+        - 'actionbar: &cEmerald slot only accepts EMERALD'
+    return:
+      on_close: true
+      overflow: pending
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  D:
+    display:
+      material: '[FREE:diamond]'
+      name: '&bDiamond Input'
+      lore:
+        - '&7Current amount: &f{free:diamond.amount}'
+        - '&7Two physical slots are merged'
+
+  E:
+    display:
+      material: '[FREE:emerald]'
+      name: '&aEmerald Input'
+      lore:
+        - '&7Current amount: &f{free:emerald.amount}'
+        - '&7Returned automatically on close'
+
+  C:
+    variants:
+      - priority: 0
+        condition: '{free:diamond.amount} >= 2 && {free:emerald.amount} >= 1'
+        display:
+          material: LIME_CONCRETE
+          name: '&aCraft Reward'
+          lore:
+            - '&7Consumes 2 diamonds and 1 emerald'
+            - '&7Rewards 1 nether star'
+        actions:
+          left:
+            - 'free-slot: type=consume;items=diamond:2,emerald:1'
+            - 'item: type=give;mats=NETHER_STAR;amount=1'
+            - 'actionbar: &aCrafting succeeded; materials consumed atomically'
+      - priority: 1
+        display:
+          material: RED_CONCRETE
+          name: '&cMissing Materials'
+          lore:
+            - '&7Diamonds: &f{free:diamond.amount}&7/2'
+            - '&7Emeralds: &f{free:emerald.amount}&7/1'
+            - '&8The button changes when requirements are met'
+        actions:
+          left:
+            - 'actionbar: &cNot enough materials yet'
+
+  R:
+    display:
+      material: CHEST
+      name: '&eReturn All Items'
+      lore:
+        - '&7Return every free-slot item to the player inventory'
+    actions:
+      left:
+        - 'free-slot: type=return;id=*'
+        - 'actionbar: &aFree-slot items returned'
+
+  X:
+    display:
+      material: BARRIER
+      name: '&cClose Example'
+    actions:
+      left:
+        - 'close'

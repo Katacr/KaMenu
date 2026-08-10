@@ -51,6 +51,7 @@ import org.katacr.kamenu.dialog.DialogAfterAction
 import org.katacr.kamenu.dialog.DialogBodyDefinition
 import org.katacr.kamenu.dialog.DialogBottomType
 import org.katacr.kamenu.dialog.DialogButtonDefinition
+import org.katacr.kamenu.dialog.ClickableTextTagScanner
 import org.katacr.kamenu.dialog.DialogDefinition
 import org.katacr.kamenu.dialog.DialogDefinitionCompiler
 import org.katacr.kamenu.dialog.DialogInputDefinition
@@ -60,7 +61,6 @@ import org.katacr.kamenu.dialog.DialogPlatformAdapter
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.regex.Pattern
 
 /**
  * 使用 Spigot 1.21.6+ 的 Bungee Dialog API 渲染 KaMenu 的中立 Dialog 定义。
@@ -70,7 +70,6 @@ import java.util.regex.Pattern
  */
 class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
     companion object {
-        private val CLICKABLE_PATTERN = Pattern.compile("(?is)<(text=[^>]*)>")
         private const val MAX_INPUT_VALUE_LENGTH = 32768
     }
 
@@ -568,14 +567,14 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
 
     /** 解析正文可点击文本，并将 actions 引用绑定到服务端一次性 callback。 */
     private fun clickableText(context: RenderContext, rawText: String): BaseComponent {
-        val matcher = CLICKABLE_PATTERN.matcher(rawText)
-        if (!matcher.find()) return text(context.player, rawText)
+        val tags = ClickableTextTagScanner.scan(rawText)
+        if (tags.isEmpty()) return text(context.player, rawText)
 
         val result = TextComponent()
         var cursor = 0
-        do {
-            result.addExtra(text(context.player, rawText.substring(cursor, matcher.start())))
-            val attributes = attributes(matcher.group(1))
+        tags.forEach { tag ->
+            result.addExtra(text(context.player, rawText.substring(cursor, tag.startIndex)))
+            val attributes = attributes(tag.content)
             val clickable = text(context.player, attributes["text"].orEmpty())
             attributes["hover"]?.let {
                 clickable.hoverEvent = HoverEvent(
@@ -627,8 +626,8 @@ class SpigotDialogPlatformAdapter : DialogPlatformAdapter, Listener {
             if (attributes["newline"].toBoolean()) {
                 result.addExtra(TextComponent("\n"))
             }
-            cursor = matcher.end()
-        } while (matcher.find())
+            cursor = tag.endIndex + 1
+        }
         result.addExtra(text(context.player, rawText.substring(cursor)))
         return result
     }

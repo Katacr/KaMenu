@@ -75,6 +75,11 @@ object ContainerMenuParser {
         if (layoutResult != null) diagnostics += layoutResult.diagnostics
         val layout = layoutResult?.definition
         val buttons = parseButtons(config, diagnostics)
+        val freeSlots = if (layout != null) {
+            parseFreeSlots(config, type, layout, diagnostics)
+        } else {
+            ContainerFreeSlotsDefinition.EMPTY
+        }
 
         if (layout != null) {
             validateButtonReferences(layout, buttons, diagnostics)
@@ -89,6 +94,7 @@ object ContainerMenuParser {
                 type = type,
                 title = title,
                 layout = layout,
+                freeSlots = freeSlots,
                 properties = properties,
                 buttons = buttons.toMap(),
                 update = update,
@@ -331,6 +337,282 @@ object ContainerMenuParser {
             return null
         }
         return raw.filterIsInstance<String>()
+    }
+
+    /** 解析 `Free-Slots` 并校验范围、重复槽位和 Layout 按钮冲突。 */
+    private fun parseFreeSlots(
+        config: YamlConfiguration,
+        type: ContainerMenuType?,
+        layout: ContainerLayoutDefinition,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerFreeSlotsDefinition {
+        val section = config.getConfigurationSection("Free-Slots")
+        if (section == null) {
+            if (config.contains("Free-Slots")) {
+                diagnostics += error("free_slots.invalid", "Free-Slots", "Free-Slots must be a YAML section.")
+            }
+            return ContainerFreeSlotsDefinition.EMPTY
+        }
+        if (section.getKeys(false).isEmpty()) return ContainerFreeSlotsDefinition.EMPTY
+        if (type?.isFurnace == true || type == ContainerMenuType.ANVIL) {
+            diagnostics += error(
+                "free_slots.unsupported_type",
+                "Free-Slots",
+                "Free-Slots are not supported by furnace or anvil container types in this version."
+            )
+        }
+
+        val byId = linkedMapOf<String, ContainerFreeSlotDefinition>()
+        val idBySlot = linkedMapOf<Int, String>()
+        section.getKeys(false).forEach { id ->
+            val path = "Free-Slots.$id"
+            if (!FREE_SLOT_ID.matches(id)) {
+                diagnostics += error(
+                    "free_slot.invalid_id",
+                    path,
+                    "Free slot IDs may only contain letters, numbers, '_', '-' and '.'."
+                )
+                return@forEach
+            }
+            val freeSlot = section.getConfigurationSection(id)
+            if (freeSlot == null) {
+                diagnostics += error("free_slot.invalid", path, "Free slot '$id' must be a YAML section.")
+                return@forEach
+            }
+            validateKnownKeys(
+                freeSlot,
+                setOf("slots", "place", "take", "events", "return"),
+                path,
+                "free_slot.unknown_key",
+                diagnostics
+            )
+
+            val slots = parseFreeSlotIndexes(freeSlot.get("slots"), "$path.slots", layout.size, diagnostics)
+            slots.forEach { slot ->
+                val previousId = idBySlot[slot]
+                if (previousId != null) {
+                    diagnostics += error(
+                        "free_slot.duplicate_slot",
+                        "$path.slots",
+                        "Slot $slot is already assigned to Free-Slots.$previousId."
+                    )
+                } else {
+                    idBySlot[slot] = id
+                    if (layout.buttonAt(slot) != null) {
+                        diagnostics += error(
+                        "free_slot.button_conflict",
+                        "$path.slots",
+                        "Slot $slot is also occupied by Layout button '${layout.buttonAt(slot)}'."
+                    )
+                    }
+                }
+            }
+
+            byId[id] = ContainerFreeSlotDefinition(
+                id = id,
+                slots = slots,
+                place = parseFreeSlotRule(freeSlot, "place", path, diagnostics),
+                take = parseFreeSlotRule(freeSlot, "take", path, diagnostics),
+                events = parseFreeSlotEvents(freeSlot, path, diagnostics),
+                returnRule = parseFreeSlotReturn(freeSlot, path, diagnostics)
+            )
+        }
+        return ContainerFreeSlotsDefinition(byId.toMap(), idBySlot.toMap())
+    }
+
+    /** 读取自由槽位的 0-based 物理槽位列表。 */
+    private fun parseFreeSlotIndexes(
+        raw: Any?,
+        path: String,
+        inventorySize: Int,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): List<Int> {
+        val values = raw as? List<*>
+        if (values == null || values.isEmpty()) {
+            diagnostics += error("free_slot.invalid_slots", path, "slots must be a non-empty integer list.")
+            return emptyList()
+        }
+        val result = mutableListOf<Int>()
+        values.forEachIndexed { index, value ->
+            val slot = exactInt(value)
+            when {
+                slot == null -> diagnostics += error(
+                    "free_slot.invalid_slot",
+                    "$path[$index]",
+                    "Free slot indexes must be integers."
+                )
+                slot !in 0 until inventorySize -> diagnostics += error(
+                    "free_slot.slot_out_of_range",
+                    "$path[$index]",
+                    "Free slot index $slot is outside the top inventory range 0..${inventorySize - 1}."
+                )
+                slot in result -> diagnostics += error(
+                    "free_slot.duplicate_slot",
+                    "$path[$index]",
+                    "Free slot index $slot is duplicated in the same group."
+                )
+                else -> result += slot
+            }
+        }
+        return result
+    }
+
+    /** 解析自由槽位放入或取出规则。 */
+    private fun parseFreeSlotRule(
+        section: ConfigurationSection,
+        key: String,
+        parentPath: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerFreeSlotRuleDefinition {
+        val path = "$parentPath.$key"
+        val rule = section.getConfigurationSection(key)
+        if (rule == null) {
+            if (section.contains(key)) {
+                diagnostics += error("free_slot.invalid_rule", path, "$key must be a YAML section.")
+            }
+            return ContainerFreeSlotRuleDefinition(enabled = true, condition = null)
+        }
+        validateKnownKeys(rule, setOf("enabled", "condition"), path, "free_slot.unknown_rule_key", diagnostics)
+        val enabled = parseBoolean(rule.get("enabled"), "$path.enabled", true, diagnostics)
+        val condition = when (val raw = rule.get("condition")) {
+            null -> null
+            is String -> raw.trim().takeIf(String::isNotEmpty)
+            else -> {
+                diagnostics += error(
+                    "free_slot.invalid_condition",
+                    "$path.condition",
+                    "condition must be a string."
+                )
+                null
+            }
+        }
+        return ContainerFreeSlotRuleDefinition(enabled, condition)
+    }
+
+    /** 解析自由槽位事务事件动作列表。 */
+    private fun parseFreeSlotEvents(
+        section: ConfigurationSection,
+        parentPath: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerFreeSlotEventsDefinition {
+        val path = "$parentPath.events"
+        val events = section.getConfigurationSection("events")
+        if (events == null) {
+            if (section.contains("events")) {
+                diagnostics += error("free_slot.invalid_events", path, "events must be a YAML section.")
+            }
+            return ContainerFreeSlotEventsDefinition(emptyList(), emptyList(), emptyList(), emptyList())
+        }
+        validateKnownKeys(
+            events,
+            setOf("place", "take", "deny_place", "deny_take"),
+            path,
+            "free_slot.unknown_event",
+            diagnostics
+        )
+        return ContainerFreeSlotEventsDefinition(
+            place = parseActionList(events.get("place"), "$path.place", diagnostics),
+            take = parseActionList(events.get("take"), "$path.take", diagnostics),
+            denyPlace = parseActionList(events.get("deny_place"), "$path.deny_place", diagnostics),
+            denyTake = parseActionList(events.get("deny_take"), "$path.deny_take", diagnostics)
+        )
+    }
+
+    /** 解析自由槽位正常关闭返还设置；安全恢复路径不能被配置关闭。 */
+    private fun parseFreeSlotReturn(
+        section: ConfigurationSection,
+        parentPath: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerFreeSlotReturnDefinition {
+        val path = "$parentPath.return"
+        val returnSection = section.getConfigurationSection("return")
+        if (returnSection == null) {
+            if (section.contains("return")) {
+                diagnostics += error("free_slot.invalid_return", path, "return must be a YAML section.")
+            }
+            return ContainerFreeSlotReturnDefinition(true, ContainerFreeSlotOverflowPolicy.PENDING)
+        }
+        validateKnownKeys(
+            returnSection,
+            setOf("on_close", "overflow"),
+            path,
+            "free_slot.unknown_return_key",
+            diagnostics
+        )
+        val onClose = parseBoolean(returnSection.get("on_close"), "$path.on_close", true, diagnostics)
+        val overflow = when (val raw = returnSection.get("overflow")) {
+            null -> ContainerFreeSlotOverflowPolicy.PENDING
+            is String -> ContainerFreeSlotOverflowPolicy.entries.firstOrNull {
+                it.name.equals(raw.trim(), ignoreCase = true)
+            } ?: run {
+                diagnostics += error(
+                    "free_slot.invalid_overflow",
+                    "$path.overflow",
+                    "overflow currently supports only 'pending'."
+                )
+                ContainerFreeSlotOverflowPolicy.PENDING
+            }
+            else -> {
+                diagnostics += error(
+                    "free_slot.invalid_overflow",
+                    "$path.overflow",
+                    "overflow must be a string."
+                )
+                ContainerFreeSlotOverflowPolicy.PENDING
+            }
+        }
+        return ContainerFreeSlotReturnDefinition(onClose, overflow)
+    }
+
+    /** 解析可选布尔配置，并在错误类型时保留安全默认值。 */
+    private fun parseBoolean(
+        raw: Any?,
+        path: String,
+        defaultValue: Boolean,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): Boolean {
+        if (raw == null) return defaultValue
+        if (raw is Boolean) return raw
+        diagnostics += error("free_slot.invalid_boolean", path, "$path must be a boolean.")
+        return defaultValue
+    }
+
+    /** 读取单个动作或动作列表，并冻结嵌套条件 Map。 */
+    private fun parseActionList(
+        raw: Any?,
+        path: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): List<Any> {
+        return when (raw) {
+            null -> emptyList()
+            is String -> listOf(raw)
+            is List<*> -> raw.map(::freezeActionValue)
+            else -> {
+                diagnostics += error("free_slot.invalid_event_actions", path, "Event actions must be a string or list.")
+                emptyList()
+            }
+        }
+    }
+
+    /** 拒绝自由槽位中的未知键，避免拼写错误静默放宽物品规则。 */
+    private fun validateKnownKeys(
+        section: ConfigurationSection,
+        known: Set<String>,
+        path: String,
+        code: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ) {
+        section.getKeys(false).filterNot(known::contains).forEach { key ->
+            diagnostics += error(code, "$path.$key", "Unknown free slot key '$key'.")
+        }
+    }
+
+    private fun exactInt(value: Any?): Int? {
+        return when (value) {
+            is Byte, is Short, is Int -> (value as Number).toInt()
+            is Long -> value.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt()
+            else -> null
+        }
     }
 
     private fun parseButtons(
@@ -658,4 +940,6 @@ object ContainerMenuParser {
 
     private fun warning(code: String, path: String, message: String): ContainerMenuDiagnostic =
         ContainerMenuDiagnostic(ContainerDiagnosticSeverity.WARNING, code, path, message)
+
+    private val FREE_SLOT_ID = Regex("[A-Za-z0-9_.-]+")
 }

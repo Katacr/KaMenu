@@ -9,6 +9,7 @@
 | `Settings` | No | Dependency checks, click throttling, and argument rules | [Settings](settings.md) |
 | `References` | No | Shared text and templates for the current menu | [Menu References](../config/references.md) |
 | `Layout` | Yes | Maps buttons to physical slots | [Layout](layout.md) |
+| `Free-Slots` | No | Named slots that accept or return real player-owned items | [Free Slots](free-slots.md) |
 | `Buttons` | No | Defines buttons referenced by Layout; may be omitted for an entirely empty layout | [Buttons](buttons.md) |
 | `Properties` | No | Furnace progress, anvil input, and other type-specific values | [Properties](properties.md) |
 | `Update` | No | Refreshes the entire container on an interval | [Refresh](refresh.md) |
@@ -24,6 +25,7 @@ Title: '&8Menu title'          # Top inventory title
 Settings:                       # Prerequisites, throttle, and arguments
 References:                     # Optional shared text and templates
 Layout:                         # Slot layout; always required
+Free-Slots:                     # Optional real-item interaction slots
 Update: 20                      # Optional full refresh interval in ticks
 Title-Update: 40                # Optional title refresh interval in ticks
 Progress-Update: 5              # Optional furnace progress interval in ticks
@@ -37,8 +39,9 @@ Recommended authoring order:
 1. Select the inventory and slot dimensions with `Type`.
 2. Place each button in a physical slot with `Layout`.
 3. Define `Buttons.<id>.display.material` for every ID referenced by the layout.
-4. Add click interaction under `Buttons.<id>.actions`.
-5. Add `Settings`, `Properties`, refresh fields, and `Events` only when needed.
+4. For player-owned inputs, leave the Layout slot empty and bind it under `Free-Slots`.
+5. Add click interaction under `Buttons.<id>.actions`.
+6. Add `Settings`, `Properties`, refresh fields, and `Events` only when needed.
 
 ## Complete Skeleton
 

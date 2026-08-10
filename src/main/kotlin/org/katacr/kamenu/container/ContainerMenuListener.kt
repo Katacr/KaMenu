@@ -27,6 +27,27 @@ class ContainerMenuListener(private val service: ContainerMenuService) : Listene
         if (!active && !service.isManagedInventory(inventory)) return
         event.isCancelled = true
         if (!active) return
+        val transactionResult = service.handleInventoryClick(
+            player,
+            inventory,
+            FreeSlotTransactionService.ClickRequest(
+                rawSlot = event.rawSlot,
+                localSlot = event.slot,
+                clickedTop = event.clickedInventory === inventory,
+                actionName = event.action.name,
+                rightClick = when (event.click) {
+                    ClickType.LEFT -> false
+                    ClickType.RIGHT -> true
+                    else -> null
+                },
+                currentItem = event.currentItem?.clone()
+            )
+        )
+        if (transactionResult == FreeSlotTransactionService.Result.ALLOW_VANILLA) {
+            event.isCancelled = false
+            return
+        }
+        if (transactionResult == FreeSlotTransactionService.Result.HANDLED) return
         val slot = event.rawSlot
         if (slot !in 0 until inventory.size) return
         if (event.currentItem?.type == null || event.currentItem?.type == Material.AIR) return
@@ -40,8 +61,18 @@ class ContainerMenuListener(private val service: ContainerMenuService) : Listene
     fun onInventoryDrag(event: InventoryDragEvent) {
         val player = event.whoClicked as? Player ?: return
         val inventory = event.view.topInventory
-        if (service.ownsInventory(player, inventory) || service.isManagedInventory(inventory)) {
-            event.isCancelled = true
+        val active = service.ownsInventory(player, inventory)
+        if (!active && !service.isManagedInventory(inventory)) return
+        event.isCancelled = true
+        if (!active) return
+        val request = FreeSlotTransactionService.DragRequest(
+            oldCursor = event.oldCursor.clone(),
+            newCursor = event.cursor?.clone(),
+            oldItems = event.rawSlots.associateWith { rawSlot -> event.view.getItem(rawSlot)?.clone() },
+            newItems = event.newItems.mapValues { (_, item) -> item.clone() }
+        )
+        if (service.handleInventoryDrag(player, inventory, request) == FreeSlotTransactionService.Result.ALLOW_VANILLA) {
+            event.isCancelled = false
         }
     }
 
@@ -73,6 +104,7 @@ class ContainerMenuListener(private val service: ContainerMenuService) : Listene
     @EventHandler(priority = EventPriority.MONITOR)
     fun onPlayerJoin(event: PlayerJoinEvent) {
         service.removeLeakedItems(event.player)
+        service.recoverPending(event.player)
     }
 
     /** 将 Bukkit ClickType 映射为配置中稳定的容器点击键。 */

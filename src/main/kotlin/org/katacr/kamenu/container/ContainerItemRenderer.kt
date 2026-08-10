@@ -18,11 +18,13 @@ class ContainerItemRenderer(private val plugin: KaMenu) {
         menuId: String,
         button: ContainerButtonDefinition,
         display: ContainerItemDefinition = button.display,
-        variables: Map<String, String> = emptyMap()
+        variables: Map<String, String> = emptyMap(),
+        freeSlotItem: ((String) -> ItemStack?)? = null
     ): ItemStack {
         val values = ContainerValueResolver(player, config, variables)
+        val source = values.string(display["material"], "PAPER")
         val spec = MenuItemSpec(
-            source = values.string(display["material"], "PAPER"),
+            source = source,
             amount = values.int(display["amount"], 1),
             name = display["name"]?.let { values.string(it) },
             lore = display["lore"]?.let(values::inlineConditionalStrings),
@@ -35,6 +37,16 @@ class ContainerItemRenderer(private val plugin: KaMenu) {
             enchantments = values.integerMap(display["enchantments"]),
             itemFlags = values.strings(display["item_flags"]).toSet()
         )
+        FreeSlotItemSource.parseId(source)?.let { freeSlotId ->
+            return itemFactory.createFromItem(
+                player = player,
+                sourceItem = freeSlotItem?.invoke(freeSlotId),
+                spec = spec,
+                contextId = menuId,
+                componentId = button.id,
+                overrideAmount = display["amount"] != null
+            )
+        }
         return itemFactory.create(player, spec, menuId, button.id)
     }
 }

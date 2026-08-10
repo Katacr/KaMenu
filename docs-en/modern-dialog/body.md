@@ -406,6 +406,7 @@ Body:
 - A valid `hover_item` takes priority over `hover`; if the item does not exist or the slot is empty, the regular `hover` text remains as fallback
 - Clickable areas are wrapped in `< >`
 - Parameter values can be wrapped in backticks `` ` ``, single quotes `'`, or double quotes `"`
+- Parameters such as `text` and `hover` may contain ItemsAdder, Oraxen, or CraftEngine glyph tags such as `<image:...>` and `<glyph:...>`; quote the complete value when it contains a nested tag
 - Plain text and clickable text can be mixed
 - Color codes and PAPI variables are supported
 - All fields support condition checks

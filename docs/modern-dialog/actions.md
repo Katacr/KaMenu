@@ -46,6 +46,7 @@ Bottom:
 | `force-close` | 强制关闭菜单（跳过 Events.Close）         | ✅ |
 | `reset`       | 重新打开当前菜单（跳过 Events.Open）        | ✅ |
 | `refresh`     | 原地刷新容器类菜单的按钮、标题或属性          | ❌ |
+| `free-slot`   | 消费、返还或刷新当前容器类菜单的自由槽位      | ❌ |
 | `set-args`    | 替换当前菜单参数并刷新                    | ❌ |
 | `del-args`    | 清理当前菜单参数                        | ❌ |
 | `url`         | 打开指定链接（仅单动作时生效）                 | ❌ |
@@ -137,7 +138,7 @@ Bottom:
 
 - `*` 和 `all` 会匹配所有在线玩家，请谨慎使用
 - 条件表达式中的变量会为每个目标玩家单独解析
-- `server`、`actions`、`js`、`wait`、`return`、任务控制类动作不支持目标选择器，会忽略目标参数
+- `server`、`actions`、`js`、`wait`、`return`、`free-slot`、任务控制类动作不支持目标选择器，会忽略目标参数
 - ✅ `open`、`close`、`force-open`、`force-close`、`reset` 支持目标选择器，可用于刷新或关闭指定玩家的菜单
 - ✅ 选择器条件中可以使用 `{data:*}`、`{gdata:*}`、`{meta:*}` 等变量，例如：`open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
@@ -682,6 +683,22 @@ Events:
 ```
 
 Dialog 菜单需要重新渲染时使用 `reset`。
+
+---
+
+### free-slot - 操作自由槽位
+
+对当前容器类菜单中的真实物品执行原子消费、主动返还或刷新。失败时会中断当前动作链，因此奖励动作应放在消费动作之后。
+
+```yaml
+- 'free-slot: type=consume;id=input;amount=1'
+- 'free-slot: type=consume;items=diamond:1,emerald:2'
+- 'free-slot: type=return;id=input'
+- 'free-slot: type=return;id=*'
+- 'free-slot: type=refresh;id=input'
+```
+
+完整配置、变量和安全边界参见[自由槽位](../container/free-slots.md)。
 
 ---
 

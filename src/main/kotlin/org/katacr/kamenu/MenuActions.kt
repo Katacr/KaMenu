@@ -879,6 +879,12 @@ object MenuActions {
                     ?.refreshFromAction(context.player, target)
                 CompletableFuture.completedFuture(false)
             }
+            controlAction.startsWith("free-slot:", ignoreCase = true) -> {
+                plugin?.takeIf { it.containerMenusReady }
+                    ?.containerMenuService
+                    ?.executeFreeSlotAction(context.player, controlAction.substringAfter(":", "").trim())
+                    ?: CompletableFuture.completedFuture(true)
+            }
             controlAction.equals("return", ignoreCase = true) -> {
                 CompletableFuture.completedFuture(true)
             }

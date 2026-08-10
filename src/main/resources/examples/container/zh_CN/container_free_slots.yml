@@ -1,0 +1,127 @@
+# KaMenu V2 自由槽位完整示例
+# 打开方式: /km open example/container_free_slots
+# 释放方式: /km examples zh_CN
+
+Type: CHEST
+Title: '&8自由槽位示例'
+
+Settings:
+  min_click_delay: 150
+
+Layout:
+  - '#########'
+  - '#  D E  #'
+  - '#  C R  #'
+  - '#   X   #'
+  - '#########'
+
+Events:
+  Open:
+    - 'actionbar: &a自由槽位示例已打开'
+  Close:
+    - 'actionbar: &7自由槽位中的物品会在关闭时返还'
+
+Free-Slots:
+  diamond:
+    slots: [10, 11]
+    place:
+      enabled: true
+      condition: '{free:incoming.material} == DIAMOND'
+    take:
+      enabled: true
+    events:
+      place:
+        - 'actionbar: &a钻石已放入，共 &f{free:diamond.amount} &a个'
+      take:
+        - 'actionbar: &e钻石已取出'
+      deny_place:
+        - 'actionbar: &c钻石槽位只接受 DIAMOND'
+    return:
+      on_close: true
+      overflow: pending
+
+  emerald:
+    slots: [13]
+    place:
+      enabled: true
+      condition: '{free:incoming.material} == EMERALD'
+    take:
+      enabled: true
+    events:
+      place:
+        - 'actionbar: &a绿宝石已放入，共 &f{free:emerald.amount} &a个'
+      take:
+        - 'actionbar: &e绿宝石已取出'
+      deny_place:
+        - 'actionbar: &c绿宝石槽位只接受 EMERALD'
+    return:
+      on_close: true
+      overflow: pending
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  D:
+    display:
+      material: '[FREE:diamond]'
+      name: '&b钻石输入'
+      lore:
+        - '&7当前数量: &f{free:diamond.amount}'
+        - '&7支持多个物理槽位合并'
+
+  E:
+    display:
+      material: '[FREE:emerald]'
+      name: '&a绿宝石输入'
+      lore:
+        - '&7当前数量: &f{free:emerald.amount}'
+        - '&7关闭菜单时自动返还'
+
+  C:
+    variants:
+      - priority: 0
+        condition: '{free:diamond.amount} >= 2 && {free:emerald.amount} >= 1'
+        display:
+          material: LIME_CONCRETE
+          name: '&a合成奖励'
+          lore:
+            - '&7消耗 2 个钻石和 1 个绿宝石'
+            - '&7奖励 1 个下界之星'
+        actions:
+          left:
+            - 'free-slot: type=consume;items=diamond:2,emerald:1'
+            - 'item: type=give;mats=NETHER_STAR;amount=1'
+            - 'actionbar: &a合成成功，材料已原子扣除'
+      - priority: 1
+        display:
+          material: RED_CONCRETE
+          name: '&c材料不足'
+          lore:
+            - '&7钻石: &f{free:diamond.amount}&7/2'
+            - '&7绿宝石: &f{free:emerald.amount}&7/1'
+            - '&8满足条件后按钮会变为可用状态'
+        actions:
+          left:
+            - 'actionbar: &c还没有足够的材料'
+
+  R:
+    display:
+      material: CHEST
+      name: '&e返还全部物品'
+      lore:
+        - '&7将所有自由槽物品返还到玩家背包'
+    actions:
+      left:
+        - 'free-slot: type=return;id=*'
+        - 'actionbar: &a自由槽物品已返还'
+
+  X:
+    display:
+      material: BARRIER
+      name: '&c关闭示例'
+    actions:
+      left:
+        - 'close'

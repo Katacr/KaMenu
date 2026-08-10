@@ -46,6 +46,7 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `force-close` | Force close menu (skips Events.Close)                          | ✅                        |
 | `reset`       | Reopen current menu (skips Events.Open)                        | ✅                        |
 | `refresh`     | Refresh Container buttons, title, or properties in place       | ❌                        |
+| `free-slot`   | Consume, return, or refresh free slots in the active Container | ❌                        |
 | `set-args`    | Replace current menu arguments and refresh                     | ❌                        |
 | `del-args`    | Clear current menu arguments                                   | ❌                        |
 | `url`         | Open a specified link (only works with single action)          | ❌                        |
@@ -137,7 +138,7 @@ Target selectors support all condition expressions supported by `Condition`:
 
 - `*` and `all` match all online players, use with caution
 - Variables in condition expressions are resolved individually for each target player
-- `server`, `actions`, `js`, `wait`, `return`, and task-control actions don't support target selectors and will ignore the target parameter
+- `server`, `actions`, `js`, `wait`, `return`, `free-slot`, and task-control actions don't support target selectors and will ignore the target parameter
 - ✅ `open`, `close`, `force-open`, `force-close`, and `reset` support target selectors and can refresh or close menus for selected players
 - ✅ Selector conditions can use variables such as `{data:*}`, `{gdata:*}`, and `{meta:*}`, for example: `open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
@@ -677,6 +678,22 @@ Refresh the active Container in place without reopening it or running `Events.Op
 ```
 
 Use `reset` when a Dialog menu must be rendered again.
+
+---
+
+### free-slot - Operate On Free Slots
+
+Atomically consume, actively return, or refresh real items in the current Container. Failure stops the current action chain, so reward actions must follow consumption.
+
+```yaml
+- 'free-slot: type=consume;id=input;amount=1'
+- 'free-slot: type=consume;items=diamond:1,emerald:2'
+- 'free-slot: type=return;id=input'
+- 'free-slot: type=return;id=*'
+- 'free-slot: type=refresh;id=input'
+```
+
+See [Free Slots](../container/free-slots.md) for configuration, variables, and recovery boundaries.
 
 ---
 

@@ -9,6 +9,7 @@
 | `Settings` | 否 | 设置依赖检查、防点击和参数规则 | [Settings](settings.md) |
 | `References` | 否 | 定义当前菜单可复用的文本和模板 | [菜单引用](../config/references.md) |
 | `Layout` | 是 | 定义物理槽位中的按钮排列 | [Layout](layout.md) |
+| `Free-Slots` | 否 | 定义允许玩家放入或取出真实物品的具名槽位 | [自由槽位](free-slots.md) |
 | `Buttons` | 否 | 定义 Layout 引用的按钮；纯空布局可省略 | [Buttons](buttons.md) |
 | `Properties` | 否 | 设置熔炉进度或铁砧输入等专属属性 | [Properties](properties.md) |
 | `Update` | 否 | 按周期刷新整个容器 | [刷新机制](refresh.md) |
@@ -24,6 +25,7 @@ Title: '&8菜单标题'             # 顶部标题
 Settings:                       # 前置、冷却和参数
 References:                     # 可选：当前菜单的公共文本和模板
 Layout:                         # 槽位布局，必须存在
+Free-Slots:                     # 可选：真实物品交互槽位
 Update: 20                      # 可选：整体刷新周期，单位 tick
 Title-Update: 40                # 可选：标题刷新周期，单位 tick
 Progress-Update: 5              # 可选：熔炉进度刷新周期，单位 tick
@@ -37,8 +39,9 @@ Buttons:                        # 可选：布局中引用的按钮
 1. 用 `Type` 选择容器并确定槽位数量。
 2. 用 `Layout` 安排每个按钮所在的物理槽位。
 3. 为布局引用的 ID 定义 `Buttons.<id>.display.material`。
-4. 在 `Buttons.<id>.actions` 中添加点击交互。
-5. 最后按需添加 `Settings`、`Properties`、刷新字段和 `Events`。
+4. 需要接收玩家物品时，在 Layout 留空并用 `Free-Slots` 绑定槽位。
+5. 在 `Buttons.<id>.actions` 中添加点击交互。
+6. 最后按需添加 `Settings`、`Properties`、刷新字段和 `Events`。
 
 ## 完整骨架
 

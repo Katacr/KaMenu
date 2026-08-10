@@ -21,6 +21,7 @@ A typical Container workflow is: choose `Type`, configure `Title` and `Settings`
 - [Title](title.md): container titles and dynamic resolution.
 - [Settings](settings.md): dependency checks, arguments, and click throttling.
 - [Layout](layout.md): inventory rows, slots, empty spaces, and multi-character IDs.
+- [Free Slots](free-slots.md): real item input, conditions, previews, atomic consumption, and recovery.
 - [Buttons](buttons.md): item display, visibility, click actions, and `variants`.
 - [Properties](properties.md): furnace progress, anvil input, and type-specific fields.
 - [Refresh](refresh.md): full, title, button, and progress refreshes.
@@ -31,7 +32,7 @@ A typical Container workflow is: choose `Type`, configure `Title` and `Settings`
 
 Container files use `Type`, `Layout`, `Buttons`, and optional `Properties`. They must not define Dialog-only `Body`, `Inputs`, or `Bottom` sections. `Events`, actions, conditions, variables, PlaceholderAPI, and JavaScript use KaMenu's shared runtime.
 
-Paper/Folia and supported Spigot adapters can use Dialogs. Older cores disable Dialogs while retaining Containers. `toast` depends on Paper/Folia; cross-platform menus should use `actionbar` or `title` feedback.
+Paper/Folia and supported Spigot adapters can use Dialogs. Older cores disable Dialogs while retaining Containers. `toast` depends on Paper/Folia; cross-platform menus should use `actionbar` or `title` feedback. Use `Free-Slots` for real player-owned item input; rendered buttons remain server-controlled displays.
 
 ## Minimal Example
 

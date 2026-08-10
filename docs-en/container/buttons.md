@@ -61,6 +61,8 @@ Display fields support Bukkit-mappable material, amount, name, lore, model, skul
 
 External items require the provider plugin to be enabled and the ID to exist. Unknown fields produce a warning; do not depend on private NBT.
 
+To preview a complete real item from a free slot, set `material` to `[FREE:<id>]`. It preserves the actual ItemStack metadata; see [Free Slots](free-slots.md#full-item-preview).
+
 ### Conditional Lore Lines
 
 `display.lore` may mix static strings and conditional maps in order. A selected branch may return one or several lines, which are inserted at the condition's position:

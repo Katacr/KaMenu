@@ -76,6 +76,7 @@ Body:
           - '&fexample/target_selector_demo &f- 动作目标选择器 <text="&a[打开]";hover="&e打开 example/target_selector_demo";command="/km open example/target_selector_demo">'
           - '&fexample/inspect_player &f- Shift+右键玩家互动菜单 <text="&a[打开]";hover="&e打开 example/inspect_player";command="/km open example/inspect_player">'
           - '&fexample/container_main &f- 箱子、熔炉和铁砧菜单入口 <text="&a[打开]";hover="&e打开 example/container_main";command="/km open example/container_main">'
+          - '&fexample/container_free_slots &f- 自由槽位、物品返还与原子消费 <text="&a[打开]";hover="&e打开 example/container_free_slots";command="/km open example/container_free_slots">'
         deny:
           - ""
           - "&bExample Menus"
@@ -90,6 +91,7 @@ Body:
           - '&fexample/target_selector_demo &f- Action target selectors <text="&a[Open]";hover="&eOpen example/target_selector_demo";command="/km open example/target_selector_demo">'
           - '&fexample/inspect_player &f- Shift+right-click player interaction menu <text="&a[Open]";hover="&eOpen example/inspect_player";command="/km open example/inspect_player">'
           - '&fexample/container_main &f- Chest, furnace, and anvil menu entry <text="&a[Open]";hover="&eOpen example/container_main";command="/km open example/container_main">'
+          - '&fexample/container_free_slots &f- Free-Slots, item return, and atomic consumption <text="&a[Open]";hover="&eOpen example/container_free_slots";command="/km open example/container_free_slots">'
 
 Bottom:
   type: multi

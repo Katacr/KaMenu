@@ -28,8 +28,8 @@
 ## KaMenu 项目信息
 
 - 项目路径：`/home/plugins/KaMenu`。
-- 当前主线版本：`2.0.2`。
-- 主语言：Kotlin；使用 Gradle 构建，发布产物为 `build/libs/KaMenu-2.0.2.jar`。
+- 当前主线版本：`2.0.3`。
+- 主语言：Kotlin；使用 Gradle 构建，发布产物为 `build/libs/KaMenu-2.0.3.jar`。
 - 兼容目标：Minecraft `1.16.5+`，运行时最低 Java `16`。Dialog 仅在当前核心提供可用适配器时启用；Container、动作、变量和自定义指令是低版本的主要功能路径。
 - 菜单默认按 Dialog 编写；只有用户明确要求箱子、漏斗、发射器、投掷器、熔炉、高炉、烟熏炉、铁砧等容器界面时，才使用 Container 语法。
 - Paper/Folia 和 Spigot 共用一个插件 JAR，通过运行时适配处理差异。`toast` 等 Paper 专属能力不能作为跨平台菜单的必需反馈，跨平台反馈优先使用 `actionbar` 或 `title`。
@@ -38,6 +38,7 @@
 
 - 新增功能或修改既有语法时，必须同步更新：`docs/` 中文文档、`docs-en/` 英文文档，以及 `/root/.codex/skills/kamenu-menu-author/` Skill。新增文档页面时同时更新两份 `SUMMARY.md`。
 - Container 按钮变体使用 `Buttons.<id>.variants`：变体拥有完整 `display` 和 `actions`；`priority` 越小越优先，相同优先级保持 YAML 声明顺序；全部未指定优先级时严格按 YAML 从上到下；不要与按钮顶层 `display/actions` 混用。
+- Container 玩家真实物品输入只使用顶层 `Free-Slots`：对应 Layout 槽位必须留空，普通按钮仍是只读展示；多材料奖励前先执行原子 `free-slot: type=consume`，关闭与停服恢复依赖持久化托管记录。
 - Container 渲染和点击都重新选择当前变体，以避免权限、冷却或其他条件变化后执行旧状态动作。按钮级 `view_condition` 是外层显示条件，变体 `condition` 是候选状态条件。
 - DeluxeMenus 迁移默认读取 `plugins/DeluxeMenus/gui_menus`，输出到 `plugins/KaMenu/menus/dm_migrated`，通过 `/km migrate dm [源文件或目录] [输出目录] [overwrite]` 执行；迁移结果必须在实际测试服复核第三方物品、经济和动作。
 - TrMenu stable-v3 迁移默认读取 `plugins/TrMenu/menus`，输出到 `plugins/KaMenu/menus/trmenu_migrated`，通过 `/km migrate trmenu [源文件或目录] [输出目录] [overwrite]` 执行。迁移器只生成 KaMenu V2 标准 Container YAML，不在运行时引入 TrMenu、Kether 或 TabooLib；未知条件和动作必须安全失败并输出结构化诊断。

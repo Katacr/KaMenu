@@ -160,6 +160,54 @@ data class ContainerProgressWatcherDefinition(
     val actions: List<Any>
 )
 
+/** 自由槽位单向交互规则；条件在物品事务提交前解析。 */
+data class ContainerFreeSlotRuleDefinition(
+    val enabled: Boolean,
+    val condition: String?
+)
+
+/** 自由槽位物品事务完成或被拒绝后的动作回调。 */
+data class ContainerFreeSlotEventsDefinition(
+    val place: List<Any>,
+    val take: List<Any>,
+    val denyPlace: List<Any>,
+    val denyTake: List<Any>
+)
+
+/** 背包无法完整接收返还物品时的处理方式。 */
+enum class ContainerFreeSlotOverflowPolicy {
+    PENDING
+}
+
+/** 自由槽位会话结束时的返还规则。 */
+data class ContainerFreeSlotReturnDefinition(
+    val onClose: Boolean,
+    val overflow: ContainerFreeSlotOverflowPolicy
+)
+
+/** 一个具名自由槽位组及其真实物品交互规则。 */
+data class ContainerFreeSlotDefinition(
+    val id: String,
+    val slots: List<Int>,
+    val place: ContainerFreeSlotRuleDefinition,
+    val take: ContainerFreeSlotRuleDefinition,
+    val events: ContainerFreeSlotEventsDefinition,
+    val returnRule: ContainerFreeSlotReturnDefinition
+)
+
+/** 已校验的自由槽位集合，同时保存物理槽位到逻辑 ID 的反向索引。 */
+data class ContainerFreeSlotsDefinition(
+    val byId: Map<String, ContainerFreeSlotDefinition>,
+    val idBySlot: Map<Int, String>
+) {
+    /** 返回指定顶部库存槽位所属的自由槽定义。 */
+    fun at(slot: Int): ContainerFreeSlotDefinition? = idBySlot[slot]?.let(byId::get)
+
+    companion object {
+        val EMPTY = ContainerFreeSlotsDefinition(emptyMap(), emptyMap())
+    }
+}
+
 /**
  * 文件加载阶段生成的不可变容器菜单定义。
  *
@@ -170,6 +218,7 @@ data class ContainerMenuDefinition(
     val type: ContainerMenuType,
     val title: ContainerConfigValue,
     val layout: ContainerLayoutDefinition,
+    val freeSlots: ContainerFreeSlotsDefinition,
     val properties: ContainerPropertiesDefinition,
     val buttons: Map<String, ContainerButtonDefinition>,
     val update: ContainerUpdateDefinition,

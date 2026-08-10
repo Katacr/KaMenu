@@ -150,6 +150,9 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 it.equals("overwrite", ignoreCase = true) || it.equals("true", ignoreCase = true)
             }
             val result = plugin.menuManager.releaseExampleMenus(language, overwrite)
+            if (plugin.containerMenusReady) {
+                plugin.containerMenuService.closeAllSilently()
+            }
             val menuCount = plugin.menuManager.reload()
             sender.sendMessage(
                 plugin.languageManager.getMessage(

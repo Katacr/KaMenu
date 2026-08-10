@@ -12,8 +12,8 @@ Layout:
   - '#########'
   - '#C     E#'
   - '#   R   #'
-  - '#L M A  #'
-  - '# F V X #'
+  - '#L M A X#'
+  - '# F V I #'
   - '#########'
 
 Events:
@@ -158,6 +158,20 @@ Buttons:
     actions:
       all:
         - 'open: example/container_anvil'
+
+  I:
+    view_condition: '{meta:guide_examples_released} == true'
+    display:
+      material: HOPPER
+      name:
+        - condition: '{language} == zh_CN'
+          allow: '&b自由槽位示例'
+          deny: '&bFree-Slots Example'
+      lore:
+        - '&fexample/container_free_slots'
+    actions:
+      all:
+        - 'open: example/container_free_slots'
 
   X:
     view_condition: '{meta:guide_examples_released} == true'

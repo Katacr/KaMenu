@@ -60,6 +60,25 @@ class MenuItemFactory(private val plugin: KaMenu) {
         return item
     }
 
+    /** 克隆给定真实物品，并只应用调用方明确提供的展示覆盖项。 */
+    fun createFromItem(
+        player: Player,
+        sourceItem: ItemStack?,
+        spec: MenuItemSpec,
+        contextId: String,
+        componentId: String,
+        overrideAmount: Boolean
+    ): ItemStack {
+        val item = sourceItem?.takeIf { it.type != Material.AIR && it.amount > 0 }?.clone()
+            ?: ItemStack(Material.AIR)
+        if (item.type == Material.AIR) return item
+        if (overrideAmount) {
+            item.amount = clampAmount(spec.amount, item.maxStackSize)
+        }
+        applyMeta(player, item, spec, contextId, componentId)
+        return item
+    }
+
     /** 判断字符串是否为 `[HEAD:Player]`、`[MAINHAND]` 等装备槽位引用。 */
     fun isSlotReference(source: String): Boolean {
         val normalized = source.trim()

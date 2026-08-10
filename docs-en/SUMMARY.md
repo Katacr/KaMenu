@@ -33,6 +33,7 @@
   * [Title](container/title.md)
   * [Settings](container/settings.md)
   * [Layout](container/layout.md)
+  * [Free Slots](container/free-slots.md)
   * [Buttons](container/buttons.md)
   * [Properties](container/properties.md)
   * [Refresh](container/refresh.md)

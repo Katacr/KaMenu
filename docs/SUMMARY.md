@@ -33,6 +33,7 @@
   * [Title](container/title.md)
   * [Settings](container/settings.md)
   * [Layout](container/layout.md)
+  * [自由槽位 (Free-Slots)](container/free-slots.md)
   * [Buttons](container/buttons.md)
   * [Properties](container/properties.md)
   * [刷新机制](container/refresh.md)
