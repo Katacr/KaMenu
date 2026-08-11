@@ -138,7 +138,7 @@ plugins/KaMenu/menus/example/
 
 ```bash
 /km reload menu      # 仅重载菜单
-/km reload config    # 重载 config.yml、custom_commands.yml、语言文件和自定义指令
+/km reload config    # 重载配置、物品绑定、Sprite 覆盖、语言和自定义指令
 /km reload actions   # 仅重载全局动作包
 /km reload js        # 仅重载全局 JavaScript 包
 /km reload lang      # 仅重载当前语言文件

@@ -308,7 +308,7 @@ Send a screen title and subtitle to the player.
 
 Send a chat message with hover tooltip and click functionality.
 
-**Format:** `hovertext: Normal text <text=display_text;hover=hover_text;hover_item=item_source;command=command;url=url;actions=action_list;newline=false> Continue text`
+**Format:** `hovertext: Normal text <text=display_text;hover=hover_text;hover_item=item_source;actions=action_list;copy=text;command=command;url=url;newline=false> Continue text`
 
 **Parameters:**
 
@@ -317,6 +317,7 @@ Send a chat message with hover tooltip and click functionality.
 | `text` | Clickable display text | ✅ |
 | `hover` | Tooltip text shown on hover | ❌ |
 | `hover_item` | Full ItemStack shown on hover | ❌ |
+| `copy` | Text copied to the client clipboard on click | ❌ |
 | `command` | Command executed when clicked | ❌ |
 | `url` | URL opened when clicked | ❌ |
 | `actions` | Action list executed when clicked (key under Events.Click) | ❌ |
@@ -328,11 +329,14 @@ Send a chat message with hover tooltip and click functionality.
 - 'hovertext: &7Click here <text=&a[Claim Reward];hover=&eClick to claim daily reward;command=/daily> or come back later.'
 - 'hovertext: Visit <text=&b[Website];hover=&7Open website in browser;url=https://example.com> for more info.'
 - 'hovertext: <text=&a[Greeting];actions=greet;hover=Click to send greeting> the player'
+- 'hovertext: <text=&e[Copy Code];copy=KAMENU-2026;hover=Click to copy> then paste it where needed'
 - 'hovertext: The player defeated an enemy using <text="&6Magic Sword";hover_item=hand>'
 - 'hovertext: Reward preview: <text="&d[View item]";hover_item="stock:Magic Sword">'
 ```
 
 `hover_item` supports `hand`, `offhand`, `slot:index`, all four `armor:*` slots, `stock:saved-item-name`, and `material:material-id`, with no `amount` parameter. See the clickable-text section in the Body documentation for the complete source list.
+
+Select only one of `actions`, `copy`, `command`, and `url` for click behavior.
 
 **Using the actions parameter:**
 

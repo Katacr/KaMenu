@@ -5,3 +5,4 @@
 - [Custom Commands](customCommands.md): Manage menu shortcuts and actions in the separate `custom_commands.yml` file.
 - [actions Folder](actions-packages.md): Manage global actions packages, one `.yml` file per package.
 - [js Folder](javascript-packages.md): Manage global JavaScript packages, one `.js` file per package.
+- [Two-dimensional Item Icons](../modern-dialog/body.md#two-dimensional-item-icons): Override Sprite textures for complex item models in root-level `item_sprites.yml`.

@@ -122,6 +122,8 @@ sprites:
 
 Minecraft introduced Sprite text components in `1.21.9`. On servers running `1.21.8` or older, KaMenu removes `&item:[...]` without calling third-party item APIs or reading their resource packs; the remaining text still renders normally. This check uses the server version and does not distinguish client versions connected through ViaVersion or ViaBackwards.
 
+After editing `plugins/KaMenu/item_sprites.yml`, run `/km reload config` or `/km reload all`; no server restart is required.
+
 ---
 
 ### Multiple Formats for the `text` Field
@@ -414,7 +416,7 @@ Body:
 **hovertext syntax format:**
 
 ```
-<text=display-text;hover=hover-text;hover_item=item-source;command=command;url=url;actions=action-list-name;newline=false>
+<text=display-text;hover=hover-text;hover_item=item-source;actions=action-list-name;copy=text;command=command;url=url;newline=false>
 ```
 
 **Parameter descriptions:**
@@ -424,6 +426,7 @@ Body:
 | `text` | The clickable display text | ✅ |
 | `hover` | Tooltip text shown on hover | ❌ |
 | `hover_item` | Full ItemStack shown on hover | ❌ |
+| `copy` | Text copied to the client clipboard on click | ❌ |
 | `command` | Command executed by the player on click | ❌ |
 | `url` | URL opened on click | ❌ |
 | `actions` | Action list to execute on click (key under Events.Click) | ❌ |
@@ -431,6 +434,7 @@ Body:
 
 **Notes:**
 - Commands in `command` are executed as the player (no `/` prefix needed)
+- Select only one of `actions`, `copy`, `command`, and `url` for click behavior
 - `url` opens a webpage link
 - `actions` executes action lists defined under Events.Click
 - `hover_item` supports `hand`, `offhand`, `slot:index`, `armor:helmet`, `armor:chestplate`, `armor:leggings`, `armor:boots`, `stock:saved-item-name`, `material:material-id`, and external item IDs
@@ -465,8 +469,9 @@ Body:
 
 When multiple click parameters coexist, priority is as follows (highest to lowest):
 1. `actions` — Execute action list
-2. `url` — Open link
+2. `copy` — Copy text
 3. `command` — Execute command
+4. `url` — Open link
 
 **Using the `actions` parameter:**
 

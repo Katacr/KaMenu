@@ -137,7 +137,7 @@ Common targeted reloads:
 
 ```bash
 /km reload menu      # Reload menus only
-/km reload config    # Reload config.yml, custom_commands.yml, language files, and custom commands
+/km reload config    # Reload configs, item bindings, Sprite overrides, language, and custom commands
 /km reload actions   # Reload global action packages only
 /km reload js        # Reload global JavaScript packages only
 /km reload lang      # Reload the current language file only

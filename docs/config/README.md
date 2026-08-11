@@ -5,3 +5,4 @@
 - [自定义指令](customCommands.md)：独立管理 `custom_commands.yml` 中的菜单快捷指令和 actions。
 - [actions 文件夹](actions-packages.md)：管理全局 actions 动作包，一个 `.yml` 文件一个动作包。
 - [js 文件夹](javascript-packages.md)：管理全局 JavaScript 包，一个 `.js` 文件一个脚本包。
+- [二维物品图标](../modern-dialog/body.md#二维物品图标)：通过根目录 `item_sprites.yml` 覆盖复杂物品模型使用的 Sprite 贴图。

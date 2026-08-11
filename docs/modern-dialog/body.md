@@ -122,6 +122,8 @@ sprites:
 
 Sprite 文本组件由 Minecraft `1.21.9` 引入。KaMenu 运行于 `1.21.8` 及更低版本的服务器时，会自动隐藏 `&item:[...]` 标记，不调用第三方物品 API 或读取其资源包；其余文本仍会正常显示。该判断以服务器版本为准，不区分 ViaVersion 或 ViaBackwards 接入的玩家客户端版本。
 
+修改 `plugins/KaMenu/item_sprites.yml` 后执行 `/km reload config` 或 `/km reload all` 即可生效，无需重启服务器。
+
 ---
 
 ### text 字段的多种格式

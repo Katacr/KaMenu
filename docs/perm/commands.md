@@ -320,7 +320,7 @@ KaMenu 提供了简洁的指令体系，主指令为 `/km`（或 `/kamenu`、`/m
 | `actions` | 仅重载 `plugins/KaMenu/actions/` 全局动作包 |
 | `js` | 仅重载 `plugins/KaMenu/js/` 全局 JavaScript 包 |
 | `lang` | 仅重载当前语言文件 |
-| `config` | 重载 `config.yml`、`custom_commands.yml`、语言文件和自定义指令 |
+| `config` | 重载 `config.yml`、`custom_commands.yml`、`item_bindings.yml`、`item_sprites.yml`、语言文件和自定义指令 |
 
 每个目标都会返回独立统计：总数、成功、失败、耗时 ms。`config` 的统计对象是 `custom-commands` 中的自定义指令；不填写目标或使用 `all` 时，会依次输出各模块的重载结果。
 

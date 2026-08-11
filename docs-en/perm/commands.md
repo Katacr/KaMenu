@@ -320,7 +320,7 @@ Reloads plugin configuration, menus, or package folders without restarting the s
 | `actions` | Reload only global action packages under `plugins/KaMenu/actions/` |
 | `js` | Reload only global JavaScript packages under `plugins/KaMenu/js/` |
 | `lang` | Reload only the current language file |
-| `config` | Reload `config.yml`, `custom_commands.yml`, language files, and custom commands |
+| `config` | Reload `config.yml`, `custom_commands.yml`, `item_bindings.yml`, `item_sprites.yml`, language files, and custom commands |
 
 Each target returns its own statistics: total, success, failed, and elapsed ms. For `config`, the counted items are custom commands under `custom-commands`. When no target is provided, or when `all` is used, KaMenu prints each module's reload result in sequence.
 
