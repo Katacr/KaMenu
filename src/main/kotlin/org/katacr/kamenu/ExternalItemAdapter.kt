@@ -2,8 +2,10 @@ package org.katacr.kamenu
 
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.inventory.ItemStack
 import org.bukkit.plugin.Plugin
+import java.io.File
 import java.lang.reflect.Method
 
 /**
@@ -31,6 +33,18 @@ object ExternalItemAdapter {
 
     /** 判断配置值是否使用受支持的外部插件前缀。 */
     fun isExternalId(rawId: String): Boolean = parseId(rawId) != null
+
+    /** 将第三方物品 ID 解析为客户端资源包中的二维 Sprite。 */
+    fun sprite(rawId: String): ItemSpriteReference? {
+        val itemId = parseId(rawId) ?: return null
+        return itemId.provider.sprite(itemId.value)
+    }
+
+    /** 返回统一的外部物品 ID，用作 Sprite 缓存键。 */
+    fun normalizeId(rawId: String): String? {
+        val itemId = parseId(rawId) ?: return null
+        return "${itemId.provider.prefix}:${itemId.value.lowercase()}"
+    }
 
     /** 返回规范化的外部物品 ID，例如 `itemsadder:namespace:item`。 */
     fun identify(item: ItemStack): String? {
@@ -78,6 +92,7 @@ object ExternalItemAdapter {
         val prefix: String
         fun create(id: String, player: Player?): ItemStack?
         fun idOf(item: ItemStack): String?
+        fun sprite(id: String): ItemSpriteReference? = null
     }
 
     /** 获取已启用插件，避免在插件缺失或禁用期间触发其 API。 */
@@ -95,6 +110,7 @@ object ExternalItemAdapter {
         private var byItemMethod: Method? = null
         private var itemStackMethod: Method? = null
         private var namespacedIdMethod: Method? = null
+        private var texturesMethod: Method? = null
 
         override fun create(id: String, player: Player?): ItemStack? = invokeSafely {
             val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
@@ -108,6 +124,18 @@ object ExternalItemAdapter {
             resolve(plugin)
             val customStack = byItemMethod?.invoke(null, item) ?: return@invokeSafely null
             namespacedIdMethod?.invoke(customStack) as? String
+        }
+
+        override fun sprite(id: String): ItemSpriteReference? = invokeSafely {
+            val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
+            resolve(plugin)
+            val customStack = byIdMethod?.invoke(null, id) ?: return@invokeSafely null
+            val texture = (texturesMethod?.invoke(customStack) as? Iterable<*>)
+                ?.firstNotNullOfOrNull { it?.toString()?.takeIf(String::isNotBlank) }
+                ?: return@invokeSafely null
+            val namespace = id.substringBefore(':', "minecraft")
+            val sprite = ItemSpriteReference.normalizeTexture(texture, namespace) ?: return@invokeSafely null
+            ItemSpriteReference("minecraft:blocks", sprite)
         }
 
         /** 查找并缓存 ItemsAdder CustomStack API。 */
@@ -124,6 +152,7 @@ object ExternalItemAdapter {
             }
             itemStackMethod = customStackClass.getMethod("getItemStack")
             namespacedIdMethod = customStackClass.getMethod("getNamespacedID")
+            texturesMethod = customStackClass.getMethod("getTextures")
             classLoader = loader
         }
     }
@@ -137,6 +166,9 @@ object ExternalItemAdapter {
         private var byIdMethod: Method? = null
         private var idByItemMethod: Method? = null
         private var buildMethod: Method? = null
+        private var getOraxenMetaMethod: Method? = null
+        private var getLayersMethod: Method? = null
+        private var getLayersMapMethod: Method? = null
 
         override fun create(id: String, player: Player?): ItemStack? = invokeSafely {
             val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
@@ -151,6 +183,21 @@ object ExternalItemAdapter {
             idByItemMethod?.invoke(null, item) as? String
         }
 
+        override fun sprite(id: String): ItemSpriteReference? = invokeSafely {
+            val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
+            resolve(plugin)
+            val builder = byIdMethod?.invoke(null, id) ?: return@invokeSafely null
+            val meta = getOraxenMetaMethod?.invoke(builder) ?: return@invokeSafely null
+            val layers = getLayersMethod?.invoke(meta) as? Iterable<*>
+            val layerMap = getLayersMapMethod?.invoke(meta) as? Map<*, *>
+            val texture = layers?.firstNotNullOfOrNull { it?.toString()?.takeIf(String::isNotBlank) }
+                ?: layerMap?.entries?.firstOrNull { it.key?.toString() == "layer0" }?.value?.toString()
+                ?: layerMap?.values?.firstNotNullOfOrNull { it?.toString()?.takeIf(String::isNotBlank) }
+                ?: return@invokeSafely null
+            val sprite = ItemSpriteReference.normalizeTexture(texture, "minecraft") ?: return@invokeSafely null
+            ItemSpriteReference("minecraft:blocks", sprite)
+        }
+
         /** 查找并缓存 OraxenItems 与 ItemBuilder API。 */
         @Synchronized
         private fun resolve(plugin: Plugin) {
@@ -159,7 +206,12 @@ object ExternalItemAdapter {
             val itemsClass = loader.loadClass(ORAXEN_ITEMS_CLASS)
             byIdMethod = itemsClass.getMethod("getItemById", String::class.java)
             idByItemMethod = itemsClass.getMethod("getIdByItem", ItemStack::class.java)
-            buildMethod = byIdMethod!!.returnType.getMethod("build")
+            val builderClass = byIdMethod!!.returnType
+            buildMethod = builderClass.getMethod("build")
+            getOraxenMetaMethod = builderClass.getMethod("getOraxenMeta")
+            val metaClass = getOraxenMetaMethod!!.returnType
+            getLayersMethod = metaClass.getMethod("getLayers")
+            getLayersMapMethod = metaClass.getMethod("getLayersMap")
             classLoader = loader
         }
     }
@@ -174,6 +226,10 @@ object ExternalItemAdapter {
         private var idByItemMethod: Method? = null
         private var buildWithPlayerMethod: Method? = null
         private var buildMethod: Method? = null
+        private var behaviorMethod: Method? = null
+        private var getFirstBehaviorMethod: Method? = null
+        private var blockItemClass: Class<*>? = null
+        private var furnitureItemClass: Class<*>? = null
 
         override fun create(id: String, player: Player?): ItemStack? = invokeSafely {
             val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
@@ -193,6 +249,26 @@ object ExternalItemAdapter {
             idByItemMethod?.invoke(null, item)?.toString()
         }
 
+        override fun sprite(id: String): ItemSpriteReference? = invokeSafely {
+            val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
+            resolve(plugin)
+            val definition = byIdMethod?.invoke(null, id) ?: return@invokeSafely null
+            val item = buildMethod?.invoke(definition) as? ItemStack ?: return@invokeSafely null
+            val behavior = behaviorMethod?.invoke(definition)
+            val placeable = behavior != null && (
+                getFirstBehaviorMethod?.invoke(behavior, blockItemClass) != null ||
+                    getFirstBehaviorMethod?.invoke(behavior, furnitureItemClass) != null
+                )
+            val pack = resourcePackFile(plugin)
+            CraftEngineResourcePackSpriteResolver.resolve(
+                pack,
+                ItemPropertyReader.getItemModel(item.itemMeta),
+                ItemPropertyReader.getCustomModelId(item.itemMeta),
+                id,
+                placeable
+            )
+        }
+
         /** 查找并缓存 CraftEngineItems 与 BukkitItemDefinition API。 */
         @Synchronized
         private fun resolve(plugin: Plugin) {
@@ -204,7 +280,21 @@ object ExternalItemAdapter {
             val definitionClass = byIdMethod!!.returnType
             buildWithPlayerMethod = definitionClass.getMethod("buildBukkitItem", Player::class.java)
             buildMethod = definitionClass.getMethod("buildBukkitItem")
+            behaviorMethod = definitionClass.getMethod("behavior")
+            val behaviorClass = behaviorMethod!!.returnType
+            getFirstBehaviorMethod = behaviorClass.getMethod("getFirst", Class::class.java)
+            blockItemClass = loader.loadClass("net.momirealms.craftengine.core.item.behavior.BlockItem")
+            furnitureItemClass = loader.loadClass("net.momirealms.craftengine.core.item.behavior.FurnitureItem")
             classLoader = loader
+        }
+
+        /** 读取 CraftEngine 配置中的最终资源包路径。 */
+        private fun resourcePackFile(plugin: Plugin): File {
+            val config = YamlConfiguration.loadConfiguration(File(plugin.dataFolder, "config.yml"))
+            val configured = config.getString("resource-pack.path", "./generated/resource_pack.zip")
+                ?: "./generated/resource_pack.zip"
+            val file = File(configured)
+            return if (file.isAbsolute) file else File(plugin.dataFolder, configured)
         }
     }
 

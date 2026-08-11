@@ -34,6 +34,8 @@
 - 自由槽 SQL 托管失败时会关闭当前窗口并进入统一返还流程，避免已提交到 UI 的真实物品滞留在无可靠账本的会话中。
 - Paper、Folia 与 Spigot 统一使用服务端当前槽位和玩家光标重放已取消的左右键事务，不再依赖不同核心的 `InventoryAction` 或事件光标快照，避免普通放入和取出时丢失物品。
 - 修复 Spigot Dialog 可点击文本在 `text` 或 `hover` 中包含 ItemsAdder、Oraxen、CraftEngine 字形标签时，被内部 `>` 提前截断并退化为纯文本的问题。
+- 扩展 `&item:[...]` 二维图标语法，可自动解析原版材质以及 ItemsAdder、Oraxen、CraftEngine 自定义物品纹理，并支持通过根目录 `item_sprites.yml` 覆盖复杂模型的图标。
+- Sprite 图标仅在 Minecraft `1.21.9+` 启用；运行于 `1.21.8` 及以下服务器时会安全隐藏标记，且不调用第三方物品 API 或读取其资源包。
 - 补充中英文自由槽位文档、动作索引、完整自定义合成案例和崩溃一致性边界，并同步 KaMenu 菜单编写 Skill。
 
 ---
@@ -65,4 +67,6 @@
 - If free-slot SQL escrow fails, KaMenu now closes the current window and enters the unified return flow so real items do not remain in a session without a reliable ledger.
 - Paper, Folia, and Spigot now replay cancelled left/right-click transactions from the server's current slot and player cursor state instead of relying on platform-specific `InventoryAction` or event cursor snapshots, preventing item loss during normal placement and pickup.
 - Fixed Spigot Dialog clickable text being truncated at an inner `>` and rendered as plain text when `text` or `hover` contains an ItemsAdder, Oraxen, or CraftEngine glyph tag.
+- Extended the `&item:[...]` two-dimensional icon syntax to resolve vanilla materials and ItemsAdder, Oraxen, and CraftEngine custom-item textures, with root-level `item_sprites.yml` overrides for complex models.
+- Sprite icons are enabled only on Minecraft `1.21.9+`. Servers running `1.21.8` or older safely remove the marker without querying third-party item APIs or resource packs.
 - Added complete Chinese/English free-slot documentation, action references, a custom crafting example, crash-consistency boundaries, and synchronized KaMenu authoring Skill guidance.

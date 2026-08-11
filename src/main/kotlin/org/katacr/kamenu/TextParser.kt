@@ -20,6 +20,8 @@ object TextParser {
     private val miniMessage by lazy(LazyThreadSafetyMode.PUBLICATION) {
         AdventureCompatibility.createMiniMessage()
     }
+    @Volatile
+    private var itemSpriteManager: ExternalItemSpriteManager? = null
 
     // ==================== 预编译正则表达式（性能优化） ====================
 
@@ -120,6 +122,11 @@ object TextParser {
      */
     fun parseText(text: String?, player: Player?): Component = parseText(text, player, false)
 
+    /** 设置第三方物品二维 Sprite 解析器。 */
+    fun setItemSpriteManager(manager: ExternalItemSpriteManager?) {
+        itemSpriteManager = manager
+    }
+
     /**
      * 在完整文本已确认使用 Oraxen 时，强制让拆分后的 shift-only 片段复用 Oraxen Resolver。
      */
@@ -186,9 +193,17 @@ object TextParser {
      * &item:[stone]  → <sprite:blocks:block/stone>
      */
     private fun convertItemSpriteToMiniMessage(text: String): String {
+        if (!ITEM_SPRITE_PATTERN.containsMatchIn(text)) return text
+
+        // Sprite 文本组件由 1.21.9 引入，旧版服务器必须直接忽略该标记。
+        if (!MinecraftFeatures.supportsSpriteObjects()) {
+            return text.replace(ITEM_SPRITE_PATTERN, "")
+        }
         return text.replace(ITEM_SPRITE_PATTERN) { matchResult ->
             val materialName = matchResult.groupValues[1]
-            MaterialUtils.getSpriteTag(materialName) ?: matchResult.value
+            itemSpriteManager?.resolveTag(materialName)
+                ?: MaterialUtils.getSpriteTag(materialName)
+                ?: ""
         }
     }
 }

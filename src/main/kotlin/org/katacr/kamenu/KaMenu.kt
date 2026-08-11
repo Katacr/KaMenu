@@ -32,6 +32,7 @@ class KaMenu : JavaPlugin() {
     lateinit var itemBindingManager: ItemBindingManager
     lateinit var itemManager: ItemManager
     lateinit var itemPlaceholderService: ItemPlaceholderService
+    lateinit var externalItemSpriteManager: ExternalItemSpriteManager
     lateinit var actionPackageManager: ActionPackageManager
     lateinit var javaScriptPackageManager: JavaScriptPackageManager
     lateinit var pauseEntryDatapackManager: PauseEntryDatapackManager
@@ -181,6 +182,11 @@ class KaMenu : JavaPlugin() {
         MenuUI.init(this)
         MenuTaskManager.init(this)
 
+        // 初始化原版与第三方物品的二维文本图标解析。
+        externalItemSpriteManager = ExternalItemSpriteManager(this)
+        externalItemSpriteManager.init()
+        TextParser.setItemSpriteManager(externalItemSpriteManager)
+
         // 设置 MenuActions 插件引用
         MenuActions.setPlugin(this)
 
@@ -304,6 +310,10 @@ class KaMenu : JavaPlugin() {
         MenuListManager.clearAll()
         MenuArgumentManager.clearAll()
         MenuUI.shutdown()
+        TextParser.setItemSpriteManager(null)
+        if (::externalItemSpriteManager.isInitialized) {
+            externalItemSpriteManager.shutdown()
+        }
         if (::menuManager.isInitialized) {
             menuManager.clear()
         }

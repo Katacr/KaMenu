@@ -90,6 +90,38 @@ Dynamic Dialog text supports these internal glyph syntaxes:
 
 CraftEngine requires `network.intercept-packets.dialog: true`. KaMenu lets Oraxen consume `<shift:...>` only when the same original text line contains `<glyph:...>` or `<g:...>`. The Oraxen resolver remains active if that line is later split into clickable `<text=...>` segments, while standalone CraftEngine shifts are not consumed early. Do not mix Oraxen and CraftEngine tags in one text component. Fixed Unicode characters require no server-side plugin parsing.
 
+#### Two-dimensional item icons
+
+On Minecraft `1.21.9+`, use `&item:[item]` in message or clickable text to display a two-dimensional item icon:
+
+```yaml
+text:
+  - '&fVanilla diamond: &item:[diamond]'
+  - '&fItemsAdder: &item:[ia:namespace:item_id]'
+  - '&fOraxen: &item:[oraxen:item_id]'
+  - '&fCraftEngine: &item:[ce:namespace:item_id]'
+```
+
+| Syntax | Data source |
+|--------|-------------|
+| `&item:[diamond]` | Vanilla item or block texture |
+| `&item:[ia:namespace:item_id]` | First two-dimensional ItemsAdder item texture |
+| `&item:[oraxen:item_id]` | First Oraxen item texture layer |
+| `&item:[ce:namespace:item_id]` | Item model and texture in CraftEngine's generated resource pack |
+
+This feature displays a two-dimensional resource-pack texture; it does not render a three-dimensional model. Add an override to `item_sprites.yml` in the plugin root for complex or dynamic models and dedicated menu icons:
+
+```yaml
+sprites:
+  'ce:custom:chair': 'blocks:custom:item/chair_icon'
+
+  'oraxen:complex_staff':
+    atlas: 'minecraft:blocks'
+    sprite: 'oraxen:item/complex_staff_icon'
+```
+
+Minecraft introduced Sprite text components in `1.21.9`. On servers running `1.21.8` or older, KaMenu removes `&item:[...]` without calling third-party item APIs or reading their resource packs; the remaining text still renders normally. This check uses the server version and does not distinguish client versions connected through ViaVersion or ViaBackwards.
+
 ---
 
 ### Multiple Formats for the `text` Field

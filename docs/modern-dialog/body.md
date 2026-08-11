@@ -90,6 +90,38 @@ text: '&a绿色文本 <gold>金色文本</gold>'
 
 CraftEngine 需要启用 `network.intercept-packets.dialog: true`。KaMenu 只在同一原始文本行出现 Oraxen `<glyph:...>` 或 `<g:...>` 时让 Oraxen 处理该行的 `<shift:...>`；即使该行随后被 `<text=...>` 拆成多个可点击片段，偏移仍会使用 Oraxen Resolver。这样也能避免单独的 CraftEngine shift 被提前消费。不要在同一个文本组件中混用 Oraxen 和 CraftEngine 标签；固定 Unicode 字符不需要服务端插件解析。
 
+#### 二维物品图标
+
+Minecraft `1.21.9+` 可在消息文本和可点击文本中使用 `&item:[物品]` 显示二维物品图标：
+
+```yaml
+text:
+  - '&f原版钻石：&item:[diamond]'
+  - '&fItemsAdder：&item:[ia:namespace:item_id]'
+  - '&fOraxen：&item:[oraxen:item_id]'
+  - '&fCraftEngine：&item:[ce:namespace:item_id]'
+```
+
+| 写法 | 数据来源 |
+|------|----------|
+| `&item:[diamond]` | 原版物品或方块纹理 |
+| `&item:[ia:namespace:item_id]` | ItemsAdder 物品的首个二维纹理 |
+| `&item:[oraxen:item_id]` | Oraxen 物品的首个二维纹理层 |
+| `&item:[ce:namespace:item_id]` | CraftEngine 最终资源包中的物品模型和纹理 |
+
+该功能只显示资源包中的二维贴图，不渲染三维模型。复杂模型、动态模型或需要专用菜单图标时，在插件根目录的 `item_sprites.yml` 中添加覆盖：
+
+```yaml
+sprites:
+  'ce:custom:chair': 'blocks:custom:item/chair_icon'
+
+  'oraxen:complex_staff':
+    atlas: 'minecraft:blocks'
+    sprite: 'oraxen:item/complex_staff_icon'
+```
+
+Sprite 文本组件由 Minecraft `1.21.9` 引入。KaMenu 运行于 `1.21.8` 及更低版本的服务器时，会自动隐藏 `&item:[...]` 标记，不调用第三方物品 API 或读取其资源包；其余文本仍会正常显示。该判断以服务器版本为准，不区分 ViaVersion 或 ViaBackwards 接入的玩家客户端版本。
+
 ---
 
 ### text 字段的多种格式

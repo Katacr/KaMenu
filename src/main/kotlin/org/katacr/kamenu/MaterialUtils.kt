@@ -71,14 +71,18 @@ object MaterialUtils {
      * @return MiniMessage sprite 标签，如果材质不存在则返回 null
      */
     fun getSpriteTag(materialName: String): String? {
+        return getSpriteReference(materialName)?.toMiniMessageTag()
+    }
+
+    /** 获取材质对应的完整 Sprite atlas 与路径。 */
+    fun getSpriteReference(materialName: String): ItemSpriteReference? {
         val material = matchMaterial(materialName) ?: return null
 
-        // MiniMessage sprite 标签需要小写
         val key = material.key.key.lowercase()
         return if (material.isBlock) {
-            "<sprite:blocks:block/$key>"
+            ItemSpriteReference("minecraft:blocks", "minecraft:block/$key")
         } else {
-            "<sprite:items:item/$key>"
+            ItemSpriteReference("minecraft:items", "minecraft:item/$key")
         }
     }
 

@@ -1,0 +1,22 @@
+# KaMenu custom item Sprite overrides
+# KaMenu 自定义物品 Sprite 覆盖
+# Requires a server running Minecraft 1.21.9 or newer.
+# 需要服务器运行 Minecraft 1.21.9 或更高版本。
+#
+# KaMenu automatically reads two-dimensional textures from ItemsAdder, Oraxen,
+# and CraftEngine. Add an override only when an item uses a complex model or a
+# dedicated GUI icon.
+# KaMenu 会自动读取 ItemsAdder、Oraxen 与 CraftEngine 的二维纹理。仅当物品使用
+# 复杂模型或专用 GUI 图标时，才需要添加覆盖。
+#
+# Short form / 简写：
+# sprites:
+#   'ce:custom:chair': 'blocks:custom:item/chair_icon'
+#
+# Full form / 完整写法：
+# sprites:
+#   'oraxen:complex_staff':
+#     atlas: 'minecraft:blocks'
+#     sprite: 'oraxen:item/complex_staff_icon'
+
+sprites: {}
