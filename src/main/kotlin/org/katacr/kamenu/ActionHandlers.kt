@@ -466,6 +466,143 @@ object ActionHandlers {
     }
 
     /**
+     * 解析并执行玩家临时数据 tmpdata 动作。
+     *
+     * 参数格式与 data/gdata 一致：`type=set|add|take|addtime|taketime|refresh|delete;key=...;var=...;ttl=...`。
+     * ttl 纯数字视为秒，也支持 `1d2h30m` 组合。set/refresh/addtime/taketime 必须有 ttl；
+     * add/take 在键已存在时只改值，提供 ttl 时同时续期，键缺失时则必须有 ttl 才能新建。
+     * 所有解析失败均记录 warning 并安全跳过。
+     */
+    fun parseAndExecuteTmpDataAction(
+        args: String,
+        player: Player,
+        setAction: (String, String, Long) -> Unit,
+        modifyAction: (String, String, Long?) -> Unit,
+        addTimeAction: (String, Long) -> Unit,
+        takeTimeAction: (String, Long) -> Unit,
+        refreshAction: (String, Long) -> Unit,
+        deleteAction: (String) -> Unit
+    ) {
+        var type = ""
+        var key = ""
+        var value = ""
+        var ttlRaw = ""
+
+        args.split(";").forEach { param ->
+            val parts = param.split("=", limit = 2)
+            if (parts.size == 2) {
+                val paramKey = parts[0].trim().lowercase()
+                val paramValue = parts[1].trim().removeSurrounding("`").removeSurrounding("'").removeSurrounding("\"")
+                when (paramKey) {
+                    "type" -> type = paramValue.lowercase()
+                    "key" -> key = paramValue
+                    "var", "value" -> value = paramValue
+                    "ttl" -> ttlRaw = paramValue
+                }
+            }
+        }
+
+        if (key.isEmpty()) {
+            plugin?.logger?.warning(message(
+                "tmpdata.missing_key",
+                player.name,
+                fallback = "tmpdata 操作失败: 缺少 key 参数。玩家: ${player.name}"
+            ))
+            return
+        }
+
+        val ttlMillis = if (ttlRaw.isNotEmpty()) {
+            TimeValueParser.parseMillis(ttlRaw) ?: run {
+                plugin?.logger?.warning(message(
+                    "tmpdata.invalid_ttl",
+                    ttlRaw,
+                    player.name,
+                    fallback = "tmpdata 操作失败: ttl 参数 '$ttlRaw' 无效。玩家: ${player.name}"
+                ))
+                return
+            }
+        } else {
+            null
+        }
+
+        fun requireTtl(): Long {
+            val ttl = ttlMillis
+            if (ttl == null) {
+                plugin?.logger?.warning(message(
+                    "tmpdata.missing_ttl",
+                    type,
+                    player.name,
+                    fallback = "tmpdata 操作失败: $type 需要 ttl 参数。玩家: ${player.name}"
+                ))
+            }
+            return ttl ?: -1L
+        }
+
+        when (type) {
+            "set" -> {
+                val ttl = requireTtl()
+                if (ttl >= 0) setAction(key, value, ttl)
+            }
+            "add" -> {
+                val numValue = value.toDoubleOrNull()
+                if (numValue == null) {
+                    plugin?.logger?.warning(message(
+                        "tmpdata.missing_var",
+                        value,
+                        player.name,
+                        fallback = "tmpdata 操作失败: add/take 操作的值 '$value' 不是纯数字。玩家: ${player.name}"
+                    ))
+                } else {
+                    modifyAction(key, numValue.toString(), ttlMillis)
+                }
+            }
+            "take" -> {
+                val numValue = value.toDoubleOrNull()
+                if (numValue == null) {
+                    plugin?.logger?.warning(message(
+                        "tmpdata.missing_var",
+                        value,
+                        player.name,
+                        fallback = "tmpdata 操作失败: add/take 操作的值 '$value' 不是纯数字。玩家: ${player.name}"
+                    ))
+                } else {
+                    modifyAction(key, (-numValue).toString(), ttlMillis)
+                }
+            }
+            "addtime" -> {
+                val ttl = requireTtl()
+                if (ttl >= 0) addTimeAction(key, ttl)
+            }
+            "taketime" -> {
+                val ttl = requireTtl()
+                if (ttl >= 0) takeTimeAction(key, ttl)
+            }
+            "refresh" -> {
+                val ttl = requireTtl()
+                if (ttl >= 0) refreshAction(key, ttl)
+            }
+            "delete" -> {
+                deleteAction(key)
+            }
+            else -> {
+                plugin?.logger?.warning(message(
+                    "tmpdata.invalid_type",
+                    type,
+                    player.name,
+                    fallback = "tmpdata 操作失败: 无效的 type 参数 '$type'，支持的类型: set, add, take, addtime, taketime, refresh, delete。玩家: ${player.name}"
+                ))
+            }
+        }
+    }
+
+    /**
+     * 读取语言键消息，缺失时回退到调用方提供的默认文案。
+     */
+    private fun message(key: String, vararg args: Any, fallback: String): String {
+        return languageManager?.getMessage(key, *args.map { it.toString() }.toTypedArray()) ?: fallback
+    }
+
+    /**
      * 解析并执行 list/glist 动作。
      *
      * 列表以 JSON 字符串数组存储，读取变量时可直接作为 repeat source 使用。

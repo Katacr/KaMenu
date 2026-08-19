@@ -22,6 +22,7 @@ Requires the [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.
 | **Global List Size** | `%kamenu_glist_size_<key>%` | Database | ✅ Yes | Number of items in a global list |
 | **Online Player List** | `%kamenu_online_players%` | Online players | ❌ No | Current online player names, returned as a JSON array |
 | **Player Metadata** | `%kamenu_meta_<key>%` | Memory | ❌ No | Temporary cached player data |
+| **Player Temp Data** | `%kamenu_tmpdata_<key>%` | Database | ✅ Yes | Player key-value pairs with an expiry time, cleared automatically when expired |
 | **Item Properties** | `%kamenu_checkitem_[source;property]%` | Player Inventory / Memory | ❌ No | Read common properties from held, slotted, or saved items |
 | **Inventory Items** | `%kamenu_hasitem_[item attributes]%` | Player Inventory | — | Count of matching items in player's inventory |
 | **Stock Items** | `%kamenu_hasstockitem_<itemName>%` | Player Inventory | — | Count of a saved stock item in player's inventory |
@@ -188,6 +189,33 @@ scoreboard:
 - Player metadata is automatically cleared when the player disconnects
 - All metadata is cleared when the plugin is reloaded or the server stops
 - Returns `"null"` if the data does not exist
+
+---
+
+### Player Temporary Data Variables
+
+Read player key-value pairs that carry an expiry time (written by the `tmpdata:` action). The key is cleared automatically once it expires, making it suitable for cooldowns, limited-time bonuses, and similar scenarios.
+
+**Format:** `%kamenu_tmpdata_<key>%`
+
+| Variable | Description |
+|------|------|
+| `%kamenu_tmpdata_<key>%` | Stored value; returns `"null"` when missing or expired |
+| `%kamenu_tmpdata_time_<key>%` | Remaining seconds (plain number, no unit, easy for numeric checks in other plugins); returns `0` when missing or expired |
+| `%kamenu_tmpdata_timeformat_<key>%` | Human-readable text, e.g. `1d 2h 30m 15s`; returns `0s` when expired |
+
+**Examples:**
+
+| Variable | Description |
+|------|------|
+| `%kamenu_tmpdata_bonus%` | Reads the player's `bonus` temp data value |
+| `%kamenu_tmpdata_time_bonus%` | Reads the remaining seconds of `bonus` (e.g. `86399`) |
+| `%kamenu_tmpdata_timeformat_bonus%` | Reads the readable remaining time of `bonus` (e.g. `1d 2h 30m 15s`) |
+
+**Notes:**
+- Keys for all data types (`data`, `gdata`, `meta`, `list`, `glist`, and `tmpdata`) may contain `_`, but using underscores is not recommended; prefer `%kamenu_tmpdata_dailybonus%` over `%kamenu_tmpdata_daily_bonus%` when possible
+- Data is persisted to the database, so the remaining time is still calculated from the original expiry after the player logs off or the server restarts
+- Expired values return empty immediately on read; expired rows in the database are physically cleaned by the periodic task
 
 ---
 

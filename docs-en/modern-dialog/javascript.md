@@ -140,6 +140,7 @@ Both `{...}` and plain variable names are supported:
 var coins = data("coins");
 var serverStatus = gdata("server_status");
 var tempChoice = meta("temporary_choice");
+var bonus = tmpdata("bonus");
 var friends = JSON.parse(list("friends"));
 var servers = JSON.parse(glist("servers"));
 var handType = kvar("checkitem:[hand;type]");
@@ -152,6 +153,8 @@ Convenience helpers:
 - `data(key, targetPlayer)`: same as `kvar("data:" + key, targetPlayer)`
 - `gdata(key, targetPlayer)`: same as `kvar("gdata:" + key, targetPlayer)`
 - `meta(key, targetPlayer)`: same as `kvar("meta:" + key, targetPlayer)`
+- `tmpdata(key, targetPlayer)`: same as `kvar("tmpdata:" + key, targetPlayer)`, reads expiring player data; remaining seconds via `kvar("tmpdata_time:" + key)` and readable text via `kvar("tmpdata_time_format:" + key)`
+- All data keys may contain `_`, but using underscores is not recommended because variable parsing or third-party plugins may assign special meaning to them.
 - `list(key, targetPlayer)`: same as `kvar("list:" + key, targetPlayer)`, returns a JSON array string
 - `glist(key, targetPlayer)`: same as `kvar("glist:" + key, targetPlayer)`, returns a JSON array string
 

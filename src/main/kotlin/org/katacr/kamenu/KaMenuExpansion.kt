@@ -18,6 +18,9 @@ import org.bukkit.OfflinePlayer
  * - %kamenu_glist_size_key% - 获取全局列表长度
  * - %kamenu_online_players% - 获取在线玩家名称列表（JSON 数组）
  * - %kamenu_meta_key% - 获取玩家元数据（内存缓存）
+ * - %kamenu_tmpdata_key% - 获取玩家临时数据值
+ * - %kamenu_tmpdata_time_key% - 获取玩家临时数据的剩余秒数
+ * - %kamenu_tmpdata_timeformat_key% - 获取玩家临时数据的可读剩余时间
  * - %kamenu_hasstockitem_物品名% - 获取玩家背包中指定存储库物品的数量
  * - %kamenu_hasitem_[mats=材质;lore=描述;model=模型]% - 获取玩家背包中符合条件的物品数量
  * - %kamenu_checkitem_[hand;name]% - 获取主手或保存物品的属性
@@ -94,6 +97,30 @@ class KaMenuExpansion(private val plugin: KaMenu) : PlaceholderExpansion() {
                 if (player == null) return null
                 val key = params.substring(5)
                 plugin.metaDataManager.getPlayerMeta(player.uniqueId, key)
+            }
+
+            // 玩家临时数据：值使用 tmpdata_，倒计时使用独立的 time_ / timeformat_ 前缀。
+            // 独立前缀避免键名为 time 或 time_format 时与倒计时变量冲突。
+            paramsLower.startsWith("tmpdata_time_") -> {
+                if (player == null) return null
+                val key = params.substring("tmpdata_time_".length)
+                if (key.isEmpty()) return null
+                TextResolver.remainingSecondsForTmpData(player, key).toString()
+            }
+            paramsLower.startsWith("tmpdata_timeformat_") -> {
+                if (player == null) return null
+                val key = params.substring("tmpdata_timeformat_".length)
+                if (key.isEmpty()) return null
+                TextResolver.formatRemainingSeconds(
+                    TextResolver.remainingSecondsForTmpData(player, key)
+                )
+            }
+            paramsLower.startsWith("tmpdata_") -> {
+                if (player == null) return null
+                val key = params.substring(8)
+                if (key.isEmpty()) return null
+                plugin.databaseManager.getPlayerTmpData(player.uniqueId, key)
+                    ?: plugin.languageManager.getMessage("papi.data_not_found", key)
             }
 
             // 存储库物品数量: %kamenu_hasstockitem_物品名%

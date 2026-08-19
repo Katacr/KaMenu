@@ -104,6 +104,10 @@ object JavaScriptManager {
             return kvar("meta:" + key, targetPlayer);
         }
 
+        function tmpdata(key, targetPlayer) {
+            return kvar("tmpdata:" + key, targetPlayer);
+        }
+
         function list(key, targetPlayer) {
             return kvar("list:" + key, targetPlayer);
         }

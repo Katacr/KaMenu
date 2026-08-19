@@ -67,6 +67,16 @@ storage:
   password: ''           # MySQL password / MySQL密码
 
 # ============================================
+# Temporary Data Configuration
+# 临时数据配置
+# ============================================
+# Interval (in seconds) between runs of the periodic task that physically deletes
+# expired tmpdata key-value pairs. Reads already hide expired values immediately.
+# 周期任务两次物理清理已过期 tmpdata 键值对的间隔（秒）。
+# 读取时已立即隐藏过期值，此任务只负责清理数据库中的过期行。
+tmpdata-purge-interval: 60
+
+# ============================================
 # Hotkey/Action Listener Configuration
 # 快捷键/动作监听配置
 # ============================================

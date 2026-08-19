@@ -926,6 +926,72 @@ actions:
 
 ---
 
+### tmpdata - 玩家临时数据操作（到期自动清空）
+
+操作带到期时间的玩家键值对。设定一个值并指定有效期，到期后该键自动清空，适合冷却、限时加成、限时称号等场景。数据持久化到数据库（SQLite/MySQL），玩家下线或服务器重启后仍按原到期时间计算。
+
+**格式：** `tmpdata: type=操作类型;key=键名;var=值;ttl=有效期`
+
+**键名规则：** 所有数据类型（`data`、`gdata`、`meta`、`list`、`glist` 和 `tmpdata`）的键名都允许包含下划线 `_`，但不建议使用。为避免变量解析、第三方插件或后续语法扩展产生歧义，建议使用字母、数字和短横线组成键名。
+
+**参数说明：**
+
+| 参数 | 说明 | 必需 |
+|------|------|------|
+| `type` | 操作类型 | ✅ |
+| `key` | 数据键名 | ✅ |
+| `var` | 值（仅 type=set/add/take 时需要）| ❌ |
+| `ttl` | 有效期，纯数字视作秒，也支持 `1d2h30m15s` 组合（d/h/m/s）| set/refresh/addtime/taketime 必需 |
+
+**type 可选值：**
+- `set`：设置值并指定到期时间（必须有 `ttl`）
+- `add`：增加数值；键已存在时只改值，提供 `ttl` 时同时续期，键不存在/已过期时必须有 `ttl` 才能新建
+- `take`：减少数值；语义同 `add`
+- `addtime`：到期时间向后延长 `ttl`（续期）
+- `taketime`：到期时间向前扣除 `ttl`；扣完后剩余时间 ≤ 0 时直接删除该键
+- `refresh`：把到期时间重置为 now + `ttl`（绝对续期，不保留剩余时间）
+- `delete`：删除该键值对
+
+**示例：**
+
+```yaml
+# 设置限时加成，1 天后自动清空
+- 'tmpdata: type=set;key=bonus;var=`100`;ttl=1d'
+
+# 续期并加值（键已存在时同时重置到期时间）
+- 'tmpdata: type=add;key=bonus;var=`50`;ttl=12h'
+
+# 只续期 12 小时，不改动数值
+- 'tmpdata: type=addtime;key=bonus;ttl=12h'
+
+# 提前 6 小时到期
+- 'tmpdata: type=taketime;key=bonus;ttl=6h'
+
+# 删除临时数据
+- 'tmpdata: type=delete;key=bonus'
+```
+
+**读取方式：**
+
+| 变量 | 说明 |
+|------|------|
+| `{tmpdata:键名}` | 存储值；不存在或已过期返回 `null` |
+| `{tmpdata_time:键名}` | 剩余**秒数**（纯整数，无单位）；不存在或已过期返回 `0`，可直接参与数值判断 |
+| `{tmpdata_time_format:键名}` | 用户可读文本，如 `1天 2时 30分 15秒`；已过期返回 `0秒` |
+
+**PAPI 变量：**
+- `%kamenu_tmpdata_键名%` — 存储值
+- `%kamenu_tmpdata_time_键名%` — 剩余秒数（纯数字，方便其他插件直接数值判断）
+- `%kamenu_tmpdata_timeformat_键名%` — 用户可读文本（如 `1天 2时 30分 15秒`）
+
+**注意：**
+- `ttl` 为纯数字时按秒计算，例如 `ttl=86400` 表示 24 小时；也支持 `1d2h30m15s` 组合
+- 所有数据键都允许包含下划线 `_`，但不建议使用；例如建议使用 `dailybonus` 或 `daily-bonus`，而不是 `daily_bonus`
+- `addtime` / `taketime` / `refresh` 作用于不存在或已过期的键时会跳过并输出警告
+- 读取时过期值立即返回空；数据库中过期的行由周期任务（`config.yml` 的 `tmpdata-purge-interval`，默认 60 秒）物理清理
+
+---
+
 ### list / glist - 列表数据操作
 
 操作持久化列表数据。`list` 属于当前玩家，`glist` 为全局共享。列表会以单个数据库键保存为 JSON 数组，适合好友列表、传送点列表、收藏列表等内容，也可以直接作为 `Bottom.multi.buttons.type: repeat` 的数据源。

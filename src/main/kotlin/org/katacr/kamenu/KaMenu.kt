@@ -48,6 +48,9 @@ class KaMenu : JavaPlugin() {
     val containerMenusReady: Boolean
         get() = ::containerMenuService.isInitialized
 
+    /** 周期清理过期临时数据的异步任务。 */
+    private var tmpDataPurgeTask: KaTaskHandle? = null
+
     /**
      * 在 Bukkit 启用插件前下载并挂载运行时依赖。
      *
@@ -248,6 +251,15 @@ class KaMenu : JavaPlugin() {
         MenuActions.setDatabaseManager(databaseManager)
         ActionHandlers.setDatabaseManager(databaseManager)
 
+        // 6.2 注册周期清理过期临时数据的异步任务
+        val purgeIntervalSeconds = config.getInt("tmpdata-purge-interval", 60).coerceAtLeast(5)
+        val purgeIntervalMillis = purgeIntervalSeconds * 1000L
+        tmpDataPurgeTask = KaScheduler.runAsyncTimer(purgeIntervalMillis, purgeIntervalMillis, Runnable {
+            if (::databaseManager.isInitialized) {
+                databaseManager.purgeExpiredTmpData()
+            }
+        })
+
         // 6.5 初始化元数据管理器
         metaDataManager = MetaDataManager()
         MenuActions.setMetaDataManager(metaDataManager)
@@ -317,6 +329,8 @@ class KaMenu : JavaPlugin() {
         if (::menuManager.isInitialized) {
             menuManager.clear()
         }
+        tmpDataPurgeTask?.cancel()
+        tmpDataPurgeTask = null
         if (::databaseManager.isInitialized) {
             databaseManager.close()
         }

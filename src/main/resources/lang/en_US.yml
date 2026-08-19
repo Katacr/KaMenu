@@ -206,6 +206,19 @@ ui:
 papi:
   data_not_found: "null"
 
+# Temporary Data (tmpdata)
+tmpdata:
+  expired: "0s"
+  format_day: "{0}d"
+  format_hour: "{0}h"
+  format_minute: "{0}m"
+  format_second: "{0}s"
+  missing_key: "[KaMenu] tmpdata action failed: missing key parameter. Player: {0}"
+  invalid_ttl: "[KaMenu] tmpdata action failed: invalid ttl parameter '{0}'. Player: {1}"
+  missing_ttl: "[KaMenu] tmpdata action failed: {0} requires a ttl parameter. Player: {1}"
+  missing_var: "[KaMenu] tmpdata action failed: add/take value '{0}' is not a number. Player: {1}"
+  invalid_type: "[KaMenu] tmpdata action failed: invalid type parameter '{0}', supported types: set, add, take, addtime, taketime, refresh, delete. Player: {1}"
+
 # Condition Utils
 condition:
   unknown_method: "[KaMenu] Unknown built-in condition method: {0}"

@@ -140,6 +140,7 @@ var targetLevel = papi("player_level", getPlayer("Steve"));
 var coins = data("coins");
 var serverStatus = gdata("server_status");
 var tempChoice = meta("temporary_choice");
+var bonus = tmpdata("bonus");
 var friends = JSON.parse(list("friends"));
 var servers = JSON.parse(glist("servers"));
 var handType = kvar("checkitem:[hand;type]");
@@ -152,6 +153,8 @@ var raw = kvar("{gdata:server_status}");
 - `data(key, targetPlayer)`：等价于 `kvar("data:" + key, targetPlayer)`
 - `gdata(key, targetPlayer)`：等价于 `kvar("gdata:" + key, targetPlayer)`
 - `meta(key, targetPlayer)`：等价于 `kvar("meta:" + key, targetPlayer)`
+- `tmpdata(key, targetPlayer)`：等价于 `kvar("tmpdata:" + key, targetPlayer)`，读取带到期时间的玩家数据；剩余秒数可用 `kvar("tmpdata_time:" + key)`，可读文本用 `kvar("tmpdata_time_format:" + key)`
+- 所有数据键都允许包含 `_`，但不建议使用，以免变量解析或第三方插件对键名作特殊处理。
 - `list(key, targetPlayer)`：等价于 `kvar("list:" + key, targetPlayer)`，返回 JSON 数组字符串
 - `glist(key, targetPlayer)`：等价于 `kvar("glist:" + key, targetPlayer)`，返回 JSON 数组字符串
 

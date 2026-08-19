@@ -46,6 +46,9 @@ class FoliaSchedulerPlatformAdapter : FoliaSchedulerAdapter {
     override fun runAsyncLater(plugin: Plugin, delayMillis: Long, task: Runnable): KaTaskHandle =
         Bukkit.getAsyncScheduler().runDelayed(plugin, Consumer { task.run() }, delayMillis, TimeUnit.MILLISECONDS).toHandle()
 
+    override fun runAsyncTimer(plugin: Plugin, delayMillis: Long, periodMillis: Long, task: Runnable): KaTaskHandle =
+        Bukkit.getAsyncScheduler().runAtFixedRate(plugin, Consumer { task.run() }, delayMillis, periodMillis, TimeUnit.MILLISECONDS).toHandle()
+
     override fun teleport(player: Player, location: Location) {
         player.teleportAsync(location)
     }

@@ -204,6 +204,19 @@ ui:
 papi:
   data_not_found: "null"
 
+# 临时数据 tmpdata
+tmpdata:
+  expired: "0秒"
+  format_day: "{0}天"
+  format_hour: "{0}时"
+  format_minute: "{0}分"
+  format_second: "{0}秒"
+  missing_key: "[KaMenu] tmpdata 操作失败: 缺少 key 参数。玩家: {0}"
+  invalid_ttl: "[KaMenu] tmpdata 操作失败: ttl 参数 '{0}' 无效。玩家: {1}"
+  missing_ttl: "[KaMenu] tmpdata 操作失败: {0} 需要 ttl 参数。玩家: {1}"
+  missing_var: "[KaMenu] tmpdata 操作失败: add/take 操作的值 '{0}' 不是纯数字。玩家: {1}"
+  invalid_type: "[KaMenu] tmpdata 操作失败: 无效的 type 参数 '{0}'，支持的类型: set, add, take, addtime, taketime, refresh, delete。玩家: {1}"
+
 # 条件工具
 condition:
   unknown_method: "[KaMenu] 未知内置条件方法: {0}"

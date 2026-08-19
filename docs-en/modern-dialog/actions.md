@@ -925,6 +925,72 @@ Operate global data (shared by all players), supporting set, add, subtract, and 
 
 ---
 
+### tmpdata - Player Temporary Data (Expires Automatically)
+
+Operate player key-value pairs with an expiry time. Set a value with a validity period; the key is cleared automatically once it expires. Suitable for cooldowns, limited-time bonuses, or temporary titles. Data is persisted to the database (SQLite/MySQL), so the remaining time is still calculated from the original expiry even after the player logs off or the server restarts.
+
+**Format:** `tmpdata: type=<operation>;key=<key>;var=<value>;ttl=<duration>`
+
+**Key rules:** Keys for all data types (`data`, `gdata`, `meta`, `list`, `glist`, and `tmpdata`) may contain `_`, but using underscores is not recommended. Prefer letters, numbers, and hyphens to avoid ambiguity in variable parsing, third-party plugins, or future syntax extensions.
+
+**Parameters:**
+
+| Parameter | Description | Required |
+|------|------|------|
+| `type` | Operation type | ✅ |
+| `key` | Data key | ✅ |
+| `var` | Value (only for type=set/add/take) | ❌ |
+| `ttl` | Validity duration; a plain number is treated as seconds, and combinations like `1d2h30m15s` (d/h/m/s) are supported | Required for set/refresh/addtime/taketime |
+
+**type values:**
+- `set`: Set the value with an expiry time (requires `ttl`)
+- `add`: Increase the value; if the key already exists only the value changes, providing `ttl` also renews the expiry, and if the key is missing/expired `ttl` is required to create it
+- `take`: Decrease the value; same semantics as `add`
+- `addtime`: Extend the expiry time by `ttl`
+- `taketime`: Deduct `ttl` from the expiry time; when the remaining time reaches 0 or below, the key is deleted immediately
+- `refresh`: Reset the expiry time to now + `ttl` (absolute renewal, remaining time is not preserved)
+- `delete`: Delete the key-value pair
+
+**Examples:**
+
+```yaml
+# Set a limited-time bonus that clears automatically after 1 day
+- 'tmpdata: type=set;key=bonus;var=`100`;ttl=1d'
+
+# Renew and add value (resets the expiry when the key already exists)
+- 'tmpdata: type=add;key=bonus;var=`50`;ttl=12h'
+
+# Renew the expiry by 12 hours without changing the value
+- 'tmpdata: type=addtime;key=bonus;ttl=12h'
+
+# Expire 6 hours earlier
+- 'tmpdata: type=taketime;key=bonus;ttl=6h'
+
+# Delete temporary data
+- 'tmpdata: type=delete;key=bonus'
+```
+
+**Placeholders:**
+
+| Variable | Description |
+|------|------|
+| `{tmpdata:key}` | Stored value; returns `null` when missing or expired |
+| `{tmpdata_time:key}` | Remaining time in **seconds** (plain integer, no unit); returns `0` when missing or expired, safe for numeric comparisons |
+| `{tmpdata_time_format:key}` | Human-readable text, e.g. `1d 2h 30m 15s`; returns `0s` when expired |
+
+**PAPI placeholders:**
+- `%kamenu_tmpdata_key%` — stored value
+- `%kamenu_tmpdata_time_key%` — remaining seconds (plain number for easy numeric checks in other plugins)
+- `%kamenu_tmpdata_timeformat_key%` — human-readable text (e.g. `1d 2h 30m 15s`)
+
+**Notes:**
+- A numeric `ttl` is interpreted as seconds, e.g. `ttl=86400` means 24 hours; combinations like `1d2h30m15s` are also supported
+- All data keys may contain `_`, but using underscores is not recommended; use `dailybonus` or `daily-bonus` instead of `daily_bonus` when possible
+- `addtime` / `taketime` / `refresh` skip with a warning when the key does not exist or is already expired
+- Expired values return empty immediately on read; expired rows in the database are physically cleaned by the periodic task (`tmpdata-purge-interval` in `config.yml`, default 60 seconds)
+
+---
+
 ### list / glist - List Data Operation
 
 Operate persistent list data. `list` belongs to the current player, while `glist` is shared globally. A list is stored under one database key as a JSON array, making it suitable for friend lists, warp lists, favorites, and direct `Bottom.multi.buttons.type: repeat` sources.

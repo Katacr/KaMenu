@@ -1514,6 +1514,71 @@ object MenuActions {
                 )
             }
 
+            // tmpdata: 玩家临时数据操作（带到期时间，到期自动清空）
+            finalCmd.startsWith("tmpdata:") -> {
+                val args = finalCmd.removePrefix("tmpdata:").trim()
+                ActionHandlers.parseAndExecuteTmpDataAction(
+                    args = args,
+                    player = player,
+                    setAction = { key, value, ttlMillis ->
+                        val expireAt = System.currentTimeMillis() + ttlMillis
+                        if (asyncDataOperations) {
+                            KaScheduler.runAsync(Runnable {
+                                databaseManager?.setPlayerTmpData(player.uniqueId, key, value, expireAt)
+                            })
+                        } else {
+                            databaseManager?.setPlayerTmpData(player.uniqueId, key, value, expireAt)
+                        }
+                    },
+                    modifyAction = { key, delta, ttlMillis ->
+                        if (asyncDataOperations) {
+                            KaScheduler.runAsync(Runnable {
+                                databaseManager?.modifyPlayerTmpData(player.uniqueId, key, delta, ttlMillis)
+                            })
+                        } else {
+                            databaseManager?.modifyPlayerTmpData(player.uniqueId, key, delta, ttlMillis)
+                        }
+                    },
+                    addTimeAction = { key, ttlMillis ->
+                        if (asyncDataOperations) {
+                            KaScheduler.runAsync(Runnable {
+                                databaseManager?.shiftPlayerTmpDataExpiry(player.uniqueId, key, ttlMillis)
+                            })
+                        } else {
+                            databaseManager?.shiftPlayerTmpDataExpiry(player.uniqueId, key, ttlMillis)
+                        }
+                    },
+                    takeTimeAction = { key, ttlMillis ->
+                        val shiftMillis = -ttlMillis
+                        if (asyncDataOperations) {
+                            KaScheduler.runAsync(Runnable {
+                                databaseManager?.shiftPlayerTmpDataExpiry(player.uniqueId, key, shiftMillis)
+                            })
+                        } else {
+                            databaseManager?.shiftPlayerTmpDataExpiry(player.uniqueId, key, shiftMillis)
+                        }
+                    },
+                    refreshAction = { key, ttlMillis ->
+                        if (asyncDataOperations) {
+                            KaScheduler.runAsync(Runnable {
+                                databaseManager?.refreshPlayerTmpDataExpiry(player.uniqueId, key, ttlMillis)
+                            })
+                        } else {
+                            databaseManager?.refreshPlayerTmpDataExpiry(player.uniqueId, key, ttlMillis)
+                        }
+                    },
+                    deleteAction = { key ->
+                        if (asyncDataOperations) {
+                            KaScheduler.runAsync(Runnable {
+                                databaseManager?.deletePlayerTmpData(player.uniqueId, key)
+                            })
+                        } else {
+                            databaseManager?.deletePlayerTmpData(player.uniqueId, key)
+                        }
+                    }
+                )
+            }
+
             // list: 玩家列表数据操作
             finalCmd.startsWith("list:") -> {
                 val args = finalCmd.removePrefix("list:").trim()

@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import org.bukkit.Bukkit
+import org.bukkit.OfflinePlayer
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import java.nio.charset.StandardCharsets
@@ -21,6 +22,9 @@ object TextResolver {
     private val listPattern = Regex("\\{list:([^}]+)}")
     private val globalListPattern = Regex("\\{glist:([^}]+)}")
     private val metaPattern = Regex("\\{meta:([^}]+)}")
+    private val tmpdataPattern = Regex("\\{tmpdata:([^}]+)}")
+    private val tmpdataTimePattern = Regex("\\{tmpdata_time:([^}]+)}")
+    private val tmpdataTimeFormatPattern = Regex("\\{tmpdata_time_format:([^}]+)}")
     private val checkItemPattern = Regex("\\{checkitem:(\\[[^}]+])}")
     private val argPattern = Regex("\\{arg:([^}]+)}")
     private val jsPattern = Regex("\\{js:([^}]+)}")
@@ -31,6 +35,47 @@ object TextResolver {
 
     fun setLanguageManager(manager: LanguageManager) {
         languageManager = manager
+    }
+
+    /**
+     * 获取玩家临时数据键的剩余秒数。
+     *
+     * 不存在或已过期的键返回 0，保证结果是可直接参与数值判断的非负整数。
+     */
+    fun remainingSecondsForTmpData(player: OfflinePlayer, key: String): Long {
+        val currentPlugin = plugin ?: return 0L
+        val expireAt = currentPlugin.databaseManager.getPlayerTmpDataExpireAt(player.uniqueId, key) ?: return 0L
+        val now = System.currentTimeMillis()
+        if (expireAt <= now) return 0L
+        return (expireAt - now) / 1000L
+    }
+
+    /**
+     * 把剩余秒数格式化为用户可读文本（如 `1天 2时 30分 15秒`）。
+     *
+     * 大于 0 的段才会显示；为 0 或过期时返回 `tmpdata.expired` 语言键值。
+     */
+    fun formatRemainingSeconds(seconds: Long): String {
+        if (seconds <= 0) {
+            return languageManager?.getMessage("tmpdata.expired") ?: "0秒"
+        }
+        var remaining = seconds
+        val days = remaining / 86_400
+        remaining %= 86_400
+        val hours = remaining / 3_600
+        remaining %= 3_600
+        val minutes = remaining / 60
+        val secs = remaining % 60
+
+        val parts = mutableListOf<String>()
+        if (days > 0) parts.add(languageManager?.getMessage("tmpdata.format_day", days.toString()) ?: "${days}天")
+        if (hours > 0) parts.add(languageManager?.getMessage("tmpdata.format_hour", hours.toString()) ?: "${hours}时")
+        if (minutes > 0) parts.add(languageManager?.getMessage("tmpdata.format_minute", minutes.toString()) ?: "${minutes}分")
+        if (secs > 0) parts.add(languageManager?.getMessage("tmpdata.format_second", secs.toString()) ?: "${secs}秒")
+        if (parts.isEmpty()) {
+            return languageManager?.getMessage("tmpdata.expired") ?: "0秒"
+        }
+        return parts.joinToString(" ")
     }
 
     /**
@@ -85,6 +130,18 @@ object TextResolver {
             result = result.replace(metaPattern) { match ->
                 val key = match.groupValues[1]
                 currentPlugin.metaDataManager.getPlayerMeta(player.uniqueId, key)
+            }
+            result = result.replace(tmpdataPattern) { match ->
+                val key = match.groupValues[1]
+                currentPlugin.databaseManager.getPlayerTmpData(player.uniqueId, key)
+                    ?: languageManager?.getMessage("papi.data_not_found", key)
+                    ?: "null"
+            }
+            result = result.replace(tmpdataTimePattern) { match ->
+                remainingSecondsForTmpData(player, match.groupValues[1]).toString()
+            }
+            result = result.replace(tmpdataTimeFormatPattern) { match ->
+                formatRemainingSeconds(remainingSecondsForTmpData(player, match.groupValues[1]))
             }
             result = result.replace(checkItemPattern) { match ->
                 currentPlugin.itemPlaceholderService.resolve(player, match.groupValues[1])
@@ -193,6 +250,17 @@ object TextResolver {
             }
             result = replaceConditionRegex(result, metaPattern) { match ->
                 currentPlugin.metaDataManager.getPlayerMeta(player.uniqueId, match.groupValues[1])
+            }
+            result = replaceConditionRegex(result, tmpdataPattern) { match ->
+                currentPlugin.databaseManager.getPlayerTmpData(player.uniqueId, match.groupValues[1])
+                    ?: languageManager?.getMessage("papi.data_not_found", match.groupValues[1])
+                    ?: "null"
+            }
+            result = replaceConditionRegex(result, tmpdataTimePattern) { match ->
+                remainingSecondsForTmpData(player, match.groupValues[1]).toString()
+            }
+            result = replaceConditionRegex(result, tmpdataTimeFormatPattern) { match ->
+                formatRemainingSeconds(remainingSecondsForTmpData(player, match.groupValues[1]))
             }
             result = replaceConditionRegex(result, checkItemPattern) { match ->
                 currentPlugin.itemPlaceholderService.resolve(player, match.groupValues[1])

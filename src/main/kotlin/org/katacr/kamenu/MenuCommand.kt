@@ -891,6 +891,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                 "open:", "force-open:", "close", "force-close", "reset", "refresh", "refresh:",
                 "server:", "tppos:",
                 "data:", "gdata:", "list:", "glist:", "meta:",
+                "tmpdata:",
                 "set-data:", "set-gdata:", "set-meta:",
                 "toast:", "money:", "stock-item:", "item:",
                 "js:", "actions:", "page:",

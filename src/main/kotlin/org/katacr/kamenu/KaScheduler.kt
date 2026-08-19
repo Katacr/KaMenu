@@ -88,6 +88,19 @@ object KaScheduler {
         }
     }
 
+    /**
+     * 在异步线程按固定周期执行任务。
+     *
+     * 用于数据库清理等非 Bukkit 对象操作；Folia 走 AsyncScheduler，Bukkit 走异步调度器。
+     */
+    fun runAsyncTimer(delayMillis: Long, periodMillis: Long, task: Runnable): KaTaskHandle {
+        return foliaAdapter?.runAsyncTimer(plugin, delayMillis.coerceAtLeast(1L), periodMillis.coerceAtLeast(1L), task) ?: run {
+            val delayTicks = (delayMillis / 50).coerceAtLeast(1L)
+            val periodTicks = (periodMillis / 50).coerceAtLeast(1L)
+            Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, delayTicks, periodTicks).toHandle()
+        }
+    }
+
     /** 在当前核心允许的玩家线程上执行坐标传送。 */
     fun teleport(player: Player, location: Location) {
         val adapter = foliaAdapter
@@ -127,6 +140,7 @@ interface FoliaSchedulerAdapter {
     fun runGlobalLater(plugin: Plugin, delayTicks: Long, task: Runnable): KaTaskHandle
     fun runAsync(plugin: Plugin, task: Runnable): KaTaskHandle
     fun runAsyncLater(plugin: Plugin, delayMillis: Long, task: Runnable): KaTaskHandle
+    fun runAsyncTimer(plugin: Plugin, delayMillis: Long, periodMillis: Long, task: Runnable): KaTaskHandle
     fun teleport(player: Player, location: Location)
     fun cancelPluginTasks(plugin: Plugin)
 }
