@@ -5,7 +5,7 @@
 
 # Configuration file version (DO NOT MODIFY THIS VALUE)
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
-config-version: 6
+config-version: 8
 
 # Plugin language (must match a filename in the lang/ folder, without .yml)
 # Built-in languages: zh_CN (Chinese), en_US (English)
@@ -24,6 +24,19 @@ language: 'en_US'
 # 启用蹦极支持用于 server: 动作
 # 仅在您的服务器运行在 BungeeCord/Velocity 代理后面时启用此项
 bungeecord: true
+
+# ============================================
+# KaProxy Cross-Server Configuration
+# KaProxy 跨服配置
+# ============================================
+# Enable KaProxy cross-server action dispatch.
+# Requires KaProxy plugin on the proxy and kaproxy:main channel.
+# When enabled, actions with {cross} tag are forwarded to other backends via KaProxy.
+# 启用 KaProxy 跨服动作转发。
+# 需要代理端安装 KaProxy 插件并注册 kaproxy:main 通道。
+# 启用后，带 {cross} 标记的动作会通过 KaProxy 转发到其他后端执行。
+kaproxy:
+  enabled: false
 
 # ============================================
 # Input Capture Configuration
@@ -46,6 +59,16 @@ input-capture:
       - '_'
       - '\s'
       - '\n'
+
+  # Chat input capture (input: action with type=chat) defaults.
+  # 聊天框输入捕获（input: 动作 type=chat）的默认参数。
+  chat-capture:
+    # Default timeout seconds per layer when a definition does not specify one.
+    # 定义未指定 timeout 时每层的默认超时秒数。
+    default-timeout: 60
+    # Default max input length per layer.
+    # 每层输入的默认最大长度。
+    max-length: 256
 
 # ============================================
 # Database Configuration

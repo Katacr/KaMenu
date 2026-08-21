@@ -142,6 +142,37 @@ Target selectors support all condition expressions supported by `Condition`:
 - ✅ `open`, `close`, `force-open`, `force-close`, and `reset` support target selectors and can refresh or close menus for selected players
 - ✅ Selector conditions can use variables such as `{data:*}`, `{gdata:*}`, and `{meta:*}`, for example: `open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
+### Cross-Server Target Selector
+
+Append the `{cross}` tag after the target selector to forward the action to other backends via KaProxy. Requires `kaproxy.enabled: true` and KaProxy installed on the proxy.
+
+**Syntax:** `<action>{player: selector}{cross}`
+
+```yaml
+# Cross-server broadcast to all online players
+- 'tell: &6Server-wide announcement{player: *}{cross}'
+
+# Cross-server conditional selection
+- 'tell: &cAdmin notice{player: %player_is_op% == true}{cross}'
+
+# Cross-server economy operation
+- 'money: type=add;num=100{player: %player_level% >= 10}{cross}'
+```
+
+**Execution flow:**
+1. The action is first executed locally for players matching the selector
+2. The action is encoded and sent to KaProxy via the `kaproxy:main` channel
+3. KaProxy forwards it to target backends per its `config.yml` `modules.kamenu.servers` list (excluding the source server)
+4. Each target backend evaluates the selector locally and executes the action for matched players
+
+**Cross-server action whitelist:** `tell`, `actionbar`, `title`, `sound`, `hovertext`, `money`, `points`, `data`, `gdata`, `tmpdata`, `meta`, `set-data`, `set-gdata`, `set-meta`
+
+**Notes:**
+- `{cross}` must be at the very end of the action line (after `{player:...}`)
+- The whitelist is enforced in `CrossServerDispatcher`; non-whitelisted actions are rejected with a warning
+- Selector conditions are evaluated **locally** on each backend; PAPI variables and built-in predicates are fully available
+- If a target backend has no online players, KaProxy naturally skips it
+
 ---
 
 ## Per-Action Modifiers

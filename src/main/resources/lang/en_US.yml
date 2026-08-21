@@ -219,6 +219,26 @@ tmpdata:
   missing_var: "[KaMenu] tmpdata action failed: add/take value '{0}' is not a number. Player: {1}"
   invalid_type: "[KaMenu] tmpdata action failed: invalid type parameter '{0}', supported types: set, add, take, addtime, taketime, refresh, delete. Player: {1}"
 
+# Cross-Server Actions
+cross-server:
+  channel-enabled: "KaProxy cross-server action channel enabled"
+  channel-disabled: "KaProxy cross-server action channel disabled"
+  channel-register-failed: "KaProxy channel registration failed, cross-server actions unavailable: {0}"
+  dispatch-failed: "Cross-server action dispatch failed: {0}"
+  decode-failed: "Cross-server action packet decode failed: {0}"
+  action-rejected: "Rejected non-whitelisted cross-server action: {0} (source: {1})"
+  handle-error: "Cross-server action handling error: {0}"
+
+# Unified Input Capture
+input-capture:
+  default-prompt: "&eType your input in chat and press Enter. Type {0} to cancel"
+  cancelled: "&cInput cancelled"
+  timeout: "&cInput timed out"
+  too-long: "&cInput too long (max {0} characters), please try again"
+  dialog-label: "&fEnter a value"
+  dialog-confirm: "&aConfirm"
+  dialog-cancel: "&cCancel"
+
 # Condition Utils
 condition:
   unknown_method: "[KaMenu] Unknown built-in condition method: {0}"

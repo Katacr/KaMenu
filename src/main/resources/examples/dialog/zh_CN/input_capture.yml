@@ -1,0 +1,190 @@
+Title: '&8» &6&l统一输入捕获演示 &8«'
+
+Settings:
+  can_escape: true
+  after_action: close
+
+Input-Captures:
+  buy_item_chat:
+    type: chat
+    timeout: 60s
+    cancel: exit
+    max-attempts: 3
+    layers:
+      - key: item_name
+        max-length: 32
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&l购买物品 &7- &f第 &e1 &f步 / 共 &e2 &f步'
+          - 'tell: &e请在聊天框输入物品名称（例如：苹果）'
+          - 'tell: &7输入 &cexit &7取消输入'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - key: amount
+        max-length: 6
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&l购买物品 &7- &f第 &e2 &f步 / 共 &e2 &f步'
+          - 'tell: &e请输入 &f{input:item_name} &e的数量'
+          - 'tell: &7输入 &cexit &7取消输入'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        validate: 'isPosInt.{input_candidate}'
+        invalid:
+          - 'tell: &c✘ 数量必须是正整数，请重新输入'
+    complete-actions:
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'tell: &a&l✔ 购买成功！'
+      - 'tell: &a物品: &f{input:item_name}  &a数量: &f{input:amount}'
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'sound: entity.player.levelup'
+    timeout-actions:
+      - 'tell: &c✘ 输入超时，已取消购买'
+    cancel-actions:
+      - 'tell: &c✘ 已取消输入'
+
+  buy_item_anvil:
+    type: anvil
+    timeout: 60s
+    cancel: exit
+    max-attempts: 3
+    reopen: true
+    layers:
+      - key: item_name
+        max-length: 32
+        title: '&f请输入物品名称'
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&l购买物品 &7- &f第 &e1 &f步 / 共 &e2 &f步'
+          - 'tell: &e请在铁砧重命名框输入物品名称'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - key: amount
+        max-length: 6
+        title: '&f请输入 {input:item_name} 的数量'
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&l购买物品 &7- &f第 &e2 &f步 / 共 &e2 &f步'
+          - 'tell: &e请在铁砧重命名框输入 &f{input:item_name} &e的数量'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        validate: 'isPosInt.{input_candidate}'
+        invalid:
+          - 'tell: &c✘ 数量必须是正整数，请重新输入'
+    complete-actions:
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'tell: &a&l✔ 购买成功！'
+      - 'tell: &a物品: &f{input:item_name}  &a数量: &f{input:amount}'
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'sound: entity.player.levelup'
+    timeout-actions:
+      - 'tell: &c✘ 输入超时，已取消购买'
+    cancel-actions:
+      - 'tell: &c✘ 已取消输入'
+
+  buy_item_dialog:
+    type: dialog
+    timeout: 60s
+    cancel: exit
+    max-attempts: 3
+    layers:
+      - key: item_name
+        max-length: 32
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&l购买物品 &7- &f第 &e1 &f步 / 共 &e2 &f步'
+          - 'tell: &e请在弹出的对话框中输入物品名称'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - key: amount
+        max-length: 6
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&l购买物品 &7- &f第 &e2 &f步 / 共 &e2 &f步'
+          - 'tell: &e请在弹出的对话框中输入 &f{input:item_name} &e的数量'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        validate: 'isPosInt.{input_candidate}'
+        invalid:
+          - 'tell: &c✘ 数量必须是正整数，请重新输入'
+    complete-actions:
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'tell: &a&l✔ 购买成功！'
+      - 'tell: &a物品: &f{input:item_name}  &a数量: &f{input:amount}'
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'sound: entity.player.levelup'
+    timeout-actions:
+      - 'tell: &c✘ 输入超时，已取消购买'
+    cancel-actions:
+      - 'tell: &c✘ 已取消输入'
+
+Body:
+  intro:
+    type: message
+    text:
+      - '&7本菜单演示 &e统一输入捕获 &7功能'
+      - '&7支持三种输入方式：&e聊天框&7、&e铁砧&7、&e对话框'
+      - ''
+      - '&7每种方式都支持分层捕获：先输入物品名称，再输入数量'
+      - '&7两层全部通过校验后执行最终动作组'
+      - ''
+      - '&7下方三个按钮分别对应三种输入类型'
+    width: 320
+
+Bottom:
+  type: multi
+  columns: 1
+  buttons:
+    chat_btn:
+      text: '&a&l▶ 聊天框输入购买'
+      tooltip:
+        - '&a&l聊天框输入捕获'
+        - ''
+        - '&7全版本可用'
+        - '&7点击后在聊天框输入内容'
+        - ''
+        - '&e&o点击按钮开始'
+      width: 200
+      actions:
+        - 'input: buy_item_chat'
+
+    anvil_btn:
+      text: '&e&l▶ 铁砧输入购买'
+      tooltip:
+        - '&e&l铁砧输入捕获'
+        - ''
+        - '&71.16.5+ 可用'
+        - '&7点击后在铁砧重命名框输入'
+        - '&7捕获完成后自动恢复原菜单'
+        - ''
+        - '&e&o点击按钮开始'
+      width: 200
+      actions:
+        - 'input: buy_item_anvil'
+
+    dialog_btn:
+      text: '&b&l▶ 对话框输入购买'
+      tooltip:
+        - '&b&l对话框输入捕获'
+        - ''
+        - '&71.21.7+ 可用（Paper/Spigot）'
+        - '&7点击后弹出原生 Dialog 输入框'
+        - ''
+        - '&e&o点击按钮开始'
+      width: 200
+      actions:
+        - 'input: buy_item_dialog'
+
+    quick_btn:
+      text: '&6&l▶ 快速输入（内联单层）'
+      tooltip:
+        - '&6&l快速输入演示'
+        - ''
+        - '&7使用内联参数直接捕获单个值'
+        - '&7默认使用聊天框，可加 type=anvil/dialog 切换'
+        - '&7捕获成功后继续执行后续动作'
+        - ''
+        - '&e&o点击按钮开始'
+      width: 200
+      actions:
+        - 'input: type=chat;key=nickname;timeout=30;cancel=cancel;max-length=16'
+        - 'tell: &a你好, &f{input:nickname}！'
+
+  exit:
+    text: '&8[ 关闭 ]'
+    actions:
+      - 'close'

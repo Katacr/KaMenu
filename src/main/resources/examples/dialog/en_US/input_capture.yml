@@ -1,0 +1,190 @@
+Title: '&8» &6&lUnified Input Capture Demo &8«'
+
+Settings:
+  can_escape: true
+  after_action: close
+
+Input-Captures:
+  buy_item_chat:
+    type: chat
+    timeout: 60s
+    cancel: exit
+    max-attempts: 3
+    layers:
+      - key: item_name
+        max-length: 32
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&lBuy Item &7- &fStep &e1 &f/ &e2'
+          - 'tell: &ePlease type the item name in chat (e.g., apple)'
+          - 'tell: &7Type &cexit &7to cancel'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - key: amount
+        max-length: 6
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&lBuy Item &7- &fStep &e2 &f/ &e2'
+          - 'tell: &ePlease enter the quantity for &f{input:item_name}'
+          - 'tell: &7Type &cexit &7to cancel'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        validate: 'isPosInt.{input_candidate}'
+        invalid:
+          - 'tell: &c✘ Quantity must be a positive integer, please try again'
+    complete-actions:
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'tell: &a&l✔ Purchase successful!'
+      - 'tell: &aItem: &f{input:item_name}  &aAmount: &f{input:amount}'
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'sound: entity.player.levelup'
+    timeout-actions:
+      - 'tell: &c✘ Input timed out, purchase cancelled'
+    cancel-actions:
+      - 'tell: &c✘ Input cancelled'
+
+  buy_item_anvil:
+    type: anvil
+    timeout: 60s
+    cancel: exit
+    max-attempts: 3
+    reopen: true
+    layers:
+      - key: item_name
+        max-length: 32
+        title: '&fEnter item name'
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&lBuy Item &7- &fStep &e1 &f/ &e2'
+          - 'tell: &ePlease type the item name in the anvil rename field'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - key: amount
+        max-length: 6
+        title: '&fEnter quantity for {input:item_name}'
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&lBuy Item &7- &fStep &e2 &f/ &e2'
+          - 'tell: &ePlease enter the quantity for &f{input:item_name}'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        validate: 'isPosInt.{input_candidate}'
+        invalid:
+          - 'tell: &c✘ Quantity must be a positive integer, please try again'
+    complete-actions:
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'tell: &a&l✔ Purchase successful!'
+      - 'tell: &aItem: &f{input:item_name}  &aAmount: &f{input:amount}'
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'sound: entity.player.levelup'
+    timeout-actions:
+      - 'tell: &c✘ Input timed out, purchase cancelled'
+    cancel-actions:
+      - 'tell: &c✘ Input cancelled'
+
+  buy_item_dialog:
+    type: dialog
+    timeout: 60s
+    cancel: exit
+    max-attempts: 3
+    layers:
+      - key: item_name
+        max-length: 32
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&lBuy Item &7- &fStep &e1 &f/ &e2'
+          - 'tell: &ePlease enter the item name in the dialog input field'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - key: amount
+        max-length: 6
+        prompt:
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+          - 'tell: &6&lBuy Item &7- &fStep &e2 &f/ &e2'
+          - 'tell: &ePlease enter the quantity for &f{input:item_name}'
+          - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        validate: 'isPosInt.{input_candidate}'
+        invalid:
+          - 'tell: &c✘ Quantity must be a positive integer, please try again'
+    complete-actions:
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'tell: &a&l✔ Purchase successful!'
+      - 'tell: &aItem: &f{input:item_name}  &aAmount: &f{input:amount}'
+      - 'tell: &a━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+      - 'sound: entity.player.levelup'
+    timeout-actions:
+      - 'tell: &c✘ Input timed out, purchase cancelled'
+    cancel-actions:
+      - 'tell: &c✘ Input cancelled'
+
+Body:
+  intro:
+    type: message
+    text:
+      - '&7This menu demonstrates the &eUnified Input Capture &7feature'
+      - '&7Three input methods are supported: &eChat&7, &eAnvil&7, and &eDialog'
+      - ''
+      - '&7Each method supports layered capture: item name first, then quantity'
+      - '&7After all layers pass validation, the final action group executes'
+      - ''
+      - '&7The three buttons below correspond to each input type'
+    width: 320
+
+Bottom:
+  type: multi
+  columns: 1
+  buttons:
+    chat_btn:
+      text: '&a&l▶ Chat input purchase'
+      tooltip:
+        - '&a&lChat Input Capture'
+        - ''
+        - '&7Available on all versions'
+        - '&7Type in chat after clicking'
+        - ''
+        - '&e&oClick to start'
+      width: 200
+      actions:
+        - 'input: buy_item_chat'
+
+    anvil_btn:
+      text: '&e&l▶ Anvil input purchase'
+      tooltip:
+        - '&e&lAnvil Input Capture'
+        - ''
+        - '&71.16.5+ required'
+        - '&7Type in the anvil rename field'
+        - '&7Original menu reopens after capture'
+        - ''
+        - '&e&oClick to start'
+      width: 200
+      actions:
+        - 'input: buy_item_anvil'
+
+    dialog_btn:
+      text: '&b&l▶ Dialog input purchase'
+      tooltip:
+        - '&b&lDialog Input Capture'
+        - ''
+        - '&71.21.7+ required (Paper/Spigot)'
+        - '&7A native Dialog input field pops up'
+        - ''
+        - '&e&oClick to start'
+      width: 200
+      actions:
+        - 'input: buy_item_dialog'
+
+    quick_btn:
+      text: '&6&l▶ Quick input (inline single layer)'
+      tooltip:
+        - '&6&lQuick Input Demo'
+        - ''
+        - '&7Uses inline parameters to capture a single value'
+        - '&7Defaults to chat; add type=anvil/dialog to switch'
+        - '&7After capture, the next action continues'
+        - ''
+        - '&e&oClick to start'
+      width: 200
+      actions:
+        - 'input: type=chat;key=nickname;timeout=30;cancel=cancel;max-length=16'
+        - 'tell: &aHello, &f{input:nickname}!'
+
+  exit:
+    text: '&8[ Close ]'
+    actions:
+      - 'close'

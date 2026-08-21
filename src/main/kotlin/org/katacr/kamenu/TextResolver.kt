@@ -28,6 +28,8 @@ object TextResolver {
     private val checkItemPattern = Regex("\\{checkitem:(\\[[^}]+])}")
     private val argPattern = Regex("\\{arg:([^}]+)}")
     private val jsPattern = Regex("\\{js:([^}]+)}")
+    private val inputPattern = Regex("\\{input:([^}]+)}")
+    private val inputAttrPattern = Regex("\\{input_(candidate|layer|attempt|cancel_reason)}")
 
     fun setPlugin(kamenu: KaMenu) {
         plugin = kamenu
@@ -145,6 +147,12 @@ object TextResolver {
             }
             result = result.replace(checkItemPattern) { match ->
                 currentPlugin.itemPlaceholderService.resolve(player, match.groupValues[1])
+            }
+            result = result.replace(inputPattern) { match ->
+                InputCaptureManager.resolveValue(player.uniqueId, match.groupValues[1].trim())
+            }
+            result = result.replace(inputAttrPattern) { match ->
+                InputCaptureManager.resolveAttribute(player.uniqueId, match.groupValues[1])
             }
         }
 
@@ -264,6 +272,12 @@ object TextResolver {
             }
             result = replaceConditionRegex(result, checkItemPattern) { match ->
                 currentPlugin.itemPlaceholderService.resolve(player, match.groupValues[1])
+            }
+            result = replaceConditionRegex(result, inputPattern) { match ->
+                InputCaptureManager.resolveValue(player.uniqueId, match.groupValues[1].trim())
+            }
+            result = replaceConditionRegex(result, inputAttrPattern) { match ->
+                InputCaptureManager.resolveAttribute(player.uniqueId, match.groupValues[1])
             }
         }
 

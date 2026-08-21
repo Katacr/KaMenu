@@ -142,6 +142,37 @@ Bottom:
 - ✅ `open`、`close`、`force-open`、`force-close`、`reset` 支持目标选择器，可用于刷新或关闭指定玩家的菜单
 - ✅ 选择器条件中可以使用 `{data:*}`、`{gdata:*}`、`{meta:*}` 等变量，例如：`open: xiangqi{player: {meta:xiangqi-viewer} == true}`
 
+### 跨服目标选择器
+
+在目标选择器后追加 `{cross}` 标记，动作会通过 KaProxy 转发到其他后端执行。仅限 `kaproxy.enabled: true` 且代理端安装 KaProxy 时生效。
+
+**语法：** `<动作>{player: 选择器}{cross}`
+
+```yaml
+# 跨服广播给所有在线玩家
+- 'tell: &6全服公告{player: *}{cross}'
+
+# 跨服条件选择
+- 'tell: &c管理员通知{player: %player_is_op% == true}{cross}'
+
+# 跨服经济操作
+- 'money: type=add;num=100{player: %player_level% >= 10}{cross}'
+```
+
+**执行流程：**
+1. 先在本服对选择器命中的玩家执行动作
+2. 编码动作并通过 `kaproxy:main` 通道发送到 KaProxy
+3. KaProxy 按自身 `config.yml` 的 `modules.kamenu.servers` 列表转发到目标后端（排除来源服）
+4. 目标后端收到后本地求值选择器并对命中玩家执行动作
+
+**支持跨服的动作白名单：** `tell`、`actionbar`、`title`、`sound`、`hovertext`、`money`、`points`、`data`、`gdata`、`tmpdata`、`meta`、`set-data`、`set-gdata`、`set-meta`
+
+**注意：**
+- `{cross}` 必须在动作行最末尾（`{player:...}` 之后）
+- 跨服动作白名单在后端 `CrossServerDispatcher` 中硬编码，非白名单动作会被拒绝并记录警告
+- 选择器条件在每个后端**本地求值**，PAPI 变量和内置谓词完全可用
+- 如果目标后端无在线玩家，KaProxy 自然跳过该后端
+
 ---
 
 ## 单行动作修饰符

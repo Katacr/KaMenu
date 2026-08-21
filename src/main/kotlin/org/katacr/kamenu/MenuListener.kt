@@ -111,6 +111,7 @@ class MenuListener(private val plugin: KaMenu) : Listener {
         DialogSessionManager.cancel(event.player)
         MenuTaskManager.cancel(event.player)
         MenuListManager.clear(event.player)
+        InputCaptureManager.cancelForQuit(event.player.uniqueId)
         // 清理该玩家的元数据缓存
         plugin.metaDataManager.clearPlayerMeta(event.player.uniqueId)
     }

@@ -51,6 +51,9 @@ class KaMenu : JavaPlugin() {
     /** 周期清理过期临时数据的异步任务。 */
     private var tmpDataPurgeTask: KaTaskHandle? = null
 
+    /** 跨服动作分发器，通过 KaProxy 通道转发动作到其他后端。 */
+    private var crossServerDispatcher: CrossServerDispatcher? = null
+
     /**
      * 在 Bukkit 启用插件前下载并挂载运行时依赖。
      *
@@ -210,6 +213,11 @@ class KaMenu : JavaPlugin() {
             logger.info("BungeeCord support disabled")
         }
 
+        // 0.6 初始化 KaProxy 跨服动作通道
+        crossServerDispatcher = CrossServerDispatcher(this)
+        crossServerDispatcher!!.setup()
+        MenuActions.crossServerDispatcher = crossServerDispatcher
+
         // 3. 初始化菜单管理器
         menuManager = MenuManager(this)
         menuManager.loadMenus()
@@ -276,6 +284,11 @@ class KaMenu : JavaPlugin() {
         server.pluginManager.registerEvents(ContainerMenuListener(containerMenuService), this)
         containerMenuService.cleanupOnlinePlayers()
 
+        // 6.8 初始化统一输入捕获运行时和聊天框监听器
+        InputCaptureManager.init(this)
+        server.pluginManager.registerEvents(ChatInputListener(), this)
+        server.pluginManager.registerEvents(AnvilInputListener(), this)
+
         // 设置 ConditionUtils 插件引用
         ConditionUtils.setPlugin(this)
 
@@ -314,6 +327,10 @@ class KaMenu : JavaPlugin() {
             server.messenger.unregisterOutgoingPluginChannel(this, "BungeeCord")
         }
 
+        // 注销 KaProxy 跨服动作通道
+        crossServerDispatcher?.shutdown()
+        MenuActions.crossServerDispatcher = null
+
         if (::containerMenuService.isInitialized) {
             containerMenuService.shutdown()
         }
@@ -321,6 +338,7 @@ class KaMenu : JavaPlugin() {
         DialogSessionManager.clearAll()
         MenuListManager.clearAll()
         MenuArgumentManager.clearAll()
+        InputCaptureManager.clearAll()
         MenuUI.shutdown()
         TextParser.setItemSpriteManager(null)
         if (::externalItemSpriteManager.isInitialized) {

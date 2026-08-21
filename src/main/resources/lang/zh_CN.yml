@@ -217,6 +217,26 @@ tmpdata:
   missing_var: "[KaMenu] tmpdata 操作失败: add/take 操作的值 '{0}' 不是纯数字。玩家: {1}"
   invalid_type: "[KaMenu] tmpdata 操作失败: 无效的 type 参数 '{0}'，支持的类型: set, add, take, addtime, taketime, refresh, delete。玩家: {1}"
 
+# 跨服动作
+cross-server:
+  channel-enabled: "KaProxy 跨服动作通道已启用"
+  channel-disabled: "KaProxy 跨服动作通道未启用"
+  channel-register-failed: "KaProxy 通道注册失败，跨服动作不可用: {0}"
+  dispatch-failed: "跨服动作发送失败: {0}"
+  decode-failed: "跨服动作包解码失败: {0}"
+  action-rejected: "拒绝跨服执行非白名单动作: {0} (来源: {1})"
+  handle-error: "跨服动作处理异常: {0}"
+
+# 统一输入捕获
+input-capture:
+  default-prompt: "&e请在聊天框输入内容后按回车提交，输入 {0} 取消"
+  cancelled: "&c输入已取消"
+  timeout: "&c输入超时"
+  too-long: "&c输入过长（最多 {0} 个字符），请重新输入"
+  dialog-label: "&f请输入内容"
+  dialog-confirm: "&a确认"
+  dialog-cancel: "&c取消"
+
 # 条件工具
 condition:
   unknown_method: "[KaMenu] 未知内置条件方法: {0}"

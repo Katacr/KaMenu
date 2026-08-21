@@ -54,9 +54,13 @@ object PaperDialogActionFactory {
         return DialogAction.customClick({ response, _ ->
             val variables = initialVariables.toMutableMap()
             val rawValues = inputKeys.associateWith { key ->
-                response?.getFloat(key)?.toString()
-                    ?: response?.getText(key)
-                    ?: response?.getBoolean(key)?.toString()
+                // Paper's getFloat returns 0 for a checkbox key, so querying it first
+                // masks the submitted boolean value. Read with the declared component type.
+                when (inputTypes[key]) {
+                    "number" -> response?.getFloat(key)?.toString()
+                    "checkbox" -> response?.getBoolean(key)?.toString()
+                    else -> response?.getText(key)
+                }
             }
             variables.putAll(
                 InputCaptureUtils.captureVariables(

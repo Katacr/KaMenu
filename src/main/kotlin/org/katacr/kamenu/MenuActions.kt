@@ -36,13 +36,17 @@ object MenuActions {
     private var actionPackageManager: ActionPackageManager? = null
     private var bungeeCordEnabled: Boolean = false
     private val externalActionHandlers = ConcurrentHashMap<String, KaMenuActionHandler>()
+    /** 跨服动作分发器，由 KaMenu 主类在 KaProxy 通道启用时注入。 */
+    @Volatile
+    var crossServerDispatcher: CrossServerDispatcher? = null
 
     /**
      * 解析后的动作数据类（包含目标选择器）
      */
     private data class ParsedAction(
         val action: String,
-        val targetSelector: String?
+        val targetSelector: String?,
+        val crossServer: Boolean = false
     )
 
     /** 单行动作中提取出的条件、概率与独立延迟修饰符。 */
@@ -60,7 +64,8 @@ object MenuActions {
      */
     private data class ActionExecutionContext(
         val player: Player,
-        val variables: Map<String, String>,
+        /** 动作链共享的变量表；input: 捕获完成后会原地合并捕获值，供链上后续动作读取。 */
+        @Volatile var variables: Map<String, String>,
         val menuOpener: (Player, String) -> Unit,
         val config: YamlConfiguration?,
         val asyncDataOperations: Boolean,
@@ -153,22 +158,35 @@ object MenuActions {
     }
 
     /**
-     * 解析目标选择器
-     * 从动作字符串中提取 {player: ...} 部分
-     * @param action 原始动作字符串
-     * @return ParsedAction 包含动作和目标选择器
+     * 解析目标选择器和跨服标记。
+     *
+     * 从动作字符串中提取 `{player: ...}` 选择器和末尾的 `{cross}` 跨服标记。
+     * `{cross}` 必须在动作行最末尾（其后仅允许空白），表示该动作需通过 KaProxy 转发到其他后端。
      */
     private fun parseTargetSelector(action: String): ParsedAction {
-        val lower = action.lowercase()
+        // 先检测并剥离 {cross} 标记
+        var remaining = action
+        var crossServer = false
+        val crossLower = remaining.lowercase()
+        val crossIdx = crossLower.lastIndexOf("{cross}")
+        if (crossIdx >= 0) {
+            val afterCross = remaining.substring(crossIdx + "{cross}".length)
+            if (afterCross.isBlank()) {
+                crossServer = true
+                remaining = remaining.substring(0, crossIdx).trimEnd()
+            }
+        }
+
+        val lower = remaining.lowercase()
         val start = lower.lastIndexOf("{player:")
         if (start < 0) {
-            return ParsedAction(action, null)
+            return ParsedAction(remaining, null, crossServer)
         }
 
         var depth = 0
         var end = -1
-        for (index in start until action.length) {
-            when (action[index]) {
+        for (index in start until remaining.length) {
+            when (remaining[index]) {
                 '{' -> depth++
                 '}' -> {
                     depth--
@@ -181,12 +199,12 @@ object MenuActions {
         }
 
         if (end < 0) {
-            return ParsedAction(action, null)
+            return ParsedAction(remaining, null, crossServer)
         }
 
-        val selector = action.substring(start + "{player:".length, end).trim()
-        val actionWithoutSelector = action.removeRange(start, end + 1).trimEnd()
-        return ParsedAction(actionWithoutSelector, selector)
+        val selector = remaining.substring(start + "{player:".length, end).trim()
+        val actionWithoutSelector = remaining.removeRange(start, end + 1).trimEnd()
+        return ParsedAction(actionWithoutSelector, selector, crossServer)
     }
 
     /**
@@ -223,6 +241,22 @@ object MenuActions {
             else -> "take"
         }
         return type to match.groupValues[2].trim()
+    }
+
+    /**
+     * 供跨服分发器调用的公共接口：根据选择器获取本服目标玩家列表。
+     */
+    fun getTargetPlayersPublic(player: Player, selector: String): List<Player> {
+        return getTargetPlayers(player, selector)
+    }
+
+    /**
+     * 供跨服分发器调用的公共接口：对单个玩家执行已解析的动作。
+     *
+     * 仅用于跨服包接收后的本地执行，不携带菜单上下文（config 为 null）。
+     */
+    fun executeActionForPlayerPublic(player: Player, action: String, variables: Map<String, String>) {
+        executeActionForPlayer(player, action, variables, { _, _ -> }, null, true, null, null)
     }
 
     /**
@@ -917,6 +951,30 @@ object MenuActions {
                     }
                 }
             }
+            controlAction.startsWith("input-cancel:", ignoreCase = true) -> {
+                if (plugin != null) {
+                    InputCaptureManager.cancelByAction(context.player)
+                }
+                CompletableFuture.completedFuture(false)
+            }
+            controlAction.startsWith("input-dialog-complete:", ignoreCase = true) -> {
+                val keyParam = controlAction.substringAfter(":", "").trim()
+                val key = keyParam.removePrefix("key=").trim()
+                val value = context.variables[key].orEmpty()
+                KaScheduler.runPlayerLater(context.player, 1L, Runnable {
+                    InputCaptureManager.handleDialogComplete(context.player, key, value)
+                })
+                CompletableFuture.completedFuture(true)
+            }
+            controlAction.startsWith("input-dialog-cancel:", ignoreCase = true) -> {
+                if (plugin != null) {
+                    InputCaptureManager.cancelByAction(context.player)
+                }
+                CompletableFuture.completedFuture(true)
+            }
+            controlAction.startsWith("input:", ignoreCase = true) -> {
+                startInputCaptureAction(context, controlAction)
+            }
             else -> {
                 executeSingleAction(
                     context.player,
@@ -929,6 +987,71 @@ object MenuActions {
                     context.handledMenuLifecycle
                 )
                 CompletableFuture.completedFuture(false)
+            }
+        }
+    }
+
+    /**
+     * 发起 `input:` 统一输入捕获。
+     *
+     * 参数支持三种形式：`<命名id>`、`<命名id>;k=v...`（叠加覆盖）、`k=v;...`（纯内联单层）。
+     * 捕获成功后把层值合并进当前动作链上下文并继续执行后续动作；
+     * 超时/取消/超限则执行对应动作组并按 `return` 语义中断链。
+     */
+    private fun startInputCaptureAction(
+        context: ActionExecutionContext,
+        action: String
+    ): CompletableFuture<Boolean> {
+        val currentPlugin = plugin
+            ?: return CompletableFuture.completedFuture(false)
+        val params = action.substringAfter(":", "").trim()
+        if (params.isEmpty()) {
+            currentPlugin.logger.warning("input: 动作缺少参数。玩家: ${context.player.name}")
+            return CompletableFuture.completedFuture(false)
+        }
+
+        val configDefaultsTimeout = currentPlugin.config.getLong("input-capture.chat-capture.default-timeout", 60L)
+        val configDefaultMaxLength = currentPlugin.config.getInt("input-capture.chat-capture.max-length", 256)
+        val firstSegment = params.substringBefore(";").trim()
+        val parseResult = when {
+            // 纯命名：input: ask_nickname
+            !params.contains("=") ->
+                InputCaptureParser.parseNamed(params, context.config, configDefaultsTimeout, configDefaultMaxLength)
+
+            // 纯内联：input: type=chat;key=answer;timeout=60
+            firstSegment.contains("=") ->
+                InputCaptureParser.parseInline(params)
+
+            // 命名 + 覆盖：input: ask_nickname;timeout=30s
+            else -> {
+                val name = firstSegment
+                val overrideParams = params.substringAfter(";", "").trim()
+                val base = InputCaptureParser.parseNamed(name, context.config, configDefaultsTimeout, configDefaultMaxLength)
+                if (base.definition == null) base
+                else InputCaptureParser.applyOverrides(base.definition, overrideParams)
+            }
+        }
+
+        val definition = parseResult.definition
+        if (definition == null) {
+            currentPlugin.logger.warning(
+                "input: 动作解析失败: ${parseResult.errors.joinToString("; ")}。玩家: ${context.player.name}"
+            )
+            return CompletableFuture.completedFuture(false)
+        }
+
+        return InputCaptureManager.start(
+            context.player,
+            definition,
+            context.config,
+            context.contextId,
+            context.variables
+        ).thenApply { reason ->
+            if (reason == InputCaptureManager.EndReason.COMPLETE) {
+                context.variables = context.variables + InputCaptureManager.lastValues(context.player.uniqueId)
+                false
+            } else {
+                true
             }
         }
     }
@@ -1102,16 +1225,31 @@ object MenuActions {
         contextId: String? = null,
         handledMenuLifecycle: AtomicBoolean? = null
     ) {
-        // 解析目标选择器
+        // 解析目标选择器和跨服标记
         val parsed = parseTargetSelector(action)
         val actionWithoutSelector = parsed.action
         val selector = parsed.targetSelector
+        val crossServer = parsed.crossServer
 
         // 获取动作类型
         val actionType = getActionType(actionWithoutSelector)
 
         // 根据动作类型决定是否支持多目标
         when {
+            // 跨服动作：先本地执行，再发送到 KaProxy 转发到其他后端
+            crossServer && actionType == ActionType.MULTITARGET -> {
+                val targetPlayers = getTargetPlayers(player, selector)
+                targetPlayers.forEach { targetPlayer ->
+                    executeActionForPlayer(targetPlayer, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations, contextId, handledMenuLifecycle)
+                }
+                crossServerDispatcher?.dispatch(
+                    sourcePlayer = player,
+                    action = actionWithoutSelector,
+                    selector = selector ?: "*",
+                    variables = variables
+                )
+            }
+
             // 不支持多目标的动作，只对当前玩家执行
             actionType == ActionType.SINGLE_TARGET_ONLY || selector == null -> {
                 executeActionForPlayer(player, actionWithoutSelector, variables, menuOpener, config, asyncDataOperations, contextId, handledMenuLifecycle)

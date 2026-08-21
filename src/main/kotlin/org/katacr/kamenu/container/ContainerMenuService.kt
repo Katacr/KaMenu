@@ -15,6 +15,7 @@ import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.InventoryView
 import org.bukkit.persistence.PersistentDataType
+import org.katacr.kamenu.AnvilViewFactory
 import org.katacr.kamenu.DialogSessionManager
 import org.katacr.kamenu.InputCaptureUtils
 import org.katacr.kamenu.KaMenu
@@ -516,6 +517,38 @@ class ContainerMenuService(private val plugin: KaMenu) {
         return true
     }
 
+    /**
+     * 挂起当前容器会话供铁砧输入捕获临时使用。
+     *
+     * 关闭库存视图但不移除会话、不执行 Events.Close、不取消刷新任务；
+     * 返回挂起快照供 [resumeAfterInput] 恢复。无活跃会话时返回 null。
+     */
+    fun suspendForInput(player: Player): SuspendedSession? {
+        val session = sessions[player.uniqueId] ?: return null
+        val snapshot = SuspendedSession(
+            sessionId = session.sessionId,
+            menuId = session.menuId,
+            arguments = MenuArgumentManager.currentContext(player)?.arguments.orEmpty()
+        )
+        player.closeInventory()
+        return snapshot
+    }
+
+    /**
+     * 铁砧输入捕获完成后恢复原容器菜单。
+     *
+     * 使用 forceOpen 保持参数上下文，不重复执行 Events.Open。
+     */
+    fun resumeAfterInput(player: Player, snapshot: SuspendedSession) {
+        if (!player.isOnline) return
+        if (plugin.menuManager.getMenuConfig(snapshot.menuId) != null) {
+            MenuUI.forceOpenMenu(player, snapshot.menuId, plugin.menuManager, plugin, snapshot.arguments)
+        }
+    }
+
+    /** 挂起会话快照：保留菜单 ID 与参数，供恢复使用。 */
+    class SuspendedSession(val sessionId: UUID, val menuId: String, val arguments: List<String>)
+
     /** 返回玩家当前容器会话 ID，供异步生命周期回调识别原菜单。 */
     fun currentSessionId(player: Player): UUID? {
         return sessions[player.uniqueId]?.sessionId
@@ -891,16 +924,17 @@ class ContainerMenuService(private val plugin: KaMenu) {
             return InventoryWindow(Bukkit.createInventory(holder, definition.layout.size, title))
         }
         if (definition.type == ContainerMenuType.ANVIL) {
-            createModernAnvilView(player, title)?.let { view ->
-                return InventoryWindow(view.topInventory, view, supportsAnvilInput = true)
-            }
-            openPaperAnvil(player, title)?.let { view ->
-                return InventoryWindow(
-                    inventory = view.topInventory,
-                    view = view,
-                    alreadyOpen = true,
-                    supportsAnvilInput = true
-                )
+            AnvilViewFactory.openInputAnvil(player, title)?.let { opened ->
+                return if (opened.alreadyOpen) {
+                    InventoryWindow(
+                        inventory = opened.view.topInventory,
+                        view = opened.view,
+                        alreadyOpen = true,
+                        supportsAnvilInput = true
+                    )
+                } else {
+                    InventoryWindow(opened.view.topInventory, opened.view, supportsAnvilInput = true)
+                }
             }
         }
 
@@ -908,56 +942,6 @@ class ContainerMenuService(private val plugin: KaMenu) {
         return InventoryWindow(
             Bukkit.createInventory(null, InventoryType.valueOf(definition.type.name), title)
         )
-    }
-
-    /** 在现代 Bukkit/Paper 上通过 MenuType 构建真实铁砧视图，不静态引用新版本类。 */
-    private fun createModernAnvilView(player: Player, title: String): InventoryView? {
-        return runCatching {
-            val menuTypeClass = Class.forName("org.bukkit.inventory.MenuType")
-            val anvilType = menuTypeClass.getField("ANVIL").get(null)
-            val typedMenuClass = Class.forName("org.bukkit.inventory.MenuType\$Typed")
-            val builder = typedMenuClass.getMethod("builder").invoke(anvilType)
-            val locationBuilderClass = Class.forName(
-                "org.bukkit.inventory.view.builder.LocationInventoryViewBuilder"
-            )
-            val inventoryBuilderClass = Class.forName("org.bukkit.inventory.view.builder.InventoryViewBuilder")
-
-            locationBuilderClass.getMethod("checkReachable", Boolean::class.javaPrimitiveType)
-                .invoke(builder, false)
-
-            val titleMethod = inventoryBuilderClass.methods.firstOrNull {
-                it.name == "title" && it.parameterCount == 1 && it.parameterTypes[0] == String::class.java
-            } ?: inventoryBuilderClass.methods.firstOrNull {
-                it.name == "title" && it.parameterCount == 1 &&
-                    it.parameterTypes[0].name == "net.kyori.adventure.text.Component"
-            }
-            if (titleMethod != null) {
-                val titleValue = if (titleMethod.parameterTypes[0] == String::class.java) {
-                    title
-                } else {
-                    TextParser.parseText(title, player)
-                }
-                titleMethod.invoke(builder, titleValue)
-            }
-
-            inventoryBuilderClass.getMethod("build", org.bukkit.entity.HumanEntity::class.java)
-                .invoke(builder, player) as InventoryView
-        }.getOrNull()
-    }
-
-    /** 在没有 MenuType 的 Paper 版本上调用其扩展 openAnvil API；Spigot 缺少该方法时返回 null。 */
-    private fun openPaperAnvil(player: Player, title: String): InventoryView? {
-        return runCatching {
-            val method = player.javaClass.methods.first {
-                it.name == "openAnvil" && it.parameterCount == 2 &&
-                    it.parameterTypes[1] == Boolean::class.javaPrimitiveType
-            }
-            val view = method.invoke(player, null, true) as? InventoryView ?: return@runCatching null
-            view.javaClass.methods.firstOrNull {
-                it.name == "setTitle" && it.parameterTypes.contentEquals(arrayOf(String::class.java))
-            }?.let { runCatching { it.invoke(view, title) } }
-            view
-        }.getOrNull()
     }
 
     /** 打开尚未显示的库存或 InventoryView；旧 Paper openAnvil 返回的视图已经打开。 */

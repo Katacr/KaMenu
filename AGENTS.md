@@ -28,8 +28,8 @@
 ## KaMenu 项目信息
 
 - 项目路径：`/home/plugins/KaMenu`。
-- 当前主线版本：`2.0.4`。
-- 主语言：Kotlin；使用 Gradle 构建，发布产物为 `build/libs/KaMenu-2.0.4.jar`。
+- 当前主线版本：`2.0.5`。
+- 主语言：Kotlin；使用 Gradle 构建，发布产物为 `build/libs/KaMenu-2.0.5.jar`。
 - 兼容目标：Minecraft `1.16.5+`，运行时最低 Java `16`。Dialog 仅在当前核心提供可用适配器时启用；Container、动作、变量和自定义指令是低版本的主要功能路径。
 - 菜单默认按 Dialog 编写；只有用户明确要求箱子、漏斗、发射器、投掷器、熔炉、高炉、烟熏炉、铁砧等容器界面时，才使用 Container 语法。
 - Paper/Folia 和 Spigot 共用一个插件 JAR，通过运行时适配处理差异。`toast` 等 Paper 专属能力不能作为跨平台菜单的必需反馈，跨平台反馈优先使用 `actionbar` 或 `title`。
