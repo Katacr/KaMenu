@@ -33,14 +33,14 @@ class TrMenuLayoutConverterTest {
         assertNotNull(result)
         assertFalse(diagnostics.hasErrors)
         assertEquals(ContainerMenuType.HOPPER, result?.type)
-        assertEquals(listOf("A   `named-button`"), result?.rows)
+        assertEquals(listOf("A   `named-button`"), result?.pages?.first())
         assertEquals(listOf(0), result?.buttons?.first { it.sourceId == "A" }?.slots)
         assertEquals(listOf(4), result?.buttons?.first { it.sourceId == "named-button" }?.slots)
-        assertNotNull(ContainerLayoutParser.parse(result!!.rows, result.type).definition)
+        assertNotNull(ContainerLayoutParser.parse(result!!.pages.first(), result.type).definition)
     }
 
     @Test
-    fun `reduces animated explicit slots to first frame`() {
+    fun `preserves animated explicit slots as cycling frames`() {
         val (result, diagnostics) = convert(
             """
             Type: CHEST
@@ -57,26 +57,34 @@ class TrMenuLayoutConverterTest {
         )
 
         assertNotNull(result)
-        assertEquals(listOf(1), result?.buttons?.single()?.slots)
-        assertTrue(diagnostics.issues.any { it.code == "TRM_ICON_SLOT_ANIMATION_FIRST_FRAME" })
+        assertEquals(listOf("1", "2"), result?.buttons?.single()?.slotFrames)
+        assertTrue(diagnostics.issues.any { it.code == "TRM_ICON_SLOT_ANIMATION" })
     }
 
     @Test
-    fun `rejects multiple layout pages`() {
+    fun `converts multiple layout pages`() {
         val (result, diagnostics) = convert(
             """
             Layout:
               - ['A        ']
-              - ['A        ']
+              - ['B        ']
             Icons:
               A:
                 display:
                   material: STONE
+              B:
+                display:
+                  material: PAPER
             """
         )
 
-        assertNull(result)
-        assertTrue(diagnostics.issues.any { it.code == "TRM_MULTI_PAGE_UNSUPPORTED" })
+        assertNotNull(result)
+        assertFalse(diagnostics.hasErrors)
+        assertEquals(2, result?.pages?.size)
+        assertEquals(listOf("A        "), result?.pages?.get(0))
+        assertEquals(listOf("B        "), result?.pages?.get(1))
+        assertEquals(0, result?.buttons?.first { it.sourceId == "A" }?.pageIndex)
+        assertEquals(1, result?.buttons?.first { it.sourceId == "B" }?.pageIndex)
     }
 
     @Test

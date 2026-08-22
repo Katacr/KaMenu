@@ -1071,15 +1071,32 @@ object MenuActions {
     /**
      * 处理 repeat 按钮分页动作。
      *
-     * 语法：`page: <listId> next|prev|+N|-N|pageNumber`。
+     * 语法：
+     * - Container 多页菜单：`page: next|prev|+N|-N|pageNumber`
+     * - Dialog repeat 分页：`page: <listId> next|prev|+N|-N|pageNumber`
      */
     private fun handlePageAction(player: Player, action: String, config: YamlConfiguration?, contextId: String?) {
         val currentPlugin = plugin ?: return
         val currentConfig = config ?: return
         val args = action.substringAfter(":", "").trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        if (args.size < 2) {
+        if (args.isEmpty()) return
+
+        val containerService = currentPlugin.containerMenuService
+        val containerSession = containerService.ownsInventory(player, player.openInventory.topInventory)
+
+        if (containerSession && args.size == 1) {
+            val operation = args[0].lowercase()
+            when {
+                operation == "next" -> containerService.switchPage(player, containerService.currentPage(player) + 1)
+                operation == "prev" || operation == "previous" -> containerService.switchPage(player, containerService.currentPage(player) - 1)
+                operation.startsWith("+") -> containerService.switchPage(player, containerService.currentPage(player) + (operation.drop(1).toIntOrNull() ?: 0))
+                operation.startsWith("-") -> containerService.switchPage(player, containerService.currentPage(player) + (operation.toIntOrNull() ?: 0))
+                else -> operation.toIntOrNull()?.let { containerService.switchPage(player, it) }
+            }
             return
         }
+
+        if (args.size < 2) return
 
         val listId = args[0]
         val operation = args[1].lowercase()
@@ -1335,6 +1352,20 @@ object MenuActions {
                 KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndSendTitle(player, args)
                 })
+            }
+
+            // set-title: 更新容器标题
+            finalCmd.startsWith("set-title:") -> {
+                val rawTitle = finalCmd.removePrefix("set-title:").trim()
+                val service = plugin?.containerMenuService
+                if (service != null) {
+                    service.overrideSessionTitle(
+                        player,
+                        rawTitle.takeIf { it.isNotEmpty() }
+                    )
+                } else {
+                    MenuUI.sendMessage(player, TextParser.parseText("§c容器服务不可用，无法更新标题。"))
+                }
             }
 
             // hovertext: 可点击文本
@@ -2112,7 +2143,8 @@ object MenuActions {
         rawText: String,
         player: Player?,
         config: YamlConfiguration?,
-        menuOpener: ((Player, String) -> Unit)?
+        menuOpener: ((Player, String) -> Unit)?,
+        contextId: String? = null
     ): Component {
         val forceOraxenResolver = OraxenTextAdapter.containsGlyphTag(rawText)
         val replacements = mutableListOf<Pair<IntRange, Component>>()
@@ -2131,7 +2163,7 @@ object MenuActions {
             val content = rawText.substring(startIndex + 1, endIndex)  // 不包括尖括号
 
             // 解析 hovertext（传递上下文）
-            val component = parseClickableComponent(content, player, config, menuOpener)
+            val component = parseClickableComponent(content, player, config, menuOpener, contextId)
             if (component != null) {
                 // 记录替换：原始位置范围 → 组件
                 replacements.add(Pair(IntRange(startIndex, endIndex), component))
@@ -2204,7 +2236,8 @@ object MenuActions {
         content: String,
         player: Player? = null,
         config: YamlConfiguration? = null,
-        menuOpener: ((Player, String) -> Unit)? = null
+        menuOpener: ((Player, String) -> Unit)? = null,
+        contextId: String? = null
     ): Component? {
         var text = ""
         var hover = ""
@@ -2253,7 +2286,8 @@ object MenuActions {
                 newline,
                 player,
                 config,
-                menuOpener
+                menuOpener,
+                contextId
             )
             if (player != null && hoverItem.isNotBlank()) {
                 resolveHoverItem(player, hoverItem)?.let { item ->
@@ -2339,7 +2373,8 @@ object MenuActions {
         newline: Boolean = false,
         player: Player? = null,
         config: YamlConfiguration? = null,
-        menuOpener: ((Player, String) -> Unit)? = null
+        menuOpener: ((Player, String) -> Unit)? = null,
+        contextId: String? = null
     ): Component = createAdventureClickableTextInternal(
         text,
         hoverText,
@@ -2350,7 +2385,8 @@ object MenuActions {
         newline,
         player,
         config,
-        menuOpener
+        menuOpener,
+        contextId
     )
 
     /** 创建包含 copy 点击行为的可点击文本，并统一处理互斥点击动作。 */
@@ -2364,7 +2400,8 @@ object MenuActions {
         newline: Boolean,
         player: Player?,
         config: YamlConfiguration?,
-        menuOpener: ((Player, String) -> Unit)?
+        menuOpener: ((Player, String) -> Unit)?,
+        contextId: String? = null
     ): Component {
         var component = TextParser.parseText(text, player)
 
@@ -2386,6 +2423,7 @@ object MenuActions {
                                     menuOpener,
                                     0L,
                                     config,
+                                    contextId = contextId,
                                     actionListId = actionList.id
                                 )
                             })

@@ -104,7 +104,6 @@ class TrMenuActionConverterTest {
             listOf(
                 "refresh: Old;*",
                 "js: player.setHealth(0)",
-                "page: 1",
                 "unknown-action: value"
             ),
             "actions",
@@ -112,7 +111,20 @@ class TrMenuActionConverterTest {
         )
 
         assertEquals(listOf("refresh: new_button", "refresh: *"), result)
-        assertEquals(3, diagnostics.issues.count { it.code == "TRM_ACTION_UNSUPPORTED" })
+        assertEquals(2, diagnostics.issues.count { it.code == "TRM_ACTION_UNSUPPORTED" })
+    }
+
+    @Test
+    fun `converts page switching action`() {
+        val diagnostics = TrMenuMigrationDiagnostics()
+        val result = converter.convert(
+            listOf("page: 1", "page: next", "page: prev", "page: +2", "page: -1"),
+            "actions",
+            diagnostics
+        )
+
+        assertEquals(listOf("page: 1", "page: next", "page: prev", "page: +2", "page: -1"), result)
+        assertTrue(diagnostics.issues.none { it.code == "TRM_ACTION_UNSUPPORTED" })
     }
 
     @Test
@@ -198,5 +210,64 @@ class TrMenuActionConverterTest {
 
         assertTrue(result.isEmpty())
         assertTrue(diagnostics.issues.any { it.code == "TRM_ACTION_UNSUPPORTED" })
+    }
+
+    @Test
+    fun `recursively converts nested condition action tree`() {
+        val config = YamlConfiguration()
+        config.loadFromString(
+            """
+            actions:
+              - condition: 'check papi *%player_empty_slots% >= *2'
+                deny:
+                  - 'tell: not enough space'
+                actions:
+                  - condition: 'check papi *%vip% >= *10'
+                    deny:
+                      - 'tell: not vip'
+                    actions:
+                      - 'tell: success'
+                      - 'console: give item'
+            """.trimIndent()
+        )
+        val diagnostics = TrMenuMigrationDiagnostics()
+        val section = TrMenuSourceSection.from(config).value("actions")
+
+        val result = converter.convert(section, "actions", diagnostics)
+
+        assertTrue(diagnostics.issues.none { it.code == "TRM_ACTION_MAP_EXTRA_KEYS" })
+        assertEquals(1, result.size)
+        val outer = result[0] as Map<*, *>
+        assertEquals("%player_empty_slots% >= 2", outer["condition"])
+        assertEquals(listOf("tell: not enough space"), outer["deny"])
+        val innerAllow = outer["allow"] as List<*>
+        assertEquals(1, innerAllow.size)
+        val inner = innerAllow[0] as Map<*, *>
+        assertEquals("%vip% >= 10", inner["condition"])
+        assertEquals(listOf("tell: not vip"), inner["deny"])
+        val leafAllow = inner["allow"] as List<*>
+        assertEquals(listOf("tell: success", "console: give item"), leafAllow)
+    }
+
+    @Test
+    fun `converts set-title action to KaMenu set-title action`() {
+        val diagnostics = TrMenuMigrationDiagnostics()
+        val result = converter.convert(
+            listOf(
+                "set-title: '&c&l欢迎回来, %player_name%'",
+                "set-title: 普通标题"
+            ),
+            "actions",
+            diagnostics
+        )
+
+        assertEquals(
+            listOf(
+                "set-title: '&c&l欢迎回来, %player_name%'",
+                "set-title: 普通标题"
+            ),
+            result
+        )
+        assertTrue(diagnostics.hasErrors.not())
     }
 }

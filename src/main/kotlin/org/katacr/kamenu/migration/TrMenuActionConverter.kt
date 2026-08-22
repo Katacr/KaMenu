@@ -52,8 +52,48 @@ internal class TrMenuActionConverter(
     ): List<Any> = when (raw) {
         null -> emptyList()
         is List<*> -> raw.flatMapIndexed { index, value -> convert(value, "$path[$index]", diagnostics) }
-        is TrMenuSourceSection -> convertActionMap(raw, path, diagnostics)
+        is TrMenuSourceSection -> convertSection(raw, path, diagnostics)
         else -> convertLine(raw.toString(), path, diagnostics)
+    }
+
+    /**
+     * 转换单个动作节点 Section。
+     *
+     * TrMenu 嵌套动作树中的元素可以是带 `condition`/`actions`/`deny-actions` 的条件分支，
+     * 递归展开为 KaMenu 的 `{condition, allow, deny}` 结构；否则按单键动作包装处理。
+     */
+    private fun convertSection(
+        section: TrMenuSourceSection,
+        path: String,
+        diagnostics: TrMenuMigrationDiagnostics
+    ): List<Any> {
+        val hasCondition = section.value(TrMenuSourceProperty.CONDITION, "$path.condition", diagnostics) != null
+        val hasActions = section.value(TrMenuSourceProperty.ACTIONS, "$path.actions", diagnostics) != null
+        val hasDeny = section.value(TrMenuSourceProperty.DENY_ACTIONS, "$path.deny-actions", diagnostics) != null
+        if ((hasCondition || hasDeny) && (hasActions || hasDeny)) {
+            return listOf(convertConditionBranch(section, path, diagnostics))
+        }
+        return convertActionMap(section, path, diagnostics)
+    }
+
+    /** 递归展开 TrMenu 嵌套条件动作分支为 KaMenu 的 `{condition, allow, deny}` 结构。 */
+    private fun convertConditionBranch(
+        section: TrMenuSourceSection,
+        path: String,
+        diagnostics: TrMenuMigrationDiagnostics
+    ): Map<String, Any> {
+        val condition = section.value(TrMenuSourceProperty.CONDITION, "$path.condition", diagnostics)
+            ?.toString()?.trim().orEmpty()
+        val expression = if (condition.isEmpty()) "true" else {
+            conditionConverter.convert(condition, "$path.condition", diagnostics) ?: return emptyMap()
+        }
+        val allow = convert(section.value(TrMenuSourceProperty.ACTIONS, "$path.actions", diagnostics), "$path.actions", diagnostics)
+        val deny = convert(section.value(TrMenuSourceProperty.DENY_ACTIONS, "$path.deny-actions", diagnostics), "$path.deny-actions", diagnostics)
+        return linkedMapOf<String, Any>(
+            "condition" to expression,
+            "allow" to allow,
+            "deny" to deny
+        )
     }
 
     private fun convertActionMap(
@@ -192,6 +232,8 @@ internal class TrMenuActionConverter(
             }
             key.matches(Regex("set-?(args?|arguments?)")) ->
                 convertTextAction("set-args", content, path, diagnostics)
+            key.matches(Regex("set-?titles?")) ->
+                convertTextAction("set-title", content, path, diagnostics)
             key.matches(Regex("(del|delete|remove)-?(args?|arguments?)")) -> listOf("del-args")
             key.matches(Regex("resets?")) -> {
                 diagnostics.add(
@@ -222,11 +264,38 @@ internal class TrMenuActionConverter(
                     emptyList()
                 }
             }
+            key.matches(Regex("(set|switch)?-?(layout|shape|page)s?")) -> convertPage(content, path, diagnostics)
             else -> {
                 unsupported(raw, path, diagnostics, "Unknown or unsupported TrMenu action '$key'.")
                 emptyList()
             }
         }
+    }
+
+    private fun convertPage(
+        content: String,
+        path: String,
+        diagnostics: TrMenuMigrationDiagnostics
+    ): List<Any> {
+        val operation = content.trim().lowercase().takeIf { it.isNotEmpty() } ?: "0"
+        val normalized = when {
+            operation == "next" -> "next"
+            operation == "prev" || operation == "previous" -> "prev"
+            operation.startsWith("+") -> operation
+            operation.startsWith("-") -> operation
+            operation.toIntOrNull() != null -> operation.toIntOrNull()!!.toString()
+            else -> {
+                diagnostics.add(
+                    "TRM_ACTION_PAGE_UNSUPPORTED",
+                    TrMenuMigrationSeverity.ERROR,
+                    TrMenuMigrationCompatibility.UNSUPPORTED,
+                    path,
+                    "TrMenu page operation '$content' cannot be represented by KaMenu Container page switching."
+                )
+                return emptyList()
+            }
+        }
+        return listOf("page: $normalized")
     }
 
     private fun convertSound(

@@ -152,9 +152,9 @@ class PaperDialogPlatformAdapter : DialogPlatformAdapter {
     }
 
     override fun sendClickableText(player: Player, rawText: String, config: YamlConfiguration?, contextId: String?) {
-        val component = MenuActions.parseClickableText(rawText, player, config) { target, menuId ->
+        val component = MenuActions.parseClickableText(rawText, player, config, { target, menuId ->
             MenuUI.openMenu(target, menuId, plugin.menuManager, plugin)
-        }
+        }, contextId)
         player.sendMessage(component)
     }
 

@@ -59,6 +59,28 @@ class ContainerValueResolver(
         return string(value).trim().toIntOrNull() ?: defaultValue
     }
 
+    /**
+     * 将槽位表达式解析为一组整数槽位索引。
+     *
+     * 支持单值（如 `5` 或 `%papi%`）、列表（如 `[8, 9, 10]`）以及逗号分隔的多值文本
+     * （如 `8,9,10`、`%a%,%b%`），使一个按钮可同时渲染在多个运行时槽位。
+     * 解析失败或越界的单个槽位会被跳过。
+     */
+    fun slotIndexes(value: ContainerConfigValue?, layoutSize: Int): List<Int> {
+        val resolved = resolve(value) ?: return emptyList()
+        val rawEntries = when (resolved) {
+            is Collection<*> -> resolved.mapNotNull { it?.toString() }
+            is Map<*, *> -> return emptyList()
+            else -> resolved.toString().split(',')
+        }
+        return rawEntries.flatMap { entry ->
+            val parts = entry.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            parts.mapNotNull { token ->
+                token.toIntOrNull()?.takeIf { it in 0 until layoutSize }
+            }
+        }.distinct()
+    }
+
     /** 将动态值解析为布尔值，并兼容 true、yes、1。 */
     fun boolean(value: ContainerConfigValue?, defaultValue: Boolean = false): Boolean {
         return when (string(value).trim().lowercase()) {

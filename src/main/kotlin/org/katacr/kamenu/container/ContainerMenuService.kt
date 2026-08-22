@@ -63,12 +63,16 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val freeSlotTransactionRunning: AtomicBoolean = AtomicBoolean(false),
         val lastClickAtMillis: AtomicLong = AtomicLong(0L),
         @Volatile var titleFrame: Int = 0,
+        @Volatile var overrideTitle: String? = null,
         @Volatile var currentTitle: String = "",
         @Volatile var rebindingTitle: Boolean = false,
         @Volatile var anvilInput: String = "",
         @Volatile var anvilInputInitialized: Boolean = false,
         @Volatile var furnaceWarningLogged: Boolean = false,
-        val progressStates: MutableMap<String, ProgressWatcherState> = mutableMapOf()
+        @Volatile var currentPage: Int = 0,
+        val progressStates: MutableMap<String, ProgressWatcherState> = mutableMapOf(),
+        @Volatile var dynamicSlotIndex: Map<Int, String> = emptyMap(),
+        @Volatile var animatedSlotFrame: Int = 0
     )
 
     /** 记录单个进度监听器在当前菜单会话中的边沿触发状态。 */
@@ -214,14 +218,16 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val generation = plugin.menuManager.getGeneration()
         val sessionId = UUID.randomUUID()
         val holder = ContainerMenuHolder(sessionId, player.uniqueId, menuId, generation)
+        val initialPage = resolveDefaultPage(player, config, definition)
         val initialInput = resolveInitialAnvilInput(player, config, definition)
+        val pageVariables = pageVariables(initialPage, definition.pageCount)
         val initialVariables = if (definition.type == ContainerMenuType.ANVIL) {
-            mapOf("input" to initialInput)
+            pageVariables + ("input" to initialInput)
         } else {
-            emptyMap()
+            pageVariables
         }
         val initialTitle = resolveTitle(player, config, definition, 0, initialVariables)
-        val window = createInventoryWindow(player, holder, definition, initialTitle)
+        val window = createInventoryWindow(player, holder, definition, initialPage, initialTitle)
         holder.bindInventory(window.inventory)
         val session = ActiveSession(
             sessionId = sessionId,
@@ -234,11 +240,13 @@ class ContainerMenuService(private val plugin: KaMenu) {
             supportsAnvilInput = window.supportsAnvilInput,
             anvilInput = initialInput,
             anvilInputInitialized = definition.properties.contains("input"),
-            currentTitle = initialTitle
+            currentTitle = initialTitle,
+            currentPage = initialPage
         )
         sessions[player.uniqueId] = session
 
         try {
+            rebuildDynamicSlots(player, session)
             refreshButtons(player, session, definition.buttons.keys)
             initializeAnvilInputItem(player, session)
             openWindow(player, window)
@@ -268,7 +276,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         hotbarButton: Int?
     ) {
         val session = validSession(player, inventory) ?: return
-        val buttonId = session.definition.layout.buttonAt(slot) ?: return
+        val buttonId = buttonIdAt(session, slot) ?: return
         val button = session.definition.buttons[buttonId] ?: return
         val baseVariables = buttonVariables(session, buttonId)
         val variant = resolveButtonVariant(player, session, button, baseVariables) ?: return
@@ -352,6 +360,11 @@ class ContainerMenuService(private val plugin: KaMenu) {
         return validSession(player, inventory) != null
     }
 
+    /** 返回玩家当前 Container 会话的页码；无会话时返回 -1。 */
+    fun currentPage(player: Player): Int {
+        return sessions[player.uniqueId]?.currentPage ?: -1
+    }
+
     /** 判断库存是否由 KaMenu 创建；即使活动会话意外丢失，也用于保持交互拦截。 */
     fun isManagedInventory(inventory: Inventory): Boolean {
         return inventory.holder is ContainerMenuHolder || inventory.contents.any(::isDisplayItem)
@@ -369,7 +382,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         session.anvilInputInitialized = true
         applyAnvilProperties(player, session)
 
-        val buttonId = session.definition.layout.buttonAt(ANVIL_RESULT_SLOT) ?: return null
+        val buttonId = currentLayout(session).buttonAt(ANVIL_RESULT_SLOT) ?: return null
         val button = session.definition.buttons[buttonId] ?: return null
         val variables = buttonVariables(session, buttonId)
         val variant = resolveButtonVariant(player, session, button, variables) ?: return null
@@ -757,6 +770,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         if (validSession(player, session.holder.inventory) !== session) return
         if (!session.refreshRunning.compareAndSet(false, true)) return
         try {
+            rebuildDynamicSlots(player, session)
             if (refreshTitle) refreshTitle(player, session, advanceTitle)
             if (buttonIds.isNotEmpty()) refreshButtons(player, session, buttonIds)
             if (refreshProperties) applyViewProperties(player, session)
@@ -772,7 +786,9 @@ class ContainerMenuService(private val plugin: KaMenu) {
     /** 重新计算按钮显示条件和物品，仅写入实际发生变化的槽位。 */
     private fun refreshButtons(player: Player, session: ActiveSession, buttonIds: Collection<String>) {
         val inventory = session.holder.inventory
+        val layout = currentLayout(session)
         val sessionVariables = sessionVariables(session)
+        val dynamicSlotsForButtons = session.dynamicSlotIndex.filterValues { it in buttonIds }
         buttonIds.forEach { buttonId ->
             val button = session.definition.buttons[buttonId] ?: return@forEach
             val variables = buttonVariables(session, buttonId, sessionVariables)
@@ -795,7 +811,12 @@ class ContainerMenuService(private val plugin: KaMenu) {
             } else {
                 null
             }
-            session.definition.layout.slotsByButton[buttonId].orEmpty().forEach { slot ->
+            val slots = if (button.slot != null) {
+                dynamicSlotsForButtons.filterValues { it == buttonId }.keys
+            } else {
+                layout.slotsByButton[buttonId].orEmpty()
+            }
+            slots.forEach { slot ->
                 val rendered = item?.clone()?.let { candidate ->
                     if (slot == ANVIL_INPUT_SLOT && session.definition.type == ContainerMenuType.ANVIL &&
                         session.anvilInputInitialized
@@ -857,7 +878,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
 
     /** 解析标题帧并在标题变化时原地更新或兼容性重绑库存。 */
     private fun refreshTitle(player: Player, session: ActiveSession, advance: Boolean) {
-        val frames = resolveTitleFrames(player, session.config, session.definition, sessionVariables(session))
+        val frames = resolveTitleFrames(player, session.config, session.definition, sessionVariables(session), session.overrideTitle)
         if (advance && frames.size > 1) {
             session.titleFrame = (session.titleFrame + 1) % frames.size
         } else {
@@ -877,7 +898,7 @@ class ContainerMenuService(private val plugin: KaMenu) {
         session.rebindingTitle = true
         try {
             val oldInventory = session.holder.inventory
-            val replacement = createInventoryWindow(player, session.holder, session.definition, title)
+            val replacement = createInventoryWindow(player, session.holder, session.definition, session.currentPage, title)
             replacement.inventory.contents = oldInventory.contents.map { it?.clone() }.toTypedArray()
             session.holder.bindInventory(replacement.inventory)
             initializeAnvilInputItem(player, session)
@@ -908,8 +929,10 @@ class ContainerMenuService(private val plugin: KaMenu) {
         player: Player,
         config: YamlConfiguration,
         definition: ContainerMenuDefinition,
-        variables: Map<String, String> = emptyMap()
+        variables: Map<String, String> = emptyMap(),
+        overrideTitle: String? = null
     ): List<String> {
+        if (overrideTitle != null) return listOf(overrideTitle)
         return ContainerValueResolver(player, config, variables).strings(definition.title).ifEmpty { listOf("KaMenu") }
     }
 
@@ -918,10 +941,12 @@ class ContainerMenuService(private val plugin: KaMenu) {
         player: Player,
         holder: ContainerMenuHolder,
         definition: ContainerMenuDefinition,
+        page: Int = 0,
         title: String
     ): InventoryWindow {
+        val layout = definition.layouts[page.coerceIn(0, definition.pageCount - 1)]
         if (definition.type == ContainerMenuType.CHEST) {
-            return InventoryWindow(Bukkit.createInventory(holder, definition.layout.size, title))
+            return InventoryWindow(Bukkit.createInventory(holder, layout.size, title))
         }
         if (definition.type == ContainerMenuType.ANVIL) {
             AnvilViewFactory.openInputAnvil(player, title)?.let { opened ->
@@ -1180,11 +1205,11 @@ class ContainerMenuService(private val plugin: KaMenu) {
 
     /** 返回当前菜单可供显示、条件和动作统一读取的会话变量。 */
     private fun sessionVariables(session: ActiveSession): Map<String, String> {
-        val variables = if (session.definition.type == ContainerMenuType.ANVIL) {
-            mapOf("input" to session.anvilInput)
-        } else {
-            emptyMap()
+        val variables = mutableMapOf<String, String>()
+        if (session.definition.type == ContainerMenuType.ANVIL) {
+            variables["input"] = session.anvilInput
         }
+        variables += pageVariables(session.currentPage, session.definition.pageCount)
         return variables + FreeSlotItemContext.sessionVariables(
             session.definition.freeSlots,
             session.holder.inventory
@@ -1226,6 +1251,120 @@ class ContainerMenuService(private val plugin: KaMenu) {
             return null
         }
         return session
+    }
+
+    /** 返回当前页的布局定义。 */
+    private fun currentLayout(session: ActiveSession): ContainerLayoutDefinition {
+        return session.definition.layouts[session.currentPage.coerceIn(0, session.definition.pageCount - 1)]
+    }
+
+    /**
+     * 按当前玩家的变量重新解析所有声明了运行时槽位的按钮，得到 slot→buttonId 映射。
+     *
+     * 在每次渲染/刷新/翻页前调用，使动态槽位随玩家状态变化而移动。
+     */
+    private fun rebuildDynamicSlots(player: Player, session: ActiveSession) {
+        val layout = currentLayout(session)
+        val inventory = session.holder.inventory
+        val previous = session.dynamicSlotIndex
+        if (layout.dynamicSlotButtons.isEmpty()) {
+            previous.keys.forEach { slot -> inventory.setItem(slot, null) }
+            session.dynamicSlotIndex = emptyMap()
+            return
+        }
+        val sessionVariables = sessionVariables(session)
+        val index = linkedMapOf<Int, String>()
+        val frameButtons = mutableListOf<String>()
+        layout.dynamicSlotButtons.forEach { buttonId ->
+            val button = session.definition.buttons[buttonId] ?: return@forEach
+            val variables = buttonVariables(session, buttonId, sessionVariables)
+            val resolver = ContainerValueResolver(player, session.config, variables)
+            val slotExpr = when {
+                button.slotFrames != null -> {
+                    frameButtons += buttonId
+                    val frameCount = button.slotFrames.size
+                    val frame = Math.floorMod(session.animatedSlotFrame, frameCount)
+                    button.slotFrames[frame]
+                }
+                button.slot != null -> button.slot
+                else -> return@forEach
+            }
+            val slots = resolver.slotIndexes(slotExpr, layout.size)
+            slots.forEach { slot ->
+                val conflicting = layout.buttonAt(slot)
+                if (conflicting != null && conflicting !in layout.dynamicSlotButtons) return@forEach
+                index[slot] = buttonId
+            }
+        }
+        previous.keys.filterNot(index::containsKey).forEach { slot -> inventory.setItem(slot, null) }
+        session.dynamicSlotIndex = index
+        if (frameButtons.isNotEmpty()) {
+            session.animatedSlotFrame = Math.floorMod(session.animatedSlotFrame + 1, frameButtons.size.coerceAtLeast(1))
+        }
+    }
+
+    /** 返回指定槽位对应的按钮 ID，优先使用运行时动态槽位映射。 */
+    private fun buttonIdAt(session: ActiveSession, slot: Int): String? {
+        return session.dynamicSlotIndex[slot] ?: currentLayout(session).buttonAt(slot)
+    }
+
+    /** 生成页码变量。 */
+    private fun pageVariables(page: Int, pageCount: Int): Map<String, String> {
+        return mapOf(
+            "page" to page.toString(),
+            "pages" to pageCount.toString(),
+            "page_display" to (page + 1).toString()
+        )
+    }
+
+    /** 解析菜单的初始页码配置。 */
+    private fun resolveDefaultPage(player: Player, config: YamlConfiguration, definition: ContainerMenuDefinition): Int {
+        val raw = definition.defaultPage ?: return 0
+        val resolved = when (raw) {
+            is ContainerConfigValue.Scalar -> raw.value.toString().trim()
+            else -> return 0
+        }
+        if (resolved.isEmpty()) return 0
+        val parsed = org.katacr.kamenu.TextResolver.resolve(player, resolved, emptyMap(), config)
+        return parsed.trim().toIntOrNull()?.coerceIn(0, definition.pageCount - 1) ?: 0
+    }
+
+    /**
+     * 在同一会话内切换到目标页码。
+     *
+     * 如果新旧页面布局尺寸相同则复用容器，否则关闭旧容器并打开新容器。
+     * 页面切换不会触发 Events.Open / Events.Close，也不重建菜单级任务。
+     */
+    fun switchPage(player: Player, targetPage: Int): Boolean {
+        val session = sessions[player.uniqueId] ?: return false
+        val clamped = targetPage.coerceIn(0, session.definition.pageCount - 1)
+        if (clamped == session.currentPage) return true
+
+        val oldLayout = currentLayout(session)
+        val newLayout = session.definition.layouts[clamped]
+        val canReuse = oldLayout.rows == newLayout.rows &&
+            oldLayout.columns == newLayout.columns &&
+            session.definition.type != ContainerMenuType.ANVIL
+
+        session.currentPage = clamped
+        rebuildDynamicSlots(player, session)
+
+        if (canReuse) {
+            val inventory = session.holder.inventory
+            inventory.clear()
+            refreshButtons(player, session, session.definition.buttons.keys)
+        } else {
+            val variables = sessionVariables(session)
+            val title = resolveTitle(player, session.config, session.definition, session.titleFrame, variables)
+            val window = createInventoryWindow(player, session.holder, session.definition, clamped, title)
+            session.holder.bindInventory(window.inventory)
+            session.currentTitle = title
+            refreshButtons(player, session, session.definition.buttons.keys)
+            openWindow(player, window)
+            bindOpenedInventory(player, session.holder)
+            applyViewProperties(player, session)
+        }
+        return true
     }
 
     /** 移除并清理一个会话，可选主动关闭客户端库存。 */
@@ -1347,6 +1486,21 @@ class ContainerMenuService(private val plugin: KaMenu) {
         } else {
             KaScheduler.runPlayer(player, Runnable(action))
         }
+    }
+
+    /**
+     * 执行 `set-title` 动作：运行时覆盖当前容器会话的标题。
+     *
+     * 覆盖标题优先级高于配置中的 `Title`，后续 `refresh title` 仍会以覆盖值刷新，直到会话结束。
+     * 传入 null 可清除覆盖，恢复为配置标题。
+     */
+    fun overrideSessionTitle(player: Player, title: String?): Boolean {
+        val session = sessions[player.uniqueId] ?: return false
+        session.overrideTitle = title
+        runOnPlayerThread(player) {
+            refreshTitle(player, session, advance = false)
+        }
+        return true
     }
 
     companion object {

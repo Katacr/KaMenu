@@ -1,0 +1,70 @@
+# KaMenu V2 Multi-page Container Menu Example
+# Open: /km open example/container_multi_page
+
+Type: CHEST
+Title: '&8Multi-Page &7| &fPage {page_display}/{pages}'
+
+Settings:
+  min_click_delay: 200
+  default_page: 0
+
+Layout:
+  # Page 1
+  - - '#########'
+    - '#  N    #'
+    - '#       #'
+    - '####X####'
+  # Page 2
+  - - '#########'
+    - '#P     N#'
+    - '#       #'
+    - '####X####'
+  # Page 3
+  - - 'P########'
+    - '#       #'
+    - '#       #'
+    - '####X####'
+
+Events:
+  Open:
+    - 'actionbar: &aMulti-page menu opened &7({pages} pages total)'
+  Close:
+    - 'actionbar: &7Multi-page menu closed'
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  X:
+    display:
+      material: BARRIER
+      name: '&cClose'
+    actions:
+      all:
+        - 'close'
+
+  N:
+    display:
+      material: ARROW
+      name: '&aNext Page'
+      lore:
+        - '&7Current: &f{page_display}&7/&f{pages}'
+        - '&7Click to go to next page'
+    actions:
+      all:
+        - 'page: next'
+        - 'sound: BLOCK_CHEST_OPEN-1-2'
+
+  P:
+    display:
+      material: ARROW
+      name: '&aPrevious Page'
+      lore:
+        - '&7Current: &f{page_display}&7/&f{pages}'
+        - '&7Click to go to previous page'
+    actions:
+      all:
+        - 'page: prev'
+        - 'sound: BLOCK_CHEST_OPEN-1-2'

@@ -65,6 +65,39 @@ class InputCaptureParserTest {
     }
 
     @Test
+    fun `parses title label and default per layer`() {
+        val config = loadConfig(
+            """
+            Input-Captures:
+              demo:
+                type: anvil
+                layers:
+                  - key: name
+                    title: '&fWindow Title'
+                    label: '&fField Label'
+                    default: 'prefill'
+                    prompt: ['tell: hi']
+            """.trimIndent()
+        )
+
+        val layer = InputCaptureParser.parseNamed("demo", config).definition!!.layers.single()
+        assertEquals("&fWindow Title", layer.title)
+        assertEquals("&fField Label", layer.label)
+        assertEquals("prefill", layer.defaultValue)
+    }
+
+    @Test
+    fun `inline parses default and reopen`() {
+        val result = InputCaptureParser.parseInline(
+            "type=dialog;key=answer;title=&8Title;label=&fLabel;default=abc;reopen=false"
+        ).definition!!
+        assertEquals("&8Title", result.layers.single().title)
+        assertEquals("&fLabel", result.layers.single().label)
+        assertEquals("abc", result.layers.single().defaultValue)
+        assertEquals(false, result.reopen)
+    }
+
+    @Test
     fun `reports missing section and empty layers`() {
         val missing = InputCaptureParser.parseNamed("nope", loadConfig("Input-Captures: {}"))
         assertNull(missing.definition)

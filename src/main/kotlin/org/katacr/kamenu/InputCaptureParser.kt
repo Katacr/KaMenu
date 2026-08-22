@@ -135,6 +135,8 @@ object InputCaptureParser {
             key = key,
             maxLength = maxLength,
             title = values["title"]?.trim()?.takeIf { it.isNotEmpty() },
+            label = values["label"]?.trim()?.takeIf { it.isNotEmpty() },
+            defaultValue = values["default"]?.trim()?.takeIf { it.isNotEmpty() },
             promptActions = emptyList(),
             validateCondition = null,
             invalidActions = emptyList()
@@ -219,6 +221,8 @@ object InputCaptureParser {
         val maxLength = (raw["max-length"] as? Number)?.toInt()
             ?.coerceIn(1, 65_536) ?: defaultMaxLength
         val title = raw["title"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        val label = raw["label"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        val defaultValue = raw["default"]?.toString()?.takeIf { it.isNotEmpty() }
         val prompt = (raw["prompt"] as? List<*>).orEmpty().filterNotNull()
         val validate = raw["validate"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         val invalid = (raw["invalid"] as? List<*>).orEmpty().filterNotNull()
@@ -226,6 +230,8 @@ object InputCaptureParser {
             key = key,
             maxLength = maxLength,
             title = title,
+            label = label,
+            defaultValue = defaultValue,
             promptActions = prompt,
             validateCondition = validate,
             invalidActions = invalid

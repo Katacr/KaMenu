@@ -189,13 +189,13 @@ internal class TrMenuItemConverter {
             inherit,
             InheritedField.AMOUNT,
             "amount",
-            display?.value(TrMenuSourceProperty.ICON_AMOUNT, "$path.amount", diagnostics) ?: "1"
+            display?.value(TrMenuSourceProperty.ICON_AMOUNT, "$path.amount", diagnostics)
         )
 
         val enchantRaw = display?.value(TrMenuSourceProperty.ICON_ENCHANT, "$path.enchant", diagnostics)
         val explicitGlow = display?.value(TrMenuSourceProperty.ICON_SHINY, "$path.shiny", diagnostics)
         val glow = explicitGlow ?: enchantRaw?.takeIf { isBooleanText(it) }
-        inheritOrRead(result, parent, inherit, InheritedField.GLOW, "glow", glow ?: "false")
+        inheritOrRead(result, parent, inherit, InheritedField.GLOW, "glow", glow)
 
         val enchantments = parseEnchantments(enchantRaw, "$path.enchant", diagnostics)
         inheritOrRead(
@@ -225,7 +225,7 @@ internal class TrMenuItemConverter {
         val unbreakable = display?.value(TrMenuSourceProperty.ICON_UNBREAKABLE, "$path.unbreakable", diagnostics)
             ?.toString()
             ?.takeIf(String::isNotBlank)
-        inheritOrRead(result, parent, inherit, InheritedField.UNBREAKABLE, "unbreakable", unbreakable ?: "false")
+        inheritOrRead(result, parent, inherit, InheritedField.UNBREAKABLE, "unbreakable", unbreakable)
 
         reportUnsupportedDisplay(display, path, diagnostics)
         return result

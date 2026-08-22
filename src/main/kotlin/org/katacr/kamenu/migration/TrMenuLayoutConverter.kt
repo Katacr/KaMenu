@@ -7,17 +7,23 @@ internal data class TrMenuButtonPlacement(
     val sourceId: String,
     val targetId: String,
     val sourceIndex: Int,
+    val pageIndex: Int,
     val path: String,
     val section: TrMenuSourceSection,
-    val slots: List<Int>
+    val slots: List<Int>,
+    val slotExpression: String? = null,
+    val slotFrames: List<String>? = null
 )
 
 /** 已转换并静态化的 源菜单 Container 布局。 */
 internal data class TrMenuLayoutConversion(
     val type: ContainerMenuType,
-    val rows: List<String>,
+    val pages: List<List<String>>,
+    val defaultPage: Int,
     val buttons: List<TrMenuButtonPlacement>
-)
+) {
+    val rows: List<String> get() = pages.firstOrNull().orEmpty()
+}
 
 /**
  * 将 源菜单 单页布局和图标位置转换为 KaMenu Container 静态布局。
@@ -53,112 +59,154 @@ internal class TrMenuLayoutConverter {
             root.value(TrMenuSourceProperty.LAYOUT, "Layout", diagnostics),
             diagnostics
         ) ?: return null
-        if (pages.size > 1) {
-            diagnostics.add(
-                code = "TRM_MULTI_PAGE_UNSUPPORTED",
-                severity = TrMenuMigrationSeverity.ERROR,
-                compatibility = TrMenuMigrationCompatibility.UNSUPPORTED,
-                path = "Layout",
-                message = "TrMenu contains ${pages.size} layout pages; KaMenu Container currently supports one static page."
-            )
-            return null
-        }
 
         reportPlayerInventory(root, diagnostics)
-        val sourceRows = pages.firstOrNull().orEmpty()
-        val targetRowCount = resolveRowCount(root, type, sourceRows.size, diagnostics) ?: return null
-        val sourceSlots = parseAndPadRows(sourceRows, type.columns, targetRowCount, diagnostics) ?: return null
         val icons = parseIcons(root, diagnostics)
         val targetIds = buildTargetIds(icons)
 
-        val targetSlots = arrayOfNulls<String>(targetRowCount * type.columns)
+        val defaultPage = parseDefaultPage(root, diagnostics)
         val placements = mutableListOf<TrMenuButtonPlacement>()
-        val knownSourceIds = icons.mapTo(linkedSetOf()) { it.first }
-        sourceSlots.flatten().filterNotNull().distinct().forEach { sourceId ->
-            if (sourceId !in knownSourceIds) {
-                diagnostics.add(
-                    code = "TRM_LAYOUT_UNKNOWN_ICON",
-                    severity = TrMenuMigrationSeverity.WARNING,
-                    compatibility = TrMenuMigrationCompatibility.APPROXIMATE,
-                    path = "Layout",
-                    message = "Layout references undefined icon '$sourceId'; its slots will be left empty."
-                )
+
+        pages.forEachIndexed { pageIndex, sourceRows ->
+            val pageLabel = "Layout[page ${pageIndex + 1}]"
+            val targetRowCount = resolveRowCount(root, type, sourceRows.size, diagnostics, pageLabel) ?: return null
+            val sourceSlots = parseAndPadRows(sourceRows, type.columns, targetRowCount, diagnostics, pageLabel) ?: return null
+            val knownSourceIds = icons.mapTo(linkedSetOf()) { it.first }
+            sourceSlots.flatten().filterNotNull().distinct().forEach { sourceId ->
+                if (sourceId !in knownSourceIds) {
+                    diagnostics.add(
+                        code = "TRM_LAYOUT_UNKNOWN_ICON",
+                        severity = TrMenuMigrationSeverity.INFO,
+                        compatibility = TrMenuMigrationCompatibility.EXACT,
+                        path = pageLabel,
+                        message = "Layout slot references undefined icon '$sourceId'; KaMenu leaves unconfigured slots empty."
+                    )
+                }
             }
-        }
 
-        icons.forEachIndexed { index, (sourceId, section) ->
-            val path = "Icons.$sourceId"
-            val display = section.section(TrMenuSourceProperty.ICON_DISPLAY, "$path.display", diagnostics)
-            val pagesValue = display?.value(TrMenuSourceProperty.ICON_PAGE, "$path.display.page", diagnostics)
-            if (!usesOnlyFirstPage(pagesValue, "$path.display.page", diagnostics)) return@forEachIndexed
+            icons.forEachIndexed { index, (sourceId, section) ->
+                val path = "Icons.$sourceId"
+                val display = section.section(TrMenuSourceProperty.ICON_DISPLAY, "$path.display", diagnostics)
+                val pagesValue = display?.value(TrMenuSourceProperty.ICON_PAGE, "$path.display.page", diagnostics)
+                val allowedPages = resolveIconPages(pagesValue, "$path.display.page", diagnostics)
+                if (allowedPages != null && pageIndex !in allowedPages) return@forEachIndexed
 
-            val explicitSlots = display?.value(TrMenuSourceProperty.ICON_SLOT, "$path.display.slot", diagnostics)
-            val slots = if (explicitSlots != null) {
-                parseExplicitSlots(explicitSlots, "$path.display.slot", diagnostics)
-            } else {
-                findLayoutSlots(sourceSlots, sourceId, type.columns)
-            }
-            if (slots == null) return@forEachIndexed
-
-            val validSlots = slots.distinct().filter { slot ->
-                if (slot in targetSlots.indices) {
-                    true
+                val explicitSlots = display?.value(TrMenuSourceProperty.ICON_SLOT, "$path.display.slot", diagnostics)
+                val (staticSlots, dynamicSlot, slotFrames) = if (explicitSlots != null) {
+                    parseExplicitSlots(explicitSlots, "$path.display.slot", diagnostics)
                 } else {
-                    diagnostics.add(
-                        code = "TRM_ICON_SLOT_OUT_OF_RANGE",
-                        severity = TrMenuMigrationSeverity.WARNING,
-                        compatibility = TrMenuMigrationCompatibility.APPROXIMATE,
-                        path = "$path.display.slot",
-                        message = "Slot $slot is outside the target ${type.name} inventory and was skipped."
-                    )
-                    false
+                    Triple(findLayoutSlots(sourceSlots, sourceId, type.columns), null, null)
                 }
-            }
-            if (validSlots.isEmpty()) {
-                diagnostics.add(
-                    code = "TRM_ICON_UNPLACED",
-                    severity = TrMenuMigrationSeverity.WARNING,
-                    compatibility = TrMenuMigrationCompatibility.APPROXIMATE,
-                    path = path,
-                    message = "Icon '$sourceId' has no static slot on the migrated page and was skipped."
-                )
-                return@forEachIndexed
-            }
 
-            val targetId = targetIds[index]
-            if (targetId != sourceId) {
-                diagnostics.add(
-                    code = "TRM_ICON_ID_RENAMED",
-                    severity = TrMenuMigrationSeverity.INFO,
-                    compatibility = TrMenuMigrationCompatibility.EXACT,
-                    path = path,
-                    message = "Icon ID '$sourceId' was renamed to '$targetId' to satisfy KaMenu layout ID rules."
-                )
-            }
-            val collisions = validSlots.mapNotNull { slot ->
-                targetSlots[slot]?.takeIf { it != targetId }?.let { existing -> slot to existing }
-            }
-            if (collisions.isNotEmpty()) {
-                collisions.forEach { (slot, existing) ->
+                if (dynamicSlot != null) {
+                    val targetId = targetIds[index]
+                    if (targetId != sourceId) {
+                        diagnostics.add(
+                            code = "TRM_ICON_ID_RENAMED",
+                            severity = TrMenuMigrationSeverity.INFO,
+                            compatibility = TrMenuMigrationCompatibility.EXACT,
+                            path = path,
+                            message = "Icon ID '$sourceId' was renamed to '$targetId' to satisfy KaMenu layout ID rules."
+                        )
+                    }
+                    placements += TrMenuButtonPlacement(
+                        sourceId, targetId, index, pageIndex, path, section, emptyList(), dynamicSlot
+                    )
+                    return@forEachIndexed
+                }
+
+                if (slotFrames != null) {
+                    val targetId = targetIds[index]
+                    if (targetId != sourceId) {
+                        diagnostics.add(
+                            code = "TRM_ICON_ID_RENAMED",
+                            severity = TrMenuMigrationSeverity.INFO,
+                            compatibility = TrMenuMigrationCompatibility.EXACT,
+                            path = path,
+                            message = "Icon ID '$sourceId' was renamed to '$targetId' to satisfy KaMenu layout ID rules."
+                        )
+                    }
+                    placements += TrMenuButtonPlacement(
+                        sourceId, targetId, index, pageIndex, path, section, emptyList(), null, slotFrames
+                    )
+                    return@forEachIndexed
+                }
+
+                val validSlots = staticSlots.orEmpty().distinct().filter { slot ->
+                    if (slot in 0 until targetRowCount * type.columns) {
+                        true
+                    } else {
+                        diagnostics.add(
+                            code = "TRM_ICON_SLOT_OUT_OF_RANGE",
+                            severity = TrMenuMigrationSeverity.WARNING,
+                            compatibility = TrMenuMigrationCompatibility.APPROXIMATE,
+                            path = "$path.display.slot",
+                            message = "Slot $slot is outside the target ${type.name} inventory and was skipped."
+                        )
+                        false
+                    }
+                }
+                if (validSlots.isEmpty()) return@forEachIndexed
+
+                val targetId = targetIds[index]
+                if (targetId != sourceId) {
                     diagnostics.add(
-                        code = "TRM_ICON_SLOT_COLLISION",
-                        severity = TrMenuMigrationSeverity.ERROR,
-                        compatibility = TrMenuMigrationCompatibility.INVALID,
-                        path = "$path.display.slot",
-                        message = "Icon '$sourceId' and target button '$existing' both resolve to slot $slot."
+                        code = "TRM_ICON_ID_RENAMED",
+                        severity = TrMenuMigrationSeverity.INFO,
+                        compatibility = TrMenuMigrationCompatibility.EXACT,
+                        path = path,
+                        message = "Icon ID '$sourceId' was renamed to '$targetId' to satisfy KaMenu layout ID rules."
                     )
                 }
-                return@forEachIndexed
+                placements += TrMenuButtonPlacement(sourceId, targetId, index, pageIndex, path, section, validSlots)
             }
-            validSlots.forEach { slot -> targetSlots[slot] = targetId }
-            placements += TrMenuButtonPlacement(sourceId, targetId, index, path, section, validSlots)
         }
 
         if (diagnostics.hasErrors) return null
-        val rows = targetSlots.toList().chunked(type.columns).map { row ->
+        val convertedPages = pages.mapIndexed { pageIndex, sourceRows ->
+            buildPageRows(root, type, sourceRows, placements, pageIndex, diagnostics)
+        }
+        if (convertedPages.any { it == null }) return null
+        return TrMenuLayoutConversion(type, convertedPages.filterNotNull(), defaultPage, placements)
+    }
+
+    private fun buildPageRows(
+        root: TrMenuSourceSection,
+        type: ContainerMenuType,
+        sourceRows: List<String>,
+        placements: List<TrMenuButtonPlacement>,
+        pageIndex: Int,
+        diagnostics: TrMenuMigrationDiagnostics
+    ): List<String>? {
+        val pageLabel = "Layout[page ${pageIndex + 1}]"
+        val targetRowCount = resolveRowCount(root, type, sourceRows.size, diagnostics, pageLabel) ?: return null
+        val sourceSlots = parseAndPadRows(sourceRows, type.columns, targetRowCount, diagnostics, pageLabel)
+            ?: return null
+        val targetSlots = arrayOfNulls<String>(targetRowCount * type.columns)
+        placements.forEach { placement ->
+            if (placement.pageIndex == pageIndex) {
+                placement.slots.forEach { slot ->
+                    if (slot in targetSlots.indices) {
+                        val existing = targetSlots[slot]
+                        if (existing != null && existing != placement.targetId) {
+                            diagnostics.add(
+                                code = "TRM_ICON_SLOT_COLLISION",
+                                severity = TrMenuMigrationSeverity.ERROR,
+                                compatibility = TrMenuMigrationCompatibility.INVALID,
+                                path = placement.path,
+                                message = "Icon '${placement.sourceId}' and target button '$existing' both resolve to slot $slot."
+                            )
+                        } else {
+                            targetSlots[slot] = placement.targetId
+                        }
+                    }
+                }
+            }
+        }
+        if (diagnostics.hasErrors) return null
+        return targetSlots.toList().chunked(type.columns).map { row ->
             row.joinToString("") { id -> encodeLayoutToken(id) }
         }
-        return TrMenuLayoutConversion(type, rows, placements)
     }
 
     private fun parseType(
@@ -222,7 +270,8 @@ internal class TrMenuLayoutConverter {
         root: TrMenuSourceSection,
         type: ContainerMenuType,
         layoutRows: Int,
-        diagnostics: TrMenuMigrationDiagnostics
+        diagnostics: TrMenuMigrationDiagnostics,
+        pageLabel: String = "Layout"
     ): Int? {
         val rawSize = root.value(TrMenuSourceProperty.SIZE, "Size", diagnostics)
         val configured = when (rawSize) {
@@ -259,7 +308,8 @@ internal class TrMenuLayoutConverter {
         sourceRows: List<String>,
         columns: Int,
         rowCount: Int,
-        diagnostics: TrMenuMigrationDiagnostics
+        diagnostics: TrMenuMigrationDiagnostics,
+        pageLabel: String = "Layout"
     ): List<List<String?>>? {
         if (sourceRows.size > rowCount) {
             invalidLayout(diagnostics, "Layout contains ${sourceRows.size} rows but the target container has $rowCount.")
@@ -308,6 +358,43 @@ internal class TrMenuLayoutConverter {
         return tokens
     }
 
+    private fun parseDefaultPage(
+        root: TrMenuSourceSection,
+        diagnostics: TrMenuMigrationDiagnostics
+    ): Int {
+        val options = root.section(TrMenuSourceProperty.OPTIONS, "Options", diagnostics) ?: return 0
+        val raw = options.value(TrMenuSourceProperty.OPTION_DEFAULT_LAYOUT, "Options.Default-Layout", diagnostics)
+            ?: return 0
+        val text = when (raw) {
+            is Number -> raw.toInt().toString()
+            else -> raw.toString().trim()
+        }
+        return text.toIntOrNull() ?: 0
+    }
+
+    /** 解析图标 page 配置；null 表示出现在所有页，非空返回允许的页码集合。 */
+    private fun resolveIconPages(
+        raw: Any?,
+        path: String,
+        diagnostics: TrMenuMigrationDiagnostics
+    ): Set<Int>? {
+        if (raw == null) return null
+        val values = if (raw is List<*>) raw else listOf(raw)
+        val pages = values.mapNotNull { it?.toString()?.trim()?.toIntOrNull() }
+        if (pages.size != values.filterNotNull().size) {
+            diagnostics.add(
+                code = "TRM_ICON_PAGE_INVALID",
+                severity = TrMenuMigrationSeverity.ERROR,
+                compatibility = TrMenuMigrationCompatibility.INVALID,
+                path = path,
+                message = "Icon page '$raw' contains a non-integer page index."
+            )
+            return null
+        }
+        if (pages.isEmpty()) return null
+        return pages.toSet()
+    }
+
     private fun parseIcons(
         root: TrMenuSourceSection,
         diagnostics: TrMenuMigrationDiagnostics
@@ -341,11 +428,17 @@ internal class TrMenuLayoutConverter {
         }
     }
 
+    /**
+     * 解析图标显式槽位，区分三种语义：
+     * - 静态多副本：`[8, 9, 10]` 或单值，返回第一组（静态整数槽位列表）
+     * - 单动态表达式：`%var%`，返回第二组（运行时槽位表达式）
+     * - 动画帧：`[[8], [9], [10]]` 列表的列表，返回第三组（每帧一个表达式，运行时逐帧循环）
+     */
     private fun parseExplicitSlots(
         raw: Any?,
         path: String,
         diagnostics: TrMenuMigrationDiagnostics
-    ): List<Int>? {
+    ): Triple<List<Int>?, String?, List<String>?> {
         val frames = when (raw) {
             is List<*> -> if (raw.firstOrNull() is List<*>) {
                 raw.map { (it as? List<*>) ?: listOf(it) }
@@ -354,16 +447,25 @@ internal class TrMenuLayoutConverter {
             }
             else -> listOf(listOf(raw))
         }
+
         if (frames.size > 1) {
-            diagnostics.add(
-                code = "TRM_ICON_SLOT_ANIMATION_FIRST_FRAME",
-                severity = TrMenuMigrationSeverity.WARNING,
-                compatibility = TrMenuMigrationCompatibility.APPROXIMATE,
-                path = path,
-                message = "Animated icon positions were reduced to the first frame."
-            )
+            val frameExpressions = frames.mapNotNull { frame ->
+                val texts = frame.mapNotNull { it?.toString()?.trim()?.takeIf { t -> t.isNotEmpty() } }
+                if (texts.isEmpty()) null else texts.joinToString(",")
+            }
+            if (frameExpressions.size > 1) {
+                diagnostics.add(
+                    code = "TRM_ICON_SLOT_ANIMATION",
+                    severity = TrMenuMigrationSeverity.INFO,
+                    compatibility = TrMenuMigrationCompatibility.EXACT,
+                    path = path,
+                    message = "Icon slot frames ${frameExpressions.joinToString(" / ")} cycle on each refresh to animate the icon position."
+                )
+                return Triple(null, null, frameExpressions)
+            }
         }
 
+        var dynamicExpression: String? = null
         val slots = linkedSetOf<Int>()
         frames.firstOrNull().orEmpty().forEach { value ->
             val text = value?.toString()?.trim().orEmpty()
@@ -387,39 +489,18 @@ internal class TrMenuLayoutConverter {
                 }
                 text.toIntOrNull() != null -> slots += text.toInt()
                 else -> {
+                    dynamicExpression = if (dynamicExpression == null) text else "$dynamicExpression,$text"
                     diagnostics.add(
-                        code = "TRM_DYNAMIC_SLOT_UNSUPPORTED",
-                        severity = TrMenuMigrationSeverity.ERROR,
-                        compatibility = TrMenuMigrationCompatibility.UNSUPPORTED,
+                        code = "TRM_DYNAMIC_SLOT_EXPRESSION",
+                        severity = TrMenuMigrationSeverity.INFO,
+                        compatibility = TrMenuMigrationCompatibility.EXACT,
                         path = path,
-                        message = "Dynamic or invalid slot '$text' cannot be represented by a static Container layout."
+                        message = "Icon slot '$text' uses a runtime expression and will be resolved per player by KaMenu Container."
                     )
-                    return null
                 }
             }
         }
-        return slots.toList()
-    }
-
-    private fun usesOnlyFirstPage(
-        raw: Any?,
-        path: String,
-        diagnostics: TrMenuMigrationDiagnostics
-    ): Boolean {
-        if (raw == null) return true
-        val values = if (raw is List<*>) raw else listOf(raw)
-        val pages = values.mapNotNull { it?.toString()?.trim()?.toIntOrNull() }
-        if (pages.size != values.filterNotNull().size || pages.any { it != 0 }) {
-            diagnostics.add(
-                code = "TRM_MULTI_PAGE_UNSUPPORTED",
-                severity = TrMenuMigrationSeverity.ERROR,
-                compatibility = TrMenuMigrationCompatibility.UNSUPPORTED,
-                path = path,
-                message = "Icon page selection '$raw' cannot be represented by a single-page Container menu."
-            )
-            return false
-        }
-        return true
+        return Triple(slots.toList().takeIf { it.isNotEmpty() }, dynamicExpression, null)
     }
 
     private fun targetButtonId(sourceId: String, sourceIndex: Int): String {

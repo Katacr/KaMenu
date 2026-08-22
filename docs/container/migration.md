@@ -152,12 +152,15 @@ lore:
 
 以下内容会拒绝文件、跳过对应分支或输出警告：
 
-- `Render-Type: DIALOG` 和多页 `Layout`。
+- `Render-Type: DIALOG`（仍不支持）。
+- 多页 `Layout` 现已支持，正常无损迁移为 KaMenu 页数组与 `Settings.default_page`；仅当多页解析本身失败时拒绝文件。
 - `PlayerInventory`、`Free-Slots`、`Hide-Player-Inventory` 等发包物品栏功能。
 - catcher、动态聊天输入、菜单页动作、拖拽和窗口外点击。
 - 任意 Kether 流程、JEXL、NovaScript、内联 TrMenu JavaScript，以及未列入固定映射的私有对象或方法。
 - repo/私有物品源、NBT 和无法通过 Bukkit API 显式映射的属性。
 - 正则指令绑定、客户端本地化 `Lang` 和不安全的绑定物品 trait。
+
+TrMenu 的图标槽位已支持运行时动态解析：静态多值 `[8, 9, 10]` 写为 KaMenu `slot: [8, 9, 10]`（多副本）；含变量写为 `slot: '<表达式>'`（按玩家变量解析）；动画帧 `[[8], [9], [10]]` 写为 `slot: [[8], [9], [10]]`（每次刷新循环到下一帧）。上述情况输出 `INFO` 级提示，不再报错。
 
 不支持的条件不会被删除后继续执行受保护动作。无法转换打开条件时，迁移器会阻止残缺菜单打开。
 
@@ -205,7 +208,8 @@ TrMenu 报告格式为：
 | `TRM_TARGET_EXISTS` | 目标文件已存在 | 确认后使用 `overwrite`，或更换输出目录 |
 | `TRM_DUPLICATE_MENU_ID` | 多个 TrMenu 文件使用相同文件名 | 重命名冲突文件后整批重试 |
 | `TRM_LAYOUT_INVALID` | 布局行数、槽位或图标引用无效 | 修正源 `Layout` 和 `Icons` |
-| `TRM_RENDER_TYPE_UNSUPPORTED` / `TRM_MULTI_PAGE_UNSUPPORTED` | Dialog 或多页菜单无法转换为单页容器类菜单 | 手工拆分或重写菜单 |
+| `TRM_RENDER_TYPE_UNSUPPORTED` | Dialog 菜单无法转换为容器类菜单 | 使用现代 Dialog 或其他方案 |
+| `TRM_MULTI_PAGE_UNSUPPORTED` | 多页 Layout 解析本身失败（正常多页已支持） | 修正源 `Layout` 页数与行列数 |
 | `TRM_CONDITION_UNSUPPORTED` / `TRM_ACTION_UNSUPPORTED` | 条件或动作不在固定映射范围内 | 使用 KaMenu 条件或动作手工改写 |
 | `TRM_ITEM_SOURCE_UNSUPPORTED` / `TRM_ITEM_META_UNSUPPORTED` | 私有物品源或物品属性不能安全映射 | 改用 Bukkit 材质或 KaMenu 支持的物品格式 |
 | `TRM_NODE_DYNAMIC_UNSUPPORTED` | node 路径包含运行时变量或嵌套动态内容 | 改为静态路径，或手工改写为 KaMenu 变量/引用 |

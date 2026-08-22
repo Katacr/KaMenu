@@ -41,8 +41,12 @@ data class InputCaptureDefinition(
     data class InputLayer(
         val key: String,
         val maxLength: Int,
-        /** anvil 类型中铁砧界面的标题文本；null 时使用默认语言提示。 */
+        /** anvil/dialog 类型中窗口标题文本；null 时使用默认语言提示。 */
         val title: String?,
+        /** dialog 类型中输入框上方标签文本；null 时回退 title。 */
+        val label: String?,
+        /** 输入框预填文本；null 或空表示输入框留空（铁砧物品名同样置空）。 */
+        val defaultValue: String?,
         val promptActions: List<Any>,
         val validateCondition: String?,
         val invalidActions: List<Any>

@@ -58,7 +58,8 @@ Input-Captures:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       - key: amount
         max-length: 6
-        title: '&f请输入 {input:item_name} 的数量'
+        title: '&f购买数量'
+        default: '1'
         prompt:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
           - 'tell: &6&l购买物品 &7- &f第 &e2 &f步 / 共 &e2 &f步'
@@ -93,6 +94,9 @@ Input-Captures:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       - key: amount
         max-length: 6
+        title: '&8购买数量'
+        label: '&f请输入 &e{input:item_name} &f的数量'
+        default: '1'
         prompt:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
           - 'tell: &6&l购买物品 &7- &f第 &e2 &f步 / 共 &e2 &f步'

@@ -84,12 +84,14 @@ data class ContainerLayoutSlot(
  * 已校验的容器布局。
  *
  * [slotsByButton] 预先保存按钮到槽位的反向索引，渲染和刷新时无需重复扫描字符串布局。
+ * [dynamicSlotButtons] 记录声明了运行时槽位表达式的按钮 ID；这些按钮不依赖静态布局位置。
  */
 data class ContainerLayoutDefinition(
     val rows: Int,
     val columns: Int,
     val slots: List<ContainerLayoutSlot>,
-    val slotsByButton: Map<String, List<Int>>
+    val slotsByButton: Map<String, List<Int>>,
+    val dynamicSlotButtons: Set<String> = emptySet()
 ) {
     val size: Int = rows * columns
 
@@ -134,7 +136,9 @@ data class ContainerButtonDefinition(
     val updateIntervalTicks: Long?,
     val display: ContainerItemDefinition,
     val actions: Map<ContainerClickType, List<Any>>,
-    val variants: List<ContainerButtonVariantDefinition> = emptyList()
+    val variants: List<ContainerButtonVariantDefinition> = emptyList(),
+    val slot: ContainerConfigValue? = null,
+    val slotFrames: List<ContainerConfigValue>? = null
 )
 
 /**
@@ -212,19 +216,28 @@ data class ContainerFreeSlotsDefinition(
  * 文件加载阶段生成的不可变容器菜单定义。
  *
  * 玩家相关变量尚未在此阶段解析；原始 YamlConfiguration 由 MenuManager 单独保留给事件、JS 和动作系统。
+ *
+ * [layouts] 为多页布局列表；单页菜单的列表长度为 1。[defaultPage] 可使用变量表达式指定初始页码。
  */
 data class ContainerMenuDefinition(
     val id: String,
     val type: ContainerMenuType,
     val title: ContainerConfigValue,
-    val layout: ContainerLayoutDefinition,
+    val layouts: List<ContainerLayoutDefinition>,
+    val defaultPage: ContainerConfigValue?,
     val freeSlots: ContainerFreeSlotsDefinition,
     val properties: ContainerPropertiesDefinition,
     val buttons: Map<String, ContainerButtonDefinition>,
     val update: ContainerUpdateDefinition,
     val minClickDelayMillis: Long,
     val progressWatchers: Map<String, ContainerProgressWatcherDefinition>
-)
+) {
+    /** 向后兼容：单页菜单的首个布局。 */
+    val layout: ContainerLayoutDefinition get() = layouts[0]
+
+    /** 菜单总页数。 */
+    val pageCount: Int get() = layouts.size
+}
 
 /** 菜单配置诊断级别。 */
 enum class ContainerDiagnosticSeverity {

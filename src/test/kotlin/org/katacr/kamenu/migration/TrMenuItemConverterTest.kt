@@ -107,8 +107,8 @@ class TrMenuItemConverterTest {
 
         assertEquals("Parent", states[1].display["name"])
         assertEquals(listOf("Parent lore"), states[1].display["lore"])
-        assertEquals("1", states[1].display["amount"])
-        assertEquals("false", states[1].display["glow"])
+        assertEquals(null, states[1].display["amount"])
+        assertEquals(null, states[1].display["glow"])
 
         val appendedActions = states[2].actionLayers.map { it.path }
         assertEquals(listOf("Icons.A.icons[2].actions", "Icons.A.actions"), appendedActions)
@@ -196,6 +196,38 @@ class TrMenuItemConverterTest {
             buttons.map { it.defaultState.display["material"] }
         )
         assertTrue(diagnostics.issues.none { it.code == "TRM_ITEM_SOURCE_UNSUPPORTED" })
+    }
+
+    @Test
+    fun `omits amount glow unbreakable when source does not specify them`() {
+        val (buttons, diagnostics) = convert(
+            """
+            Layout: ['A        ', 'B        ']
+            Icons:
+              A:
+                display:
+                  material: STONE
+                  name: '显式指定'
+                  amount: 5
+              B:
+                display:
+                  material: DIRT
+            """
+        )
+        assertFalse(diagnostics.hasErrors)
+
+        val a = buttons.first { it.placement.sourceId == "A" }.defaultState.display
+        assertEquals("STONE", a["material"])
+        assertEquals("显式指定", a["name"])
+        assertEquals(5, a["amount"])
+        assertEquals(null, a["glow"])
+        assertEquals(null, a["unbreakable"])
+
+        val b = buttons.first { it.placement.sourceId == "B" }.defaultState.display
+        assertEquals("DIRT", b["material"])
+        assertEquals(null, b["amount"])
+        assertEquals(null, b["glow"])
+        assertEquals(null, b["unbreakable"])
     }
 
     private fun convert(yaml: String): Pair<List<TrMenuButtonVisualConversion>, TrMenuMigrationDiagnostics> {

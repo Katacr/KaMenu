@@ -58,7 +58,8 @@ Input-Captures:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       - key: amount
         max-length: 6
-        title: '&fEnter quantity for {input:item_name}'
+        title: '&fPurchase quantity'
+        default: '1'
         prompt:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
           - 'tell: &6&lBuy Item &7- &fStep &e2 &f/ &e2'
@@ -93,6 +94,9 @@ Input-Captures:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
       - key: amount
         max-length: 6
+        title: '&8Purchase quantity'
+        label: '&fQuantity of &e{input:item_name}'
+        default: '1'
         prompt:
           - 'tell: &e━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
           - 'tell: &6&lBuy Item &7- &fStep &e2 &f/ &e2'

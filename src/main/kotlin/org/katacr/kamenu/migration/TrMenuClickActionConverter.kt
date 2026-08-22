@@ -15,13 +15,22 @@ internal class TrMenuClickActionConverter(
         layers.forEach { layer ->
             val section = layer.raw as? TrMenuSourceSection
             if (section == null) {
-                diagnostics.add(
-                    code = "TRM_CLICK_ACTIONS_INVALID",
-                    severity = TrMenuMigrationSeverity.WARNING,
-                    compatibility = TrMenuMigrationCompatibility.INVALID,
-                    path = layer.path,
-                    message = "TrMenu icon actions must be a YAML section keyed by click type and were skipped."
-                )
+                val rawList = layer.raw as? List<*>
+                if (rawList == null) {
+                    diagnostics.add(
+                        code = "TRM_CLICK_ACTIONS_INVALID",
+                        severity = TrMenuMigrationSeverity.WARNING,
+                        compatibility = TrMenuMigrationCompatibility.INVALID,
+                        path = layer.path,
+                        message = "TrMenu icon actions must be a YAML section keyed by click type or a flat action list and were skipped."
+                    )
+                    return@forEach
+                }
+                // 平铺动作列表等价于 all 点击类型
+                val converted = reactionConverter.convertActionReactions(rawList, layer.path, diagnostics)
+                if (converted.isNotEmpty()) {
+                    output.getOrPut("all") { mutableListOf() }.addAll(converted)
+                }
                 return@forEach
             }
             section.entries().forEach { (rawTypes, rawActions) ->

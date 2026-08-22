@@ -231,6 +231,157 @@ class TrMenuMenuConverterTest {
         assertTrue(diagnostics.issues.any { it.code == "TRM_LANG_UNSUPPORTED" })
     }
 
+    @Test
+    fun `migrates multi-page menu with page switching and default page`() {
+        val (result, diagnostics) = convert(
+            """
+            Title: '&8Multi &7| &f{page_display}/{pages}'
+            Options:
+              Default-Layout: 0
+            Layout:
+              - ['A        ']
+              - ['B        ']
+            Icons:
+              A:
+                display:
+                  material: STONE
+                  name: '&aNext'
+                actions:
+                  all: ['page: 1']
+              B:
+                display:
+                  material: PAPER
+                  name: '&aPrev'
+                actions:
+                  all: ['page: 0']
+            """
+        )
+
+        assertNotNull(result)
+        assertFalse(diagnostics.hasErrors, diagnostics.issues.map { "${it.code}: ${it.message}" }.joinToString("\n"))
+        val config = result!!.config
+        val layout = config.getList("Layout")
+        assertEquals(2, layout?.size)
+        assertEquals(0, config.getInt("Settings.default_page"))
+        val aActions = (config.get("Buttons.A.actions") as? Map<*, *>)?.get("all") as? List<*>
+        val bActions = (config.get("Buttons.B.actions") as? Map<*, *>)?.get("all") as? List<*>
+        assertEquals(listOf("page: 1"), aActions?.mapNotNull { it.toString() })
+        assertEquals(listOf("page: 0"), bActions?.mapNotNull { it.toString() })
+
+        val parsed = ContainerMenuParser.parse("trmenu_migrated/multi", config)
+        assertNotNull(parsed.definition)
+        assertEquals(2, parsed.definition!!.pageCount)
+        val titleScalar = parsed.definition!!.title as? org.katacr.kamenu.container.ContainerConfigValue.Scalar
+        assertEquals("&8Multi &7| &f{page_display}/{pages}", titleScalar?.value?.toString())
+    }
+
+    @Test
+    fun `migrates icon with variable slot expression to runtime slot`() {
+        val (result, diagnostics) = convert(
+            """
+            Title: '&8Shop'
+            Layout: ['A        ']
+            Icons:
+              A:
+                display:
+                  material: STONE
+                  name: '&aStatic'
+              moving:
+                display:
+                  material: PAPER
+                  name: '&aDynamic'
+                  slots:
+                    - '%player_empty_slots%'
+            """
+        )
+
+        assertNotNull(result)
+        assertFalse(diagnostics.hasErrors, diagnostics.issues.map { "${it.code}: ${it.message}" }.joinToString("\n"))
+        val config = result!!.config
+        assertEquals("%player_empty_slots%", config.getString("Buttons.moving.slot"))
+        assertNull(config.get("Buttons.A.slot"))
+        val parsed = ContainerMenuParser.parse("trmenu_migrated/shop", config)
+        assertNotNull(parsed.definition)
+        assertEquals(
+            setOf("moving"),
+            parsed.definition!!.layout.dynamicSlotButtons
+        )
+    }
+
+    @Test
+    fun `migrates animated slot frames to cycling frames`() {
+        val (result, diagnostics) = convert(
+            """
+            Title: '&8Shop'
+            Layout: ['         ']
+            Icons:
+              moving:
+                display:
+                  material: PAPER
+                  name: '&aCycle'
+                  slots:
+                    - [8]
+                    - [9]
+                    - [10]
+            """
+        )
+
+        assertNotNull(result)
+        assertFalse(diagnostics.hasErrors, diagnostics.issues.map { "${it.code}: ${it.message}" }.joinToString("\n"))
+        val config = result!!.config
+        val slotValue = config.get("Buttons.moving.slot")
+        assertTrue(slotValue is List<*>)
+        assertEquals(listOf(listOf("8"), listOf("9"), listOf("10")), slotValue)
+        val parsed = ContainerMenuParser.parse("trmenu_migrated/shop", config)
+        assertNotNull(parsed.definition)
+        val button = parsed.definition!!.buttons["moving"]
+        assertNull(button!!.slot)
+        assertEquals(3, button.slotFrames?.size)
+    }
+
+    @Test
+    fun `migrates deeply nested condition action tree without dropping branches`() {
+        val (result, diagnostics) = convert(
+            """
+            Title: '&8Shop'
+            Layout: ['A        ']
+            Icons:
+              A:
+                display:
+                  material: CRAFTING_TABLE
+                  name: '&7点击合成'
+                action:
+                  all:
+                    - condition: 'check papi *%player_empty_slots% >= *2'
+                      deny:
+                        - 'tell: 背包空间不足'
+                      actions:
+                        - condition: 'check papi *%vip% >= *10'
+                          deny:
+                            - 'tell: 活力值不足'
+                          actions:
+                            - 'tell: 合成成功'
+                            - 'console: give item'
+            """
+        )
+
+        assertNotNull(result)
+        assertFalse(diagnostics.hasErrors, diagnostics.issues.map { "${it.code}: ${it.message}" }.joinToString("\n"))
+        val config = result!!.config
+        val actionsAll = (config.get("Buttons.A.actions") as? Map<*, *>)?.get("all") as? List<*>
+        assertNotNull(actionsAll, "config=\n${config.saveToString()}")
+        assertEquals(1, actionsAll!!.size)
+        val outer = actionsAll[0] as Map<*, *>
+        assertEquals("%player_empty_slots% >= 2", outer["condition"])
+        assertEquals(listOf("tell: 背包空间不足"), outer["deny"])
+        val innerAllow = outer["allow"] as List<*>
+        assertEquals(1, innerAllow.size)
+        val inner = innerAllow[0] as Map<*, *>
+        assertEquals("%vip% >= 10", inner["condition"])
+        assertEquals(listOf("tell: 活力值不足"), inner["deny"])
+        assertEquals(listOf("tell: 合成成功", "console: give item"), inner["allow"])
+    }
+
     private fun convert(yaml: String): Pair<TrMenuMenuConversion?, TrMenuMigrationDiagnostics> {
         val config = TrMenuSourceParser.createSourceConfiguration()
         config.loadFromString(yaml.trimIndent())

@@ -60,6 +60,9 @@ object InputCaptureManager {
 
     fun hasActiveSession(playerId: UUID): Boolean = sessions.containsKey(playerId)
 
+    /** 返回玩家活跃捕获会话；供监听器识别事件归属。 */
+    fun activeSession(playerId: UUID): CaptureSession? = sessions[playerId]
+
     /** 返回玩家最近一次捕获的层值表，供动作链合并变量。 */
     fun lastValues(playerId: UUID): Map<String, String> =
         lastResolution[playerId]?.values ?: emptyMap()
@@ -218,7 +221,13 @@ object InputCaptureManager {
     /** 为当前层打开铁砧界面并放置命名提示物品。 */
     private fun openAnvilForCurrentLayer(player: Player, session: CaptureSession) {
         val layer = session.definition.layers[session.currentLayer]
-        val title = layer.title ?: plugin?.languageManager?.getMessage("input-capture.default-prompt", session.definition.cancelText ?: "") ?: "Input"
+        // 标题经变量解析，使后层标题可引用前层值（如 {input:item_name}）
+        val rawTitle = layer.title
+            ?: plugin?.languageManager?.getMessage("input-capture.default-prompt", session.definition.cancelText ?: "")
+            ?: "Input"
+        val title = TextResolver.resolve(player, rawTitle, session.initialVariables)
+        // 预填文本：未配置时输入框置空（物品名仅保留一个空格占位）
+        val prefill = layer.defaultValue?.let { TextResolver.resolve(player, it, session.initialVariables) } ?: ""
         val opened = AnvilViewFactory.openInputAnvil(player, title)
         if (opened == null) {
             plugin?.logger?.warning("无法打开铁砧输入界面，回退为取消。玩家: ${player.name}")
@@ -232,7 +241,7 @@ object InputCaptureManager {
         val inv = opened.view.topInventory as? org.bukkit.inventory.AnvilInventory ?: return
         val item = org.bukkit.inventory.ItemStack(org.bukkit.Material.PAPER)
         val meta = item.itemMeta
-        meta?.setDisplayName(layer.title ?: " ")
+        meta?.setDisplayName(prefill.ifEmpty { " " })
         item.itemMeta = meta
         inv.setItem(0, item)
         inv.maximumRepairCost = 0
@@ -303,20 +312,30 @@ object InputCaptureManager {
     private fun openDialogForCurrentLayer(player: Player, session: CaptureSession) {
         val currentPlugin = plugin ?: return
         val layer = session.definition.layers[session.currentLayer]
-        val label = layer.title
-            ?: currentPlugin.languageManager.getMessage("input-capture.dialog-label")
-            ?: "Input"
+        val defaultLabel = currentPlugin.languageManager.getMessage("input-capture.dialog-label") ?: "Input"
+        // 标题 / 输入框上方标签 / 预填文本三者独立，均可引用前层变量
+        val title = TextResolver.resolve(
+            player,
+            layer.title ?: defaultLabel,
+            session.initialVariables
+        )
+        val label = TextResolver.resolve(
+            player,
+            layer.label ?: layer.title ?: defaultLabel,
+            session.initialVariables
+        )
+        val prefill = layer.defaultValue?.let { TextResolver.resolve(player, it, session.initialVariables) } ?: ""
         val confirmText = currentPlugin.languageManager.getMessage("input-capture.dialog-confirm") ?: "&aConfirm"
         val cancelText = currentPlugin.languageManager.getMessage("input-capture.dialog-cancel") ?: "&cCancel"
 
         val config = YamlConfiguration().apply {
-            set("Title", label)
+            set("Title", title)
             set("Settings.lifetime", session.definition.timeoutSeconds)
             set("Settings.can_escape", true)
             set("Settings.after_action", "close")
             set("Inputs.${layer.key}.type", "input")
             set("Inputs.${layer.key}.text", label)
-            set("Inputs.${layer.key}.default", "")
+            set("Inputs.${layer.key}.default", prefill)
             set("Inputs.${layer.key}.max_length", layer.maxLength)
             set("Bottom.type", "confirmation")
             set("Bottom.confirm.text", confirmText)

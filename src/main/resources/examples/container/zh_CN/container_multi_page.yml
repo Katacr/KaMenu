@@ -1,0 +1,70 @@
+# KaMenu V2 容器多页菜单示例
+# 打开方式: /km open example/container_multi_page
+
+Type: CHEST
+Title: '&8多页菜单 &7| &f第 {page_display}/{pages} 页'
+
+Settings:
+  min_click_delay: 200
+  default_page: 0
+
+Layout:
+  # 第 1 页
+  - - '#########'
+    - '#  N    #'
+    - '#       #'
+    - '####X####'
+  # 第 2 页
+  - - '#########'
+    - '#P     N#'
+    - '#       #'
+    - '####X####'
+  # 第 3 页
+  - - 'P########'
+    - '#       #'
+    - '#       #'
+    - '####X####'
+
+Events:
+  Open:
+    - 'actionbar: &a多页菜单已打开 &7(共 {pages} 页)'
+  Close:
+    - 'actionbar: &7多页菜单已关闭'
+
+Buttons:
+  '#':
+    display:
+      material: GRAY_STAINED_GLASS_PANE
+      name: ' '
+
+  X:
+    display:
+      material: BARRIER
+      name: '&c关闭菜单'
+    actions:
+      all:
+        - 'close'
+
+  N:
+    display:
+      material: ARROW
+      name: '&a下一页'
+      lore:
+        - '&7当前页: &f{page_display}&7/&f{pages}'
+        - '&7点击翻到下一页'
+    actions:
+      all:
+        - 'page: next'
+        - 'sound: BLOCK_CHEST_OPEN-1-2'
+
+  P:
+    display:
+      material: ARROW
+      name: '&a上一页'
+      lore:
+        - '&7当前页: &f{page_display}&7/&f{pages}'
+        - '&7点击返回上一页'
+    actions:
+      all:
+        - 'page: prev'
+        - 'sound: BLOCK_CHEST_OPEN-1-2'

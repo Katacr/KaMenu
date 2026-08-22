@@ -10,7 +10,11 @@ object ContainerLayoutParser {
     private val namedButtonId = Regex("^[\\p{L}\\p{N}_\\-/]+$")
 
     /** 解析并校验一组容器布局行。 */
-    fun parse(rows: List<String>, type: ContainerMenuType = ContainerMenuType.CHEST): ContainerLayoutParseResult {
+    fun parse(
+        rows: List<String>,
+        type: ContainerMenuType = ContainerMenuType.CHEST,
+        dynamicSlotButtons: Set<String> = emptySet()
+    ): ContainerLayoutParseResult {
         val diagnostics = mutableListOf<ContainerMenuDiagnostic>()
         if (rows.size !in type.minRows..type.maxRows) {
             val expectedRows = if (type.minRows == type.maxRows) {
@@ -61,7 +65,8 @@ object ContainerLayoutParser {
                 rows = rows.size,
                 columns = type.columns,
                 slots = slots.toList(),
-                slotsByButton = slotsByButton.mapValues { (_, value) -> value.toList() }
+                slotsByButton = slotsByButton.mapValues { (_, value) -> value.toList() },
+                dynamicSlotButtons = dynamicSlotButtons
             ),
             diagnostics.toList()
         )

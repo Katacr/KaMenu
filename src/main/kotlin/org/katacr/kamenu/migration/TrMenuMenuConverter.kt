@@ -50,7 +50,7 @@ internal class TrMenuMenuConverter(
                 diagnostics
             )
         )
-        output.set("Layout", layout.rows)
+        output.set("Layout", layout.pages)
         writeTitleUpdate(output, source.root, diagnostics)
         writeSettings(output, source.root, variables, diagnostics)
         writeProperties(output, source.root, layout.type, diagnostics)
@@ -150,6 +150,29 @@ internal class TrMenuMenuConverter(
         )
         if (expansions.isNotEmpty()) output.set("Settings.need_placeholder", expansions)
 
+        val defaultLayout = options?.value(
+            TrMenuSourceProperty.OPTION_DEFAULT_LAYOUT,
+            "Options.Default-Layout",
+            diagnostics
+        )
+        if (defaultLayout != null) {
+            val text = when (defaultLayout) {
+                is Number -> defaultLayout.toInt().toString()
+                else -> defaultLayout.toString().trim()
+            }
+            if (text.toIntOrNull() != null) {
+                output.set("Settings.default_page", text)
+            } else {
+                diagnostics.add(
+                    "TRM_DEFAULT_LAYOUT_UNSUPPORTED",
+                    TrMenuMigrationSeverity.WARNING,
+                    TrMenuMigrationCompatibility.UNSUPPORTED,
+                    "Options.Default-Layout",
+                    "Default-Layout '$defaultLayout' is not a static page index and was skipped."
+                )
+            }
+        }
+
         reportUnsupportedOption(
             root.value(TrMenuSourceProperty.OPTION_FREE_SLOTS, "Free-Slots", diagnostics),
             "Free-Slots",
@@ -158,7 +181,6 @@ internal class TrMenuMenuConverter(
         )
         listOf(
             TrMenuSourceProperty.OPTION_FREE_SLOTS to "Free-Slots",
-            TrMenuSourceProperty.OPTION_DEFAULT_LAYOUT to "Default-Layout",
             TrMenuSourceProperty.OPTION_HIDE_PLAYER_INVENTORY to "Hide-Player-Inventory",
             TrMenuSourceProperty.OPTION_PURE_PACKET to "Pure-Packet",
             TrMenuSourceProperty.OPTION_COMMAND_FAKE_OP to "Command-Fake-Op"
@@ -271,6 +293,17 @@ internal class TrMenuMenuConverter(
                 )
             )
             val path = "Buttons.${visual.placement.targetId}"
+            visual.placement.slotExpression?.let { expression ->
+                val rewritten = variables.rewrite(expression, "$path.slot", diagnostics, strict = false)
+                output.set("$path.slot", rewritten ?: expression)
+            }
+            visual.placement.slotFrames?.let { frames ->
+                val rewrittenFrames = frames.map { frame ->
+                    variables.rewrite(frame, "$path.slot", diagnostics, strict = false) ?: frame
+                }
+                val asLists = rewrittenFrames.map { frame -> frame.split(',').map { it.trim() }.filter { it.isNotEmpty() } }
+                output.set("$path.slot", asLists)
+            }
             visual.viewCondition?.let { raw ->
                 val condition = scopedConditions.convert(raw, "${visual.placement.path}.condition", diagnostics) ?: "false"
                 output.set("$path.view_condition", condition)

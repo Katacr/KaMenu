@@ -36,7 +36,7 @@ class PaperDialogRenderer(private val plugin: KaMenu) {
             org.katacr.kamenu.MenuUI.openMenu(target, menuId, plugin.menuManager, plugin)
         }
         val base = DialogBase.builder(text(player, definition.title))
-            .body(body(player, config, definition, menuOpener))
+            .body(body(player, config, definition, menuOpener, contextId))
             .inputs(inputs(player, definition.inputs))
             .canCloseWithEscape(definition.settings.canEscape)
             .pause(definition.settings.pause)
@@ -52,17 +52,18 @@ class PaperDialogRenderer(private val plugin: KaMenu) {
         player: Player,
         config: YamlConfiguration,
         definition: DialogDefinition,
-        menuOpener: (Player, String) -> Unit
+        menuOpener: (Player, String) -> Unit,
+        contextId: String
     ): List<DialogBody> = definition.body.map { body ->
         when (body) {
             is DialogBodyDefinition.Message -> plainMessage(
-                clickableText(body.text, player, config, menuOpener),
+                clickableText(body.text, player, config, menuOpener, contextId),
                 body.width
             )
 
             is DialogBodyDefinition.Item -> {
                 val description = body.description?.let {
-                    plainMessage(clickableText(it, player, config, menuOpener), body.descriptionWidth)
+                    plainMessage(clickableText(it, player, config, menuOpener, contextId), body.descriptionWidth)
                 }
                 DialogBody.item(
                     body.itemStack,
@@ -182,7 +183,7 @@ class PaperDialogRenderer(private val plugin: KaMenu) {
                     actionOverride = definition.actionOverride
                 )
             )
-        definition.tooltip?.let { builder.tooltip(clickableText(it, player, config, menuOpener)) }
+        definition.tooltip?.let { builder.tooltip(clickableText(it, player, config, menuOpener, contextId)) }
         definition.width?.let { builder.width(it) }
         return builder.build()
     }
@@ -196,8 +197,9 @@ class PaperDialogRenderer(private val plugin: KaMenu) {
         value: String,
         player: Player,
         config: YamlConfiguration,
-        menuOpener: (Player, String) -> Unit
-    ): Component = MenuActions.parseClickableText(value, player, config, menuOpener)
+        menuOpener: (Player, String) -> Unit,
+        contextId: String? = null
+    ): Component = MenuActions.parseClickableText(value, player, config, menuOpener, contextId)
 
     /** 按共享定义中的可选宽度创建普通文本 Body。 */
     private fun plainMessage(component: Component, width: Int?): PlainMessageDialogBody =

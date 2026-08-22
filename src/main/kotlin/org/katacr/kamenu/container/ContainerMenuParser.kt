@@ -66,26 +66,29 @@ object ContainerMenuParser {
         )
         val properties = parseProperties(config, type, diagnostics)
         val progressWatchers = parseProgressWatchers(config, type, properties, diagnostics)
-        val layoutRows = parseLayoutRows(config, diagnostics)
-        val layoutResult = if (layoutRows != null && type != null) {
-            ContainerLayoutParser.parse(layoutRows, type)
-        } else {
-            null
-        }
-        if (layoutResult != null) diagnostics += layoutResult.diagnostics
-        val layout = layoutResult?.definition
         val buttons = parseButtons(config, diagnostics)
-        val freeSlots = if (layout != null) {
-            parseFreeSlots(config, type, layout, diagnostics)
+        val dynamicSlotButtons = buttons.values.mapNotNullTo(linkedSetOf()) { button ->
+            if (button.slot != null || button.slotFrames != null) button.id else null
+        }
+        val layoutPages = parseLayoutPages(config, type, diagnostics, dynamicSlotButtons)
+        val firstLayout = layoutPages?.firstOrNull()
+        val freeSlots = if (firstLayout != null) {
+            parseFreeSlots(config, type, firstLayout, diagnostics)
         } else {
             ContainerFreeSlotsDefinition.EMPTY
         }
 
-        if (layout != null) {
-            validateButtonReferences(layout, buttons, diagnostics)
+        if (firstLayout != null) {
+            validateButtonReferences(firstLayout, buttons, diagnostics, checkUnused = false)
         }
+        layoutPages?.drop(1)?.forEachIndexed { index, pageLayout ->
+            validateButtonReferences(pageLayout, buttons, diagnostics, pageLabel = "page ${index + 2}", checkUnused = false)
+        }
+        reportUnusedButtons(layoutPages, dynamicSlotButtons, buttons, diagnostics)
 
-        if (diagnostics.any { it.severity == ContainerDiagnosticSeverity.ERROR } || type == null || layout == null) {
+        val defaultPage = parseDefaultPage(config, diagnostics)
+
+        if (diagnostics.any { it.severity == ContainerDiagnosticSeverity.ERROR } || type == null || layoutPages == null || layoutPages.isEmpty()) {
             return ContainerMenuParseResult(null, diagnostics.toList())
         }
         return ContainerMenuParseResult(
@@ -93,7 +96,8 @@ object ContainerMenuParser {
                 id = menuId,
                 type = type,
                 title = title,
-                layout = layout,
+                layouts = layoutPages,
+                defaultPage = defaultPage,
                 freeSlots = freeSlots,
                 properties = properties,
                 buttons = buttons.toMap(),
@@ -318,25 +322,79 @@ object ContainerMenuParser {
         return result.toMap()
     }
 
-    private fun parseLayoutRows(
+    private fun parseLayoutPages(
         config: YamlConfiguration,
-        diagnostics: MutableList<ContainerMenuDiagnostic>
-    ): List<String>? {
+        type: ContainerMenuType?,
+        diagnostics: MutableList<ContainerMenuDiagnostic>,
+        dynamicSlotButtons: Set<String> = emptySet()
+    ): List<ContainerLayoutDefinition>? {
         val raw = config.get("Layout")
         if (raw !is List<*>) {
-            diagnostics += error("layout.missing", "Layout", "Layout must be a list of strings.")
+            diagnostics += error("layout.missing", "Layout", "Layout must be a list of strings (or a list of pages).")
             return null
         }
-        val invalidIndex = raw.indexOfFirst { it !is String }
-        if (invalidIndex >= 0) {
-            diagnostics += error(
-                "layout.invalid_row_type",
-                "Layout[$invalidIndex]",
-                "Every Layout row must be a string."
-            )
+        if (raw.isEmpty()) {
+            diagnostics += error("layout.empty", "Layout", "Layout cannot be empty.")
             return null
         }
-        return raw.filterIsInstance<String>()
+
+        val isMultiPage = raw.firstOrNull() is List<*>
+        val pageRowLists: List<List<String>> = if (isMultiPage) {
+            raw.mapIndexedNotNull { pageIndex, pageRaw ->
+                if (pageRaw !is List<*>) {
+                    diagnostics += error(
+                        "layout.invalid_page_type",
+                        "Layout[$pageIndex]",
+                        "Each page in a multi-page Layout must be a list of strings."
+                    )
+                    return@mapIndexedNotNull null
+                }
+                val invalidIndex = pageRaw.indexOfFirst { it !is String }
+                if (invalidIndex >= 0) {
+                    diagnostics += error(
+                        "layout.invalid_row_type",
+                        "Layout[$pageIndex][$invalidIndex]",
+                        "Every Layout row must be a string."
+                    )
+                    return@mapIndexedNotNull null
+                }
+                pageRaw.filterIsInstance<String>()
+            }
+        } else {
+            val invalidIndex = raw.indexOfFirst { it !is String }
+            if (invalidIndex >= 0) {
+                diagnostics += error(
+                    "layout.invalid_row_type",
+                    "Layout[$invalidIndex]",
+                    "Every Layout row must be a string."
+                )
+                return null
+            }
+            listOf(raw.filterIsInstance<String>())
+        }
+
+        if (type == null) return null
+        val layouts = mutableListOf<ContainerLayoutDefinition>()
+        pageRowLists.forEachIndexed { pageIndex, rows ->
+            val result = ContainerLayoutParser.parse(rows, type, dynamicSlotButtons)
+            diagnostics += result.diagnostics.map { diag ->
+                if (isMultiPage) ContainerMenuDiagnostic(
+                    diag.severity, diag.code,
+                    "Layout[page ${pageIndex + 1}].${diag.path}",
+                    diag.message
+                ) else diag
+            }
+            result.definition?.let { layouts += it }
+        }
+        return if (layouts.isEmpty()) null else layouts
+    }
+
+    private fun parseDefaultPage(
+        config: YamlConfiguration,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerConfigValue? {
+        if (!config.contains("Settings.default_page")) return null
+        return freeze(config.get("Settings.default_page"))
     }
 
     /** 解析 `Free-Slots` 并校验范围、重复槽位和 Layout 按钮冲突。 */
@@ -678,6 +736,7 @@ object ContainerMenuParser {
         val updateInterval = parseUpdateInterval(section.get("update"), "$path.update", diagnostics)
         val actions = if (!hasVariants) parseActions(section.get("actions"), "$path.actions", diagnostics) else emptyMap()
         val variants = if (hasVariants) parseVariants(section.get("variants"), path, diagnostics) else emptyList()
+        val (slot, slotFrames) = parseButtonSlot(section.get("slot"), "$path.slot", diagnostics)
         if (display == null && variants.isEmpty()) {
             diagnostics += error(
                 "button.display_missing",
@@ -692,7 +751,9 @@ object ContainerMenuParser {
             updateIntervalTicks = updateInterval,
             display = display ?: ContainerItemDefinition(emptyMap()),
             actions = actions,
-            variants = variants
+            variants = variants,
+            slot = slot,
+            slotFrames = slotFrames
         )
     }
 
@@ -887,26 +948,96 @@ object ContainerMenuParser {
         }
     }
 
+    /**
+     * 解析按钮槽位配置。
+     *
+     * - 单值或扁平列表（如 `5`、`[8, 9, 10]`）返回 [ContainerButtonDefinition.slot]：运行时同时渲染在所有解析出的槽位。
+     * - 列表的列表（如 `[[8], [9], [10]]`）返回动画帧，拆为 [ContainerButtonDefinition.slotFrames]：每次刷新循环到下一帧位置。
+     */
+    private fun parseButtonSlot(
+        raw: Any?,
+        path: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): Pair<ContainerConfigValue?, List<ContainerConfigValue>?> {
+        if (raw == null) return null to null
+        if (raw is Int || raw is Long || raw is Double || raw is Float || raw is Boolean || raw is String) {
+            return freeze(raw) to null
+        }
+        if (raw is List<*>) {
+            if (raw.isEmpty()) {
+                diagnostics += error("button.invalid_slot", path, "Button slot list must not be empty.")
+                return null to null
+            }
+            val isFrameList = raw.firstOrNull() is List<*>
+            if (isFrameList) {
+                val frames = raw.mapNotNull { frame ->
+                    if (frame is List<*>) freeze(frame) else freeze(listOf(frame))
+                }
+                if (frames.isEmpty()) {
+                    diagnostics += error("button.invalid_slot", path, "Button slot frame list must not be empty.")
+                    return null to null
+                }
+                return null to frames
+            }
+            return freeze(raw) to null
+        }
+        diagnostics += error(
+            "button.invalid_slot",
+            path,
+            "Button slot must be an integer, a string expression, or a list of them."
+        )
+        return null to null
+    }
+
     private fun validateButtonReferences(
         layout: ContainerLayoutDefinition,
         buttons: Map<String, ContainerButtonDefinition>,
-        diagnostics: MutableList<ContainerMenuDiagnostic>
+        diagnostics: MutableList<ContainerMenuDiagnostic>,
+        pageLabel: String = "page 1",
+        checkUnused: Boolean = true
     ) {
         layout.slotsByButton.forEach { (id, slots) ->
             if (id !in buttons) {
                 val first = layout.slots[slots.first()]
                 diagnostics += error(
                     "layout.button_not_found",
-                    "Layout[${first.row}][${first.column}]",
+                    "Layout[$pageLabel][${first.row}][${first.column}]",
                     "Layout references button '$id', but Buttons.$id is not defined."
                 )
             }
         }
-        buttons.keys.filterNot(layout.slotsByButton::containsKey).forEach { id ->
+        if (!checkUnused) return
+        buttons.keys
+            .filterNot(layout.slotsByButton::containsKey)
+            .filterNot(layout.dynamicSlotButtons::contains)
+            .forEach { id ->
+                diagnostics += warning(
+                    "button.unused",
+                    "Buttons.$id",
+                    "Button '$id' is defined but not used by $pageLabel Layout."
+                )
+            }
+    }
+
+    /**
+     * 多页菜单下按钮只分布在部分页是正常情况，逐页检查会产生大量 `button.unused` 误报。
+     * 这里聚合所有页的引用，仅在按钮完全未出现在任何一页时才报一次。
+     */
+    private fun reportUnusedButtons(
+        layoutPages: List<ContainerLayoutDefinition>?,
+        dynamicSlotButtons: Set<String>,
+        buttons: Map<String, ContainerButtonDefinition>,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ) {
+        val used = linkedSetOf<String>().apply {
+            addAll(dynamicSlotButtons)
+            layoutPages?.forEach { page -> addAll(page.slotsByButton.keys) }
+        }
+        buttons.keys.filterNot(used::contains).forEach { id ->
             diagnostics += warning(
                 "button.unused",
                 "Buttons.$id",
-                "Button '$id' is defined but not used by Layout."
+                "Button '$id' is defined but not used by any Layout page."
             )
         }
     }
