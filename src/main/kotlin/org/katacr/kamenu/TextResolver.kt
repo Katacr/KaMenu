@@ -428,10 +428,13 @@ object TextResolver {
             "isPosNum",
             "isInt",
             "isPosInt",
+            "isPlayerOnline",
             "hasPerm",
             "hasMoney",
+            "hasPoints",
             "hasStockItem",
             "hasItem",
+            "hasEquipment",
             "inList",
             "inGlist",
             "getLength"

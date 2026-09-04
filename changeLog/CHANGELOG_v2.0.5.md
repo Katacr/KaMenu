@@ -35,6 +35,7 @@
 
 - 修复 Paper 原生 Dialog 的 `Inputs` 中 `type: checkbox` 无论勾选状态如何都返回 `false` 的问题。回调现在按组件声明类型读取响应，checkbox 使用布尔值读取，不再被数值读取的默认 `0` 覆盖。
 - 修复 Paper 平台上聊天可点击文本（`hovertext:` 发送、`<text=...;actions=...>`）的自定义回调在执行 `Events.Click` 动作时丢失 `contextId` 的问题。`contextId` 现已沿解析链路（`parseClickableText` → 回调 → `executeActionList`）透传，与 Spigot 路径一致，使点击回调能正确关联原菜单的参数会话与任务上下文（此前 Paper 该路径的 `contextId` 为空）。
+- 容器菜单迁移（TrMenu）质量修正：迁移后的按钮显示不再无条件写入 `amount: '1'`、`glow: 'false'`、`unbreakable: 'false'`，原菜单未指定的字段保持省略；运行时容器校验器对多页菜单的 `button.unused` 改为跨所有页聚合判断，仅在按钮完全未出现在任何一页时才报一次，消除多页菜单下的大量误报。
 
 ---
 
@@ -66,3 +67,4 @@
 
 - Fixed Paper native Dialog `Inputs` with `type: checkbox` always returning `false` regardless of its selected state. Callbacks now read responses by declared component type, so checkbox booleans are no longer masked by the numeric reader's default `0`.
 - Fixed the loss of `contextId` when a chat clickable-text custom callback (sent via `hovertext:`, using `<text=...;actions=...>`) executes an `Events.Click` action list on Paper. The `contextId` is now threaded through the parsing chain (`parseClickableText` → callback → `executeActionList`), matching the Spigot path, so click callbacks correctly associate with the originating menu's argument session and task context (previously the Paper path passed a null `contextId`).
+- Container menu migration (TrMenu) quality fixes: migrated button displays no longer unconditionally write `amount: '1'`, `glow: 'false'`, `unbreakable: 'false'` (fields the source menu did not specify stay omitted); the runtime container validator now aggregates `button.unused` across all pages and only reports once when a button appears on no page at all, eliminating the large number of false positives on multi-page menus.

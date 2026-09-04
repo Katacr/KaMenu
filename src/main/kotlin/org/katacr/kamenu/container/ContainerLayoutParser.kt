@@ -33,16 +33,10 @@ object ContainerLayoutParser {
         val slots = mutableListOf<ContainerLayoutSlot>()
         rows.forEachIndexed { rowIndex, row ->
             val tokens = tokenizeRow(row, rowIndex, diagnostics)
-            if (tokens.size != type.columns) {
-                diagnostics += error(
-                    code = "layout.invalid_column_count",
-                    path = "Layout[$rowIndex]",
-                    message = "${type.name} Layout row ${rowIndex + 1} must contain ${type.columns} logical slots, " +
-                        "but found ${tokens.size}."
-                )
+            val normalizedTokens = tokens.take(type.columns).let { visibleTokens ->
+                visibleTokens + List(type.columns - visibleTokens.size) { null }
             }
-
-            tokens.take(type.columns).forEachIndexed { columnIndex, buttonId ->
+            normalizedTokens.forEachIndexed { columnIndex, buttonId ->
                 slots += ContainerLayoutSlot(
                     index = rowIndex * type.columns + columnIndex,
                     row = rowIndex,

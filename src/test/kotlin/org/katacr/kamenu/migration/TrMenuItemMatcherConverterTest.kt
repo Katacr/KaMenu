@@ -38,6 +38,40 @@ class TrMenuItemMatcherConverterTest {
     }
 
     @Test
+    fun `converts name only and item_model matchers`() {
+        val diagnostics = TrMenuMigrationDiagnostics()
+        val converter = TrMenuItemMatcherConverter(TrMenuVariableConverter())
+
+        assertEquals(
+            listOf("item: type=take;amount=1;name=§f井水"),
+            converter.convertAction("amount:1,name:§f井水", "take", "actions", diagnostics)
+        )
+        assertEquals(
+            listOf("item: type=take;amount=1;item_model=test:my_item"),
+            converter.convertAction("amount:1,model:test:my_item", "take", "actions", diagnostics)
+        )
+        assertEquals(
+            "hasItem.[amount=1;name=§f井水]",
+            converter.convertCondition("amount:1,name:§f井水", "condition", diagnostics)
+        )
+        assertEquals(
+            "hasItem.[amount=1;item_model=test:my_item]",
+            converter.convertCondition("amount:1,model:test:my_item", "condition", diagnostics)
+        )
+        assertTrue(diagnostics.issues.isEmpty())
+    }
+
+    @Test
+    fun `still rejects data and head traits`() {
+        val diagnostics = TrMenuMigrationDiagnostics()
+        val converter = TrMenuItemMatcherConverter(TrMenuVariableConverter())
+
+        assertTrue(converter.convertAction("name:foo,data:2", "take", "actions", diagnostics).isEmpty())
+        assertTrue(converter.convertAction("name:foo,head:texture", "take", "actions", diagnostics).isEmpty())
+        assertEquals(2, diagnostics.issues.count { it.code == "TRM_ITEM_MATCHER_UNSUPPORTED" })
+    }
+
+    @Test
     fun `condition parser accepts supported item matcher`() {
         val diagnostics = TrMenuMigrationDiagnostics()
         val condition = TrMenuConditionConverter(TrMenuVariableConverter()).convert(

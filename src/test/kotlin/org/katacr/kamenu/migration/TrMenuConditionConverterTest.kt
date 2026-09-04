@@ -99,4 +99,38 @@ class TrMenuConditionConverterTest {
         assertEquals(expected, result)
         assertTrue(diagnostics.issues.none { it.code == "TRM_CONDITION_UNSUPPORTED" })
     }
+
+    @Test
+    fun `converts star prefixed quoted item matcher with name only`() {
+        assertConversion(
+            TrMenuConditionConverter(TrMenuVariableConverter()),
+            "all [ item *\"amount:1,name:§f井水\" item *\"amount:1,name:§f精品猪肉\" ]",
+            "(hasItem.[amount=1;name=§f井水] && hasItem.[amount=1;name=§f精品猪肉])"
+        )
+    }
+
+    @Test
+    fun `converts star prefixed quoted item matcher with item_model`() {
+        assertConversion(
+            TrMenuConditionConverter(TrMenuVariableConverter()),
+            "item *\"amount:2,model:test:my_item\"",
+            "hasItem.[amount=2;item_model=test:my_item]"
+        )
+    }
+
+    @Test
+    fun `still rejects data and head traits in quoted matcher`() {
+        val diagnostics = TrMenuMigrationDiagnostics()
+        val result = TrMenuConditionConverter(TrMenuVariableConverter()).convert("item *\"amount:1,data:5\"", "condition", diagnostics)
+        assertTrue(result == null || diagnostics.issues.any { it.code == "TRM_ITEM_MATCHER_UNSUPPORTED" })
+    }
+
+    @Test
+    fun `converts quoted item matcher without star prefix`() {
+        assertConversion(
+            TrMenuConditionConverter(TrMenuVariableConverter()),
+            "item \"amount:1,name:§f井水\"",
+            "hasItem.[amount=1;name=§f井水]"
+        )
+    }
 }

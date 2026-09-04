@@ -836,6 +836,7 @@ object ActionHandlers {
         var amountStr = "1"
         var loreText: String? = null
         var itemModel: String? = null
+        var nameText: String? = null
 
         // 解析参数
         args.split(";").forEach { param ->
@@ -848,7 +849,8 @@ object ActionHandlers {
                     "mats" -> materialName = value
                     "amount" -> amountStr = value
                     "lore" -> loreText = value
-                    "model" -> itemModel = value
+                    "model", "item_model" -> itemModel = value
+                    "name" -> nameText = value
                 }
             }
         }
@@ -858,10 +860,12 @@ object ActionHandlers {
         val finalAmountStr = resolveVariablesWithInput(player, amountStr, variables)
         val finalLoreText = loreText?.let { resolveVariablesWithInput(player, it, variables) }
         val finalItemModel = itemModel?.let { resolveVariablesWithInput(player, it, variables) }
+        val finalNameText = nameText?.let { resolveVariablesWithInput(player, it, variables) }
         val amount = (finalAmountStr.toIntOrNull() ?: 1).coerceAtLeast(1)
 
-        // 材质是必需的
-        if (finalMaterialName.isEmpty()) {
+        // 材质不再是必需的：允许仅按显示名或物品模型匹配（RPG 铁砧改名/自定义模型物品场景）。
+        val hasMaterialConstraint = finalMaterialName.isNotEmpty()
+        if (!hasMaterialConstraint && finalLoreText == null && finalItemModel == null && finalNameText == null) {
             languageManager?.getMessage("actions.item_missing_material", player.name)?.let {
                 plugin?.logger?.warning(it)
             }
@@ -869,9 +873,10 @@ object ActionHandlers {
         }
 
         // 外部物品保留插件写入的完整元数据；原版物品继续使用 Bukkit Material。
-        val externalItem = ExternalItemAdapter.create(finalMaterialName, amount, player)
-        val material = MaterialUtils.matchMaterial(finalMaterialName)
-        if (externalItem == null && material == null) {
+        val externalItem = hasMaterialConstraint && ExternalItemAdapter.isExternalId(finalMaterialName)
+        val externalItemStack = if (externalItem) ExternalItemAdapter.create(finalMaterialName, amount, player) else null
+        val material = if (hasMaterialConstraint) MaterialUtils.matchMaterial(finalMaterialName) else null
+        if (hasMaterialConstraint && !externalItem && material == null) {
             languageManager?.getMessage("actions.item_invalid_material", finalMaterialName, player.name)?.let {
                 plugin?.logger?.warning(it)
             }
@@ -881,7 +886,7 @@ object ActionHandlers {
         when (type) {
             "give" -> {
                 // 给予物品（只需要物品 ID 和数量，忽略 lore 和 model 过滤器）
-                val itemToGive = externalItem?.clone()
+                val itemToGive = externalItemStack?.clone()
                     ?: org.bukkit.inventory.ItemStack(material!!, amount)
                 val leftover = player.inventory.addItem(itemToGive)
 
@@ -915,25 +920,28 @@ object ActionHandlers {
 
                 for (stack in allItems) {
                     if (remaining <= 0) break
-                    val itemMatches = if (externalItem != null) {
-                        ExternalItemAdapter.matches(stack, finalMaterialName)
+                    val itemMatches = if (hasMaterialConstraint) {
+                        if (externalItem != null) {
+                            ExternalItemAdapter.matches(stack, finalMaterialName)
+                        } else {
+                            stack.type == material
+                        }
                     } else {
-                        stack.type == material
+                        true
                     }
                     if (stack.type != org.bukkit.Material.AIR && stack.amount > 0 && itemMatches) {
+                        val stackMeta = stack.itemMeta ?: continue
+
                         // 检查 lore 是否匹配（如果指定了 lore）
                         if (finalLoreText != null) {
-                            val itemMeta = stack.itemMeta
-                            if (itemMeta != null && itemMeta.hasLore()) {
-                                val lore = MenuUI.itemLore(itemMeta)
+                            if (stackMeta.hasLore()) {
+                                val lore = MenuUI.itemLore(stackMeta)
                                 // 检查 lore 中是否包含指定字符串（忽略大小写）
                                 val loreMatched = lore.any { line ->
                                     val plainText = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(line)
                                     plainText.contains(finalLoreText, ignoreCase = true)
                                 }
-                                if (!loreMatched) {
-                                    continue
-                                }
+                                if (!loreMatched) continue
                             } else {
                                 // 没有 lore，跳过
                                 continue
@@ -942,9 +950,16 @@ object ActionHandlers {
 
                         // 检查 item_model 是否匹配（如果指定了 model）
                         if (finalItemModel != null) {
-                            val itemMeta = stack.itemMeta
-                            val modelKey = ItemPropertyReader.getItemModel(itemMeta) ?: continue
+                            val modelKey = ItemPropertyReader.getItemModel(stackMeta) ?: continue
                             if (!modelKey.equals(finalItemModel, ignoreCase = true)) continue
+                        }
+
+                        // 检查显示名是否匹配（包含即可，忽略大小写与颜色码）
+                        if (finalNameText != null) {
+                            val rawName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                                .serialize(MenuUI.itemName(stack))
+                            val plainName = rawName.replace(Regex("§[0-9a-fk-orA-FK-OR]"), "")
+                            if (plainName.isEmpty() || !plainName.contains(finalNameText, ignoreCase = true)) continue
                         }
 
                         // 符合所有条件，执行扣除

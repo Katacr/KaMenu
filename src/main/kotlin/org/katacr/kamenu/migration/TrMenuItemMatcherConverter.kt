@@ -14,12 +14,14 @@ internal class TrMenuItemMatcherConverter(
         val rewritten = variables.rewrite(raw, path, diagnostics, strict = true) ?: return emptyList()
         return rewritten.split(Regex("\\s*;\\s*")).mapNotNull { group ->
             val matcher = parseGroup(group, path, diagnostics) ?: return@mapNotNull null
-            if (matcher.material == null) {
-                unsupported(group, path, diagnostics, "ItemMatcher requires a material for portable migration.")
+            // material 不再是必填：允许仅按显示名或物品模型匹配（RPG 铁砧改名/自定义模型物品场景）。
+            val hasMaterial = matcher.material != null
+            if (!hasMaterial && matcher.name == null && matcher.customModelId == null && matcher.model == null) {
+                unsupported(group, path, diagnostics, "ItemMatcher requires at least a material, name, item_model, or model-data for portable migration.")
                 return@mapNotNull null
             }
-            if (matcher.data != null || matcher.name != null || matcher.head != null || matcher.customModelId != null) {
-                unsupported(group, path, diagnostics, "This ItemMatcher uses data, name, head, or model-data that KaMenu item actions cannot preserve.")
+            if (matcher.data != null || matcher.head != null) {
+                unsupported(group, path, diagnostics, "This ItemMatcher uses data or head that KaMenu item actions cannot preserve.")
                 return@mapNotNull null
             }
             if (operation == "give" && matcher.lore != null) {
@@ -28,9 +30,11 @@ internal class TrMenuItemMatcherConverter(
             }
             buildString {
                 append("item: type=").append(operation)
-                append(";mats=").append(matcher.material)
+                if (hasMaterial) append(";mats=").append(matcher.material)
                 append(";amount=").append(matcher.amount ?: "1")
                 if (operation == "take") matcher.lore?.let { append(";lore=").append(it) }
+                matcher.model?.let { append(";item_model=").append(it) }
+                matcher.name?.let { append(";name=").append(it) }
             }
         }
     }
@@ -43,15 +47,26 @@ internal class TrMenuItemMatcherConverter(
     ): String? {
         val groups = raw.split(Regex("\\s*;\\s*")).mapNotNull { group ->
             val matcher = parseGroup(group, path, diagnostics) ?: return@mapNotNull null
-            if (matcher.material == null || matcher.data != null || matcher.name != null || matcher.head != null) {
-                unsupported(group, path, diagnostics, "Item condition requires material and cannot contain data, name, or head traits.")
+            // material 不再是必填：允许仅按显示名或物品模型判断（RPG 铁砧改名/自定义模型物品场景）。
+            val hasMaterial = matcher.material != null
+            if (!hasMaterial && matcher.name == null && matcher.customModelId == null && matcher.model == null) {
+                unsupported(group, path, diagnostics, "Item condition requires at least a material, name, item_model, or model-data.")
+                return null
+            }
+            if (matcher.data != null || matcher.head != null) {
+                unsupported(group, path, diagnostics, "Item condition cannot contain data or head traits.")
                 return null
             }
             buildString {
-                append("hasItem.[mats=").append(matcher.material)
-                append(";amount=").append(matcher.amount ?: "1")
-                matcher.lore?.let { append(";lore=").append(it) }
-                matcher.customModelId?.let { append(";custom_model_id=").append(it) }
+                append("hasItem.[")
+                var first = true
+                fun sep() { if (!first) append(';') else first = false }
+                if (hasMaterial) { append("mats=").append(matcher.material) ; first = false }
+                sep(); append("amount=").append(matcher.amount ?: "1")
+                matcher.lore?.let { sep(); append("lore=").append(it) }
+                matcher.customModelId?.let { sep(); append("custom_model_id=").append(it) }
+                matcher.model?.let { sep(); append("item_model=").append(it) }
+                matcher.name?.let { sep(); append("name=").append(it) }
                 append(']')
             }
         }
@@ -118,7 +133,8 @@ internal class TrMenuItemMatcherConverter(
         diagnostics: TrMenuMigrationDiagnostics
     ): Matcher? {
         val values = linkedMapOf<String, String>()
-        raw.split(',').forEach { trait ->
+        val cleaned = raw.removeSurrounding("\"")
+        cleaned.split(',').forEach { trait ->
             val split = trait.split(':', '=', limit = 2)
             if (split.size != 2) return@forEach
             val key = split[0].trim().lowercase()
@@ -130,6 +146,7 @@ internal class TrMenuItemMatcherConverter(
                 key.matches(Regex("mat(erial)?s?")) -> "material"
                 key.matches(Regex("(amount|amt)s?")) -> "amount"
                 key.matches(Regex("datas?")) -> "data"
+                key == "model" -> "model"
                 key.matches(Regex("model-?datas?")) -> "model-data"
                 key.matches(Regex("names?")) -> "name"
                 key.matches(Regex("lores?")) -> "lore"
@@ -139,7 +156,7 @@ internal class TrMenuItemMatcherConverter(
                     return null
                 }
             }
-            values[canonical] = split[1].trim()
+            values[canonical] = split[1].trim().removeSurrounding("\"")
         }
         if (values.isEmpty()) return null
         return Matcher(
@@ -147,6 +164,7 @@ internal class TrMenuItemMatcherConverter(
             amount = values["amount"],
             lore = values["lore"],
             customModelId = values["model-data"],
+            model = values["model"],
             data = values["data"],
             name = values["name"],
             head = values["head"]
@@ -173,6 +191,7 @@ internal class TrMenuItemMatcherConverter(
         val amount: String?,
         val lore: String?,
         val customModelId: String?,
+        val model: String?,
         val data: String?,
         val name: String?,
         val head: String?

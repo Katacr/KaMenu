@@ -1,7 +1,11 @@
 package org.katacr.kamenu
 
+import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.NamespacedKey
+import org.bukkit.inventory.InventoryHolder
+import org.bukkit.inventory.Inventory
+import org.bukkit.inventory.InventoryView
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.ItemMeta
 import org.bukkit.inventory.meta.SkullMeta
@@ -17,7 +21,11 @@ import java.lang.reflect.Method
 object BukkitItemMetaCompat {
     /** 在当前核心支持时设置命名空间物品模型。 */
     fun setItemModel(meta: ItemMeta, key: NamespacedKey): Boolean = runCatching {
-        val method = meta.javaClass.findMethod("setItemModel", NamespacedKey::class.java) ?: return false
+        val method = sequenceOf(ItemMeta::class.java, meta.javaClass)
+            .mapNotNull { type -> type.findMethod("setItemModel", NamespacedKey::class.java) }
+            .firstOrNull()
+            ?: return false
+        method.isAccessible = true
         method.invoke(meta, key)
         true
     }.getOrDefault(false)
@@ -54,6 +62,51 @@ object BukkitItemMetaCompat {
         setOwnerProfile.invoke(meta, profile)
         true
     }.getOrDefault(false)
+
+    /** 在当前核心支持时使用 Adventure Component 设置展示名；旧核心返回 false。 */
+    fun setDisplayNameComponent(meta: ItemMeta, component: Component): Boolean = runCatching {
+        val method = sequenceOf(ItemMeta::class.java, meta.javaClass)
+            .mapNotNull { type -> type.findMethod("displayName", Component::class.java) }
+            .firstOrNull()
+            ?: return false
+        method.isAccessible = true
+        method.invoke(meta, component)
+        true
+    }.getOrDefault(false)
+
+    /** 在当前核心支持时使用 Adventure Component 列表设置 Lore；旧核心返回 false。 */
+    fun setLoreComponent(meta: ItemMeta, components: List<Component>): Boolean = runCatching {
+        val method = sequenceOf(ItemMeta::class.java, meta.javaClass)
+            .mapNotNull { type -> type.findMethod("lore", List::class.java) }
+            .firstOrNull()
+            ?: return false
+        method.isAccessible = true
+        method.invoke(meta, components)
+        true
+    }.getOrDefault(false)
+
+    /** 在当前核心支持时使用 Adventure Component 创建库存；旧核心返回 null。 */
+    fun createInventoryComponent(holder: InventoryHolder?, size: Int, title: Component): Inventory? = runCatching {
+        val server = Bukkit.getServer()
+        val method = sequenceOf(Bukkit::class.java, server.javaClass)
+            .mapNotNull { type ->
+                type.findMethod("createInventory", InventoryHolder::class.java, java.lang.Integer.TYPE, Component::class.java)
+            }
+            .firstOrNull()
+            ?: return null
+        method.isAccessible = true
+        method.invoke(server, holder, size, title) as? Inventory
+    }.getOrNull()
+
+    /** 在当前核心支持时使用 Adventure Component 设置库存标题；返回新视图或 null。 */
+    fun setInventoryTitleComponent(view: InventoryView, component: Component): InventoryView? = runCatching {
+        val method = sequenceOf(InventoryView::class.java, view.javaClass)
+            .mapNotNull { type -> type.findMethod("title", Component::class.java) }
+            .firstOrNull()
+            ?: return null
+        method.isAccessible = true
+        method.invoke(view, component) as? InventoryView
+    }.getOrNull()
 
     private fun Class<*>.findMethod(name: String, vararg parameterTypes: Class<*>): Method? =
         runCatching { getMethod(name, *parameterTypes) }.getOrNull()

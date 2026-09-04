@@ -15,6 +15,7 @@ import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.InventoryView
 import org.bukkit.persistence.PersistentDataType
+import org.katacr.kamenu.BukkitItemMetaCompat
 import org.katacr.kamenu.AnvilViewFactory
 import org.katacr.kamenu.DialogSessionManager
 import org.katacr.kamenu.InputCaptureUtils
@@ -27,6 +28,7 @@ import org.katacr.kamenu.MenuListManager
 import org.katacr.kamenu.MenuRequirementChecker
 import org.katacr.kamenu.MenuTaskManager
 import org.katacr.kamenu.MenuUI
+import org.katacr.kamenu.MinecraftFeatures
 import org.katacr.kamenu.TextParser
 import java.math.BigDecimal
 import java.util.UUID
@@ -884,21 +886,28 @@ class ContainerMenuService(private val plugin: KaMenu) {
         } else {
             session.titleFrame = session.titleFrame.coerceIn(0, frames.lastIndex)
         }
-        val title = toLegacy(player, frames[session.titleFrame])
-        if (title == session.currentTitle) return
+        val titleComponent = toComponent(player, frames[session.titleFrame])
+        val titleLegacy = LegacyComponentSerializer.legacySection().serialize(titleComponent)
+        if (titleLegacy == session.currentTitle) return
 
         val view = player.openInventory
         if (view.topInventory !== session.holder.inventory) return
-        session.currentTitle = title
+        session.currentTitle = titleLegacy
+
+        if (MinecraftFeatures.supportsSpriteObjects()) {
+            val newView = BukkitItemMetaCompat.setInventoryTitleComponent(view, titleComponent)
+            if (newView != null) return
+        }
+
         val setTitle = view.javaClass.methods.firstOrNull { method ->
             method.name == "setTitle" && method.parameterTypes.contentEquals(arrayOf(String::class.java))
         }
-        if (setTitle != null && runCatching { setTitle.invoke(view, title) }.isSuccess) return
+        if (setTitle != null && runCatching { setTitle.invoke(view, titleLegacy) }.isSuccess) return
 
         session.rebindingTitle = true
         try {
             val oldInventory = session.holder.inventory
-            val replacement = createInventoryWindow(player, session.holder, session.definition, session.currentPage, title)
+            val replacement = createInventoryWindow(player, session.holder, session.definition, session.currentPage, titleLegacy)
             replacement.inventory.contents = oldInventory.contents.map { it?.clone() }.toTypedArray()
             session.holder.bindInventory(replacement.inventory)
             initializeAnvilInputItem(player, session)
@@ -946,6 +955,12 @@ class ContainerMenuService(private val plugin: KaMenu) {
     ): InventoryWindow {
         val layout = definition.layouts[page.coerceIn(0, definition.pageCount - 1)]
         if (definition.type == ContainerMenuType.CHEST) {
+            if (MinecraftFeatures.supportsSpriteObjects()) {
+                val titleComponent = toComponent(player, title)
+                BukkitItemMetaCompat.createInventoryComponent(holder, layout.size, titleComponent)?.let {
+                    return InventoryWindow(it)
+                }
+            }
             return InventoryWindow(Bukkit.createInventory(holder, layout.size, title))
         }
         if (definition.type == ContainerMenuType.ANVIL) {
@@ -1477,6 +1492,11 @@ class ContainerMenuService(private val plugin: KaMenu) {
     /** 将彩色标题转换为 Bukkit Inventory 使用的 Legacy 字符串。 */
     private fun toLegacy(player: Player, text: String): String {
         return LegacyComponentSerializer.legacySection().serialize(TextParser.parseText(text, player))
+    }
+
+    /** 解析标题文本为 Adventure Component；高版本可直接用于库存标题。 */
+    private fun toComponent(player: Player, text: String): net.kyori.adventure.text.Component {
+        return TextParser.parseText(text, player)
     }
 
     /** 确保所有库存 API 都在玩家所属线程执行。 */

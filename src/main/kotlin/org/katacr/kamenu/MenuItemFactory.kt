@@ -183,8 +183,23 @@ class MenuItemFactory(private val plugin: KaMenu) {
         componentId: String
     ) {
         val meta = item.itemMeta ?: return
-        spec.name?.let { meta.setDisplayName(toLegacy(player, it)) }
-        spec.lore?.let { lore -> meta.lore = lore.map { toLegacy(player, it) } }
+        if (MinecraftFeatures.supportsSpriteObjects()) {
+            spec.name?.let { nameText ->
+                val component = TextParser.parseText(nameText, player)
+                if (!BukkitItemMetaCompat.setDisplayNameComponent(meta, component)) {
+                    meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(component))
+                }
+            }
+            spec.lore?.let { lore ->
+                val components = lore.map { TextParser.parseText(it, player) }
+                if (!BukkitItemMetaCompat.setLoreComponent(meta, components)) {
+                    meta.lore = components.map { LegacyComponentSerializer.legacySection().serialize(it) }
+                }
+            }
+        } else {
+            spec.name?.let { meta.setDisplayName(toLegacy(player, it)) }
+            spec.lore?.let { lore -> meta.lore = lore.map { toLegacy(player, it) } }
+        }
 
         spec.customModelData?.takeIf(String::isNotBlank)?.let { raw ->
             raw.toIntOrNull()?.let(meta::setCustomModelData)

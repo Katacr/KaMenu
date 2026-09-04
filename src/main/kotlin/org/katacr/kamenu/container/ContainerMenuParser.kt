@@ -78,14 +78,6 @@ object ContainerMenuParser {
             ContainerFreeSlotsDefinition.EMPTY
         }
 
-        if (firstLayout != null) {
-            validateButtonReferences(firstLayout, buttons, diagnostics, checkUnused = false)
-        }
-        layoutPages?.drop(1)?.forEachIndexed { index, pageLayout ->
-            validateButtonReferences(pageLayout, buttons, diagnostics, pageLabel = "page ${index + 2}", checkUnused = false)
-        }
-        reportUnusedButtons(layoutPages, dynamicSlotButtons, buttons, diagnostics)
-
         val defaultPage = parseDefaultPage(config, diagnostics)
 
         if (diagnostics.any { it.severity == ContainerDiagnosticSeverity.ERROR } || type == null || layoutPages == null || layoutPages.isEmpty()) {
@@ -987,59 +979,6 @@ object ContainerMenuParser {
             "Button slot must be an integer, a string expression, or a list of them."
         )
         return null to null
-    }
-
-    private fun validateButtonReferences(
-        layout: ContainerLayoutDefinition,
-        buttons: Map<String, ContainerButtonDefinition>,
-        diagnostics: MutableList<ContainerMenuDiagnostic>,
-        pageLabel: String = "page 1",
-        checkUnused: Boolean = true
-    ) {
-        layout.slotsByButton.forEach { (id, slots) ->
-            if (id !in buttons) {
-                val first = layout.slots[slots.first()]
-                diagnostics += error(
-                    "layout.button_not_found",
-                    "Layout[$pageLabel][${first.row}][${first.column}]",
-                    "Layout references button '$id', but Buttons.$id is not defined."
-                )
-            }
-        }
-        if (!checkUnused) return
-        buttons.keys
-            .filterNot(layout.slotsByButton::containsKey)
-            .filterNot(layout.dynamicSlotButtons::contains)
-            .forEach { id ->
-                diagnostics += warning(
-                    "button.unused",
-                    "Buttons.$id",
-                    "Button '$id' is defined but not used by $pageLabel Layout."
-                )
-            }
-    }
-
-    /**
-     * 多页菜单下按钮只分布在部分页是正常情况，逐页检查会产生大量 `button.unused` 误报。
-     * 这里聚合所有页的引用，仅在按钮完全未出现在任何一页时才报一次。
-     */
-    private fun reportUnusedButtons(
-        layoutPages: List<ContainerLayoutDefinition>?,
-        dynamicSlotButtons: Set<String>,
-        buttons: Map<String, ContainerButtonDefinition>,
-        diagnostics: MutableList<ContainerMenuDiagnostic>
-    ) {
-        val used = linkedSetOf<String>().apply {
-            addAll(dynamicSlotButtons)
-            layoutPages?.forEach { page -> addAll(page.slotsByButton.keys) }
-        }
-        buttons.keys.filterNot(used::contains).forEach { id ->
-            diagnostics += warning(
-                "button.unused",
-                "Buttons.$id",
-                "Button '$id' is defined but not used by any Layout page."
-            )
-        }
     }
 
     /** 将 Bukkit YAML 值递归复制为只读配置值。 */

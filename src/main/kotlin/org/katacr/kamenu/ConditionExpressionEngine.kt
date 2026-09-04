@@ -575,6 +575,7 @@ object ConditionExpressionEngine {
         var materialName = ""
         var loreText: String? = null
         var itemModel: String? = null
+        var nameText: String? = null
         var customModelIdText: String? = null
 
         paramsStr.split(";").forEach { param ->
@@ -584,27 +585,33 @@ object ConditionExpressionEngine {
                     "mats" -> materialName = parts[1].trim()
                     "lore" -> loreText = parts[1].trim()
                     "model", "item_model" -> itemModel = parts[1].trim()
+                    "name" -> nameText = parts[1].trim()
                     "cmd", "custom_model_data", "custom_model_id" -> customModelIdText = parts[1].trim()
                 }
             }
         }
 
-        if (materialName.isEmpty()) return 0
-        val externalItem = ExternalItemAdapter.isExternalId(materialName)
-        val material = if (externalItem) null else MaterialUtils.matchMaterial(materialName)
-        if (!externalItem && material == null) return 0
+        // material 不再是必填：仅当没有任何可用匹配维度时才提前返回。
+        val hasMaterialConstraint = materialName.isNotEmpty()
+        if (!hasMaterialConstraint && loreText == null && itemModel == null && nameText == null && customModelIdText == null) {
+            return 0
+        }
+        val externalItem = hasMaterialConstraint && ExternalItemAdapter.isExternalId(materialName)
+        val material = if (externalItem) null else if (hasMaterialConstraint) MaterialUtils.matchMaterial(materialName) else null
+        if (hasMaterialConstraint && !externalItem && material == null) return 0
         val customModelId = customModelIdText?.toIntOrNull()
         if (customModelIdText != null && customModelId == null) return 0
 
         var totalCount = 0
 
         for (item in getUniqueInventoryItems(player)) {
-            val itemMatches = if (externalItem) {
-                ExternalItemAdapter.matches(item, materialName)
+            if (item.type == org.bukkit.Material.AIR || item.amount <= 0) continue
+            val itemMatches = if (hasMaterialConstraint) {
+                if (externalItem) ExternalItemAdapter.matches(item, materialName) else item.type == material
             } else {
-                item.type == material
+                true
             }
-            if (item.type != org.bukkit.Material.AIR && item.amount > 0 && itemMatches) {
+            if (itemMatches) {
                 val itemMeta = item.itemMeta ?: continue
                 if (loreText != null) {
                     if (!itemMeta.hasLore()) continue
@@ -618,6 +625,12 @@ object ConditionExpressionEngine {
                 if (itemModel != null) {
                     val actualItemModel = ItemPropertyReader.getItemModel(itemMeta) ?: continue
                     if (!actualItemModel.equals(itemModel, ignoreCase = true)) continue
+                }
+
+                if (nameText != null) {
+                    val rawName = LegacyComponentSerializer.legacySection().serialize(MenuUI.itemName(item))
+                    val plainName = rawName.replace(Regex("§[0-9a-fk-orA-FK-OR]"), "")
+                    if (plainName.isEmpty() || !plainName.contains(nameText, ignoreCase = true)) continue
                 }
 
                 if (customModelId != null) {

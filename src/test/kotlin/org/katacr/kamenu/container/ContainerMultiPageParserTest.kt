@@ -91,7 +91,7 @@ class ContainerMultiPageParserTest {
     }
 
     @Test
-    fun `reports error for missing button on second page`() {
+    fun `allows missing button on second page`() {
         val result = parse(
             """
             Type: CHEST
@@ -107,7 +107,22 @@ class ContainerMultiPageParserTest {
                 display: { material: BARRIER, name: 'X' }
             """
         )
-        assertTrue(result.diagnostics.any { it.code == "layout.button_not_found" && it.path.contains("page 2") })
+        assertTrue(result.succeeded)
+        assertTrue(result.diagnostics.none { it.code == "layout.button_not_found" })
+    }
+
+    @Test
+    fun `normalizes short and long layout rows without diagnostics`() {
+        val result = ContainerLayoutParser.parse(listOf("A", "ABCDEFGHIJK"), ContainerMenuType.CHEST)
+
+        assertTrue(result.diagnostics.isEmpty())
+        val definition = result.definition!!
+        assertEquals(18, definition.slots.size)
+        assertEquals(0, definition.slots[0].column)
+        assertEquals(null, definition.slots[1].buttonId)
+        assertEquals(null, definition.slots[8].buttonId)
+        assertEquals("A", definition.slots[9].buttonId)
+        assertEquals("I", definition.slots[17].buttonId)
     }
 
     @Test

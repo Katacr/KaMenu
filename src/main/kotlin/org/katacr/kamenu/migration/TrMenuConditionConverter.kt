@@ -148,6 +148,9 @@ internal class TrMenuConditionConverter(
 
         private fun parseOperand(): String {
             val token = take()
+            if (!token.quoted && token.text == "*") {
+                return parseOperand()
+            }
             val lower = token.text.lowercase()
             if (!token.quoted && lower in setOf("vars", "var", "papi", "placeholder")) {
                 val value = parseOperand()
@@ -227,6 +230,11 @@ internal class TrMenuConditionConverter(
                 }
                 if (!closed) throw Unsupported("Unclosed quoted condition value.")
                 tokens += Token(value.toString(), quoted = true)
+                continue
+            }
+            if (input[index] == '*') {
+                tokens += Token("*")
+                index++
                 continue
             }
             if (input[index] == '{' || (input[index] == '$' && input.getOrNull(index + 1) == '{')) {
