@@ -1313,6 +1313,12 @@ Bottom:
 - 物品比较使用 `ItemStack.isSimilar()` 方法，忽略物品数量差异
 - 支持变量替换，如 `name=$(item_name)` 或 `amount={data:price}`
 
+**关于 lore 中的 `{player}` 占位符：**
+- 通过 `/km item give <物品> <玩家> [数量]` 指令给予物品时，若物品 lore 中包含字面 `{player}`，会自动替换为**被给予玩家**的名称（例如一行 lore `灵魂绑定：{player}` 会变为 `灵魂绑定：Steve`）。
+- 该替换仅发生在 `/km item give` 指令路径，菜单内 `stock-item: type=give` 动作不会替换 `{player}`。
+- 替换后的物品 lore 已与数据库模板不同，因此 `stock-item: type=take`（基于 `isSimilar()` 全量数据比较）**无法**再用原始模板选中并扣回该物品。
+- 如需回收这类绑定物品，请改用 `item: type=take;lore=灵魂绑定：{player}` 动作：`{player}` 在执行 take 时会被解析为触发玩家自身名称，从而精准匹配其名下物品（详见下方 `item` 动作说明）。
+
 ---
 
 ### item - 物品给予/扣除

@@ -46,11 +46,12 @@ Buttons:
 
 | 字段 | 常用值 | 作用 |
 |---|---|---|
-| `material` | `DIAMOND`、`stock:剑`、`itemsadder:pack:item` | 基础材质或外部/保存物品来源，必填 |
+| `material` | `DIAMOND`、`stock:剑`、`itemsadder:pack:item`、`sxitem:物品ID` | 基础材质或外部/保存物品来源，必填 |
 | `amount` | `1`、`{meta:amount}` | 显示数量 |
 | `name` | 颜色代码、PAPI、内置变量 | 物品名称 |
 | `lore` | 字符串列表 | 物品 Lore |
 | `item_model` | `namespace:model` | 新版 Item Model 键 |
+| `tooltip_style` | `namespace:style` | 自定义 tooltip 背景与边框样式（1.21.4+） |
 | `custom_model_data` | 整数或变量 | 自定义模型数据 |
 | `skull_owner` | 玩家名 | 玩家头颅名称 |
 | `skull_texture` | Base64 或纹理值 | 玩家头颅纹理 |
@@ -60,6 +61,8 @@ Buttons:
 | `unbreakable` | `true` / `false` | 设置不可破坏 |
 
 外部物品只有在对应插件已启用且 ID 有效时才能创建；未知字段会产生警告，不应依赖私有 NBT。
+
+支持的外部物品前缀：`itemsadder:`（短别名 `ia:`）、`oraxen:`、`craftengine:`（短别名 `ce:`）、`sxitem:`（短别名 `sx:`，SX-Item 插件）。SX-Item 物品会显示其本体（含显示名、Lore 与自身模型），悬浮文本随物品展示；其 `&item:[sxitem:物品ID]` 内联小图标会尝试按物品自身 `item_model` 解析精灵。
 
 需要完整预览自由槽中的真实物品时，`material` 可写为 `[FREE:<id>]`。该写法保留实际 ItemStack 元数据，详见[自由槽位](free-slots.md#完整物品预览)。
 

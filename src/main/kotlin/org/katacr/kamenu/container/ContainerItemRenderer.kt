@@ -30,6 +30,7 @@ class ContainerItemRenderer(private val plugin: KaMenu) {
             lore = display["lore"]?.let(values::inlineConditionalStrings),
             customModelData = display["custom_model_data"]?.let { values.string(it) },
             itemModel = display["item_model"]?.let { values.string(it) },
+            tooltipStyle = display["tooltip_style"]?.let { values.string(it) },
             skullOwner = display["skull_owner"]?.let { values.string(it) },
             skullTexture = display["skull_texture"]?.let { values.string(it) },
             glow = values.boolean(display["glow"]),

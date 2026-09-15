@@ -124,6 +124,12 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                     contextId,
                     config = config
                 ).takeIf(String::isNotEmpty),
+                tooltipStyle = resolve(
+                    player,
+                    getString(player, section, "$key.tooltip_style", ""),
+                    contextId,
+                    config = config
+                ).takeIf(String::isNotEmpty),
                 skullOwner = resolve(
                     player,
                     getString(player, section, "$key.skull_owner", ""),

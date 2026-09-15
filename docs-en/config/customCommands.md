@@ -119,6 +119,19 @@ custom-commands:
       0: "%kamenu_online_players%"
 ```
 
+{% hint style="warning" %}
+**The `menu` form only completes arguments; it does not pass menu arguments.** When `menu` is present, `args` is used for Tab completion only, and the arguments the player actually types are **not** forwarded to the menu. To pass `/profile Steve`'s `Steve` into the menu (for example to render by player name), use an action command that opens the menu explicitly:
+
+```yaml
+custom-commands:
+  profile:
+    args:
+      0: "%kamenu_online_players%"
+    actions:
+      - 'open: example/player_profile {arg:0}'
+```
+{% endhint %}
+
 Tab completion candidates are not cached. PAPI placeholders and KaMenu built-in variables are resolved in real time each time a player presses Tab.
 
 ## Example: Restricting Access to Specific Players

@@ -1,6 +1,7 @@
 package org.katacr.kamenu
 
 import org.bukkit.Bukkit
+import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.inventory.ItemStack
@@ -15,7 +16,7 @@ import java.lang.reflect.Method
  * 创建、ID 识别和匹配。配置 ID 必须带插件前缀，避免多个插件使用相同命名空间时误匹配。
  */
 object ExternalItemAdapter {
-    private val providers = listOf(ItemsAdderProvider, OraxenProvider, CraftEngineProvider)
+    private val providers = listOf(ItemsAdderProvider, OraxenProvider, CraftEngineProvider, SXItemProvider)
 
     /** 根据带插件前缀的 ID 创建自定义物品；非外部物品格式或解析失败时返回 null。 */
     fun create(rawId: String, amount: Int = 1, player: Player? = null): ItemStack? {
@@ -69,7 +70,7 @@ object ExternalItemAdapter {
         return null
     }
 
-    /** 解析显式插件前缀，支持 `ia:` 与 `ce:` 短别名。 */
+    /** 解析显式插件前缀，支持 `ia:`、`ce:`、`sx:` 短别名。 */
     private fun parseId(rawId: String): ExternalItemId? {
         val trimmed = rawId.trim()
         val separator = trimmed.indexOf(':')
@@ -79,6 +80,7 @@ object ExternalItemAdapter {
             "itemsadder", "ia" -> ItemsAdderProvider
             "oraxen" -> OraxenProvider
             "craftengine", "ce" -> CraftEngineProvider
+            "sxitem", "sx" -> SXItemProvider
             else -> null
         } ?: return null
         return ExternalItemId(provider, trimmed.substring(separator + 1).trim())
@@ -295,6 +297,56 @@ object ExternalItemAdapter {
                 ?: "./generated/resource_pack.zip"
             val file = File(configured)
             return if (file.isAbsolute) file else File(plugin.dataFolder, configured)
+        }
+    }
+
+    private object SXItemProvider : Provider {
+        override val pluginName = "SX-Item"
+        override val prefix = "sxitem"
+        private const val SX_ITEM_CLASS = "github.saukiya.sxitem.SXItem"
+        private const val ITEM_MANAGER_CLASS = "github.saukiya.sxitem.data.item.ItemManager"
+
+        private var classLoader: ClassLoader? = null
+        private var itemManagerMethod: Method? = null
+        private var getItemMethod: Method? = null
+        private var getItemKeyMethod: Method? = null
+
+        override fun create(id: String, player: Player?): ItemStack? = invokeSafely {
+            val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
+            resolve(plugin)
+            val manager = itemManagerMethod?.invoke(null) ?: return@invokeSafely null
+            val item = getItemMethod?.invoke(manager, id, player, emptyArray<Any>())
+            (item as? ItemStack)?.clone()?.takeIf { it.type != Material.AIR }
+        }
+
+        override fun idOf(item: ItemStack): String? = invokeSafely {
+            val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
+            resolve(plugin)
+            val manager = itemManagerMethod?.invoke(null) ?: return@invokeSafely null
+            getItemKeyMethod?.invoke(manager, item) as? String
+        }
+
+        override fun sprite(id: String): ItemSpriteReference? = invokeSafely {
+            val plugin = enabledPlugin(pluginName) ?: return@invokeSafely null
+            resolve(plugin)
+            val manager = itemManagerMethod?.invoke(null) ?: return@invokeSafely null
+            val item = getItemMethod?.invoke(manager, id, null, emptyArray<Any>()) as? ItemStack
+                ?: return@invokeSafely null
+            val model = ItemPropertyReader.getItemModel(item.itemMeta)
+            model?.let { ItemSpriteReference.of("minecraft:items", "minecraft:item/${it.substringAfter(':')}") }
+                ?: MaterialUtils.getSpriteReference(item.type.name)
+        }
+
+        @Synchronized
+        private fun resolve(plugin: Plugin) {
+            val loader = plugin.javaClass.classLoader
+            if (classLoader === loader) return
+            val sxItemClass = loader.loadClass(SX_ITEM_CLASS)
+            itemManagerMethod = sxItemClass.getMethod("getItemManager")
+            val managerClass = loader.loadClass(ITEM_MANAGER_CLASS)
+            getItemMethod = managerClass.getMethod("getItem", String::class.java, Player::class.java, Array<Any>::class.java)
+            getItemKeyMethod = managerClass.getMethod("getItemKey", ItemStack::class.java)
+            classLoader = loader
         }
     }
 

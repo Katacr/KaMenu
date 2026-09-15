@@ -63,6 +63,17 @@ object BukkitItemMetaCompat {
         true
     }.getOrDefault(false)
 
+    /** 在当前核心支持时设置自定义 tooltip 样式（1.21.4+）；旧核心返回 false。 */
+    fun setTooltipStyle(meta: ItemMeta, key: NamespacedKey): Boolean = runCatching {
+        val method = sequenceOf(ItemMeta::class.java, meta.javaClass)
+            .mapNotNull { type -> type.findMethod("setTooltipStyle", NamespacedKey::class.java) }
+            .firstOrNull()
+            ?: return false
+        method.isAccessible = true
+        method.invoke(meta, key)
+        true
+    }.getOrDefault(false)
+
     /** 在当前核心支持时使用 Adventure Component 设置展示名；旧核心返回 false。 */
     fun setDisplayNameComponent(meta: ItemMeta, component: Component): Boolean = runCatching {
         val method = sequenceOf(ItemMeta::class.java, meta.javaClass)

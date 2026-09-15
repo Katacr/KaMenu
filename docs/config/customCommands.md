@@ -119,6 +119,19 @@ custom-commands:
       0: "%kamenu_online_players%"
 ```
 
+{% hint style="warning" %}
+**`menu` 写法只做补全，不传菜单参数。** 当配置同时包含 `menu` 时，`args` 仅用于 Tab 补全，玩家实际输入的指令参数**不会**传给菜单。若需要把 `/profile Steve` 的 `Steve` 传给菜单（例如按玩家名渲染），请改用动作写法显式打开菜单：
+
+```yaml
+custom-commands:
+  profile:
+    args:
+      0: "%kamenu_online_players%"
+    actions:
+      - 'open: example/player_profile {arg:0}'
+```
+{% endhint %}
+
 Tab 补全不会缓存候选项，每次玩家按下 Tab 时都会根据当前玩家实时解析 PAPI 和 KaMenu 内置变量。
 
 ## 示例：限制特定玩家访问

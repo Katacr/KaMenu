@@ -17,6 +17,7 @@ object ContainerMenuParser {
         "amount",
         "custom_model_data",
         "item_model",
+        "tooltip_style",
         "skull_owner",
         "skull_texture",
         "glow",

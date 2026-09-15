@@ -10,6 +10,7 @@ softdepend:
   - ItemsAdder
   - Oraxen
   - CraftEngine
+  - HMCCosmetics
   - floodgate
 commands:
   kamenu:

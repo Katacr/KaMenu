@@ -46,11 +46,12 @@ Display fields support Bukkit-mappable material, amount, name, lore, model, skul
 
 | Field | Common value | Purpose |
 |---|---|---|
-| `material` | `DIAMOND`, `stock:Sword`, `itemsadder:pack:item` | Vanilla, saved, or external item source; required |
+| `material` | `DIAMOND`, `stock:Sword`, `itemsadder:pack:item`, `sxitem:item_id` | Vanilla, saved, or external item source; required |
 | `amount` | `1`, `{meta:amount}` | Display stack size |
 | `name` | Color codes, PAPI, built-in variables | Item name |
 | `lore` | String list | Item lore |
 | `item_model` | `namespace:model` | Modern Item Model key |
+| `tooltip_style` | `namespace:style` | Custom tooltip background/frame style (1.21.4+) |
 | `custom_model_data` | Integer or variable | Custom model data |
 | `skull_owner` | Player name | Player-head owner |
 | `skull_texture` | Base64 or texture value | Player-head texture |
@@ -60,6 +61,8 @@ Display fields support Bukkit-mappable material, amount, name, lore, model, skul
 | `unbreakable` | `true` / `false` | Unbreakable state |
 
 External items require the provider plugin to be enabled and the ID to exist. Unknown fields produce a warning; do not depend on private NBT.
+
+Supported external-item prefixes: `itemsadder:` (alias `ia:`), `oraxen:`, `craftengine:` (alias `ce:`), `sxitem:` (alias `sx:`, the SX-Item plugin). SX-Item items display their own body (display name, lore, and own model); hover text follows the item itself. Its inline `&item:[sxitem:item_id]` icon also tries to resolve the sprite from the item's own `item_model`.
 
 To preview a complete real item from a free slot, set `material` to `[FREE:<id>]`. It preserves the actual ItemStack metadata; see [Free Slots](free-slots.md#full-item-preview).
 

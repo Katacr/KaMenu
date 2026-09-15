@@ -100,6 +100,7 @@ text:
   - '&fItemsAdder：&item:[ia:namespace:item_id]'
   - '&fOraxen：&item:[oraxen:item_id]'
   - '&fCraftEngine：&item:[ce:namespace:item_id]'
+  - '&fSX-Item：&item:[sxitem:物品ID]'
 ```
 
 | 写法 | 数据来源 |
@@ -108,6 +109,7 @@ text:
 | `&item:[ia:namespace:item_id]` | ItemsAdder 物品的首个二维纹理 |
 | `&item:[oraxen:item_id]` | Oraxen 物品的首个二维纹理层 |
 | `&item:[ce:namespace:item_id]` | CraftEngine 最终资源包中的物品模型和纹理 |
+| `&item:[sxitem:物品ID]` | SX-Item 物品自身的 `item_model`，无模型时回退材质纹理 |
 
 该功能只显示资源包中的二维贴图，不渲染三维模型。复杂模型、动态模型或需要专用菜单图标时，在插件根目录的 `item_sprites.yml` 中添加覆盖：
 
@@ -437,7 +439,7 @@ Body:
 - `actions`、`copy`、`command`、`url` 四种点击行为只能选择一种
 - `url` 用于打开网页链接
 - `actions` 用于执行 Events.Click 下定义的动作列表
-- `hover_item` 支持 `hand`、`offhand`、`slot:槽位`、`armor:helmet`、`armor:chestplate`、`armor:leggings`、`armor:boots`、`stock:保存物品名`、`material:材质ID` 和外部物品 ID
+- `hover_item` 支持 `hand`、`offhand`、`slot:槽位`、`armor:helmet`、`armor:chestplate`、`armor:leggings`、`armor:boots`、`stock:保存物品名`、`material:材质ID` 和外部物品 ID（含 `itemsadder:`/`oraxen:`/`craftengine:`/`sxitem:` 及其短别名）
 - `hover_item` 无需 `amount` 参数；手持、槽位和护甲来源保留实际 ItemStack，`material:` 创建一个基础物品
 - 有效的 `hover_item` 优先于 `hover`；物品不存在或槽位为空时仍使用普通 `hover` 文本
 - 可点击区域用 `< >` 包裹
@@ -461,6 +463,7 @@ Body:
       - 'ItemsAdder：<text="&e[ 自定义剑 ]";hover_item=itemsadder:my_pack:sword>'
       - 'Oraxen：<text="&6[ 自定义剑 ]";hover_item=oraxen:custom_sword>'
       - 'CraftEngine：<text="&b[ 自定义剑 ]";hover_item=craftengine:my_pack:sword>'
+      - 'SX-Item：<text="&a[ 自定义剑 ]";hover_item=sxitem:自定义剑>'
 ```
 
 `stock:` 会展示 KaMenu 保存物品库中的完整属性，包括名称、Lore、附魔、模型和数据组件。保存物品会在插件启动时载入内存缓存，后续菜单渲染不会查询数据库；通过 KaMenu 保存或删除物品时缓存会同步更新。
@@ -513,6 +516,7 @@ Body:
 | `description` | `String` | ❌ | — | 物品下方显示的额外说明文字，支持颜色代码、PAPI 变量、条件判断和可点击文本语法                  |
 | `description_width` | `Int` | ❌ | `0` | description 文字框的宽度（1-1024，像素），不设置或设置为 0 则使用默认值 200                                  |
 | `item_model` | `String` | ❌ | — | 物品模型标识（格式：`namespace:key`），用于显示特殊材质物品（如 1.21.7+ 的命名空间物品模型） |
+| `tooltip_style` | `String` | ❌ | — | 自定义 tooltip 背景与边框样式（格式：`namespace:key`，1.21.4+），指向资源包 `assets/<namespace>/textures/gui/sprites/tooltip/<key>_background` 与 `<key>_frame` |
 | `skull_owner` | `String` | ❌ | — | 玩家名称，`material: PLAYER_HEAD` 时显示该玩家皮肤头颅，支持变量和 PAPI |
 | `skull_texture` | `String` | ❌ | — | Base64 头颅纹理值，`material: PLAYER_HEAD` 时显示自定义纹理头颅 |
 | `width` | `Int` | ❌ | `16` | 物品图标宽度（像素）                                                 |
@@ -822,6 +826,10 @@ material: 'diAMond swORd'
 | `BOOTS` | 靴子 | `EquipmentSlot.FEET` |
 | `MAINHAND` | 主手 | `EquipmentSlot.HAND` |
 | `OFFHAND` | 副手 | `EquipmentSlot.OFF_HAND` |
+| `HMCC_HAT` | HMCCosmetics 头饰 | `CosmeticSlot.HELMET` |
+| `HMCC_BACKPACK` | HMCCosmetics 背饰 | `CosmeticSlot.BACKPACK` |
+| `HMCC_OFFHAND` | HMCCosmetics 手持饰品 | `CosmeticSlot.OFFHAND` |
+| `HMCC_BALLOON` | HMCCosmetics 气球 | `CosmeticSlot.BALLOON` |
 
 **基础示例：**
 
@@ -840,7 +848,18 @@ Body:
     material: '[HEAD:AdminPlayer]'
     width: 16
     height: 16
+
+  # 显示指定玩家当前佩戴的 HMCCosmetics 头饰
+  admin_cosmetic:
+    type: 'item'
+    material: '[HMCC_HAT:AdminPlayer]'
+    width: 16
+    height: 16
 ```
+
+`HMCC_*` 引用需要安装并启用 HMCCosmetics，且目标玩家必须在线。KaMenu 通过
+HMCCosmetics API 克隆该玩家槽位的最终 `ItemStack`，因此会保留 CraftEngine
+`item_model`、CustomModelData、PDC 以及玩家为可染色饰品选择的颜色，而不是仅按基础材质重建物品。
 
 **配合变量使用：**
 
@@ -877,7 +896,7 @@ Body:
 | 槽位 | 空槽位显示 |
 |------|-----------|
 | `HEAD` | 玩家皮肤头颅 |
-| 其他槽位 | 浅灰色玻璃板，名称为"无" |
+| 其他槽位（包括 `HMCC_*`） | 浅灰色玻璃板，名称为"无" |
 
 ```yaml
 Body:

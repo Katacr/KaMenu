@@ -79,11 +79,14 @@ object MaterialUtils {
         val material = matchMaterial(materialName) ?: return null
 
         val key = material.key.key.lowercase()
-        return if (material.isBlock) {
-            ItemSpriteReference("minecraft:blocks", "minecraft:block/$key")
-        } else {
-            ItemSpriteReference("minecraft:items", "minecraft:item/$key")
+        // 方块类材质（箱子、熔炉、台阶等）只能用方块态，纯物品用物品态。
+        // 仅有方块态但方块态异常的材质（如 wheat 的 crops 态）仍优先物品态后回退方块态。
+        if (material.isBlock) {
+            ItemSpriteReference.of("minecraft:blocks", "minecraft:block/$key")?.let { return it }
+            return ItemSpriteReference.of("minecraft:items", "minecraft:item/$key")
         }
+        ItemSpriteReference.of("minecraft:items", "minecraft:item/$key")?.let { return it }
+        return ItemSpriteReference.of("minecraft:blocks", "minecraft:block/$key")
     }
 
     /**

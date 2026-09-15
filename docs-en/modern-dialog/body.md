@@ -100,6 +100,7 @@ text:
   - '&fItemsAdder: &item:[ia:namespace:item_id]'
   - '&fOraxen: &item:[oraxen:item_id]'
   - '&fCraftEngine: &item:[ce:namespace:item_id]'
+  - '&fSX-Item: &item:[sxitem:item_id]'
 ```
 
 | Syntax | Data source |
@@ -108,6 +109,7 @@ text:
 | `&item:[ia:namespace:item_id]` | First two-dimensional ItemsAdder item texture |
 | `&item:[oraxen:item_id]` | First Oraxen item texture layer |
 | `&item:[ce:namespace:item_id]` | Item model and texture in CraftEngine's generated resource pack |
+| `&item:[sxitem:item_id]` | SX-Item item's own `item_model`; falls back to material texture when no model is set |
 
 This feature displays a two-dimensional resource-pack texture; it does not render a three-dimensional model. Add an override to `item_sprites.yml` in the plugin root for complex or dynamic models and dedicated menu icons:
 
@@ -437,7 +439,7 @@ Body:
 - Select only one of `actions`, `copy`, `command`, and `url` for click behavior
 - `url` opens a webpage link
 - `actions` executes action lists defined under Events.Click
-- `hover_item` supports `hand`, `offhand`, `slot:index`, `armor:helmet`, `armor:chestplate`, `armor:leggings`, `armor:boots`, `stock:saved-item-name`, `material:material-id`, and external item IDs
+- `hover_item` supports `hand`, `offhand`, `slot:index`, `armor:helmet`, `armor:chestplate`, `armor:leggings`, `armor:boots`, `stock:saved-item-name`, `material:material-id`, and external item IDs (including `itemsadder:`/`oraxen:`/`craftengine:`/`sxitem:` and their aliases)
 - `hover_item` does not use an `amount` parameter; hand, slot, and armor sources preserve the actual ItemStack, while `material:` creates one basic item
 - A valid `hover_item` takes priority over `hover`; if the item does not exist or the slot is empty, the regular `hover` text remains as fallback
 - Clickable areas are wrapped in `< >`
@@ -461,6 +463,7 @@ Body:
       - 'ItemsAdder: <text="&e[ Custom Sword ]";hover_item=itemsadder:my_pack:sword>'
       - 'Oraxen: <text="&6[ Custom Sword ]";hover_item=oraxen:custom_sword>'
       - 'CraftEngine: <text="&b[ Custom Sword ]";hover_item=craftengine:my_pack:sword>'
+      - 'SX-Item: <text="&a[ Custom Sword ]";hover_item=sxitem:custom_sword>'
 ```
 
 `stock:` displays all properties stored in KaMenu's saved-item library, including the name, lore, enchantments, model, and data components. Saved items are loaded into memory when the plugin starts, so menu rendering does not query the database. Saving or deleting an item through KaMenu updates the cache immediately.
@@ -513,6 +516,7 @@ Displays an item icon in the menu, optionally with a name, Lore, and description
 | `description` | `String` | ❌ | — | Extra description text shown below the item; supports color codes, PAPI variables, condition checks, and clickable text syntax |
 | `description_width` | `Int` | ❌ | `0` | Width of the description text box (1–1024 px); defaults to 200 if not set or set to 0 |
 | `item_model` | `String` | ❌ | — | Item model identifier (format: `namespace:key`); used to display items with special appearances (e.g., namespaced item models in 1.21.7+) |
+| `tooltip_style` | `String` | ❌ | — | Custom tooltip background/frame style (format: `namespace:key`, 1.21.4+); points to resource pack `assets/<namespace>/textures/gui/sprites/tooltip/<key>_background` and `<key>_frame` |
 | `skull_owner` | `String` | ❌ | — | Player name; when `material: PLAYER_HEAD`, displays that player's skin head. Supports variables and PAPI |
 | `skull_texture` | `String` | ❌ | — | Base64 head texture value; when `material: PLAYER_HEAD`, displays a custom texture head |
 | `width` | `Int` | ❌ | `16` | Item icon width (px) |
@@ -760,6 +764,7 @@ Body:
 | ItemsAdder | `itemsadder:namespace:item` | `ia:namespace:item` |
 | Oraxen | `oraxen:item_id` | — |
 | CraftEngine | `craftengine:namespace:item` | `ce:namespace:item` |
+| SX-Item | `sxitem:item_id` | `sx:item_id` |
 
 The provider prefix tells KaMenu which plugin API to call; everything after it remains the plugin's native ID. External items retain the name, lore, model, and data components supplied by the plugin. Explicit `amount`, `name`, `lore`, `custom_model_data`, or `item_model` fields override the corresponding values.
 
@@ -774,6 +779,9 @@ Body:
   ce_item:
     type: item
     material: 'craftengine:my_pack:magic_sword'
+  sx_item:
+    type: item
+    material: 'sxitem:magic_sword'
 ```
 
 **Material name format support:**
@@ -822,6 +830,10 @@ The `material` field supports the slot reference format, allowing you to directl
 | `BOOTS` | Boots | `EquipmentSlot.FEET` |
 | `MAINHAND` | Main hand | `EquipmentSlot.HAND` |
 | `OFFHAND` | Off-hand | `EquipmentSlot.OFF_HAND` |
+| `HMCC_HAT` | HMCCosmetics hat | `CosmeticSlot.HELMET` |
+| `HMCC_BACKPACK` | HMCCosmetics backpack | `CosmeticSlot.BACKPACK` |
+| `HMCC_OFFHAND` | HMCCosmetics hand cosmetic | `CosmeticSlot.OFFHAND` |
+| `HMCC_BALLOON` | HMCCosmetics balloon | `CosmeticSlot.BALLOON` |
 
 **Basic examples:**
 
@@ -840,7 +852,19 @@ Body:
     material: '[HEAD:AdminPlayer]'
     width: 16
     height: 16
+
+  # Display the HMCCosmetics hat currently equipped by a specified player
+  admin_cosmetic:
+    type: 'item'
+    material: '[HMCC_HAT:AdminPlayer]'
+    width: 16
+    height: 16
 ```
+
+`HMCC_*` references require HMCCosmetics to be installed and enabled, and the target player must be online.
+KaMenu clones the player's final slot `ItemStack` through the HMCCosmetics API. This preserves CraftEngine
+`item_model`, CustomModelData, PDC, and the player's selected color for dyeable cosmetics instead of rebuilding
+the item from its base material.
 
 **Using with variables:**
 
@@ -877,7 +901,7 @@ When the referenced slot is empty, a fallback item is shown automatically:
 | Slot | Empty Display |
 |------|--------------|
 | `HEAD` | Player's skin head |
-| Other slots | Light grey glass pane with name "Empty" |
+| Other slots (including `HMCC_*`) | Light grey glass pane with name "Empty" |
 
 ```yaml
 Body:

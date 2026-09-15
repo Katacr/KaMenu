@@ -473,7 +473,7 @@ object ConditionValueResolver {
         val raw = section.get(path) ?: return emptyList()
         return resolveContextualEntries(player, raw, menuConfig, variables)
             .mapNotNull { InlineConditionResolver.resolve(player, it, variables, menuConfig, dynamicResolver) }
-            .map { TextResolver.resolve(player, it, variables, dynamicResolver, menuConfig) }
+            .map { TextResolver.resolve(player, it, variables, dynamicResolver, menuConfig).replace("\\n", "\n") }
     }
 
     fun getType(

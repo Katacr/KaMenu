@@ -2,6 +2,8 @@
 
 package org.katacr.kamenu
 
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -28,6 +30,7 @@ data class MenuItemSpec(
     val lore: List<String>? = null,
     val customModelData: String? = null,
     val itemModel: String? = null,
+    val tooltipStyle: String? = null,
     val skullOwner: String? = null,
     val skullTexture: String? = null,
     val glow: Boolean = false,
@@ -79,7 +82,7 @@ class MenuItemFactory(private val plugin: KaMenu) {
         return item
     }
 
-    /** 判断字符串是否为 `[HEAD:Player]`、`[MAINHAND]` 等装备槽位引用。 */
+    /** 判断字符串是否为 `[HEAD:Player]`、`[HMCC_HAT]` 等槽位引用。 */
     fun isSlotReference(source: String): Boolean {
         val normalized = source.trim()
         return normalized.startsWith('[') && normalized.endsWith(']')
@@ -131,7 +134,7 @@ class MenuItemFactory(private val plugin: KaMenu) {
         return item
     }
 
-    /** 解析 `[HEAD:Player]`、`[MAINHAND]` 等玩家装备槽位写法。 */
+    /** 解析原版装备与 HMCCosmetics 玩家饰品槽位写法。 */
     private fun resolveBracketSlot(
         player: Player,
         source: String,
@@ -149,6 +152,11 @@ class MenuItemFactory(private val plugin: KaMenu) {
         }
 
         val slotName = parts[0].trim().uppercase()
+        HMCCosmeticsItemAdapter.slotName(slotName)?.let { hmccSlot ->
+            return HMCCosmeticsItemAdapter.getItem(target, hmccSlot)
+                ?.takeIf { it.type != Material.AIR && it.amount > 0 }
+                ?: ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE)
+        }
         val slotItem = when (slotName) {
             "HEAD" -> target.inventory.helmet
             "CHEST" -> target.inventory.chestplate
@@ -185,13 +193,13 @@ class MenuItemFactory(private val plugin: KaMenu) {
         val meta = item.itemMeta ?: return
         if (MinecraftFeatures.supportsSpriteObjects()) {
             spec.name?.let { nameText ->
-                val component = TextParser.parseText(nameText, player)
+                val component = TextParser.parseText(nameText, player).withoutItalic()
                 if (!BukkitItemMetaCompat.setDisplayNameComponent(meta, component)) {
                     meta.setDisplayName(LegacyComponentSerializer.legacySection().serialize(component))
                 }
             }
             spec.lore?.let { lore ->
-                val components = lore.map { TextParser.parseText(it, player) }
+                val components = lore.map { TextParser.parseText(it, player).withoutItalic() }
                 if (!BukkitItemMetaCompat.setLoreComponent(meta, components)) {
                     meta.lore = components.map { LegacyComponentSerializer.legacySection().serialize(it) }
                 }
@@ -213,6 +221,16 @@ class MenuItemFactory(private val plugin: KaMenu) {
                 }
             } else {
                 warn("item_renderer.invalid_item_property", contextId, componentId, "item_model", raw)
+            }
+        }
+        spec.tooltipStyle?.takeIf(String::isNotBlank)?.let { raw ->
+            val key = if (':' in raw) NamespacedKey.fromString(raw) else NamespacedKey.minecraft(raw)
+            if (key != null) {
+                if (!BukkitItemMetaCompat.setTooltipStyle(meta, key)) {
+                    warn("item_renderer.invalid_item_property", contextId, componentId, "tooltip_style", raw)
+                }
+            } else {
+                warn("item_renderer.invalid_item_property", contextId, componentId, "tooltip_style", raw)
             }
         }
 
@@ -293,6 +311,10 @@ class MenuItemFactory(private val plugin: KaMenu) {
     private fun toLegacy(player: Player, text: String): String {
         return LegacyComponentSerializer.legacySection().serialize(TextParser.parseText(text, player))
     }
+
+    /** 关闭斜体，使 Component 路径与 Legacy 文本路径的物品名/Lore 外观一致（原版自定义物品名默认斜体）。 */
+    private fun Component.withoutItalic(): Component =
+        decoration(TextDecoration.ITALIC, TextDecoration.State.FALSE)
 
     /** 将物品数量约束到该物品允许的堆叠范围。 */
     private fun clampAmount(amount: Int, maxStackSize: Int): Int {

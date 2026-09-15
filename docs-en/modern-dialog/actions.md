@@ -1312,6 +1312,10 @@ Give the player or take from the player's inventory an item from the database st
 - Item comparison uses `ItemStack.isSimilar()` method, ignoring quantity differences
 - Supports variable replacement, e.g., `name=$(item_name)` or `amount={data:price}`
 
+**About the `{player}` placeholder in lore:**
+- When giving an item through `/km item give <item> <player> [amount]`, if any lore line contains the literal `{player}`, it is replaced with the **receiving player's** name (e.g. `Soulbound: {player}` → `Soulbound: Steve`). This replacement only happens on the `/km item give` command path; the in-menu `stock-item: type=give` action does not replace it.
+- After replacement the item lore differs from the database template, so `stock-item: type=take` (full-data `isSimilar()` comparison) can no longer target the item with the original template. To reclaim such bound items, use `item: type=take;lore=Soulbound: {player}` instead, where `{player}` is resolved to the triggering player's own name at take time and matches that player's item precisely (see the `item` action below).
+
 ---
 
 ### item - Item Give/Take

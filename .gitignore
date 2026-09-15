@@ -119,3 +119,4 @@ runs/
 !gradle-wrapper.jar
 /paper-api-1.21.11/
 /Agent/
+/handoff/

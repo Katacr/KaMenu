@@ -519,6 +519,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
                         // 克隆物品并设置数量
                         val itemToGive = item.clone()
                         itemToGive.amount = amount.coerceAtLeast(1)
+                        applyPlayerLorePlaceholder(itemToGive, targetPlayer)
                         val leftover = targetPlayer.inventory.addItem(itemToGive)
                         if (leftover.isEmpty()) {
                             sender.sendMessage(plugin.languageManager.getMessage("item.item_given", itemName, targetPlayer.name, amount.toString()))
@@ -1116,5 +1117,22 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
     private fun resolveDefaultTrMenuSource(): File {
         val pluginsDirectory = plugin.dataFolder.parentFile ?: File("plugins")
         return File(pluginsDirectory, "TrMenu/menus").absoluteFile.normalize()
+    }
+
+    /** 将物品 lore 中的 {player} 占位符替换为目标玩家名。 */
+    private fun applyPlayerLorePlaceholder(item: org.bukkit.inventory.ItemStack, target: Player) {
+        val meta = item.itemMeta ?: return
+        val lore = MenuUI.itemLore(meta)
+        if (lore.isEmpty()) return
+        if (lore.none { net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(it).contains("{player}") }) return
+        val newLore = lore.map { component ->
+            component.replaceText {
+                it.matchLiteral("{player}").replacement(target.name)
+            }
+        }
+        if (!BukkitItemMetaCompat.setLoreComponent(meta, newLore)) {
+            meta.lore = newLore.map { net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(it) }
+        }
+        item.itemMeta = meta
     }
 }
