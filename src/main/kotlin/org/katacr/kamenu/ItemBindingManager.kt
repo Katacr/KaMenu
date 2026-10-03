@@ -37,8 +37,14 @@ class ItemBindingManager(private val plugin: KaMenu) {
         return loaded.size
     }
 
-    /** 返回首个匹配当前手持物品和潜行状态的目标菜单。 */
-    fun findMenu(player: Player, item: ItemStack): String? {
+    /** 匹配结果：打开菜单或执行动作包，二者必有其一。 */
+    data class ResolvedBinding(
+        val menu: String?,
+        val actions: List<Any>?
+    )
+
+    /** 返回首个匹配当前手持物品和潜行状态的绑定。 */
+    fun findBinding(player: Player, item: ItemStack): ResolvedBinding? {
         val binding = bindings.firstOrNull { candidate ->
             (!candidate.requireSneaking || player.isSneaking) && candidate.matcher.matches(item)
         } ?: return null
@@ -46,7 +52,12 @@ class ItemBindingManager(private val plugin: KaMenu) {
         val lastUse = lastUseByPlayer[player.uniqueId]
         if (lastUse != null && binding.cooldownMillis > 0L && now - lastUse < binding.cooldownMillis) return null
         if (binding.cooldownMillis > 0L) lastUseByPlayer[player.uniqueId] = now
-        return binding.menu
+        return ResolvedBinding(binding.menu, binding.actions)
+    }
+
+    /** 返回首个匹配当前手持物品和潜行状态的目标菜单。 */
+    fun findMenu(player: Player, item: ItemStack): String? {
+        return findBinding(player, item)?.menu
     }
 
     /** 清理离线玩家的物品绑定冷却状态。 */
@@ -76,7 +87,13 @@ class ItemBindingManager(private val plugin: KaMenu) {
         val binding = section.getConfigurationSection(id) ?: return@mapNotNull invalid(path, "entry must be a section")
         if (!binding.getBoolean("enabled", false)) return@mapNotNull null
         val menu = binding.getString("menu")?.trim().orEmpty()
-        if (menu.isEmpty()) return@mapNotNull invalid(path, "menu is required")
+        val rawActions = binding.getList("actions")?.map { it ?: Any() }
+        val actions = rawActions?.takeIf { it.isNotEmpty() }
+        if (menu.isEmpty() && actions == null) return@mapNotNull invalid(path, "menu or actions is required")
+        // menu 与 actions 同时配置时，以 menu 为主并警告。
+        if (menu.isNotEmpty() && actions != null) {
+            plugin.logger.warning("[KaMenu] Item binding '$path' defines both 'menu' and 'actions'; 'menu' takes priority and 'actions' is ignored")
+        }
 
         val material = binding.getString("material")?.trim()?.takeIf(String::isNotEmpty)
         if (requireMaterial && material == null) return@mapNotNull invalid(path, "material is required")
@@ -107,7 +124,8 @@ class ItemBindingManager(private val plugin: KaMenu) {
         }
 
         ItemBinding(
-            menu = menu,
+            menu = menu.takeIf { it.isNotEmpty() },
+            actions = if (menu.isEmpty()) actions else null,
             requireSneaking = binding.getBoolean("require-sneaking", false),
             cooldownMillis = cooldownMillis,
             matcher = ItemMatcher(
@@ -135,7 +153,8 @@ class ItemBindingManager(private val plugin: KaMenu) {
     }
 
     private data class ItemBinding(
-        val menu: String,
+        val menu: String?,
+        val actions: List<Any>?,
         val requireSneaking: Boolean,
         val cooldownMillis: Long,
         val matcher: ItemMatcher

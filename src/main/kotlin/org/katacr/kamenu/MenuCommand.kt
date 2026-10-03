@@ -34,7 +34,14 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         ACTIONS("actions"),
         JS("js"),
         LANG("lang"),
-        CONFIG("config");
+        CONFIG("config"),
+
+        /**
+         * 从数据库重载头颅纹理缓存。
+         *
+         * 注意：不属于 [ALL] 的默认刷新范围，只有显式 `/km reload skullcache` 才执行。
+         */
+        SKULLCACHE("skullcache");
 
         companion object {
             fun parse(raw: String?): ReloadTarget? {
@@ -75,6 +82,26 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             if (target == null) {
                 sender.sendMessage(plugin.languageManager.getMessage("command.reload_unknown_target", args[1]))
                 sender.sendMessage(plugin.languageManager.getMessage("command.reload_usage"))
+                return true
+            }
+            // 头颅纹理缓存：把所有已缓存纹理标记为过期，由玩家打开菜单时按需重缓存。
+            if (target == ReloadTarget.SKULLCACHE) {
+                // 带玩家名参数时，额外立即拉取该玩家（不存在则新建）。
+                val targetName = args.getOrNull(2)
+                if (!targetName.isNullOrBlank()) {
+                    sender.sendMessage("§e正在拉取 §f$targetName §e的头颅纹理...")
+                    plugin.skullProfileCache.cacheManually(targetName, true) { success ->
+                        if (success) {
+                            sender.sendMessage("§a已缓存 §f$targetName §a的头颅纹理。")
+                        } else {
+                            sender.sendMessage("§c拉取 §f$targetName §c失败（玩家名无效或网络异常）。")
+                        }
+                    }
+                    return true
+                }
+                val count = plugin.skullProfileCache.markAllExpired()
+                sender.sendMessage("§a已将 §f$count §a条头颅纹理标记为过期；")
+                sender.sendMessage("§7它们将在玩家打开菜单时按需异步重新缓存（不会一次性批量拉取）。")
                 return true
             }
             reloadRuntime(target).forEach { result ->
@@ -713,12 +740,14 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
             ReloadTarget.JS -> listOf(reloadJs())
             ReloadTarget.LANG -> listOf(reloadLang())
             ReloadTarget.CONFIG -> listOf(reloadConfig())
+            // SKULLCACHE 由命令层异步特判处理，不会走到这里。
+            ReloadTarget.SKULLCACHE -> emptyList()
         }
     }
 
     private fun reloadMessage(result: ReloadResult): String {
         return when (result.target) {
-            ReloadTarget.ALL -> ""
+            ReloadTarget.ALL, ReloadTarget.SKULLCACHE -> ""
             ReloadTarget.MENU -> plugin.languageManager.getMessage(
                 "command.reload_menu_success",
                 result.total.toString(),
@@ -858,6 +887,7 @@ class MenuCommand(private val plugin: KaMenu) : TabExecutor {
         if (args.size == 2 && args[0].equals("reload", ignoreCase = true)) {
             return filterByKeyword(ReloadTarget.ids(), keyword)
         }
+
         if (args.size == 2 && args[0].equals("pause", ignoreCase = true)) {
             return filterByKeyword(listOf("register", "unregister", "info"), keyword)
         }

@@ -299,3 +299,69 @@ class ExamplePlugin : JavaPlugin() {
     }
 }
 ```
+
+## Listening to Events
+
+KaMenu exposes two public Bukkit events for other plugins (such as EcoQuests) to listen to menu opens and data changes, e.g. to drive quests or statistics. Both event classes live in the `org.katacr.kamenu.api.event` package.
+
+### `KaMenuOpenEvent`
+
+Fired when a player opens a KaMenu menu. It is thrown synchronously just before the menu actually renders (both container and dialog menus), carrying the menu ID, the open source, and the arguments.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `player` | `Player` | The player who opened the menu |
+| `menuId` | `String` | Menu ID, e.g. `"main/main_menu"` |
+| `source` | `KaMenuOpenEvent.Source` | Open source: `COMMAND` / `BUTTON` / `API` / `OTHER` |
+| `arguments` | `List<String>` | The arguments passed to the menu |
+
+```kotlin
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.katacr.kamenu.api.event.KaMenuOpenEvent
+
+class MyListener : Listener {
+    @EventHandler
+    fun onMenuOpen(event: KaMenuOpenEvent) {
+        val player = event.player
+        if (event.menuId == "main/main_menu") {
+            // The player opened the main menu
+        }
+    }
+}
+```
+
+### `KaMenuDataChangeEvent`
+
+Fired when KaMenu storage (`data` / `gdata` / `list` / `glist` / `meta` / temp data) is written, modified, added, removed, or cleared.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `scope` | `KaMenuDataChangeEvent.Scope` | Scope: `PLAYER_DATA` / `GLOBAL_DATA` / `PLAYER_LIST` / `GLOBAL_LIST` / `META` / `PLAYER_TMP` |
+| `action` | `KaMenuDataChangeEvent.Action` | Operation: `SET` / `MODIFY` / `ADD` / `REMOVE` / `CLEAR` |
+| `player` | `Player?` | The related player; `null` for global scopes or when the player is offline |
+| `key` | `String` | The data key |
+| `value` | `String?` | The written/appended value; `null` for removal operations |
+
+```kotlin
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.katacr.kamenu.api.event.KaMenuDataChangeEvent
+
+class DataListener : Listener {
+    @EventHandler
+    fun onDataChange(event: KaMenuDataChangeEvent) {
+        if (event.scope == KaMenuDataChangeEvent.Scope.PLAYER_DATA && event.key == "quest_progress") {
+            val player = event.player ?: return
+            // The player's data key quest_progress changed
+        }
+    }
+}
+```
+
+### Notes
+
+1. **Events are thrown synchronously**: `KaMenuOpenEvent` fires on the main thread; `KaMenuDataChangeEvent` is triggered by async database writes and is rescheduled to the main thread before dispatch. Bukkit APIs are safe inside listeners.
+2. **Online players only**: `KaMenuDataChangeEvent.player` is non-null only while the player is online; cross-server or offline data changes yield `null`.
+3. **List writes**: `list` / `glist` methods reuse the `data` / `gdata` write path, so a single list write fires both the scalar event and the list event — filter by `scope`.
+4. **Example integration**: EcoQuests and similar plugins can add "open a menu" quests by listening to `KaMenuOpenEvent`.

@@ -921,7 +921,7 @@ object ActionHandlers {
                 for (stack in allItems) {
                     if (remaining <= 0) break
                     val itemMatches = if (hasMaterialConstraint) {
-                        if (externalItem != null) {
+                        if (externalItem) {
                             ExternalItemAdapter.matches(stack, finalMaterialName)
                         } else {
                             stack.type == material

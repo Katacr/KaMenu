@@ -33,6 +33,7 @@ class KaMenu : JavaPlugin() {
     lateinit var itemManager: ItemManager
     lateinit var itemPlaceholderService: ItemPlaceholderService
     lateinit var externalItemSpriteManager: ExternalItemSpriteManager
+    lateinit var skullProfileCache: SkullProfileCache
     lateinit var actionPackageManager: ActionPackageManager
     lateinit var javaScriptPackageManager: JavaScriptPackageManager
     lateinit var pauseEntryDatapackManager: PauseEntryDatapackManager
@@ -193,6 +194,16 @@ class KaMenu : JavaPlugin() {
         externalItemSpriteManager.init()
         TextParser.setItemSpriteManager(externalItemSpriteManager)
 
+        // 初始化正版玩家头颅纹理缓存（数据库持久化 + 跨服共享）。
+        // 注意：init() 依赖 databaseManager，必须在其 setup() 之后调用（见下方）。
+        skullProfileCache = SkullProfileCache(this)
+        skullProfileCache.setOnLoaded { name ->
+            // 纹理加载完成后刷新所有已打开菜单，使头颅皮肤及时显示。
+            if (::containerMenuService.isInitialized) {
+                containerMenuService.refreshAll(name)
+            }
+        }
+
         // 设置 MenuActions 插件引用
         MenuActions.setPlugin(this)
 
@@ -258,6 +269,11 @@ class KaMenu : JavaPlugin() {
         databaseManager.setup()
         MenuActions.setDatabaseManager(databaseManager)
         ActionHandlers.setDatabaseManager(databaseManager)
+
+        // 6.1 数据库就绪后，载入头颅纹理缓存并启动跨服增量同步。
+        if (::skullProfileCache.isInitialized) {
+            skullProfileCache.init()
+        }
 
         // 6.2 注册周期清理过期临时数据的异步任务
         val purgeIntervalSeconds = config.getInt("tmpdata-purge-interval", 60).coerceAtLeast(5)
@@ -343,6 +359,9 @@ class KaMenu : JavaPlugin() {
         TextParser.setItemSpriteManager(null)
         if (::externalItemSpriteManager.isInitialized) {
             externalItemSpriteManager.shutdown()
+        }
+        if (::skullProfileCache.isInitialized) {
+            skullProfileCache.shutdown()
         }
         if (::menuManager.isInitialized) {
             menuManager.clear()

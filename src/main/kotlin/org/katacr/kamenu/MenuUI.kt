@@ -12,6 +12,8 @@ import org.katacr.kamenu.dialog.DialogPlatformAdapter
 import org.katacr.kamenu.dialog.NoDialogPlatformAdapter
 import org.katacr.kamenu.dialog.bedrock.BedrockFormAdapter
 import org.katacr.kamenu.container.ContainerMenuParser
+import org.katacr.kamenu.api.event.KaMenuOpenEvent
+import org.bukkit.Bukkit
 
 /**
  * KaMenu 的平台中立 Dialog 入口。
@@ -89,6 +91,10 @@ object MenuUI {
         }
         activateArguments(player, resolution)
 
+        Bukkit.getPluginManager().callEvent(
+            KaMenuOpenEvent(player, menuId, KaMenuOpenEvent.Source.COMMAND, arguments)
+        )
+
         if (manager.getMenuKind(menuId) == MenuKind.CONTAINER) {
             plugin.containerMenuService.openMenu(player, menuId)
             return
@@ -123,6 +129,10 @@ object MenuUI {
             return
         }
         activateArguments(player, resolution)
+
+        Bukkit.getPluginManager().callEvent(
+            KaMenuOpenEvent(player, contextId, KaMenuOpenEvent.Source.API, arguments)
+        )
 
         if (ContainerMenuParser.isContainerMenu(config)) {
             plugin.containerMenuService.openConfig(player, config, contextId)
@@ -164,6 +174,10 @@ object MenuUI {
         }
         activateArguments(player, resolution)
 
+        Bukkit.getPluginManager().callEvent(
+            KaMenuOpenEvent(player, menuId, KaMenuOpenEvent.Source.OTHER, arguments)
+        )
+
         if (manager.getMenuKind(menuId) == MenuKind.CONTAINER) {
             plugin.containerMenuService.forceOpenMenu(player, menuId)
             return
@@ -198,6 +212,10 @@ object MenuUI {
             return
         }
         activateArguments(player, resolution)
+
+        Bukkit.getPluginManager().callEvent(
+            KaMenuOpenEvent(player, contextId, KaMenuOpenEvent.Source.OTHER, arguments)
+        )
 
         if (ContainerMenuParser.isContainerMenu(config)) {
             plugin.containerMenuService.forceOpenConfig(player, config, contextId)

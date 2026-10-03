@@ -2,6 +2,9 @@ package org.katacr.kamenu
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import org.bukkit.Bukkit
+import org.bukkit.entity.Player
+import org.katacr.kamenu.api.event.KaMenuDataChangeEvent
 import java.sql.Connection
 import java.util.*
 
@@ -49,6 +52,24 @@ class DatabaseManager(val plugin: KaMenu) {
      */
     val connection: Connection
         get() = dataSource!!.connection
+
+    /**
+     * 在主线程发出数据变化事件。
+     *
+     * 数据库写操作通常在异步线程执行，因此这里通过调度器切回主线程再 callEvent，
+     * 避免 Bukkit 事件在异步线程抛出。若玩家不在线则 player 传 null（全局作用域）。
+     */
+    private fun fireDataChange(
+        scope: KaMenuDataChangeEvent.Scope,
+        action: KaMenuDataChangeEvent.Action,
+        playerUuid: UUID?,
+        key: String,
+        value: String?
+    ) {
+        val player: Player? = playerUuid?.let { Bukkit.getPlayer(it) }
+        val event = KaMenuDataChangeEvent(scope, action, player, key, value)
+        KaScheduler.runGlobal(Runnable { Bukkit.getPluginManager().callEvent(event) })
+    }
 
     /**
      * 创建数据库表
@@ -123,7 +144,88 @@ class DatabaseManager(val plugin: KaMenu) {
                     $uniqueConstraint(player_uuid, data_key)
                 )
             """)
+
+            // 正版玩家头颅纹理缓存；以玩家名（小写）为主键，跨服共享同一 MySQL 时天然同步。
+            statement.execute("""
+                CREATE TABLE IF NOT EXISTS skull_textures (
+                    player_name VARCHAR(64) NOT NULL PRIMARY KEY,
+                    texture TEXT NOT NULL,
+                    update_time BIGINT NOT NULL
+                )
+            """)
         }
+    }
+
+    // ==================== 头颅纹理缓存 skull_textures ====================
+
+    /**
+     * 读取单个玩家的头颅纹理。
+     *
+     * @return 纹理 base64 与更新时间戳；不存在时返回 null。
+     */
+    fun getSkullTexture(name: String): Pair<String, Long>? {
+        connection.use { conn ->
+            val sql = "SELECT texture, update_time FROM skull_textures WHERE player_name = ?"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, name.lowercase())
+                stmt.executeQuery().use { rs ->
+                    return if (rs.next()) rs.getString("texture") to rs.getLong("update_time") else null
+                }
+            }
+        }
+    }
+
+    /** 写入或更新玩家头颅纹理。 */
+    fun setSkullTexture(name: String, texture: String) {
+        connection.use { conn ->
+            val now = System.currentTimeMillis()
+            val dbType = plugin.config.getString("storage.type", "sqlite") ?: "sqlite"
+            val isMySQL = dbType.equals("mysql", ignoreCase = true)
+            val sql = if (isMySQL) {
+                """
+                INSERT INTO skull_textures (player_name, texture, update_time)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    texture = VALUES(texture),
+                    update_time = VALUES(update_time)
+                """.trimIndent()
+            } else {
+                """
+                INSERT INTO skull_textures (player_name, texture, update_time)
+                VALUES (?, ?, ?)
+                ON CONFLICT(player_name) DO UPDATE SET
+                    texture = excluded.texture,
+                    update_time = excluded.update_time
+                """.trimIndent()
+            }
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, name.lowercase())
+                stmt.setString(2, texture)
+                stmt.setLong(3, now)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    /**
+     * 全量读取头颅纹理缓存。
+     *
+     * 启动时一次性载入内存，渲染路径随后只读内存，避免主线程查库。
+     * 跨服场景下可读到其他子服已缓存的纹理。
+     */
+    fun getAllSkullTextures(): Map<String, Pair<String, Long>> {
+        val result = HashMap<String, Pair<String, Long>>()
+        connection.use { conn ->
+            val sql = "SELECT player_name, texture, update_time FROM skull_textures"
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        result[rs.getString("player_name")] = rs.getString("texture") to rs.getLong("update_time")
+                    }
+                }
+            }
+        }
+        return result
     }
 
     /**
@@ -161,6 +263,7 @@ class DatabaseManager(val plugin: KaMenu) {
                 stmt.executeUpdate()
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_DATA, KaMenuDataChangeEvent.Action.SET, playerUuid, key, value)
     }
 
     /**
@@ -183,14 +286,17 @@ class DatabaseManager(val plugin: KaMenu) {
      * 删除玩家数据
      */
     fun deletePlayerData(playerUuid: UUID, key: String): Boolean {
+        val result: Boolean
         connection.use { conn ->
             val sql = "DELETE FROM player_data WHERE player_uuid = ? AND data_key = ?"
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setString(1, playerUuid.toString())
                 stmt.setString(2, key)
-                return stmt.executeUpdate() > 0
+                result = stmt.executeUpdate() > 0
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_DATA, KaMenuDataChangeEvent.Action.REMOVE, playerUuid, key, null)
+        return result
     }
 
     // ==================== 玩家临时数据 tmpdata ====================
@@ -235,6 +341,7 @@ class DatabaseManager(val plugin: KaMenu) {
                 stmt.executeUpdate()
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_TMP, KaMenuDataChangeEvent.Action.SET, playerUuid, key, value)
     }
 
     /**
@@ -345,6 +452,7 @@ class DatabaseManager(val plugin: KaMenu) {
                 }
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_TMP, KaMenuDataChangeEvent.Action.MODIFY, playerUuid, key, delta)
     }
 
     /** modifyPlayerTmpData 内部：在键缺失或已过期时按新键写入（无 ttl 则跳过并告警）。 */
@@ -472,9 +580,12 @@ class DatabaseManager(val plugin: KaMenu) {
      * 删除玩家临时数据。
      */
     fun deletePlayerTmpData(playerUuid: UUID, key: String): Boolean {
+        val result: Boolean
         connection.use { conn ->
-            return deleteTmpDataOnConnection(conn, playerUuid, key)
+            result = deleteTmpDataOnConnection(conn, playerUuid, key)
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_TMP, KaMenuDataChangeEvent.Action.REMOVE, playerUuid, key, null)
+        return result
     }
 
     /** 在当前连接上删除一条玩家临时数据。 */
@@ -531,6 +642,7 @@ class DatabaseManager(val plugin: KaMenu) {
 
     fun setPlayerList(playerUuid: UUID, key: String, values: List<String>) {
         setPlayerData(playerUuid, key, encodeStringList(values))
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_LIST, KaMenuDataChangeEvent.Action.SET, playerUuid, key, encodeStringList(values))
     }
 
     fun addPlayerListValues(playerUuid: UUID, key: String, values: List<String>, unique: Boolean = true) {
@@ -544,6 +656,7 @@ class DatabaseManager(val plugin: KaMenu) {
             }
             setPlayerList(playerUuid, key, current)
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_LIST, KaMenuDataChangeEvent.Action.ADD, playerUuid, key, values.joinToString(","))
     }
 
     fun removePlayerListValues(playerUuid: UUID, key: String, values: List<String>) {
@@ -553,10 +666,12 @@ class DatabaseManager(val plugin: KaMenu) {
             val current = getPlayerList(playerUuid, key).filterNot { it in removing }
             setPlayerList(playerUuid, key, current)
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_LIST, KaMenuDataChangeEvent.Action.REMOVE, playerUuid, key, values.joinToString(","))
     }
 
     fun clearPlayerList(playerUuid: UUID, key: String) {
         setPlayerList(playerUuid, key, emptyList())
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_LIST, KaMenuDataChangeEvent.Action.CLEAR, playerUuid, key, null)
     }
 
     /**
@@ -657,6 +772,7 @@ class DatabaseManager(val plugin: KaMenu) {
                 }
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.PLAYER_DATA, KaMenuDataChangeEvent.Action.MODIFY, playerUuid, key, delta)
     }
 
     /**
@@ -693,6 +809,7 @@ class DatabaseManager(val plugin: KaMenu) {
                 stmt.executeUpdate()
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.GLOBAL_DATA, KaMenuDataChangeEvent.Action.SET, null, key, value)
     }
 
     /**
@@ -714,13 +831,16 @@ class DatabaseManager(val plugin: KaMenu) {
      * 删除全局数据
      */
     fun deleteGlobalData(key: String): Boolean {
+        val result: Boolean
         connection.use { conn ->
             val sql = "DELETE FROM global_data WHERE data_key = ?"
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setString(1, key)
-                return stmt.executeUpdate() > 0
+                result = stmt.executeUpdate() > 0
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.GLOBAL_DATA, KaMenuDataChangeEvent.Action.REMOVE, null, key, null)
+        return result
     }
 
     fun getGlobalList(key: String): List<String> {
@@ -733,6 +853,7 @@ class DatabaseManager(val plugin: KaMenu) {
 
     fun setGlobalList(key: String, values: List<String>) {
         setGlobalData(key, encodeStringList(values))
+        fireDataChange(KaMenuDataChangeEvent.Scope.GLOBAL_LIST, KaMenuDataChangeEvent.Action.SET, null, key, encodeStringList(values))
     }
 
     fun addGlobalListValues(key: String, values: List<String>, unique: Boolean = true) {
@@ -746,6 +867,7 @@ class DatabaseManager(val plugin: KaMenu) {
             }
             setGlobalList(key, current)
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.GLOBAL_LIST, KaMenuDataChangeEvent.Action.ADD, null, key, values.joinToString(","))
     }
 
     fun removeGlobalListValues(key: String, values: List<String>) {
@@ -755,10 +877,12 @@ class DatabaseManager(val plugin: KaMenu) {
             val current = getGlobalList(key).filterNot { it in removing }
             setGlobalList(key, current)
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.GLOBAL_LIST, KaMenuDataChangeEvent.Action.REMOVE, null, key, values.joinToString(","))
     }
 
     fun clearGlobalList(key: String) {
         setGlobalList(key, emptyList())
+        fireDataChange(KaMenuDataChangeEvent.Scope.GLOBAL_LIST, KaMenuDataChangeEvent.Action.CLEAR, null, key, null)
     }
 
     /**
@@ -855,6 +979,7 @@ class DatabaseManager(val plugin: KaMenu) {
                 }
             }
         }
+        fireDataChange(KaMenuDataChangeEvent.Scope.GLOBAL_DATA, KaMenuDataChangeEvent.Action.MODIFY, null, key, delta)
     }
 
     /**

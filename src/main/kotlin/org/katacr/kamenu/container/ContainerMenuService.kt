@@ -446,6 +446,32 @@ class ContainerMenuService(private val plugin: KaMenu) {
         return true
     }
 
+    /**
+     * 刷新所有已打开 Container 菜单的玩家界面。
+     *
+     * 用于外部异步结果就绪后（如头颅皮肤档案加载完成）让已渲染的菜单及时更新。
+     * 传入 [reason] 仅用于日志排查。
+     */
+    fun refreshAll(reason: String = "") {
+        if (reason.isNotEmpty()) {
+            plugin.logger.fine("[KaMenu] 刷新所有 Container 菜单：$reason")
+        }
+        sessions.values.forEach { session ->
+            val player = Bukkit.getPlayer(session.playerId) ?: return@forEach
+            runOnPlayerThread(player) {
+                if (validSession(player, session.holder.inventory) !== session) return@runOnPlayerThread
+                refresh(
+                    player = player,
+                    session = session,
+                    refreshTitle = false,
+                    advanceTitle = false,
+                    refreshProperties = false,
+                    buttonIds = session.definition.buttons.keys
+                )
+            }
+        }
+    }
+
     /** 执行当前 Container 会话的 `free-slot` 动作，并把失败映射为动作链中断。 */
     fun executeFreeSlotAction(player: Player, arguments: String): java.util.concurrent.CompletableFuture<Boolean> {
         val session = sessions[player.uniqueId]

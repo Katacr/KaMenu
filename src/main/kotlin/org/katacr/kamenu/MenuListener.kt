@@ -51,9 +51,16 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
         val player = event.player
         val item = event.item ?: return
-        val menuName = plugin.itemBindingManager.findMenu(player, item) ?: return
+        val binding = plugin.itemBindingManager.findBinding(player, item) ?: return
         event.isCancelled = true
-        MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
+        val menuName = binding.menu
+        if (menuName != null) {
+            MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)
+        } else {
+            binding.actions?.let { actions ->
+                MenuActions.executeStandaloneActions(player, actions)
+            }
+        }
     }
 
     @EventHandler

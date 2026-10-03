@@ -1,6 +1,6 @@
 # 物品右键绑定: item_bindings.yml
 
-`item_bindings.yml` 用于把玩家主手物品的右键操作绑定到 KaMenu 菜单。该文件位于 `plugins/KaMenu/item_bindings.yml`，支持手工维护，也用于保存 `/km migrate trmenu` 转换出的 `Bindings.Items`。
+`item_bindings.yml` 用于把玩家主手物品的右键操作绑定到 KaMenu 菜单或动作包。该文件位于 `plugins/KaMenu/item_bindings.yml`，支持手工维护，也用于保存 `/km migrate trmenu` 转换出的 `Bindings.Items`。
 
 文件不存在时 KaMenu 会按空配置处理；只有迁移器确实生成了物品绑定时才会自动创建。`/km reload config` 和 `/km reload all` 会重新加载该文件。
 
@@ -8,6 +8,7 @@
 
 ```yaml
 item-bindings:
+  # 打开菜单
   server_selector:
     enabled: true
     menu: 'example/main_menu'
@@ -20,16 +21,27 @@ item-bindings:
     target-lore: '&7右键打开菜单'
     data: 0
     custom-model-data: 1001
+
+  # 执行动作包（不打开菜单）
+  plot_voucher:
+    enabled: true
+    material: 'ce:hfrpg:community_plot_voucher'
+    require-sneaking: false
+    actions:
+      - 'actions: voucher/use_plot'
 ```
 
-每个绑定必须启用、指定 `menu`，并至少提供一个物品匹配字段。玩家使用主手右键空气或方块时，KaMenu 按配置顺序选择第一个匹配项，取消原右键事件并打开目标菜单。
+每个绑定必须启用、至少配置 `menu` 或 `actions` 之一，并至少提供一个物品匹配字段。玩家使用主手右键空气或方块时，KaMenu 按配置顺序选择第一个匹配项，取消原右键事件并打开菜单或执行动作。
+
+**`menu` 与 `actions` 同时配置时，后台会输出警告，并以 `menu` 为主，`actions` 被忽略。**
 
 ## 字段
 
 | 字段 | 说明 | 默认值 |
 |---|---|---|
 | `enabled` | 是否启用该绑定 | `false` |
-| `menu` | 打开的 KaMenu 菜单 ID | 无 |
+| `menu` | 打开的 KaMenu 菜单 ID | 可选 |
+| `actions` | 要执行的动作列表（支持全局动作包调用 `actions: <包ID>`）；与 `menu` 互斥 | 可选 |
 | `require-sneaking` | 是否要求玩家正在潜行 | `false` |
 | `cooldown-ms` | 同一玩家再次触发物品绑定前的绝对时间间隔，单位毫秒 | `0` |
 | `ignore-case` | 名称与 Lore 包含匹配时是否忽略大小写 | `false` |

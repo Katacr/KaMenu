@@ -189,8 +189,11 @@ object TextParser {
 
     /**
      * 将简化的物品图标语法转换为 MiniMessage sprite 标签
-     * &item:[diamond] → <sprite:items:item/diamond>
-     * &item:[stone]  → <sprite:blocks:block/stone>
+     * &item:[diamond] → <white><sprite:items:item/diamond></white>
+     * &item:[stone]  → <white><sprite:blocks:block/stone></white>
+     *
+     * Sprite 会继承周围文本颜色作为 tint，这里强制包一层白色，
+     * 避免被奖励行等处的 &a/&7 等颜色错误染色。
      */
     private fun convertItemSpriteToMiniMessage(text: String): String {
         if (!ITEM_SPRITE_PATTERN.containsMatchIn(text)) return text
@@ -201,9 +204,9 @@ object TextParser {
         }
         return text.replace(ITEM_SPRITE_PATTERN) { matchResult ->
             val materialName = matchResult.groupValues[1]
-            itemSpriteManager?.resolveTag(materialName)
+            val tag = itemSpriteManager?.resolveTag(materialName)
                 ?: MaterialUtils.getSpriteTag(materialName)
-                ?: ""
+            if (tag.isNullOrEmpty()) "" else "<white>$tag</white>"
         }
     }
 }

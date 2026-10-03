@@ -239,7 +239,7 @@ class MenuItemFactory(private val plugin: KaMenu) {
                 !spec.skullTexture.isNullOrBlank() ->
                     applySkullTexture(meta, spec.skullTexture, contextId, componentId)
 
-                !spec.skullOwner.isNullOrBlank() -> meta.owningPlayer = Bukkit.getOfflinePlayer(spec.skullOwner)
+                !spec.skullOwner.isNullOrBlank() -> applySkullOwner(meta, spec.skullOwner)
             }
         }
 
@@ -290,21 +290,44 @@ class MenuItemFactory(private val plugin: KaMenu) {
         }
     }
 
+    /**
+     * 应用头颅所有者皮肤。
+     *
+     * 优先使用异步纹理缓存（直接调用 Mojang API，支持从未在本服游玩过的正版玩家）；
+     * 缓存未命中时先用 `getOfflinePlayer` 兜底渲染，待纹理就绪后由
+     * [SkullProfileCache] 回调刷新菜单。
+     */
+    private fun applySkullOwner(meta: SkullMeta, ownerName: String) {
+        // 在线玩家优先取实时档案纹理（无需联网）。
+        val online = Bukkit.getPlayerExact(ownerName)
+        val onlineTexture = online?.let { plugin.skullProfileCache.onlineTexture(it) }
+        if (onlineTexture != null && applySkullTextureValue(meta, onlineTexture)) return
+
+        // 缓存（含异步拉取的 Mojang 纹理）。
+        val cached = plugin.skullProfileCache.getTexture(ownerName)
+        if (cached != null && applySkullTextureValue(meta, cached)) return
+
+        // 兜底：本服有记录的玩家仍能正确显示；未命中者先显示默认皮肤。
+        runCatching { meta.owningPlayer = Bukkit.getOfflinePlayer(ownerName) }
+    }
+
     /** 将 Base64 头颅纹理转换为 Bukkit PlayerProfile。 */
     private fun applySkullTexture(meta: SkullMeta, texture: String, contextId: String, componentId: String) {
+        if (!applySkullTextureValue(meta, texture)) {
+            warn("item_renderer.invalid_item_property", contextId, componentId, "skull_texture", "invalid Base64 texture")
+        }
+    }
+
+    /** 将 Base64 纹理写入头颅 Meta；解析或写入失败返回 false。 */
+    private fun applySkullTextureValue(meta: SkullMeta, texture: String): Boolean {
         val skinUrl = runCatching {
             val decoded = String(Base64.getDecoder().decode(texture), Charsets.UTF_8)
             val rawUrl = Regex("\\\"url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
                 .find(decoded)?.groupValues?.get(1)
                 ?: error("texture URL is missing")
             URL(rawUrl.replace("\\\\/", "/"))
-        }.getOrElse {
-            warn("item_renderer.invalid_item_property", contextId, componentId, "skull_texture", "invalid Base64 texture")
-            return
-        }
-        if (!BukkitItemMetaCompat.setSkullTexture(meta, skinUrl, UUID.nameUUIDFromBytes(texture.toByteArray()))) {
-            warn("item_renderer.invalid_item_property", contextId, componentId, "skull_texture", "current core has no public profile API")
-        }
+        }.getOrNull() ?: return false
+        return BukkitItemMetaCompat.setSkullTexture(meta, skinUrl, UUID.nameUUIDFromBytes(texture.toByteArray()))
     }
 
     /** 将 KaMenu 文本格式转换为 Bukkit ItemMeta 使用的 Legacy 文本。 */

@@ -299,3 +299,69 @@ class ExamplePlugin : JavaPlugin() {
     }
 }
 ```
+
+## 监听事件
+
+KaMenu 提供两个公开 Bukkit 事件，供其他插件（如 EcoQuests）监听菜单打开与数据变化，以驱动任务、统计等逻辑。事件类位于 `org.katacr.kamenu.api.event` 包。
+
+### `KaMenuOpenEvent`
+
+玩家打开 KaMenu 菜单时触发。该事件在菜单真正打开（容器菜单或 Dialog 菜单均可）前同步抛出，携带菜单 ID、来源与参数。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `player` | `Player` | 打开菜单的玩家 |
+| `menuId` | `String` | 菜单 ID，如 `"主菜单/主菜单"` |
+| `source` | `KaMenuOpenEvent.Source` | 打开来源：`COMMAND` / `BUTTON` / `API` / `OTHER` |
+| `arguments` | `List<String>` | 传入菜单的参数列表 |
+
+```kotlin
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.katacr.kamenu.api.event.KaMenuOpenEvent
+
+class MyListener : Listener {
+    @EventHandler
+    fun onMenuOpen(event: KaMenuOpenEvent) {
+        val player = event.player
+        if (event.menuId == "主菜单/主菜单") {
+            // 玩家打开了主菜单
+        }
+    }
+}
+```
+
+### `KaMenuDataChangeEvent`
+
+KaMenu 数据存储（`data` / `gdata` / `list` / `glist` / `meta` / 临时数据）发生写入、修改、增减或删除时触发。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `scope` | `KaMenuDataChangeEvent.Scope` | 作用域：`PLAYER_DATA` / `GLOBAL_DATA` / `PLAYER_LIST` / `GLOBAL_LIST` / `META` / `PLAYER_TMP` |
+| `action` | `KaMenuDataChangeEvent.Action` | 操作：`SET` / `MODIFY` / `ADD` / `REMOVE` / `CLEAR` |
+| `player` | `Player?` | 相关玩家；全局作用域或玩家不在线时为 `null` |
+| `key` | `String` | 数据键 |
+| `value` | `String?` | 写入/追加的新值；删除类操作可能为 `null` |
+
+```kotlin
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.katacr.kamenu.api.event.KaMenuDataChangeEvent
+
+class DataListener : Listener {
+    @EventHandler
+    fun onDataChange(event: KaMenuDataChangeEvent) {
+        if (event.scope == KaMenuDataChangeEvent.Scope.PLAYER_DATA && event.key == "quest_progress") {
+            val player = event.player ?: return
+            // 玩家 data 键 quest_progress 发生变化
+        }
+    }
+}
+```
+
+### 注意事项
+
+1. **事件是同步抛出的**：`KaMenuOpenEvent` 在主线程抛出；`KaMenuDataChangeEvent` 由异步数据库写操作触发，KaMenu 会先切回主线程再抛出。监听器内可安全调用 Bukkit API。
+2. **在线玩家**：`KaMenuDataChangeEvent.player` 仅在玩家在线时非空；跨服/离线玩家数据变化时该字段为 `null`。
+3. **列表写操作**：`list` / `glist` 方法复用 `data` / `gdata` 写入路径，因此一次列表写会同时触发对应的标量事件与列表事件，可按 `scope` 区分。
+4. **示例联动**：EcoQuests 等插件可通过监听 `KaMenuOpenEvent` 在任务书里添加"打开菜单"类任务。
