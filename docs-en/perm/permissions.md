@@ -94,7 +94,7 @@ custom-commands:
 
 ### 2. Listeners — Who Can Open a Menu via an Item or Key?
 
-Configure listeners in `config.yml` to automatically trigger menu opening.
+Configure the generic F listener in `config.yml` or item bindings in `item_bindings.yml` to open menus automatically.
 
 ```yaml
 listeners:
@@ -104,15 +104,9 @@ listeners:
     menu: 'main_menu'
     require-sneaking: true  # Requires Shift + F
 
-  # Triggered by right-clicking an item
-  item-lore:
-    main-menu:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: 'Menu'
-      menu: 'main_menu'
-      require-sneaking: false
 ```
+
+See [item_bindings.yml](../config/item-bindings.md) for item-trigger examples. Legacy `listeners.item-lore` entries migrate automatically.
 
 **Default behaviour:**
 - Any player holding the matching item or pressing the matching key will trigger the listener.

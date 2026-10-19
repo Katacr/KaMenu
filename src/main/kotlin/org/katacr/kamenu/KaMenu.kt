@@ -141,6 +141,19 @@ class KaMenu : JavaPlugin() {
         // 1. 保存并加载配置
         saveDefaultConfig()
 
+        // 在配置升级之前，将旧物品绑定从主配置及平铺文件安全迁入统一文件。
+        val bindingMigration = runCatching {
+            ItemBindingFileMigration.prepare(File(dataFolder, "config.yml"), File(dataFolder, ItemBindingManager.FILE_NAME))
+        }.getOrElse { error ->
+            logger.severe("Cannot migrate item bindings safely: ${error.message}. Check the original files and backups.")
+            server.pluginManager.disablePlugin(this)
+            return
+        }
+        if (bindingMigration.converted > 0) {
+            logger.info("Migrated ${bindingMigration.converted} item bindings to item_bindings.yml; backups: ${bindingMigration.backup.joinToString()}")
+            reloadConfig()
+        }
+
         // 1.5 在配置升级前迁移旧版 config.yml 中的自定义指令，避免旧值被升级器丢弃
         val configFile = File(dataFolder, "config.yml")
         val customCommandPreparation = CustomCommandFileManager.prepare(this, configFile)
@@ -250,7 +263,7 @@ class KaMenu : JavaPlugin() {
         customCommandManager = CustomCommandManager(this)
         customCommandManager.registerCustomCommands()
 
-        // 3.6 初始化主配置与独立文件中的物品右键菜单绑定
+        // 3.6 初始化统一的独立文件物品绑定
         itemBindingManager = ItemBindingManager(this)
         itemBindingManager.reload()
 
@@ -338,6 +351,8 @@ class KaMenu : JavaPlugin() {
     }
 
     override fun onDisable() {
+        // 配置迁移失败可能在初始化任何运行时管理器前停用插件。
+        if (!::languageManager.isInitialized) return
         // 取消注册 BungeeCord 消息通道
         if (bungeeCordEnabled) {
             server.messenger.unregisterOutgoingPluginChannel(this, "BungeeCord")

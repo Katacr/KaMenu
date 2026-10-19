@@ -33,10 +33,15 @@ data class MenuItemSpec(
     val tooltipStyle: String? = null,
     val skullOwner: String? = null,
     val skullTexture: String? = null,
-    val glow: Boolean = false,
+    /** 附魔光效：null=不处理，true=强制发光，false=取消光效；由工厂按核心版本自动选择实现。 */
+    val glow: Boolean? = null,
     val unbreakable: Boolean? = null,
     val enchantments: Map<String, Int> = emptyMap(),
-    val itemFlags: Set<String> = emptySet()
+    val itemFlags: Set<String> = emptySet(),
+    val hideTooltip: Boolean = false,
+    val hideComponents: Boolean = false,
+    val color: String? = null,
+    val damage: Int? = null
 )
 
 /**
@@ -246,13 +251,18 @@ class MenuItemFactory(private val plugin: KaMenu) {
         spec.unbreakable?.let { meta.isUnbreakable = it }
         applyEnchantments(meta, spec.enchantments, contextId, componentId)
         applyItemFlags(meta, spec.itemFlags, contextId, componentId)
-        if (spec.glow && meta.enchants.isEmpty()) {
-            Enchantment.getByKey(NamespacedKey.minecraft("unbreaking"))?.let { enchantment ->
-                meta.addEnchant(enchantment, 1, true)
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS)
+        applyColor(meta, spec.color, contextId, componentId)
+        applyDamage(meta, spec.damage, contextId, componentId)
+        applyGlow(meta, spec.glow, contextId, componentId)
+        item.itemMeta = meta
+
+        // hide_tooltip / hide_components 需要写回 ItemStack（Paper 走数据组件，非 Paper 走 ItemFlag）。
+        if (spec.hideTooltip || spec.hideComponents) {
+            if (!ItemTooltipCompat.apply(item, spec.hideTooltip, spec.hideComponents)) {
+                val property = if (spec.hideTooltip) "hide_tooltip" else "hide_components"
+                warn("item_renderer.invalid_item_property", contextId, componentId, property, "unsupported")
             }
         }
-        item.itemMeta = meta
     }
 
     /** 解析并应用配置中的附魔键与等级。 */
@@ -287,6 +297,94 @@ class MenuItemFactory(private val plugin: KaMenu) {
             } else {
                 meta.addItemFlags(flag)
             }
+        }
+    }
+
+    /**
+     * 应用染色：支持 `R,G,B`、`#RRGGBB`、`RRGGBB`。
+     *
+     * 皮革护甲走 `LeatherArmorMeta.color`，药水走 `PotionMeta.color`，
+     * 烟花效果走 `FireworkEffectMeta.effect`（与 nightcore 一致）；其它物品类型忽略。
+     */
+    private fun applyColor(
+        meta: org.bukkit.inventory.meta.ItemMeta,
+        raw: String?,
+        contextId: String,
+        componentId: String
+    ) {
+        val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return
+        val color = parseColor(value)
+        if (color == null) {
+            warn("item_renderer.invalid_item_property", contextId, componentId, "color", value)
+            return
+        }
+        when (meta) {
+            is org.bukkit.inventory.meta.LeatherArmorMeta -> meta.setColor(color)
+            is org.bukkit.inventory.meta.PotionMeta -> meta.setColor(color)
+            is org.bukkit.inventory.meta.FireworkEffectMeta ->
+                meta.setEffect(org.bukkit.FireworkEffect.builder().withColor(color).build())
+            else -> warn("item_renderer.invalid_item_property", contextId, componentId, "color", value)
+        }
+    }
+
+    /** 解析颜色字符串为 `org.bukkit.Color`；非法输入返回 null。 */
+    private fun parseColor(value: String): org.bukkit.Color? {
+        if (value.startsWith("#")) {
+            return runCatching {
+                org.bukkit.Color.fromRGB(Integer.parseInt(value.substring(1), 16))
+            }.getOrNull()
+        }
+        val parts = value.split(',')
+        if (parts.size >= 3) {
+            val r = parts[0].trim().toIntOrNull()
+            val g = parts[1].trim().toIntOrNull()
+            val b = parts[2].trim().toIntOrNull()
+            if (r != null && g != null && b != null) return org.bukkit.Color.fromRGB(r, g, b)
+            return null
+        }
+        if (value.length == 6) {
+            return runCatching { org.bukkit.Color.fromRGB(Integer.parseInt(value, 16)) }.getOrNull()
+        }
+        return null
+    }
+
+    /** 应用已损失耐久；仅对 `Damageable` 生效。 */
+    private fun applyDamage(
+        meta: org.bukkit.inventory.meta.ItemMeta,
+        damage: Int?,
+        contextId: String,
+        componentId: String
+    ) {
+        if (damage == null) return
+        if (meta is org.bukkit.inventory.meta.Damageable) {
+            meta.damage = damage.coerceAtLeast(0)
+        } else {
+            warn("item_renderer.invalid_item_property", contextId, componentId, "damage", damage.toString())
+        }
+    }
+
+    /**
+     * 应用附魔光效。
+     *
+     * `glow` 为三态：null=不处理，true=强制发光，false=取消光效。
+     * 1.20.5+ 优先使用原版光效覆盖组件；旧核心或不支持时，`true` 回退为附魔模拟，
+     * `false` 无法取消光效（原版无法关闭），仅记录提示。
+     */
+    private fun applyGlow(
+        meta: org.bukkit.inventory.meta.ItemMeta,
+        glow: Boolean?,
+        contextId: String,
+        componentId: String
+    ) {
+        if (glow == null) return
+        if (BukkitItemMetaCompat.setEnchantmentGlintOverride(meta, glow)) return
+        if (glow && meta.enchants.isEmpty()) {
+            Enchantment.getByKey(NamespacedKey.minecraft("unbreaking"))?.let { enchantment ->
+                meta.addEnchant(enchantment, 1, true)
+                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS)
+            }
+        } else if (!glow) {
+            warn("item_renderer.invalid_item_property", contextId, componentId, "glow", "unsupported")
         }
     }
 

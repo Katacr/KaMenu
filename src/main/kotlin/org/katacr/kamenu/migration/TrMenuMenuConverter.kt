@@ -457,19 +457,20 @@ internal class TrMenuMenuConverter(
                 "Generated item bindings use TrMenu's default 2000ms interval; adjust cooldown-ms if settings.yml changed it."
             )
         }
-        return sourceItems.mapIndexedNotNull { index, raw ->
-            val values = converter.convertBinding(raw, "Bindings.Items[$index]", diagnostics) ?: return@mapIndexedNotNull null
-            TrMenuBoundItem(
-                id = bindingId(targetMenuId, index),
+        return sourceItems.flatMapIndexed { index, raw ->
+            val values = converter.convertBinding(raw, "Bindings.Items[$index]", diagnostics) ?: return@flatMapIndexed emptyList()
+            listOf(false, true).map { sneaking -> TrMenuBoundItem(
+                id = bindingId(targetMenuId, index) + if (sneaking) "__sneaking" else "",
                 values = linkedMapOf<String, Any>(
                     "enabled" to true,
-                    "menu" to targetMenuId,
-                    "require-sneaking" to false,
-                    "cooldown-ms" to 2000L,
-                    "ignore-case" to true,
-                    "translate-colors" to true
-                ).also { it.putAll(values) }
-            )
+                    "item" to (linkedMapOf<String, Any>(
+                        "ignore-case" to true,
+                        "translate-colors" to true
+                    ).also { it.putAll(values) }),
+                    "trigger" to mapOf("type" to "right-click", "sneaking" to sneaking, "target" to "both", "cooldown-ms" to 2000L),
+                    "actions" to listOf("open: $targetMenuId")
+                )
+            ) }
         }
     }
 

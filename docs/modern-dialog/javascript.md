@@ -117,6 +117,18 @@ asyncDelay(20, function() {
 var target = getPlayer("Steve");
 ```
 
+### `giveItem(material, amount, targetPlayer)`
+按内置 `item: type=give` 动作给予原版或外部物品，并复用其满包掉落与提示逻辑。`targetPlayer` 可选，未填写时使用当前 `player`。
+
+- 原版物品可用 `minecraft:bread`、`diamond` 等材质名。
+- CraftEngine 物品使用 `ce:<namespace>:<id>`，例如 `ce:customfishing:simple_bait`。
+- 返回 `true` 表示已提交内置发放动作；目标不存在或物品 ID 为空时返回 `false`。
+
+```javascript
+giveItem("minecraft:bread", 13);
+giveItem("ce:customfishing:simple_bait", 22, getPlayer("Steve"));
+```
+
 ### `papi(placeholder, targetPlayer)`
 解析 PlaceholderAPI 变量。`targetPlayer` 可选，未填写时使用当前 `player`。
 

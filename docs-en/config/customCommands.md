@@ -34,6 +34,7 @@ custom-commands:
 
   # Action form: run an actions list
   test:
+    aliases: [hello, hi]
     args:
       0: "[hello, info]"
       1: "%kamenu_online_players%"
@@ -45,6 +46,19 @@ custom-commands:
 ```
 
 The `actions` form uses the same action-list behavior as button actions. It supports normal actions, conditional branches, nested action lists, `wait`, `return`, target selectors, and complex conditions.
+
+Object-form commands (`menu:` or `actions:`) can define multiple aliases with `aliases`. Each alias runs the same menu/action definition and shares its argument completion configuration. An alias cannot duplicate the primary command name or another alias in the same list. The scalar shorthand `command: menu/id` cannot include aliases; switch to object form when aliases are needed:
+
+```yaml
+custom-commands:
+  fishing:
+    aliases:
+      - fish
+      - fishinggame
+    menu: example/fishing
+```
+
+If an alias conflicts with a command already registered on the server, Bukkit applies its normal command-registration rules. Avoid using names owned by other plugins.
 
 ```yaml
 custom-commands:

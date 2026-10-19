@@ -11,7 +11,10 @@ import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
+import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.inventory.EquipmentSlot
+import org.bukkit.event.inventory.InventoryType
+import org.bukkit.Material
 
 /**
  * Bukkit 事件监听器。
@@ -24,6 +27,15 @@ class MenuListener(private val plugin: KaMenu) : Listener {
     @EventHandler
     fun onSwapHand(event: PlayerSwapHandItemsEvent) {
         val player = event.player
+        val held = player.inventory.itemInMainHand
+        if (held.type != Material.AIR) {
+            val binding = plugin.itemBindingManager.findBinding(player, held, ItemBindingTrigger.F)
+            if (binding != null) {
+                event.isCancelled = true
+                executeBinding(player, binding)
+                return
+            }
+        }
         val config = plugin.config
 
         // 检查 swap-hand 监听器是否启用
@@ -44,15 +56,31 @@ class MenuListener(private val plugin: KaMenu) : Listener {
 
     @EventHandler
     fun onPlayerInteract(event: PlayerInteractEvent) {
-        // 只处理右键点击物品
-        if (event.action != Action.RIGHT_CLICK_AIR &&
-            event.action != Action.RIGHT_CLICK_BLOCK) return
+        if (event.action != Action.RIGHT_CLICK_AIR && event.action != Action.RIGHT_CLICK_BLOCK &&
+            event.action != Action.LEFT_CLICK_AIR && event.action != Action.LEFT_CLICK_BLOCK) return
         if (event.hand != EquipmentSlot.HAND) return
 
         val player = event.player
         val item = event.item ?: return
-        val binding = plugin.itemBindingManager.findBinding(player, item) ?: return
+        val left = event.action == Action.LEFT_CLICK_AIR || event.action == Action.LEFT_CLICK_BLOCK
+        val trigger = if (left) ItemBindingTrigger.LEFT_CLICK else ItemBindingTrigger.RIGHT_CLICK
+        val binding = plugin.itemBindingManager.findBinding(player, item, trigger, event.action) ?: return
         event.isCancelled = true
+        executeBinding(player, binding)
+    }
+
+    @EventHandler
+    fun onPlayerDrop(event: PlayerDropItemEvent) {
+        val player = event.player
+        // 只排除服务端管理的容器菜单；个人背包界面由客户端管理，无法在此事件中准确辨别。
+        if (player.openInventory.topInventory.type != InventoryType.CRAFTING) return
+        val binding = plugin.itemBindingManager.findBinding(player, event.itemDrop.itemStack, ItemBindingTrigger.Q) ?: return
+        event.isCancelled = true
+        executeBinding(player, binding)
+    }
+
+    /** 复用物品绑定的菜单及动作执行路径。 */
+    private fun executeBinding(player: org.bukkit.entity.Player, binding: ItemBindingManager.ResolvedBinding) {
         val menuName = binding.menu
         if (menuName != null) {
             MenuUI.openMenu(player, menuName, plugin.menuManager, plugin)

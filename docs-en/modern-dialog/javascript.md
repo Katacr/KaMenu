@@ -117,6 +117,18 @@ Gets a player by name
 var target = getPlayer("Steve");
 ```
 
+### `giveItem(material, amount, targetPlayer)`
+Gives a vanilla or external item through the built-in `item: type=give` action, including its inventory-overflow drop and feedback behavior. `targetPlayer` is optional and defaults to the current `player`.
+
+- Vanilla items accept material names such as `minecraft:bread` or `diamond`.
+- CraftEngine items use `ce:<namespace>:<id>`, for example `ce:customfishing:simple_bait`.
+- Returns `true` when the built-in give action was submitted; returns `false` when the target is unavailable or the item ID is empty.
+
+```javascript
+giveItem("minecraft:bread", 13);
+giveItem("ce:customfishing:simple_bait", 22, getPlayer("Steve"));
+```
+
 ### `papi(placeholder, targetPlayer)`
 Resolves a PlaceholderAPI variable. `targetPlayer` is optional; if omitted, the current `player` is used.
 

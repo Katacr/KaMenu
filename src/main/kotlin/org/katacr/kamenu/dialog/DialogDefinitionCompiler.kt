@@ -141,7 +141,13 @@ class DialogDefinitionCompiler(private val plugin: KaMenu) {
                     getString(player, section, "$key.skull_texture", ""),
                     contextId,
                     config = config
-                ).takeIf(String::isNotEmpty)
+                ).takeIf(String::isNotEmpty),
+                hideTooltip = getBoolean(player, section, "$key.hide_tooltip", false),
+                hideComponents = getBoolean(player, section, "$key.hide_components", false),
+                color = getString(player, section, "$key.color", "").takeIf(String::isNotEmpty),
+                damage = getInt(player, section, "$key.damage", 0).takeIf { section.contains("$key.damage") },
+                glow = getBoolean(player, section, "$key.glow", false)
+                    .takeIf { section.contains("$key.glow") }
             ),
             contextId = contextId,
             componentId = key,

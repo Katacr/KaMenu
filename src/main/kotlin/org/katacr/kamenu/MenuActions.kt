@@ -222,6 +222,7 @@ object MenuActions {
             trimmedAction.startsWith("run-task:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("stop-task:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("stop-current-task") -> ActionType.SINGLE_TARGET_ONLY
+            trimmedAction.startsWith("repeat-page:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("page:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("set-args:") -> ActionType.SINGLE_TARGET_ONLY
             trimmedAction.startsWith("del-args") -> ActionType.SINGLE_TARGET_ONLY
@@ -930,6 +931,10 @@ object MenuActions {
                 handlePageAction(context.player, controlAction, context.config, context.contextId)
                 CompletableFuture.completedFuture(false)
             }
+            controlAction.startsWith("repeat-page:", ignoreCase = true) -> {
+                handleRepeatPageAction(context.player, controlAction)
+                CompletableFuture.completedFuture(false)
+            }
             controlAction.startsWith("actions:", ignoreCase = true) -> {
                 val actionCall = parseActionCall(controlAction.substringAfter(":", "").trim())
                 if (actionCall.name.isEmpty()) {
@@ -1109,6 +1114,15 @@ object MenuActions {
             operation.startsWith("-") -> MenuListManager.movePage(player, resolvedContextId, listId, operation.toIntOrNull() ?: 0)
             else -> operation.toIntOrNull()?.let { MenuListManager.setPage(player, resolvedContextId, listId, it) }
         }
+    }
+
+    /** 处理 Container repeat 队列的专用翻页动作，不与 Dialog/Container `page:` 共用语义。 */
+    private fun handleRepeatPageAction(player: Player, action: String) {
+        val args = action.substringAfter(":", "").trim().split(Regex("\\s+")).filter(String::isNotEmpty)
+        if (args.size != 2) return
+        plugin?.takeIf { it.containerMenusReady }
+            ?.containerMenuService
+            ?.changeRepeatPage(player, args[0], args[1])
     }
 
     /**
@@ -2000,6 +2014,14 @@ object MenuActions {
                 val args = finalCmd.removePrefix("money:").trim()
                 KaScheduler.runPlayer(player, Runnable {
                     ActionHandlers.parseAndHandleMoney(player, args, variables)
+                })
+            }
+
+            // post-effect: 屏幕后期效果（Paper 26.3+）
+            finalCmd.startsWith("post-effect:") -> {
+                val args = finalCmd.removePrefix("post-effect:").trim()
+                KaScheduler.runPlayer(player, Runnable {
+                    ActionHandlers.parseAndHandlePostEffect(player, args)
                 })
             }
 

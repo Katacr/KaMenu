@@ -1,11 +1,14 @@
 package org.katacr.kamenu.api
 
+import net.kyori.adventure.text.Component
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.katacr.kamenu.KaScheduler
+import org.katacr.kamenu.MinecraftFeatures
 import org.katacr.kamenu.MenuActions
 import org.katacr.kamenu.MenuUI
+import org.katacr.kamenu.TextParser
 
 /**
  * KaMenu 公开 API。
@@ -136,6 +139,24 @@ object KaMenuAPI {
         if (normalized.isNotEmpty()) {
             MenuActions.unregisterExternalActionHandler(normalized)
         }
+    }
+
+    /**
+     * 将原版材质或外部物品 ID 解析为可直接写入 Adventure 文本的原生 Sprite Component。
+     *
+     * 支持 {@code diamond}、{@code ce:namespace:item}、{@code ia:namespace:item} 与
+     * {@code oraxen:item}。返回值已固定为白色，避免继承调用方文本颜色而染色。
+     * 当 KaMenu 尚未初始化、当前服务器低于 Minecraft 1.21.9，或物品无法解析时返回 null。
+     * 此方法会访问第三方物品 API，调用方必须在 Bukkit 主线程或 Folia 的对应区域线程调用。
+     */
+    @JvmStatic
+    fun resolveItemSprite(itemId: String): Component? {
+        val currentPlugin = plugin ?: return null
+        if (!MinecraftFeatures.supportsSpriteObjects()) {
+            return null
+        }
+        val tag = currentPlugin.externalItemSpriteManager.resolveTag(itemId) ?: return null
+        return TextParser.parseText("<white>$tag</white>")
     }
 
     /**

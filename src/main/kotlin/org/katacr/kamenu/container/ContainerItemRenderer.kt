@@ -33,10 +33,14 @@ class ContainerItemRenderer(private val plugin: KaMenu) {
             tooltipStyle = display["tooltip_style"]?.let { values.string(it) },
             skullOwner = display["skull_owner"]?.let { values.string(it) },
             skullTexture = display["skull_texture"]?.let { values.string(it) },
-            glow = values.boolean(display["glow"]),
+            glow = display["glow"]?.let { values.boolean(it) },
             unbreakable = display["unbreakable"]?.let { values.boolean(it) },
             enchantments = values.integerMap(display["enchantments"]),
-            itemFlags = values.strings(display["item_flags"]).toSet()
+            itemFlags = values.strings(display["item_flags"]).toSet(),
+            hideTooltip = values.boolean(display["hide_tooltip"]),
+            hideComponents = values.boolean(display["hide_components"]),
+            color = display["color"]?.let { values.string(it) },
+            damage = display["damage"]?.let { values.int(it, 0) }
         )
         FreeSlotItemSource.parseId(source)?.let { freeSlotId ->
             return itemFactory.createFromItem(

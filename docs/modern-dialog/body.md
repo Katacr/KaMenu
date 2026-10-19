@@ -62,6 +62,8 @@ KaMenu 支持 **MiniMessage API** 和 **Legacy 颜色代码** 两种文本格式
 
 **示例：**
 
+**示例：**
+
 ```yaml
 # 使用 Legacy 颜色代码
 text: '&a欢迎来到服务器'
@@ -523,6 +525,40 @@ Body:
 | `height` | `Int` | ❌ | `16` | 物品图标高度（像素）                                                 |
 | `show_overlays` | `Boolean` | ❌ | `true` | 是否显示物品叠加层（耐久条、冷却、数量等）                               |
 | `show_tooltip` | `Boolean` | ❌ | `true` | 鼠标悬停时是否显示物品 Tooltip                                        |
+| `hide_tooltip` | `Boolean` | ❌ | `false` | 隐藏整个物品提示框（1.20.5+）                                          |
+| `hide_components` | `Boolean` | ❌ | `false` | 仅隐藏原版自动组件行，保留自定义名称与 Lore（Paper 写 `tooltip_display.hidden_components`，非 Paper 退化为物品旗标） |
+| `color` | `String` | ❌ | — | 染色（`R,G,B` 或 `#RRGGBB`）：皮革护甲、药水、烟花效果 |
+| `damage` | `Int` | ❌ | — | 已损失耐久（仅可损坏物品） |
+| `glow` | `Boolean` | ❌ | — | 附魔光效：`true` 强制发光，`false` 取消光效；按核心版本自动选择实现 |
+
+#### Tooltip 与组件隐藏
+
+Dialog 物品有两个不同层级的 Tooltip 开关：
+
+- `show_tooltip: false`：不让 Dialog 组件在悬停时显示 Tooltip，是 Dialog UI 的显示选项。
+- `hide_tooltip: true`：给底层 ItemStack 设置隐藏整个物品 Tooltip 的属性（1.20.5+）；即使组件允许显示，物品自身的名称、Lore 等提示也会被隐藏。它优先于 `hide_components`。
+- `hide_components: true`：仅隐藏物品原版自动生成的组件行，保留自定义名称、Lore、物品模型、自定义模型数据和 Tooltip 样式。Paper 使用 `tooltip_display.hidden_components`；Spigot 等非 Paper 核心回退到一组常见隐藏旗标，因此隐藏效果是近似的。
+
+这两个物品属性在 1.20.5+ 生效；旧核心无法应用时会记录警告并跳过。它们只改变 Tooltip 展示，不删除物品数据。隐藏整个 Tooltip 时，`tooltip_style` 也没有可见框架可供客户端展示。
+
+```yaml
+Body:
+  plain_icon:
+    type: item
+    material: DIAMOND
+    name: '&b只隐藏原版属性行'
+    lore:
+      - '&7名称与 Lore 保留'
+    hide_components: true
+
+  no_hover_tooltip:
+    type: item
+    material: PAPER
+    name: '&7没有物品悬浮提示'
+    hide_tooltip: true
+```
+
+**能力边界：**`Body.item` 当前不解析 `item_flags`、`enchantments` 或 `unbreakable`；需要单独使用 Bukkit `ItemFlag` 时，请在 Container 按钮的 `display.item_flags` 中配置。Container 的旗标列表与隐藏行为见 [Buttons：物品旗标与 Tooltip](../container/buttons.md#物品旗标与-tooltip)。
 
 **示例：**
 

@@ -92,7 +92,7 @@ custom-commands:
 
 ### 2. 监听器 - 谁可以通过物品/按键打开菜单？
 
-通过 `config.yml` 中的监听器配置，自动触发菜单打开。
+通过 `config.yml` 的通用 F 监听或 `item_bindings.yml` 的物品绑定自动打开菜单。
 
 ```yaml
 listeners:
@@ -102,15 +102,9 @@ listeners:
     menu: 'main_menu'
     require-sneaking: true  # 需要 Shift + F
 
-  # 右键物品触发
-  item-lore:
-    main-menu:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: '菜单'
-      menu: 'main_menu'
-      require-sneaking: false
 ```
+
+物品右键示例请参见 [item_bindings.yml](../config/item-bindings.md)；旧 `listeners.item-lore` 会自动迁移。
 
 **默认行为：**
 - 所有持有对应物品或按对应按键的玩家都会触发

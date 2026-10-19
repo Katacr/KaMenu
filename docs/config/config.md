@@ -56,25 +56,6 @@ listeners:
     # 需要潜行才能触发（Shift+右键）
     require-sneaking: true 
     
-  # 右键物品 Lore 触发（支持多个配置）
-  item-lore:
-    main-menu:  # 配置名称（自定义）
-      enabled: true
-      # 物品材质（必须匹配）
-      material: 'CLOCK'
-      # 目标 Lore 文本（包含该文本即匹配）
-      target-lore: '菜单'
-      # 触发时打开的菜单文件名
-      menu: 'example/main_menu'
-      # 是否需要潜行时才触发
-      require-sneaking: false
-    # 可以添加更多配置...
-    # shop-menu:
-    #   enabled: true
-    #   material: 'COMPASS'
-    #   target-lore: '商店'
-    #   menu: 'server_shop'
-    #   require-sneaking: false
 
 ```
 
@@ -260,109 +241,9 @@ listeners:
 启用 `require-sneaking` 可以防止玩家在普通游戏过程中意外触发菜单，推荐保持开启。
 {% endhint %}
 
-#### item-lore - 右键物品 Lore 触发
+#### 物品绑定
 
-玩家右键持有指定材质的物品时触发打开菜单，并可选择额外匹配 Lore 文本。
-
-这是保留兼容的基础监听格式。需要匹配物品名称、损伤值、自定义模型 ID、设置毫秒冷却，或保存 TrMenu 迁移结果时，请使用独立的 [item_bindings.yml](item-bindings.md)。
-
-**配置格式：**
-
-```yaml
-listeners:
-  item-lore:
-    配置名称:        # 自定义名称，用于区分不同配置
-      enabled: true  # 是否启用此配置
-      material: 'CLOCK'              # 物品材质（必须匹配）
-      target-lore: '菜单'            # 可选；目标 Lore 文本
-      menu: 'main_menu'              # 触发时打开的菜单 ID
-      require-sneaking: false        # 是否需要潜行才触发
-```
-
-**字段说明：**
-
-| 字段 | 说明 | 类型 | 默认值 |
-|------|------|------|--------|
-| `enabled` | 是否启用此监听配置 | `Boolean` | `false` |
-| `material` | 物品材质（Material 枚举值，必须匹配） | `String` | 无 |
-| `target-lore` | 可选的 Lore 包含文本；缺失、`''` 或 `[]` 时只匹配材质 | `String` / `[]` | 无 |
-| `menu` | 触发时打开的菜单 ID | `String` | 无 |
-| `require-sneaking` | 是否需要同时按住潜行键（Shift）才触发 | `Boolean` | `false` |
-
-**基础示例：**
-
-```yaml
-listeners:
-  item-lore:
-    server-menu:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: '服务器菜单'
-      menu: 'server_menu'
-      require-sneaking: false
-```
-
-如果只需要判断玩家手持物品的材质，可以将 `target-lore` 留空、设为空列表，或直接省略该字段：
-
-```yaml
-listeners:
-  item-lore:
-    material-only:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: []
-      menu: 'server_menu'
-      require-sneaking: false
-```
-
-**多配置示例：**
-
-```yaml
-listeners:
-  item-lore:
-    # 主菜单：时钟物品，包含"菜单"文本
-    main-menu:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: '菜单'
-      menu: 'main_menu'
-      require-sneaking: false
-
-    # 商店菜单：指南针物品，包含"商店"文本
-    shop:
-      enabled: true
-      material: 'COMPASS'
-      target-lore: '商店'
-      menu: 'server_shop'
-      require-sneaking: false
-
-    # 传送菜单：玩家头部物品，需要潜行
-    teleport:
-      enabled: true
-      material: 'PLAYER_HEAD'
-      target-lore: '传送'
-      menu: 'teleport_menu'
-      require-sneaking: true
-```
-
-**使用场景：**
-
-1. **主菜单物品** - 新玩家登录时给予一个特殊物品，右键打开主菜单
-2. **功能菜单** - 时钟/指南针等物品，右键打开对应功能菜单
-3. **特殊工具** - 特定功能的物品，右键打开相关菜单
-
-{% hint style="info" %}
-- 支持配置多个 item-lore 监听器，每个监听器可以设置不同的物品和菜单
-- 非空的 `target-lore` 使用模糊匹配，只要物品 Lore 中包含该文本就会触发
-- `target-lore` 缺失、设为 `''` 或 `[]` 时不检查 Lore，只检查 `material`
-- 推荐为功能物品设置独特的 Lore 文本，避免与其他物品冲突
-{% endhint %}
-
-{% hint style="warning" %}
-**注意事项：**
-- 旧监听器按原始文本进行包含匹配，不会自动移除颜色，也不会把配置中的 `&` 转换为实际颜色代码
-- 确保物品 Lore 文本足够独特，避免误触发
-{% endhint %}
+旧版 `listeners.item-lore` 会在升级时自动迁至 `item_bindings.yml` 并从主配置移除。新物品绑定只在独立文件中配置，格式、触发手势与迁移说明见 [物品绑定](item-bindings.md)。
 
 #### player-click - 右键玩家触发
 

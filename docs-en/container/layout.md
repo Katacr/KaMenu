@@ -29,6 +29,7 @@ Rules:
 - Invalid row or slot counts prevent the menu from opening rather than rendering an incomplete inventory.
 - Button IDs should use letters, numbers, `_`, `-`, and `/`; multi-character IDs must use backticks.
 - Do not put a Dialog `Bottom` matrix into Container `Layout`; Container buttons are arranged by inventory slots.
+- `Buttons.<id>.type: repeat` uses every `Layout` position with the same ID as a fixed list slot. The page capacity equals the number of occurrences in the current layout and does not affect other buttons.
 
 See [Buttons](buttons.md) for button definitions and [Type](type.md) for inventory limits.
 

@@ -1,6 +1,6 @@
 # KaMenu API Documentation
 
-KaMenu provides a public API for other plugins to open file-based menus, render in-memory YAML menus, and register custom action namespaces.
+KaMenu provides a public API for other plugins to open file-based menus, render in-memory YAML menus, register custom action namespaces, and resolve native Sprite text components for vanilla or third-party items.
 
 ## API Class
 
@@ -145,6 +145,42 @@ Unregisters a custom action namespace.
 ```kotlin
 KaMenuAPI.unregisterActionHandler("kgc")
 ```
+
+#### `resolveItemSprite(String itemId)`
+
+Resolves an item ID into a native Adventure `Component` Sprite that can be appended directly to text. It supports vanilla materials such as `"diamond"` and KaMenu external-item prefixes: `ce:` / `craftengine:`, `ia:` / `itemsadder:`, and `oraxen:`.
+
+**Parameters:**
+- `itemId` - A vanilla material or provider-prefixed item ID, such as `"ce:hfrpg:hefeng_shard"`
+
+**Returns:**
+- `Component` - A native Sprite Component with a fixed white color
+- `null` - KaMenu is not initialized, the server is older than Minecraft `1.21.9`, or the item cannot be resolved
+
+The return value is a native `Component`, not a legacy or MiniMessage string. Append it directly. Do not round-trip it through `LegacyComponentSerializer`, `ItemMeta#setLore(List<String>)`, or another string API, because that degrades the Sprite into visible text.
+
+```kotlin
+import net.kyori.adventure.text.Component
+import org.katacr.kamenu.api.KaMenuAPI
+
+val icon = KaMenuAPI.resolveItemSprite("ce:hfrpg:hefeng_shard")
+val line = Component.text("Upgrade item: ").append(icon ?: Component.empty()).append(Component.text(" Hefeng Shard"))
+meta.lore(listOf(line))
+```
+
+```java
+import net.kyori.adventure.text.Component;
+import org.katacr.kamenu.api.KaMenuAPI;
+import java.util.List;
+
+Component icon = KaMenuAPI.resolveItemSprite("ce:hfrpg:hefeng_shard");
+Component line = Component.text("Upgrade item: ")
+    .append(icon == null ? Component.empty() : icon)
+    .append(Component.text(" Hefeng Shard"));
+meta.lore(List.of(line));
+```
+
+This method reads third-party item APIs and CraftEngine's final resource pack. Call it only on the Bukkit main thread or the relevant Folia player/region thread.
 
 #### `isAvailable()`
 

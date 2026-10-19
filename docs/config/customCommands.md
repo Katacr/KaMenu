@@ -34,6 +34,7 @@ custom-commands:
 
   # 新写法：执行 actions 动作队列
   test:
+    aliases: [hello, hi]
     args:
       0: "[hello, info]"
       1: "%kamenu_online_players%"
@@ -45,6 +46,19 @@ custom-commands:
 ```
 
 `actions` 写法与按钮动作队列一致，支持普通动作、条件判断、嵌套动作列表、`wait`、`return`、目标选择器和复杂条件。
+
+对象式配置（`menu:` 或 `actions:`）支持用 `aliases` 声明多个别名。别名和主指令执行同一菜单/动作定义，也共享参数补全配置；别名不能重复主指令名或同一列表中的其他别名。字符串简写 `command: menu/id` 不支持附加别名，如需别名请改为对象写法：
+
+```yaml
+custom-commands:
+  fishing:
+    aliases:
+      - fish
+      - 钓鱼
+    menu: example/fishing
+```
+
+注册时若别名与服务器已有命令冲突，Bukkit 会按其命令注册规则处理；不要将 KaMenu 别名设置为其他插件正在使用的命令名。
 
 ```yaml
 custom-commands:

@@ -523,6 +523,40 @@ Displays an item icon in the menu, optionally with a name, Lore, and description
 | `height` | `Int` | ❌ | `16` | Item icon height (px) |
 | `show_overlays` | `Boolean` | ❌ | `true` | Whether to show item overlays (durability bar, cooldown, count, etc.) |
 | `show_tooltip` | `Boolean` | ❌ | `true` | Whether to show the item tooltip on hover |
+| `hide_tooltip` | `Boolean` | ❌ | `false` | Hide the entire tooltip (1.20.5+) |
+| `hide_components` | `Boolean` | ❌ | `false` | Hide only vanilla auto-generated component lines, keeping custom name and lore (Paper writes `tooltip_display.hidden_components`; non-Paper degrades to item flags) |
+| `color` | `String` | ❌ | — | Dye color (`R,G,B` or `#RRGGBB`): leather armor, potion, firework effect |
+| `damage` | `Int` | ❌ | — | Damage taken (damageable items only) |
+| `glow` | `Boolean` | ❌ | — | Enchantment glint: `true` forces it, `false` cancels it; the implementation is chosen by core version |
+
+#### Tooltip and Component Hiding
+
+Dialog items have two tooltip switches at different levels:
+
+- `show_tooltip: false`: prevents the Dialog component from showing a tooltip on hover. This is a Dialog UI display option.
+- `hide_tooltip: true`: sets the hide-entire-item-tooltip property on the underlying ItemStack (1.20.5+). Even if the component allows a tooltip, the item's own name, Lore, and other tooltip text are hidden. It takes precedence over `hide_components`.
+- `hide_components: true`: hides only vanilla auto-generated component lines while keeping the custom name, Lore, item model, custom model data, and tooltip style. Paper uses `tooltip_display.hidden_components`; Spigot and other non-Paper cores fall back to common hide flags, so the result is approximate.
+
+These item properties require a 1.20.5+ core. If an older core cannot apply them, KaMenu logs a warning and skips the property. They change tooltip display only and do not delete item data. When the entire tooltip is hidden, `tooltip_style` has no visible frame for the client to render.
+
+```yaml
+Body:
+  plain_icon:
+    type: item
+    material: DIAMOND
+    name: '&bHide only vanilla component lines'
+    lore:
+      - '&7Name and Lore remain visible'
+    hide_components: true
+
+  no_hover_tooltip:
+    type: item
+    material: PAPER
+    name: '&7No item hover tooltip'
+    hide_tooltip: true
+```
+
+**Capability boundary:** `Body.item` does not currently parse `item_flags`, `enchantments`, or `unbreakable`. To configure individual Bukkit `ItemFlag` values, use `display.item_flags` on a Container button. See [Buttons: Item Flags and Tooltips](../container/buttons.md#item-flags-and-tooltips) for the Container flag list and hiding behavior.
 
 **Example:**
 

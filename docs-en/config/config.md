@@ -56,25 +56,6 @@ listeners:
     # Requires sneaking to trigger (Shift + right-click)
     require-sneaking: true 
     
-  # Right-click item with Lore trigger (supports multiple entries)
-  item-lore:
-    main-menu:  # Config name (custom)
-      enabled: true
-      # Item material (must match)
-      material: 'CLOCK'
-      # Target Lore text (triggers if item Lore contains this text)
-      target-lore: 'Menu'
-      # Menu to open on trigger
-      menu: 'example/main_menu'
-      # Whether sneaking is required to trigger
-      require-sneaking: false
-    # You can add more entries...
-    # shop-menu:
-    #   enabled: true
-    #   material: 'COMPASS'
-    #   target-lore: 'Shop'
-    #   menu: 'server_shop'
-    #   require-sneaking: false
 
 ```
 
@@ -260,109 +241,9 @@ listeners:
 Enabling `require-sneaking` prevents the menu from opening accidentally during normal gameplay. It is recommended to keep this enabled.
 {% endhint %}
 
-#### item-lore — Right-Click Item with Lore Trigger
+#### Item bindings
 
-Opens a menu when the player right-clicks while holding an item of a specified material, with optional Lore text matching.
-
-This is the legacy basic listener format. Use the separate [item_bindings.yml](item-bindings.md) when matching names, damage values, CustomModelData, applying millisecond cooldowns, or storing migrated TrMenu bindings.
-
-**Configuration Format:**
-
-```yaml
-listeners:
-  item-lore:
-    config_name:           # Custom name to differentiate entries
-      enabled: true        # Whether to enable this entry
-      material: 'CLOCK'              # Item material (must match)
-      target-lore: 'Menu'            # Optional target Lore text
-      menu: 'main_menu'              # Menu ID to open on trigger
-      require-sneaking: false        # Whether sneaking is required
-```
-
-**Field Description:**
-
-| Field | Description | Type | Default |
-|-------|-------------|------|---------|
-| `enabled` | Whether to enable this listener entry | `Boolean` | `false` |
-| `material` | Item material (Material enum value, must match) | `String` | — |
-| `target-lore` | Optional Lore text filter; omit it or use `''` / `[]` to match material only | `String` / `[]` | — |
-| `menu` | Menu ID to open on trigger | `String` | — |
-| `require-sneaking` | Whether the player must hold Sneak (Shift) to trigger | `Boolean` | `false` |
-
-**Basic Example:**
-
-```yaml
-listeners:
-  item-lore:
-    server-menu:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: 'Server Menu'
-      menu: 'server_menu'
-      require-sneaking: false
-```
-
-To match only the held item material, leave `target-lore` empty, use an empty list, or omit the field:
-
-```yaml
-listeners:
-  item-lore:
-    material-only:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: []
-      menu: 'server_menu'
-      require-sneaking: false
-```
-
-**Multi-entry Example:**
-
-```yaml
-listeners:
-  item-lore:
-    # Main menu: clock item containing "Menu"
-    main-menu:
-      enabled: true
-      material: 'CLOCK'
-      target-lore: 'Menu'
-      menu: 'main_menu'
-      require-sneaking: false
-
-    # Shop menu: compass item containing "Shop"
-    shop:
-      enabled: true
-      material: 'COMPASS'
-      target-lore: 'Shop'
-      menu: 'server_shop'
-      require-sneaking: false
-
-    # Teleport menu: player head item, requires sneaking
-    teleport:
-      enabled: true
-      material: 'PLAYER_HEAD'
-      target-lore: 'Teleport'
-      menu: 'teleport_menu'
-      require-sneaking: true
-```
-
-**Use Cases:**
-
-1. **Main Menu Item** — Give new players a special item; right-click opens the main menu
-2. **Feature Menus** — Clock/compass items; right-click opens the corresponding feature menu
-3. **Special Tools** — Items with specific functions; right-click opens the relevant menu
-
-{% hint style="info" %}
-- Multiple item-lore listeners are supported, each with different items and menus
-- A non-empty `target-lore` uses partial matching and triggers when any Lore line contains the text
-- An omitted `target-lore`, `''`, or `[]` disables Lore matching and checks only `material`
-- Use unique Lore text for functional items to avoid conflicts with other items
-{% endhint %}
-
-{% hint style="warning" %}
-**Notes:**
-- The legacy listener uses raw substring matching. It neither strips item colors nor converts configured `&` codes to actual color codes
-- Ensure Lore text is unique enough to prevent unintended triggers
-{% endhint %}
+Legacy `listeners.item-lore` entries are automatically migrated into `item_bindings.yml` and removed from the main config on upgrade. Configure new bindings only in the separate file; see [Item Bindings](item-bindings.md) for the format, gestures, and migration details.
 
 #### player-click — Right-Click Player Trigger
 

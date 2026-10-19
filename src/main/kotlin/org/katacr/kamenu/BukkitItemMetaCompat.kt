@@ -74,6 +74,17 @@ object BukkitItemMetaCompat {
         true
     }.getOrDefault(false)
 
+    /** 在当前核心支持时设置附魔光效覆盖（1.20.5+）；旧核心返回 false。 */
+    fun setEnchantmentGlintOverride(meta: ItemMeta, override: Boolean): Boolean = runCatching {
+        val method = sequenceOf(ItemMeta::class.java, meta.javaClass)
+            .mapNotNull { type -> type.findMethod("setEnchantmentGlintOverride", java.lang.Boolean::class.java) }
+            .firstOrNull()
+            ?: return false
+        method.isAccessible = true
+        method.invoke(meta, override)
+        true
+    }.getOrDefault(false)
+
     /** 在当前核心支持时使用 Adventure Component 设置展示名；旧核心返回 false。 */
     fun setDisplayNameComponent(meta: ItemMeta, component: Component): Boolean = runCatching {
         val method = sequenceOf(ItemMeta::class.java, meta.javaClass)

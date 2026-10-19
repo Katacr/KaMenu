@@ -225,8 +225,8 @@ class TrMenuMenuConverterTest {
                 .map { it.path }
                 .toSet()
         )
-        assertEquals(1, result?.boundItems?.size)
-        assertEquals("compass", result?.boundItems?.single()?.values?.get("material"))
+        assertEquals(2, result?.boundItems?.size)
+        assertEquals("compass", (result?.boundItems?.first()?.values?.get("item") as? Map<*, *>)?.get("material"))
         assertTrue(diagnostics.issues.any { it.code == "TRM_BINDING_ITEM_INTERVAL_DEFAULT" })
         assertTrue(diagnostics.issues.any { it.code == "TRM_LANG_UNSUPPORTED" })
     }

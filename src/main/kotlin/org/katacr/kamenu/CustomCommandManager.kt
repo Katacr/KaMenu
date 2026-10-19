@@ -100,7 +100,9 @@ class CustomCommandManager(private val plugin: KaMenu) {
             }
 
             try {
-                registerCommand(commandName, definition)
+                val commandSection = customCommandsSection.getConfigurationSection(commandName)
+                val aliases = parseCommandAliases(commandSection, commandName)
+                registerCommand(commandName, definition, aliases)
                 successCount++
             } catch (e: Exception) {
                 warn("custom_commands.register_failed", commandName, e.message ?: e.javaClass.simpleName)
@@ -193,6 +195,24 @@ class CustomCommandManager(private val plugin: KaMenu) {
         return suggestions
     }
 
+    /** 解析对象式自定义指令的别名，并过滤空值、主名称及重复项。 */
+    private fun parseCommandAliases(
+        commandSection: ConfigurationSection?,
+        commandName: String
+    ): List<String> {
+        val rawAliases = commandSection?.get("aliases") ?: return emptyList()
+        if (rawAliases !is List<*>) {
+            plugin.logger.warning("[KaMenu] Ignoring aliases for /$commandName: expected a YAML list")
+            return emptyList()
+        }
+
+        val seen = mutableSetOf(commandName.lowercase())
+        return rawAliases.mapNotNull { rawAlias ->
+            val alias = rawAlias?.toString()?.trim().orEmpty()
+            if (alias.isEmpty() || !seen.add(alias.lowercase())) null else alias
+        }
+    }
+
     private fun warn(key: String, vararg args: String) {
         plugin.logger.warning(plugin.languageManager.getMessage(key, *args))
     }
@@ -203,11 +223,12 @@ class CustomCommandManager(private val plugin: KaMenu) {
      * CommandMap 会以 `kamenu` 作为 fallback prefix 注册，因此实际可能同时存在
      * `commandName` 和 `kamenu:commandName` 两个入口。
      */
-    private fun registerCommand(commandName: String, definition: CustomCommandDefinition) {
+    private fun registerCommand(commandName: String, definition: CustomCommandDefinition, aliases: List<String>) {
         val commandMap = this.commandMap ?: throw RuntimeException("CommandMap not initialized")
 
         // 创建自定义指令
         val command = CustomCommand(plugin, definition, commandName)
+        command.setAliases(aliases)
 
         // 注册指令
         commandMap.register("kamenu", command)

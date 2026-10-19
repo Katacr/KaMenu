@@ -5,7 +5,7 @@
 
 # Configuration file version (DO NOT MODIFY THIS VALUE)
 # 配置文件版本（请勿修改此值，插件更新时用于自动检测并更新配置）
-config-version: 8
+config-version: 9
 
 # Plugin language (must match a filename in the lang/ folder, without .yml)
 # Built-in languages: zh_CN (Chinese), en_US (English)
@@ -117,36 +117,6 @@ listeners:
     enabled: true          # Enable this listener / 启用此监听器
     menu: 'example/inspect_player'  # Menu file path to open / 要打开的菜单文件路径
     require-sneaking: true # Require sneaking to trigger (Shift+Right-Click) / 需要潜行才能触发（Shift+右键）
-
-  # Item lore detection listener (triggered by right-clicking the item)
-  # 物品lore检测监听器（右键物品触发）
-  item-lore:
-    # Main menu configuration
-    # 主菜单配置
-    main-menu:
-      enabled: true           # Enable this menu / 启用此菜单
-      material: 'CLOCK'       # Item material to detect / 要检测的物品材质
-      target-lore: 'main menu'     # Optional; empty/[] only checks material / 可选；留空或[]时只检查材质
-      menu: 'example/main_menu'       # Menu file path to open / 要打开的菜单文件路径
-      require-sneaking: false # Require sneaking to trigger / 需要潜行才能触发
-
-    # Shop menu configuration
-    # 商店菜单配置
-    shop-menu:
-      enabled: true           # Enable this menu / 启用此菜单
-      material: 'BUNDLE'      # Item material to detect / 要检测的物品材质
-      target-lore: 'open shop'     # Lore text to match / 匹配的lore文本
-      menu: 'shop_menu'       # Menu file path to open / 要打开的菜单文件路径
-      require-sneaking: false # Require sneaking to trigger / 需要潜行才能触发
-
-    # Warp menu configuration
-    # 传送菜单配置
-    warp-menu:
-      enabled: false          # Enable this menu / 启用此菜单
-      material: 'COMPASS'     # Item material to detect / 要检测的物品材质
-      target-lore: 'teleport'    # Lore text to match / 匹配的lore文本
-      menu: 'warp_menu'      # Menu file path to open / 要打开的菜单文件路径
-      require-sneaking: false # Require sneaking to trigger / 需要潜行才能触发
 
 # ============================================
 # Update Checker

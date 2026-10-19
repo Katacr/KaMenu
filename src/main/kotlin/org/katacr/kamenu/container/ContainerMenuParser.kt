@@ -23,7 +23,11 @@ object ContainerMenuParser {
         "glow",
         "unbreakable",
         "enchantments",
-        "item_flags"
+        "item_flags",
+        "hide_tooltip",
+        "hide_components",
+        "color",
+        "damage"
     )
     private val furnaceProperties = setOf("burn_progress", "cook_progress")
     private val anvilProperties = setOf(
@@ -72,6 +76,15 @@ object ContainerMenuParser {
             if (button.slot != null || button.slotFrames != null) button.id else null
         }
         val layoutPages = parseLayoutPages(config, type, diagnostics, dynamicSlotButtons)
+        buttons.values.filter { it.repeat != null }.forEach { button ->
+            if (layoutPages.orEmpty().none { layout -> layout.slotsByButton.containsKey(button.id) }) {
+                diagnostics += error(
+                    "button.repeat_unused",
+                    "Buttons.${button.id}",
+                    "Repeat button '${button.id}' must be referenced by at least one Layout page."
+                )
+            }
+        }
         val firstLayout = layoutPages?.firstOrNull()
         val freeSlots = if (firstLayout != null) {
             parseFreeSlots(config, type, firstLayout, diagnostics)
@@ -697,6 +710,38 @@ object ContainerMenuParser {
         path: String,
         diagnostics: MutableList<ContainerMenuDiagnostic>
     ): ContainerButtonDefinition? {
+        val type = when (val raw = section.get("type")) {
+            null -> "normal"
+            is String -> raw.trim().lowercase()
+            else -> {
+                diagnostics += error("button.invalid_type", "$path.type", "Button type must be a string.")
+                return null
+            }
+        }
+        if (type == "repeat") {
+            val repeat = parseRepeat(section, path, diagnostics) ?: return null
+            val viewCondition = when (val raw = section.get("view_condition")) {
+                null -> null
+                is String -> raw.takeIf(String::isNotBlank)
+                else -> {
+                    diagnostics += error("button.invalid_view_condition", "$path.view_condition", "view_condition must be a string.")
+                    null
+                }
+            }
+            return ContainerButtonDefinition(
+                id = id,
+                viewCondition = viewCondition,
+                updateIntervalTicks = parseUpdateInterval(section.get("update"), "$path.update", diagnostics),
+                display = ContainerItemDefinition(emptyMap()),
+                actions = emptyMap(),
+                repeat = repeat
+            )
+        }
+        if (type != "normal") {
+            diagnostics += error("button.unsupported_type", "$path.type", "Unsupported button type '$type'.")
+            return null
+        }
+
         val hasVariants = section.contains("variants")
         if (hasVariants && (section.contains("display") || section.contains("actions"))) {
             diagnostics += error(
@@ -747,6 +792,89 @@ object ContainerMenuParser {
             variants = variants,
             slot = slot,
             slotFrames = slotFrames
+        )
+    }
+
+    /** 解析 repeat 数据来源、逐项显示/动作模板和纯展示空列表占位物。 */
+    private fun parseRepeat(
+        section: ConfigurationSection,
+        path: String,
+        diagnostics: MutableList<ContainerMenuDiagnostic>
+    ): ContainerRepeatDefinition? {
+        listOf("display", "actions", "variants", "slot").filter(section::contains).forEach { key ->
+            diagnostics += error(
+                "button.repeat_mixed_definition",
+                "$path.$key",
+                "Repeat buttons cannot combine '$key' with the repeat template."
+            )
+        }
+
+        val source = when (val raw = section.get("source")) {
+            is String -> raw.takeIf(String::isNotBlank)
+            else -> null
+        }
+        if (source == null) {
+            diagnostics += error("button.repeat_source_missing", "$path.source", "Repeat source must be a non-empty string.")
+        }
+
+        val split = when (val raw = section.get("split")) {
+            null -> null
+            is String -> raw.takeIf(String::isNotEmpty)
+            else -> {
+                diagnostics += error("button.repeat_invalid_split", "$path.split", "Repeat split must be a string.")
+                null
+            }
+        }
+        val trim = when (val raw = section.get("trim")) {
+            null -> true
+            is Boolean -> raw
+            else -> {
+                diagnostics += error("button.repeat_invalid_trim", "$path.trim", "Repeat trim must be a boolean.")
+                true
+            }
+        }
+
+        val item = section.getConfigurationSection("item")
+        if (item == null) {
+            diagnostics += error("button.repeat_item_missing", "$path.item", "Repeat item must be a YAML section.")
+        }
+        val itemDisplay = item?.let {
+            parseDisplay(it.get("display"), "$path.item.display", "$path repeat item", diagnostics)
+        }
+        val itemActions = item?.let {
+            parseActions(it.get("actions"), "$path.item.actions", diagnostics)
+        }.orEmpty()
+        item?.getKeys(false)?.filterNot(setOf("display", "actions")::contains)?.forEach { key ->
+            diagnostics += error("button.repeat_item_unknown_key", "$path.item.$key", "Unknown repeat item key '$key'.")
+        }
+
+        val emptySection = section.getConfigurationSection("empty")
+        val emptyDisplay = if (emptySection != null) {
+            emptySection.getKeys(false).filterNot(setOf("display")::contains).forEach { key ->
+                diagnostics += error("button.repeat_empty_unknown_key", "$path.empty.$key", "Only empty.display is supported.")
+            }
+            parseDisplay(emptySection.get("display"), "$path.empty.display", "$path empty item", diagnostics)
+        } else {
+            if (section.contains("empty")) {
+                diagnostics += error("button.repeat_invalid_empty", "$path.empty", "Repeat empty must be a YAML section.")
+            }
+            null
+        }
+
+        if (diagnostics.any {
+                it.severity == ContainerDiagnosticSeverity.ERROR &&
+                    (it.path == path || it.path.startsWith("$path."))
+            }
+        ) {
+            return null
+        }
+        return ContainerRepeatDefinition(
+            source = source!!,
+            split = split,
+            trim = trim,
+            itemDisplay = itemDisplay ?: return null,
+            itemActions = itemActions,
+            emptyDisplay = emptyDisplay
         )
     }
 

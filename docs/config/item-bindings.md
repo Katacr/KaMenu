@@ -1,78 +1,71 @@
-# 物品右键绑定: item_bindings.yml
+# 物品绑定：item_bindings.yml
 
-`item_bindings.yml` 用于把玩家主手物品的右键操作绑定到 KaMenu 菜单或动作包。该文件位于 `plugins/KaMenu/item_bindings.yml`，支持手工维护，也用于保存 `/km migrate trmenu` 转换出的 `Bindings.Items`。
+`plugins/KaMenu/item_bindings.yml` 统一管理手持物品的左键、右键、F 和 Q 绑定。文件不存在时按空配置处理；`/km reload config`、`/km reload all` 可重载绑定。
 
-文件不存在时 KaMenu 会按空配置处理；只有迁移器确实生成了物品绑定时才会自动创建。`/km reload config` 和 `/km reload all` 会重新加载该文件。
-
-## 基础格式
+## 配置格式
 
 ```yaml
 item-bindings:
-  # 打开菜单
-  server_selector:
+  recipe_book:
     enabled: true
-    menu: 'example/main_menu'
-    require-sneaking: false
-    cooldown-ms: 2000
-    ignore-case: true
-    translate-colors: true
-    material: 'COMPASS'
-    target-name: '&e服务器选择器'
-    target-lore: '&7右键打开菜单'
-    data: 0
-    custom-model-data: 1001
-
-  # 执行动作包（不打开菜单）
-  plot_voucher:
-    enabled: true
-    material: 'ce:hfrpg:community_plot_voucher'
-    require-sneaking: false
+    item:
+      material: 'ce:farmersdelight:iron_knife'
+    trigger:
+      type: right-click       # left-click / right-click / f / q
+      sneaking: true          # 精确匹配；默认 false
+      target: air             # 仅左/右键可用：air / block / both；默认 both
+      cooldown-ms: 600        # 默认 500ms；显式设为 0 可关闭冷却
     actions:
-      - 'actions: voucher/use_plot'
+      - 'command: fd recipe cutting_board'
+
+  guide_book:
+    enabled: true
+    item:
+      material: 'ce:hfrpg:hefeng_guide_book'
+    trigger:
+      type: right-click
+      sneaking: false
+      target: both
+    actions:
+      - 'open: 任务章节/引导书'
+
+  protected_tool:
+    enabled: true
+    item:
+      material: 'ce:example:tool'
+    trigger:
+      type: q
+      sneaking: true
+    actions:
+      - 'open: example/tool_menu'
 ```
 
-每个绑定必须启用、至少配置 `menu` 或 `actions` 之一，并至少提供一个物品匹配字段。玩家使用主手右键空气或方块时，KaMenu 按配置顺序选择第一个匹配项，取消原右键事件并打开菜单或执行动作。
-
-**`menu` 与 `actions` 同时配置时，后台会输出警告，并以 `menu` 为主，`actions` 被忽略。**
+每条绑定需 `enabled: true`、`item` 中至少一个物品匹配字段、`trigger.type` 和非空 `actions`。按配置顺序执行首个匹配项；`actions` 支持 KaMenu 动作和全局动作包 `actions: <包ID>`。打开菜单直接用 `open: <菜单ID>`，不再使用顶层 `menu`。
 
 ## 字段
 
-| 字段 | 说明 | 默认值 |
-|---|---|---|
-| `enabled` | 是否启用该绑定 | `false` |
-| `menu` | 打开的 KaMenu 菜单 ID | 可选 |
-| `actions` | 要执行的动作列表（支持全局动作包调用 `actions: <包ID>`）；与 `menu` 互斥 | 可选 |
-| `require-sneaking` | 是否要求玩家正在潜行 | `false` |
-| `cooldown-ms` | 同一玩家再次触发物品绑定前的绝对时间间隔，单位毫秒 | `0` |
-| `ignore-case` | 名称与 Lore 包含匹配时是否忽略大小写 | `false` |
-| `translate-colors` | 是否先把配置文本中的 `&` 颜色代码转换为 Bukkit 颜色代码 | `false` |
-| `material` | 原版材质名，或带提供方前缀的 ItemsAdder、Oraxen、CraftEngine 物品 ID | 可选 |
-| `target-name` | 物品显示名称必须包含的文本 | 可选 |
-| `target-lore` | 至少一行 Lore 必须包含的文本；`''`、`[]` 或省略表示不检查 | 可选 |
-| `data` | 旧版 Bukkit 物品损伤值/数据值 | 可选 |
-| `custom-model-data` | 整数 CustomModelData | 可选 |
+| 位置 | 字段 | 说明 | 默认值 |
+|---|---|---|---|
+| 绑定 | `enabled` | 是否启用 | `false` |
+| 绑定 | `actions` | 匹配后执行的动作列表 | 必填 |
+| `item` | `material` | 原版物品或外部物品 ID | 可选 |
+| `item` | `target-name` | 显示名称包含的文本 | 可选 |
+| `item` | `target-lore` | 至少一行 Lore 包含的文本；空值/`[]` 表示不检查 | 可选 |
+| `item` | `data` | 旧版物品数据值/损伤值 | 可选 |
+| `item` | `custom-model-data` | 整数 CustomModelData | 可选 |
+| `item` | `ignore-case` | 名称和 Lore 匹配忽略大小写 | `false` |
+| `item` | `translate-colors` | 将配置的 `&` 颜色代码转换为 Bukkit 颜色代码 | `false` |
+| `trigger` | `type` | `left-click`、`right-click`、`f` 或 `q` | 必填 |
+| `trigger` | `sneaking` | 精确匹配潜行状态；`false` 仅匹配不潜行 | `false` |
+| `trigger` | `target` | 左/右键点击 `air`、`block` 或 `both`；F/Q 不可配置 | `both` |
+| `trigger` | `cooldown-ms` | 同一玩家两次物品绑定触发的间隔，毫秒 | `500` |
 
-外部物品 ID 示例为 `itemsadder:namespace:item`、`ia:namespace:item`、`oraxen:item_id`、`craftengine:namespace:item` 或 `ce:namespace:item`。对应插件未安装或物品无法识别时不会匹配。
+外部物品 ID 例：`itemsadder:namespace:item`、`ia:namespace:item`、`oraxen:item_id`、`craftengine:namespace:item`、`ce:namespace:item`。不支持通配符；物品提供方不可用时不会匹配。`target-name` 和 `target-lore` 使用包含匹配，不自动去除物品元数据的颜色。每位玩家共享最后触发时间；再次命中时按当前绑定的 `cooldown-ms` 判断。
 
-`cooldown-ms` 使用每名玩家共享的最后触发时间：再次命中某个绑定时，会用该绑定自己的 `cooldown-ms` 判断间隔。迁移生成的绑定统一为 2000ms，因此行为与 TrMenu 的全局间隔一致。冷却使用系统绝对时间，不受服务器 tick 波动影响。
+F 优先检查物品绑定，未匹配才执行 `config.yml > listeners.swap-hand` 通用监听；命中但尚在冷却也不会回退通用菜单。Q 命中时取消丢弃，物品保留；未命中则正常丢弃。打开服务端容器菜单时不处理 Q 绑定；**个人背包界面仅由客户端管理**，Bukkit 无法可靠区分在背包界面丢弃与在世界按 Q，可能仍触发绑定。
 
-## 颜色与文本匹配
+## 自动迁移
 
-名称和 Lore 使用“包含”匹配，不要求整行完全相同。物品元数据中的颜色不会被自动删除：
+升级时插件在主配置更新**之前**自动迁移旧 `item_bindings.yml` 的平铺格式及 `config.yml > listeners.item-lore`：合并到新文件，并从 `config.yml` 移除旧节。迁移前分别备份受影响的文件；重复启动不会产生重复绑定。原先 `menu: 名称` 转为 `actions: ['open: 名称']`；旧版未要求潜行的右键同时接受两种状态，因此迁移成普通和潜行两条绑定，保持原行为及旧主配置优先级。旧版显式冷却保留，未设置则使用新默认 500ms。迁移遇到无法安全转换的配置会停止插件启动并保留原文件，需修正后重试。
 
-- `translate-colors: true`：配置中的 `&a菜单` 会先转换为实际颜色代码，适合匹配带颜色的物品文本。
-- `translate-colors: false`：配置文本按原值匹配；这是旧 `listeners.item-lore` 的兼容行为。
-
-## 与 config.yml 旧监听器的关系
-
-KaMenu 仍会读取 `config.yml > listeners.item-lore`。旧监听器要求填写 `material`，并支持 `target-lore` 留空后只判断材质。加载顺序为旧监听器在前、`item_bindings.yml` 在后，因此同一物品同时命中时优先使用旧监听器。
-
-新增绑定建议写入独立文件，避免主配置过长，也避免迁移器保存配置时改写 `config.yml` 注释。
-
-## TrMenu 迁移
-
-`/km migrate trmenu` 会把可安全映射的 `Bindings.Items` 合并到该文件，并绑定到迁移后的容器类菜单。支持 `material`、`lore`、`name`、`data` 和 `model-data`；TrMenu 在右键绑定中忽略 `amount`，KaMenu 迁移时也会忽略它。
-
-TrMenu 默认的 `Bound-Item-Interval` 为 `2000` 毫秒，因此迁移结果默认写入 `cooldown-ms: 2000`。迁移器不读取 TrMenu 的全局 `settings.yml`；如果原服务器修改过该值，需要手工同步调整。
-
-反向 trait、头颅 owner/texture、未知 trait、只有 `amount` 的匹配以及互相冲突的多组 matcher 不会自动迁移。命令会输出对应 WARNING，且不会生成可能误匹配任意物品的宽松绑定。
+`/km migrate trmenu` 生成的新物品绑定也采用此格式；旧 TrMenu `Bindings.Items` 不区分潜行，因此会生成普通/潜行两条绑定，并保留迁移器的 2000ms 默认冷却。

@@ -38,6 +38,7 @@ Actions are executed **sequentially** in order (`wait` action can insert delays)
 | `sound`       | Play a sound at the player's location                          | ✅                        |
 | `money`       | Operate player coins (requires Vault)                          | ✅                        |
 | `points`      | Add or take player points (requires PlayerPoints)              | ✅                        |
+| `post-effect` | Manage player screen post effects (requires Paper 26.3+)       | ✅                        |
 | `stock-item`  | Give/take stored items                                         | ✅                        |
 | `item`        | Give/take regular items                                        | ✅                        |
 | `open`        | Open another menu for the player                               | ✅                        |
@@ -716,6 +717,21 @@ Use `reset` when a Dialog menu must be rendered again.
 
 ---
 
+### repeat-page - Navigate a Container Repeat List
+
+This action is for `Buttons.<id>.type: repeat` in Container menus. It changes the selected repeat list page and immediately refreshes its slots and buttons that use its pagination variables. It does not change the physical Container `Layout` page.
+
+```yaml
+- 'repeat-page: products next'
+- 'repeat-page: products prev'
+- 'repeat-page: products +2'
+- 'repeat-page: products 1'
+```
+
+Supported operations are `next`, `prev`/`previous`, `+N`, `-N`, and an absolute page number (starting at 1). Use `{page:products}`, `{pages:products}`, `{total:products}`, `{start:products}`, and `{end:products}` to control pager visibility. Dialog repeat continues to use `page: <listId> ...` followed by `reset`.
+
+---
+
 ### free-slot - Operate On Free Slots
 
 Atomically consume, actively return, or refresh real items in the current Container. Failure stops the current action chain, so reward actions must follow consumption.
@@ -1269,6 +1285,46 @@ The hyphen and trailing plural `s` are optional, for example `addpoints:` and `t
 
 ---
 
+### post-effect - Screen Post Effects
+
+Manage a player's screen post effects (full-screen shader filters). **Requires Paper 26.3+**; older or unsupported cores log a warning and skip.
+
+**Format:** `post-effect: type=operation;effect=<namespace:name>`
+
+**Parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `type` | ✅ | `add`, `remove`, `set` (order-sensitive), `clear`, `list` |
+| `effect` | Depends | Effect key such as `minecraft:blur`; `set` accepts a comma-separated list |
+
+**Built-in vanilla effects:** `minecraft:blur`, `minecraft:creeper`, `minecraft:spider`, `minecraft:invert`, `minecraft:entity_outline`.
+
+```yaml
+# Blur the background when opening a menu
+- 'post-effect: type=add;effect=minecraft:blur'
+
+# Remove the blur
+- 'post-effect: type=remove;effect=minecraft:blur'
+
+# Set multiple effects (order-sensitive)
+- 'post-effect: type=set;effect=minecraft:blur,minecraft:invert'
+
+# Clear all effects
+- 'post-effect: type=clear'
+
+# Query current effects (chat output)
+- 'post-effect: type=list'
+```
+
+**Notes:**
+
+- Effects render on the player's client; `minecraft:*` are built-in, and custom effects require a resource pack to provide `assets/<namespace>/post_effect/<name>.json` plus the matching shader.
+- Multiple effects stack in list order; `set` order is the final order.
+- Supports target selectors (can apply to other online players).
+
+---
+
 ### stock-item - Item Give/Take (Storage)
 
 Give the player or take from the player's inventory an item from the database storage.
@@ -1324,21 +1380,24 @@ Give or take vanilla items and external-plugin custom items.
 
 **Format:**
 - `item: type=give;mats=material;amount=quantity`
-- `item: type=take;mats=material;amount=quantity;lore=description;model=model`
+- `item: type=take;mats=material;amount=quantity;lore=description;model=model;cmd=custom_model_data`
 
 **Parameters:**
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | `type` | Operation type (give/take) | ✅ |
-| `mats` | Vanilla material or provider-prefixed external item ID | ✅ |
+| `mats` | Vanilla material or provider-prefixed external item ID | ❌ |
 | `amount` | Quantity | ❌ (default: 1) |
 | `lore` | Description (only for take operation, optional) | ❌ |
-| `model` | Item model (only for take operation, optional) | ❌ |
+| `model` | ItemModel key (only for take operation, optional) | ❌ |
+| `cmd` | Integer CustomModelData (only for take operation, optional) | ❌ |
 
 **type Options:**
-- `give`: Give item to player (ignores lore and model parameters)
-- `take`: Take item from player inventory (supports lore and model matching)
+- `give`: Give item to player (ignores lore/model/cmd parameters)
+- `take`: Take item from player inventory (supports mats/lore/model/cmd matching)
+
+`take` match dimensions are combinable; `mats` is optional, so `cmd` (or `lore`/`model`) alone can precisely target an item. `cmd` reads the item's integer CustomModelData (the `custom_model_data` component), which suits CraftEngine `client-bound-model` items that carry no `craftengine:id` tag.
 
 **Example:**
 
@@ -1366,6 +1425,9 @@ Give or take vanilla items and external-plugin custom items.
 # Specify both lore and model
 - 'item: type=take;mats=DIAMOND;amount=10;lore=Forging Material;model=oraxen:mana_crystal'
 
+# Take by CustomModelData only (e.g., a CraftEngine custom item)
+- 'item: type=take;cmd=50185;amount=4'
+
 # Use with conditions
 - condition: "hasItem.[mats=DIAMOND;amount=10]"
   allow:
@@ -1378,15 +1440,16 @@ Give or take vanilla items and external-plugin custom items.
 **Note:**
 - `mats` accepts vanilla materials and the external prefixes `itemsadder:`/`ia:`, `oraxen:`, and `craftengine:`/`ce:`
 - External `take` operations match the plugin item ID exactly and do not remove other items sharing the same base material
-- During `give` operation, `lore` and `model` parameters are ignored because they're only used for matching
+- During `give` operation, `lore`, `model`, and `cmd` parameters are ignored because they're only used for matching
 - If player's inventory is full during `give`, excess items will drop at player location, not lost
 - During `take` operation:
   - If `lore` is specified, only items with lore containing the specified string are taken (case-insensitive)
-  - If `model` is specified, only items matching the specified item model are taken
-  - If both `lore` and `model` are specified, items must satisfy both conditions to be taken
-  - `model` format is `namespace:key` (e.g., `oraxen:mana_crystal`, `minecraft:diamond`)
+  - If `model` is specified, only items matching the specified ItemModel are taken
+  - If `cmd` is specified, only items with a matching integer CustomModelData are taken
+  - Multiple dimensions can be combined; items must satisfy all specified conditions to be taken
+  - `model` format is `namespace:key` (e.g., `oraxen:mana_crystal`, `minecraft:diamond`); `cmd` is an integer
 - `take` operation traverses all player inventory slots (main inventory, armor slots, offhand, main hand)
-- Supports variable replacement, e.g., `mats=$(material)`, `amount={data:price}`, `lore={data:item_desc}`
+- Supports variable replacement, e.g., `mats=$(material)`, `amount={data:price}`, `lore={data:item_desc}`, `cmd={data:model_id}`
 
 ---
 

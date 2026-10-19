@@ -61,15 +61,16 @@ class TrMenuMigrationTest {
 
         val itemBindings = YamlConfiguration()
         val itemMerge = migrator.mergeBoundItems(result, itemBindings)
-        assertEquals(1, itemMerge.added)
+        assertEquals(2, itemMerge.added)
         val bindingPath = "item-bindings.trmenu_trmenu_migrated_main_1"
-        assertEquals("trmenu_migrated/Main", itemBindings.getString("$bindingPath.menu"))
-        assertEquals("COMPASS", itemBindings.getString("$bindingPath.material"))
-        assertEquals("&aOpen Menu", itemBindings.getString("$bindingPath.target-lore"))
-        assertEquals(1001, itemBindings.getInt("$bindingPath.custom-model-data"))
+        assertEquals(listOf("open: trmenu_migrated/Main"), itemBindings.getStringList("$bindingPath.actions"))
+        assertEquals("COMPASS", itemBindings.getString("$bindingPath.item.material"))
+        assertEquals("&aOpen Menu", itemBindings.getString("$bindingPath.item.target-lore"))
+        assertEquals(1001, itemBindings.getInt("$bindingPath.item.custom-model-data"))
+        assertTrue(itemBindings.getBoolean("${bindingPath}__sneaking.trigger.sneaking"))
 
         val unchanged = migrator.mergeBoundItems(result, itemBindings)
-        assertEquals(1, unchanged.unchanged)
+        assertEquals(2, unchanged.unchanged)
         assertEquals(0, unchanged.conflicts.size)
     }
 

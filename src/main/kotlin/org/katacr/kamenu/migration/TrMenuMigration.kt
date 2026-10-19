@@ -188,8 +188,8 @@ class TrMenuMigration(
                     }
                     else -> conflicts += ItemBindingConflict(
                         binding.id,
-                        existing?.getString("menu") ?: describeConfigValue(rawExisting),
-                        binding.values["menu"].toString()
+                        existing?.getStringList("actions")?.firstOrNull() ?: describeConfigValue(rawExisting),
+                        binding.values["actions"].toString()
                     )
                 }
             }
@@ -330,12 +330,29 @@ class TrMenuMigration(
 
     private fun writeBinding(section: ConfigurationSection, binding: TrMenuBoundItem) {
         val target = section.createSection(binding.id)
-        binding.values.forEach(target::set)
+        binding.values.forEach { (key, value) ->
+            if (value is Map<*, *>) {
+                val child = target.createSection(key)
+                value.forEach { (field, content) -> child.set(field.toString(), content) }
+            } else target.set(key, value)
+        }
     }
 
     private fun bindingEquals(section: ConfigurationSection, values: Map<String, Any>): Boolean {
         if (section.getKeys(false) != values.keys) return false
-        return values.all { (key, value) -> section.get(key) == value }
+        return values.all { (key, value) ->
+            if (value is Map<*, *>) {
+                val child = section.getConfigurationSection(key)
+                child != null && child.getKeys(false) == value.keys &&
+                    value.all { (field, content) -> sameBindingValue(child.get(field.toString()), content) }
+            } else sameBindingValue(section.get(key), value)
+        }
+    }
+
+    /** YAML 重新读取时 Long 可能变成 Int，比较迁移结果时统一数字语义。 */
+    private fun sameBindingValue(existing: Any?, expected: Any?): Boolean = when {
+        existing is Number && expected is Number -> existing.toDouble() == expected.toDouble()
+        else -> existing == expected
     }
 
     private fun describeConfigValue(value: Any?): String = when (value) {

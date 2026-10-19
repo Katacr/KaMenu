@@ -1,6 +1,6 @@
 # KaMenu API 文档
 
-KaMenu 提供公开 API，允许其他插件打开文件菜单、渲染内存 YAML 菜单，并注册自定义动作命名空间。
+KaMenu 提供公开 API，允许其他插件打开文件菜单、渲染内存 YAML 菜单、注册自定义动作命名空间，并解析原版或第三方物品的原生 Sprite 文本组件。
 
 ## API 类
 
@@ -145,6 +145,42 @@ handler 会收到已解析变量后的动作字符串、输入变量（如 `$(na
 ```kotlin
 KaMenuAPI.unregisterActionHandler("kgc")
 ```
+
+#### `resolveItemSprite(String itemId)`
+
+将物品 ID 解析为可直接拼接到 Adventure 文本的原生 `Component` Sprite。支持原版材质（如 `"diamond"`）以及 KaMenu 支持的外部物品前缀：`ce:` / `craftengine:`、`ia:` / `itemsadder:` 和 `oraxen:`。
+
+**参数：**
+- `itemId` - 原版材质名或带提供方前缀的物品 ID，例如 `"ce:hfrpg:hefeng_shard"`
+
+**返回值：**
+- `Component` - 已固定白色的原生 Sprite Component
+- `null` - KaMenu 未初始化、服务端低于 Minecraft `1.21.9`，或物品无法解析
+
+返回的是原生 `Component`，不是 legacy 或 MiniMessage 字符串。调用方应直接 `append` 它，不能再经 `LegacyComponentSerializer`、`ItemMeta#setLore(List<String>)` 或其他字符串 API 回写，否则 Sprite 会降级为文本。
+
+```kotlin
+import net.kyori.adventure.text.Component
+import org.katacr.kamenu.api.KaMenuAPI
+
+val icon = KaMenuAPI.resolveItemSprite("ce:hfrpg:hefeng_shard")
+val line = Component.text("强化道具：").append(icon ?: Component.empty()).append(Component.text(" 荷风碎片"))
+meta.lore(listOf(line))
+```
+
+```java
+import net.kyori.adventure.text.Component;
+import org.katacr.kamenu.api.KaMenuAPI;
+import java.util.List;
+
+Component icon = KaMenuAPI.resolveItemSprite("ce:hfrpg:hefeng_shard");
+Component line = Component.text("强化道具：")
+    .append(icon == null ? Component.empty() : icon)
+    .append(Component.text(" 荷风碎片"));
+meta.lore(List.of(line));
+```
+
+该方法会访问第三方物品 API 和 CraftEngine 最终资源包；请只在 Bukkit 主线程或 Folia 对应玩家/区域线程调用。
 
 #### `isAvailable()`
 

@@ -307,6 +307,70 @@ object ActionHandlers {
     }
 
     /**
+     * 解析并执行 Post Effect 屏幕后期效果动作（Paper 26.3+）。
+     *
+     * 格式：`post-effect: type=add|remove|set|clear|list;effect=<namespace:name>[,<...>]`。
+     * `add`/`remove` 单个效果；`set` 以逗号分隔的整体列表（顺序敏感）；`clear` 清空；`list` 查询。
+     * 旧核心或不支持时记录警告并跳过。
+     */
+    fun parseAndHandlePostEffect(player: Player, args: String) {
+        if (!PostEffectCompat.isSupported()) {
+            plugin?.logger?.warning(
+                message("actions.post_effect_unsupported", player.name, fallback =
+                    "[KaMenu] Post Effect API is not supported on this server (requires Paper 26.3+). Player: ${player.name}")
+            )
+            return
+        }
+
+        var type = ""
+        var effect = ""
+        args.split(";").forEach { parameter ->
+            val parts = parameter.split("=", limit = 2)
+            if (parts.size == 2) {
+                when (parts[0].trim().lowercase()) {
+                    "type", "action" -> type = parts[1].trim().lowercase()
+                    "effect", "key", "value" -> effect = parts[1].trim()
+                }
+            }
+        }
+
+        when (type) {
+            "add" -> {
+                if (effect.isEmpty()) {
+                    plugin?.logger?.warning("post-effect add 缺少 effect 参数。玩家: ${player.name}")
+                    return
+                }
+                PostEffectCompat.add(player, effect)
+            }
+
+            "remove", "take" -> {
+                if (effect.isEmpty()) {
+                    plugin?.logger?.warning("post-effect remove 缺少 effect 参数。玩家: ${player.name}")
+                    return
+                }
+                PostEffectCompat.remove(player, effect)
+            }
+
+            "set" -> {
+                val effects = effect.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                PostEffectCompat.set(player, effects)
+            }
+
+            "clear", "reset" -> PostEffectCompat.clear(player)
+
+            "list" -> {
+                val values = PostEffectCompat.values(player)
+                val text = if (values.isEmpty()) "无" else values.joinToString(", ")
+                MenuUI.sendMessage(player, TextParser.parseText("&7当前后期效果: &f$text"))
+            }
+
+            else -> {
+                plugin?.logger?.warning("post-effect 无效的 type '$type'（支持 add/remove/set/clear/list）。玩家: ${player.name}")
+            }
+        }
+    }
+
+    /**
      * 解析并执行 PlayerPoints 点券增减动作。
      *
      * 标准格式为 `points: type=add|take;num=数量`；[forcedType] 用于兼容
@@ -837,6 +901,7 @@ object ActionHandlers {
         var loreText: String? = null
         var itemModel: String? = null
         var nameText: String? = null
+        var customModelIdText: String? = null
 
         // 解析参数
         args.split(";").forEach { param ->
@@ -851,6 +916,7 @@ object ActionHandlers {
                     "lore" -> loreText = value
                     "model", "item_model" -> itemModel = value
                     "name" -> nameText = value
+                    "cmd", "custom_model_data", "custom_model_id" -> customModelIdText = value
                 }
             }
         }
@@ -861,11 +927,19 @@ object ActionHandlers {
         val finalLoreText = loreText?.let { resolveVariablesWithInput(player, it, variables) }
         val finalItemModel = itemModel?.let { resolveVariablesWithInput(player, it, variables) }
         val finalNameText = nameText?.let { resolveVariablesWithInput(player, it, variables) }
+        val finalCustomModelIdText = customModelIdText?.let { resolveVariablesWithInput(player, it, variables) }
         val amount = (finalAmountStr.toIntOrNull() ?: 1).coerceAtLeast(1)
 
-        // 材质不再是必需的：允许仅按显示名或物品模型匹配（RPG 铁砧改名/自定义模型物品场景）。
+        // 材质不再是必需的：允许仅按显示名、物品模型或 CustomModelData 匹配。
         val hasMaterialConstraint = finalMaterialName.isNotEmpty()
-        if (!hasMaterialConstraint && finalLoreText == null && finalItemModel == null && finalNameText == null) {
+        val customModelId = finalCustomModelIdText?.trim()?.toIntOrNull()
+        if (finalCustomModelIdText != null && customModelId == null) {
+            languageManager?.getMessage("actions.item_invalid_material", finalCustomModelIdText, player.name)?.let {
+                plugin?.logger?.warning(it)
+            }
+            return
+        }
+        if (!hasMaterialConstraint && finalLoreText == null && finalItemModel == null && finalNameText == null && customModelId == null) {
             languageManager?.getMessage("actions.item_missing_material", player.name)?.let {
                 plugin?.logger?.warning(it)
             }
@@ -885,9 +959,15 @@ object ActionHandlers {
 
         when (type) {
             "give" -> {
-                // 给予物品（只需要物品 ID 和数量，忽略 lore 和 model 过滤器）
+                // 给予物品（只需要物品 ID 和数量，忽略 lore/model/cmd 过滤器）
                 val itemToGive = externalItemStack?.clone()
-                    ?: org.bukkit.inventory.ItemStack(material!!, amount)
+                    ?: material?.let { org.bukkit.inventory.ItemStack(it, amount) }
+                if (itemToGive == null) {
+                    languageManager?.getMessage("actions.item_missing_material", player.name)?.let {
+                        plugin?.logger?.warning(it)
+                    }
+                    return
+                }
                 val leftover = player.inventory.addItem(itemToGive)
 
                 if (leftover.isNotEmpty()) {
@@ -952,6 +1032,11 @@ object ActionHandlers {
                         if (finalItemModel != null) {
                             val modelKey = ItemPropertyReader.getItemModel(stackMeta) ?: continue
                             if (!modelKey.equals(finalItemModel, ignoreCase = true)) continue
+                        }
+
+                        // 检查 CustomModelData 是否匹配（如果指定了 cmd）
+                        if (customModelId != null) {
+                            if (ItemPropertyReader.getCustomModelId(stackMeta) != customModelId) continue
                         }
 
                         // 检查显示名是否匹配（包含即可，忽略大小写与颜色码）

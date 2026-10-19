@@ -74,7 +74,23 @@ class ContainerMenuService(private val plugin: KaMenu) {
         @Volatile var currentPage: Int = 0,
         val progressStates: MutableMap<String, ProgressWatcherState> = mutableMapOf(),
         @Volatile var dynamicSlotIndex: Map<Int, String> = emptyMap(),
+        @Volatile var repeatSlotIndex: Map<Int, RepeatSlotBinding> = emptyMap(),
+        val repeatPageIndexes: MutableMap<String, Int> = mutableMapOf(),
+        val repeatPageInfos: MutableMap<String, ContainerRepeatPageInfo> = mutableMapOf(),
         @Volatile var animatedSlotFrame: Int = 0
+    )
+
+    /** 当前物理槽位绑定的数据项快照，供点击动作使用。 */
+    private data class RepeatSlotBinding(
+        val buttonId: String,
+        val itemVariables: Map<String, String>
+    )
+
+    /** 一轮 Repeat 渲染产生的物品和可选点击绑定。 */
+    private data class RenderedRepeatSlot(
+        val slot: Int,
+        val item: ItemStack?,
+        val binding: RepeatSlotBinding?
     )
 
     /** 记录单个进度监听器在当前菜单会话中的边沿触发状态。 */
@@ -280,15 +296,32 @@ class ContainerMenuService(private val plugin: KaMenu) {
         val session = validSession(player, inventory) ?: return
         val buttonId = buttonIdAt(session, slot) ?: return
         val button = session.definition.buttons[buttonId] ?: return
+        val repeat = button.repeat
+        if (repeat != null) {
+            val binding = session.repeatSlotIndex[slot]?.takeIf { it.buttonId == buttonId } ?: return
+            val baseVariables = buttonVariables(session, buttonId) + binding.itemVariables
+            if (!isButtonVisible(player, button, baseVariables, session.config)) return
+            val actions = clickActions(repeat.itemActions, clickType)
+            if (actions.isEmpty() || !consumeClickCooldown(session)) return
+            val variables = baseVariables + mapOf(
+                "slot" to slot.toString(),
+                "button" to buttonId,
+                "click" to clickType.configKey,
+                "hotbar_button" to (hotbarButton?.toString() ?: "")
+            )
+            MenuActions.executeActionGroup(
+                player = player,
+                config = session.config,
+                actions = actions,
+                variables = variables,
+                contextId = session.menuId
+            )
+            return
+        }
         val baseVariables = buttonVariables(session, buttonId)
         val variant = resolveButtonVariant(player, session, button, baseVariables) ?: return
 
-        val actionTypes = linkedSetOf(ContainerClickType.ALL)
-        if (clickType.name.startsWith("NUMBER_KEY")) {
-            actionTypes += ContainerClickType.NUMBER_KEY
-        }
-        actionTypes += clickType
-        val actions = actionTypes.flatMap { variant.actions[it].orEmpty() }
+        val actions = clickActions(variant.actions, clickType)
         if (actions.isEmpty()) return
         if (!consumeClickCooldown(session)) return
 
@@ -305,6 +338,17 @@ class ContainerMenuService(private val plugin: KaMenu) {
             variables = variables,
             contextId = session.menuId
         )
+    }
+
+    /** 按 Container 约定合并 all、通用数字键和具体点击类型的动作。 */
+    private fun clickActions(
+        actionMap: Map<ContainerClickType, List<Any>>,
+        clickType: ContainerClickType
+    ): List<Any> {
+        val actionTypes = linkedSetOf(ContainerClickType.ALL)
+        if (clickType.name.startsWith("NUMBER_KEY")) actionTypes += ContainerClickType.NUMBER_KEY
+        actionTypes += clickType
+        return actionTypes.flatMap { actionMap[it].orEmpty() }
     }
 
     /** 先处理自由槽位事务；不属于自由槽时继续交给普通按钮点击逻辑。 */
@@ -365,6 +409,25 @@ class ContainerMenuService(private val plugin: KaMenu) {
     /** 返回玩家当前 Container 会话的页码；无会话时返回 -1。 */
     fun currentPage(player: Player): Int {
         return sessions[player.uniqueId]?.currentPage ?: -1
+    }
+
+    /** 调整 Container repeat 页码并同步刷新列表槽位及分页变量展示。 */
+    fun changeRepeatPage(player: Player, buttonId: String, operation: String): Boolean {
+        val session = sessions[player.uniqueId] ?: return false
+        if (validSession(player, session.holder.inventory) !== session) return false
+        session.definition.buttons[buttonId]?.takeIf { it.repeat != null } ?: return false
+        val current = session.repeatPageIndexes[buttonId] ?: 0
+        val normalized = operation.trim().lowercase()
+        val target = when {
+            normalized == "next" -> current + 1
+            normalized == "prev" || normalized == "previous" -> current - 1
+            normalized.startsWith("+") -> current + (normalized.drop(1).toIntOrNull() ?: 0)
+            normalized.startsWith("-") -> current + (normalized.toIntOrNull() ?: 0)
+            else -> (normalized.toIntOrNull() ?: return false) - 1
+        }.coerceAtLeast(0)
+        session.repeatPageIndexes[buttonId] = target
+        refreshButtons(player, session, setOf(buttonId))
+        return true
     }
 
     /** 判断库存是否由 KaMenu 创建；即使活动会话意外丢失，也用于保持交互拦截。 */
@@ -815,10 +878,38 @@ class ContainerMenuService(private val plugin: KaMenu) {
     private fun refreshButtons(player: Player, session: ActiveSession, buttonIds: Collection<String>) {
         val inventory = session.holder.inventory
         val layout = currentLayout(session)
+        val requestedIds = buttonIds.toSet()
+        val effectiveIds = requestedIds.toMutableSet()
+        val repeatIds = linkedSetOf<String>()
+        requestedIds.filterTo(repeatIds) { session.definition.buttons[it]?.repeat != null }
+        var addedDependency: Boolean
+        do {
+            addedDependency = false
+            repeatIds.toList().forEach { repeatId ->
+                buttonsUsingRepeatVariables(session, repeatId).forEach { dependencyId ->
+                    if (effectiveIds.add(dependencyId)) addedDependency = true
+                    if (session.definition.buttons[dependencyId]?.repeat != null && repeatIds.add(dependencyId)) {
+                        addedDependency = true
+                    }
+                }
+            }
+        } while (addedDependency)
+        val refreshRepeats = repeatIds.isNotEmpty()
+        val repeatSlots = if (refreshRepeats) renderRepeatSlots(player, session, repeatIds) else emptyList()
         val sessionVariables = sessionVariables(session)
-        val dynamicSlotsForButtons = session.dynamicSlotIndex.filterValues { it in buttonIds }
-        buttonIds.forEach { buttonId ->
+        val dynamicSlotsForButtons = session.dynamicSlotIndex.filterValues { it in effectiveIds }
+        effectiveIds.forEach { buttonId ->
             val button = session.definition.buttons[buttonId] ?: return@forEach
+            if (button.repeat != null) {
+                repeatSlots.filter { it.binding?.buttonId == buttonId ||
+                    (it.binding == null && layout.buttonAt(it.slot) == buttonId)
+                }.forEach { rendered ->
+                    if (inventory.getItem(rendered.slot) != rendered.item) {
+                        inventory.setItem(rendered.slot, rendered.item?.clone())
+                    }
+                }
+                return@forEach
+            }
             val variables = buttonVariables(session, buttonId, sessionVariables)
             val variant = resolveButtonVariant(player, session, button, variables)
             val item = if (variant != null) {
@@ -859,6 +950,131 @@ class ContainerMenuService(private val plugin: KaMenu) {
                 }
             }
         }
+        if (refreshRepeats) {
+            val bindings = session.repeatSlotIndex.filterValues { it.buttonId !in repeatIds }.toMutableMap()
+            repeatSlots.mapNotNull { rendered -> rendered.binding?.let { rendered.slot to it } }
+                .forEach { (slot, binding) -> bindings[slot] = binding }
+            session.repeatSlotIndex = bindings.toMap()
+        }
+    }
+
+    /** 解析本次需要刷新的 repeat 队列，并生成物品快照、分页元数据和槽位点击绑定。 */
+    private fun renderRepeatSlots(
+        player: Player,
+        session: ActiveSession,
+        repeatIds: Set<String>
+    ): List<RenderedRepeatSlot> {
+        val layout = currentLayout(session)
+        val repeatButtons = repeatIds.mapNotNull(session.definition.buttons::get).filter { it.repeat != null }
+        data class ResolvedRepeat(
+            val button: ContainerButtonDefinition,
+            val repeat: ContainerRepeatDefinition,
+            val items: List<ContainerRepeatItem>,
+            val slots: List<Int>,
+            val page: ContainerRepeatPageInfo
+        )
+
+        val resolved = repeatButtons.map { button ->
+            val repeat = button.repeat!!
+            val slots = layout.slotsByButton[button.id].orEmpty()
+            val fallbackCapacity = session.definition.layouts.maxOfOrNull { it.slotsByButton[button.id]?.size ?: 0 } ?: 0
+            val capacity = slots.size.takeIf { it > 0 } ?: fallbackCapacity.coerceAtLeast(1)
+            val variables = sessionVariables(session)
+            val items = ContainerRepeatSupport.resolveSource(
+                player,
+                session.config,
+                repeat.source,
+                repeat.split,
+                repeat.trim,
+                variables
+            )
+            val page = ContainerRepeatPageInfo.create(
+                items.size,
+                capacity,
+                session.repeatPageIndexes[button.id] ?: 0
+            )
+            session.repeatPageIndexes[button.id] = page.page - 1
+            session.repeatPageInfos[button.id] = page
+            ResolvedRepeat(button, repeat, items, slots, page)
+        }
+
+        val sessionVariables = sessionVariables(session)
+        val rendered = mutableListOf<RenderedRepeatSlot>()
+        resolved.forEach { state ->
+            val button = state.button
+            val repeat = state.repeat
+            val baseVariables = buttonVariables(session, button.id, sessionVariables)
+            val visible = isButtonVisible(player, button, baseVariables, session.config)
+            state.slots.forEachIndexed { slotIndex, slot ->
+                val itemIndex = state.page.start + slotIndex
+                val item = state.items.getOrNull(itemIndex)
+                val itemVariables = item?.variables.orEmpty() + if (item != null) {
+                    mapOf(
+                        "item.page_index" to slotIndex.toString(),
+                        "item.page_number" to (slotIndex + 1).toString()
+                    )
+                } else emptyMap()
+                val itemContext = baseVariables + itemVariables
+                val display = when {
+                    !visible -> null
+                    item != null -> repeat.itemDisplay
+                    state.items.isEmpty() -> repeat.emptyDisplay
+                    else -> null
+                }
+                val renderedItem = display?.let {
+                    markDisplayItem(
+                        itemRenderer.render(
+                            player,
+                            session.config,
+                            session.menuId,
+                            button,
+                            it,
+                            itemContext,
+                            freeSlotItem = { id ->
+                                FreeSlotItemContext.firstItem(session.definition.freeSlots, session.holder.inventory, id)
+                            }
+                        ),
+                        session.sessionId
+                    )
+                }
+                val binding = if (visible && item != null) {
+                    RepeatSlotBinding(button.id, itemVariables)
+                } else null
+                rendered += RenderedRepeatSlot(slot, renderedItem, binding)
+            }
+        }
+        return rendered
+    }
+
+    /** 查找显示、条件、动作或来源中读取指定 repeat 分页变量的 Container 按钮。 */
+    private fun buttonsUsingRepeatVariables(session: ActiveSession, repeatId: String): Set<String> {
+        val pattern = Regex("\\{(?:page|pages|total|start|end):${Regex.escape(repeatId)}}")
+        val buttons = session.config.getConfigurationSection("Buttons") ?: return emptySet()
+        return buttons.getKeys(false).filterTo(linkedSetOf()) { buttonId ->
+            val button = buttons.getConfigurationSection(buttonId) ?: return@filterTo false
+            button.getValues(false).values.any { containsTextMatch(it, pattern) }
+        }
+    }
+
+    /** 递归扫描按钮配置中的文本值，支持显示字段、条件、动作列表及嵌套 Map。 */
+    private fun containsTextMatch(value: Any?, pattern: Regex): Boolean = when (value) {
+        is String -> pattern.containsMatchIn(value)
+        is org.bukkit.configuration.ConfigurationSection -> value.getValues(false).values.any { containsTextMatch(it, pattern) }
+        is Map<*, *> -> value.values.any { containsTextMatch(it, pattern) }
+        is Iterable<*> -> value.any { containsTextMatch(it, pattern) }
+        is Array<*> -> value.any { containsTextMatch(it, pattern) }
+        else -> false
+    }
+
+    /** 复核 Container 按钮的外层显示条件，repeat 点击也使用同一判定。 */
+    private fun isButtonVisible(
+        player: Player,
+        button: ContainerButtonDefinition,
+        variables: Map<String, String>,
+        config: YamlConfiguration
+    ): Boolean {
+        val condition = button.viewCondition ?: return true
+        return org.katacr.kamenu.ConditionUtils.checkCondition(player, condition, variables, config) { null }
     }
 
     /**
@@ -1251,6 +1467,13 @@ class ContainerMenuService(private val plugin: KaMenu) {
             variables["input"] = session.anvilInput
         }
         variables += pageVariables(session.currentPage, session.definition.pageCount)
+        session.repeatPageInfos.forEach { (buttonId, page) ->
+            variables["page:$buttonId"] = page.page.toString()
+            variables["pages:$buttonId"] = page.pages.toString()
+            variables["total:$buttonId"] = page.total.toString()
+            variables["start:$buttonId"] = page.start.toString()
+            variables["end:$buttonId"] = page.end.toString()
+        }
         return variables + FreeSlotItemContext.sessionVariables(
             session.definition.freeSlots,
             session.holder.inventory

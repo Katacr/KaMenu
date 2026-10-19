@@ -38,6 +38,7 @@ Bottom:
 | `sound`       | 在玩家位置播放声音                       | ✅ |
 | `money`       | 操作玩家金币（需要 Vault）                | ✅ |
 | `points`      | 增加或扣除玩家点券（需要 PlayerPoints）    | ✅ |
+| `post-effect` | 操作玩家屏幕后期效果（需要 Paper 26.3+）   | ✅ |
 | `stock-item`  | 存储库物品给予/扣除                      | ✅ |
 | `item`        | 物品给予/扣除                         | ✅ |
 | `open`        | 为玩家打开另一个菜单                      | ✅ |
@@ -717,6 +718,21 @@ Dialog 菜单需要重新渲染时使用 `reset`。
 
 ---
 
+### repeat-page - 翻转 Container 动态列表
+
+仅用于 Container 菜单的 `Buttons.<id>.type: repeat` 列表。该动作改变指定 repeat 按钮的列表页，并立即刷新列表槽位以及使用其分页变量的按钮；不改变 Container `Layout` 的物理页码。
+
+```yaml
+- 'repeat-page: products next'
+- 'repeat-page: products prev'
+- 'repeat-page: products +2'
+- 'repeat-page: products 1'
+```
+
+支持 `next`、`prev`/`previous`、`+N`、`-N` 和绝对页码（从 1 开始）。配合 `{page:products}`、`{pages:products}`、`{total:products}`、`{start:products}`、`{end:products}` 控制翻页按钮显示。Dialog repeat 仍使用 `page: <listId> ...` 并在后续执行 `reset`。
+
+---
+
 ### free-slot - 操作自由槽位
 
 对当前容器类菜单中的真实物品执行原子消费、主动返还或刷新。失败时会中断当前动作链，因此奖励动作应放在消费动作之后。
@@ -1270,6 +1286,47 @@ Bottom:
 
 ---
 
+### post-effect - 屏幕后期效果
+
+操作玩家的屏幕后期效果（全屏着色器滤镜）。**需要 Paper 26.3+**；旧核心或不支持时记录警告并跳过。
+
+**格式：** `post-effect: type=操作类型;effect=<namespace:name>`
+
+**参数说明：**
+
+| 参数 | 必需 | 说明 |
+|------|------|------|
+| `type` | ✅ | `add`（叠加）、`remove`（移除）、`set`（整体设置，顺序敏感）、`clear`（清空）、`list`（查询） |
+| `effect` | 视类型 | 效果 key，形如 `minecraft:blur`；`set` 支持逗号分隔多个 |
+
+**原版内置效果：** `minecraft:blur`（模糊）、`minecraft:creeper`（苦力怕视野）、`minecraft:spider`（蜘蛛视野）、`minecraft:invert`（反色）、`minecraft:entity_outline`（实体描边）。
+
+```yaml
+# 打开菜单时背景模糊
+- 'post-effect: type=add;effect=minecraft:blur'
+
+# 移除模糊
+- 'post-effect: type=remove;effect=minecraft:blur'
+
+# 顺序敏感地整体设置多个效果
+- 'post-effect: type=set;effect=minecraft:blur,minecraft:invert'
+
+# 清空全部效果
+- 'post-effect: type=clear'
+
+# 查询当前效果（聊天栏输出）
+- 'post-effect: type=list'
+```
+
+**注意：**
+
+- 效果渲染在玩家客户端；`minecraft:*` 为原版内置，自定义效果需资源包在
+  `assets/<namespace>/post_effect/<name>.json` 提供定义与对应 shader。
+- 多个效果按列表顺序叠加，`set` 的顺序即最终顺序。
+- 支持目标选择器（可作用于其他在线玩家）。
+
+---
+
 ### stock-item - 物品给予/扣除
 
 给予玩家或从玩家背包中扣除指定数量的数据库的物品。
@@ -1327,21 +1384,24 @@ Bottom:
 
 **格式：**
 - `item: type=give;mats=材质;amount=数量`
-- `item: type=take;mats=材质;amount=数量;lore=描述;model=模型`
+- `item: type=take;mats=材质;amount=数量;lore=描述;model=模型;cmd=自定义模型数据`
 
 **参数说明：**
 
 | 参数 | 说明 | 必需 |
 |------|------|------|
 | `type` | 操作类型（give/take）| ✅ |
-| `mats` | 原版材质或带提供方前缀的外部物品 ID | ✅ |
+| `mats` | 原版材质或带提供方前缀的外部物品 ID | ❌ |
 | `amount` | 数量 | ❌（默认: 1）|
 | `lore` | 描述（仅用于take操作，可选）| ❌ |
-| `model` | 物品模型（仅用于take操作，可选）| ❌ |
+| `model` | 物品模型 ItemModel（仅用于take操作，可选）| ❌ |
+| `cmd` | 整数 CustomModelData（仅用于take操作，可选）| ❌ |
 
 **type 可选值：**
-- `give`：给予玩家物品（忽略lore和model参数）
-- `take`：从玩家背包中扣除物品（支持lore和model判断）
+- `give`：给予玩家物品（忽略lore/model/cmd参数）
+- `take`：从玩家背包中扣除物品（支持 mats/lore/model/cmd 判断）
+
+`take` 的匹配维度可任选组合：`mats` 不是必需项，仅用 `cmd`（或 `lore`/`model`）即可精确定位物品。`cmd` 会读取物品的整数 CustomModelData（`custom_model_data` 组件），适合 CraftEngine `client-bound-model` 场景下物品不带 `craftengine:id` 标签的情况。
 
 **示例：**
 
@@ -1369,6 +1429,9 @@ Bottom:
 # 同时指定 lore 和 model
 - 'item: type=take;mats=DIAMOND;amount=10;lore=锻造材料;model=oraxen:mana_crystal'
 
+# 仅按 CustomModelData 扣除（如 CraftEngine 自定义物品）
+- 'item: type=take;cmd=50185;amount=4'
+
 # 结合条件判断使用
 - condition: "hasItem.[mats=DIAMOND;amount=10]"
   allow:
@@ -1381,15 +1444,16 @@ Bottom:
 **注意：**
 - `mats` 支持原版材质，以及 `itemsadder:`/`ia:`、`oraxen:`、`craftengine:`/`ce:` 外部物品前缀
 - 外部物品的 `take` 按插件物品 ID 精确匹配，不会误扣除使用相同基础材质的其他物品
-- `give` 操作时，`lore` 和 `model` 参数会被忽略，因为这两个参数仅用于判断
+- `give` 操作时，`lore`、`model` 和 `cmd` 参数会被忽略，因为这些参数仅用于判断
 - `give` 操作如果玩家背包已满，剩余物品会自动掉落在玩家位置，不会丢失
 - `take` 操作时：
   - 如果指定了 `lore`，会只扣除 lore 中包含指定字符串的物品（忽略大小写）
-  - 如果指定了 `model`，会只扣除匹配指定物品模型的物品
-  - 如果同时指定了 `lore` 和 `model`，物品需要同时满足两个条件才会被扣除
-  - `model` 格式为 `namespace:key`（如 `oraxen:mana_crystal`、`minecraft:diamond`）
+  - 如果指定了 `model`，会只扣除匹配指定物品模型（ItemModel）的物品
+  - 如果指定了 `cmd`，会只扣除整数 CustomModelData 匹配的物品
+  - 多个维度可组合，物品需要同时满足全部条件才会被扣除
+  - `model` 格式为 `namespace:key`（如 `oraxen:mana_crystal`、`minecraft:diamond`）；`cmd` 为整数
 - `take` 操作会遍历玩家所有背包槽位（包括主背包、盔甲槽、副手槽和主手槽）
-- 支持变量替换，如 `mats=$(material)`、`amount={data:price}`、`lore={data:item_desc}`
+- 支持变量替换，如 `mats=$(material)`、`amount={data:price}`、`lore={data:item_desc}`、`cmd={data:model_id}`
 
 ---
 

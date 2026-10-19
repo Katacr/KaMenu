@@ -138,7 +138,18 @@ data class ContainerButtonDefinition(
     val actions: Map<ContainerClickType, List<Any>>,
     val variants: List<ContainerButtonVariantDefinition> = emptyList(),
     val slot: ContainerConfigValue? = null,
-    val slotFrames: List<ContainerConfigValue>? = null
+    val slotFrames: List<ContainerConfigValue>? = null,
+    val repeat: ContainerRepeatDefinition? = null
+)
+
+/** 一个 Container repeat 按钮的数据来源、逐项展示/动作模板和空列表占位展示。 */
+data class ContainerRepeatDefinition(
+    val source: String,
+    val split: String?,
+    val trim: Boolean,
+    val itemDisplay: ContainerItemDefinition,
+    val itemActions: Map<ContainerClickType, List<Any>>,
+    val emptyDisplay: ContainerItemDefinition?
 )
 
 /**

@@ -6,6 +6,7 @@ import org.bukkit.ChatColor
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
+import org.bukkit.event.block.Action
 import org.bukkit.inventory.ItemStack
 import java.io.File
 import java.util.UUID
@@ -14,8 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * 统一加载并匹配物品右键菜单绑定。
  *
- * 兼容 `config.yml > listeners.item-lore`，并额外读取独立的 `item_bindings.yml`，
- * 使迁移器可以持久化第三方菜单绑定而不重写用户主配置。
+ * 只读取独立的 `item_bindings.yml`；旧主配置由启动迁移器提前转入此文件。
  */
 class ItemBindingManager(private val plugin: KaMenu) {
     private val storageFile = File(plugin.dataFolder, FILE_NAME)
@@ -24,14 +24,11 @@ class ItemBindingManager(private val plugin: KaMenu) {
     private var bindings: List<ItemBinding> = emptyList()
     private val lastUseByPlayer = ConcurrentHashMap<UUID, Long>()
 
-    /** 重新加载主配置旧格式和独立绑定文件。 */
+    /** 重新加载统一的独立物品绑定文件。 */
     fun reload(): Int {
         val loaded = mutableListOf<ItemBinding>()
-        plugin.config.getConfigurationSection("listeners.item-lore")?.let { section ->
-            loaded += parseBindings(section, "listeners.item-lore", requireMaterial = true)
-        }
         loadConfiguration().getConfigurationSection(ROOT_KEY)?.let { section ->
-            loaded += parseBindings(section, ROOT_KEY, requireMaterial = false)
+            loaded += parseBindings(section, ROOT_KEY)
         }
         bindings = loaded
         return loaded.size
@@ -43,22 +40,30 @@ class ItemBindingManager(private val plugin: KaMenu) {
         val actions: List<Any>?
     )
 
-    /** 返回首个匹配当前手持物品和潜行状态的绑定。 */
-    fun findBinding(player: Player, item: ItemStack): ResolvedBinding? {
+    /** 返回首个匹配手势和物品的绑定；F/Q 冷却中也视为已匹配，避免执行通用动作或丢弃。 */
+    internal fun findBinding(player: Player, item: ItemStack, trigger: ItemBindingTrigger, action: Action? = null): ResolvedBinding? {
         val binding = bindings.firstOrNull { candidate ->
-            (!candidate.requireSneaking || player.isSneaking) && candidate.matcher.matches(item)
+            candidate.trigger.matches(trigger, candidate.sneaking == player.isSneaking) &&
+                (action == null || candidate.clickTarget.accepts(action)) && candidate.matcher.matches(item)
         } ?: return null
         val now = System.currentTimeMillis()
         val lastUse = lastUseByPlayer[player.uniqueId]
-        if (lastUse != null && binding.cooldownMillis > 0L && now - lastUse < binding.cooldownMillis) return null
+        if (lastUse != null && binding.cooldownMillis > 0L && now - lastUse < binding.cooldownMillis) {
+            return if (trigger == ItemBindingTrigger.F || trigger == ItemBindingTrigger.Q
+            ) ResolvedBinding(null, null) else null
+        }
         if (binding.cooldownMillis > 0L) lastUseByPlayer[player.uniqueId] = now
         return ResolvedBinding(binding.menu, binding.actions)
     }
 
-    /** 返回首个匹配当前手持物品和潜行状态的目标菜单。 */
-    fun findMenu(player: Player, item: ItemStack): String? {
-        return findBinding(player, item)?.menu
+    /** 兼容原有右键匹配调用；左键及 F/Q 应使用带 trigger 的内部方法。 */
+    fun findBinding(player: Player, item: ItemStack, action: Action): ResolvedBinding? {
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return null
+        return findBinding(player, item, ItemBindingTrigger.RIGHT_CLICK, action)
     }
+
+    /** 兼容原有只获取菜单的右键接口。 */
+    fun findMenu(player: Player, item: ItemStack, action: Action): String? = findBinding(player, item, action)?.menu
 
     /** 清理离线玩家的物品绑定冷却状态。 */
     fun clear(playerId: UUID) {
@@ -80,53 +85,57 @@ class ItemBindingManager(private val plugin: KaMenu) {
 
     private fun parseBindings(
         section: ConfigurationSection,
-        rootPath: String,
-        requireMaterial: Boolean
+        rootPath: String
     ): List<ItemBinding> = section.getKeys(false).mapNotNull { id ->
         val path = "$rootPath.$id"
         val binding = section.getConfigurationSection(id) ?: return@mapNotNull invalid(path, "entry must be a section")
         if (!binding.getBoolean("enabled", false)) return@mapNotNull null
-        val menu = binding.getString("menu")?.trim().orEmpty()
-        val rawActions = binding.getList("actions")?.map { it ?: Any() }
-        val actions = rawActions?.takeIf { it.isNotEmpty() }
-        if (menu.isEmpty() && actions == null) return@mapNotNull invalid(path, "menu or actions is required")
-        // menu 与 actions 同时配置时，以 menu 为主并警告。
-        if (menu.isNotEmpty() && actions != null) {
-            plugin.logger.warning("[KaMenu] Item binding '$path' defines both 'menu' and 'actions'; 'menu' takes priority and 'actions' is ignored")
-        }
-
-        val material = binding.getString("material")?.trim()?.takeIf(String::isNotEmpty)
-        if (requireMaterial && material == null) return@mapNotNull invalid(path, "material is required")
-        val rawLore = binding.get("target-lore") ?: binding.get("lore")
+        val actions = binding.getList("actions")?.map { it ?: Any() }?.takeIf { it.isNotEmpty() }
+            ?: return@mapNotNull invalid(path, "actions is required")
+        val item = binding.getConfigurationSection("item") ?: return@mapNotNull invalid(path, "item section is required")
+        val gesture = binding.getConfigurationSection("trigger") ?: return@mapNotNull invalid(path, "trigger section is required")
+        val material = item.getString("material")?.trim()?.takeIf(String::isNotEmpty)
+        val rawLore = item.get("target-lore")
         if (rawLore is Collection<*> && rawLore.isNotEmpty()) {
             return@mapNotNull invalid(path, "target-lore must be a string, empty list, or omitted")
         }
-        val rawName = binding.get("target-name") ?: binding.get("name")
+        val rawName = item.get("target-name")
         if (rawName is Collection<*>) return@mapNotNull invalid(path, "target-name must be a string")
         val lore = optionalText(rawLore)
         val name = optionalText(rawName)
 
-        val rawData = binding.get("data")
+        val rawData = item.get("data")
         val data = rawData?.toString()?.toIntOrNull()
         if (rawData != null && data == null) return@mapNotNull invalid(path, "data must be an integer")
-        val rawCustomModelData = binding.get("custom-model-data") ?: binding.get("custom_model_data")
+        val rawCustomModelData = item.get("custom-model-data")
         val customModelData = rawCustomModelData?.toString()?.toIntOrNull()
         if (rawCustomModelData != null && customModelData == null) {
             return@mapNotNull invalid(path, "custom-model-data must be an integer")
         }
-        val rawCooldown = binding.get("cooldown-ms")
-        val cooldownMillis = rawCooldown?.toString()?.toLongOrNull() ?: 0L
+        val rawCooldown = gesture.get("cooldown-ms")
+        val cooldownMillis = rawCooldown?.toString()?.toLongOrNull() ?: 500L
         if (rawCooldown != null && (rawCooldown.toString().toLongOrNull() == null || cooldownMillis < 0L)) {
             return@mapNotNull invalid(path, "cooldown-ms must be a non-negative integer")
+        }
+        val clickTarget = ItemBindingClickTarget.parse(gesture.get("target")?.toString())
+            ?: return@mapNotNull invalid(path, "trigger.target must be both, air, or block")
+        val trigger = ItemBindingTrigger.parse(gesture.get("type")?.toString())
+            ?: return@mapNotNull invalid(path, "trigger.type must be left-click, right-click, f, or q")
+        val rawSneaking = gesture.get("sneaking")
+        if (rawSneaking != null && rawSneaking !is Boolean) return@mapNotNull invalid(path, "trigger.sneaking must be a boolean")
+        if (!trigger.isClick && gesture.contains("target")) {
+            return@mapNotNull invalid(path, "trigger.target is only supported for left/right click triggers")
         }
         if (material == null && lore == null && name == null && data == null && customModelData == null) {
             return@mapNotNull invalid(path, "at least one item matcher is required")
         }
 
         ItemBinding(
-            menu = menu.takeIf { it.isNotEmpty() },
-            actions = if (menu.isEmpty()) actions else null,
-            requireSneaking = binding.getBoolean("require-sneaking", false),
+            menu = null,
+            actions = actions,
+            sneaking = rawSneaking ?: false,
+            trigger = trigger,
+            clickTarget = clickTarget,
             cooldownMillis = cooldownMillis,
             matcher = ItemMatcher(
                 material,
@@ -134,8 +143,8 @@ class ItemBindingManager(private val plugin: KaMenu) {
                 name,
                 data,
                 customModelData,
-                binding.getBoolean("ignore-case", false),
-                binding.getBoolean("translate-colors", false)
+                item.getBoolean("ignore-case", false),
+                item.getBoolean("translate-colors", false)
             )
         )
     }
@@ -155,7 +164,9 @@ class ItemBindingManager(private val plugin: KaMenu) {
     private data class ItemBinding(
         val menu: String?,
         val actions: List<Any>?,
-        val requireSneaking: Boolean,
+        val sneaking: Boolean,
+        val trigger: ItemBindingTrigger,
+        val clickTarget: ItemBindingClickTarget,
         val cooldownMillis: Long,
         val matcher: ItemMatcher
     )
@@ -200,5 +211,42 @@ class ItemBindingManager(private val plugin: KaMenu) {
     companion object {
         const val FILE_NAME = "item_bindings.yml"
         const val ROOT_KEY = "item-bindings"
+    }
+}
+
+/** 基础手势；潜行状态单独由 trigger.sneaking 精确筛选。 */
+internal enum class ItemBindingTrigger(val isClick: Boolean) {
+    LEFT_CLICK(true), RIGHT_CLICK(true), F(false), Q(false);
+
+    fun matches(input: ItemBindingTrigger, sameSneaking: Boolean): Boolean = this == input && sameSneaking
+
+    companion object {
+        /** 解析四种基础手势；空值和非法值不触发任何物品绑定。 */
+        fun parse(raw: String?): ItemBindingTrigger? = when (raw?.trim()?.lowercase()) {
+            "left-click" -> LEFT_CLICK
+            "right-click" -> RIGHT_CLICK
+            "f" -> F
+            "q" -> Q
+            else -> null
+        }
+    }
+}
+
+/** 物品点击绑定可接受的目标；不配置时维持兼容的双目标行为。 */
+internal enum class ItemBindingClickTarget {
+    BOTH, AIR, BLOCK;
+
+    fun accepts(action: Action): Boolean = when (this) {
+        BOTH -> action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK ||
+            action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK
+        AIR -> action == Action.RIGHT_CLICK_AIR || action == Action.LEFT_CLICK_AIR
+        BLOCK -> action == Action.RIGHT_CLICK_BLOCK || action == Action.LEFT_CLICK_BLOCK
+    }
+
+    companion object {
+        /** 将配置值解析为右键目标，未知值应使该绑定失效而非放宽范围。 */
+        fun parse(raw: String?): ItemBindingClickTarget? = entries.firstOrNull {
+            it.name.equals(raw?.trim() ?: "both", ignoreCase = true)
+        }
     }
 }

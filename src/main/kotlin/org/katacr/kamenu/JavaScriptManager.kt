@@ -75,6 +75,15 @@ object JavaScriptManager {
             return Bukkit.getPlayer(name);
         }
 
+        function giveItem(material, amount, targetPlayer) {
+            var value = amount == null ? "1" : String(amount);
+            return __kamenu_js_manager.giveItem(
+                __kamenu_target_player(targetPlayer),
+                String(material),
+                value
+            );
+        }
+
         function papi(placeholder, targetPlayer) {
             return __kamenu_js_manager.resolvePapi(__kamenu_target_player(targetPlayer), String(placeholder));
         }
@@ -289,6 +298,15 @@ object JavaScriptManager {
         } catch (_: Exception) {
             ""
         }
+    }
+
+    /** 供 JavaScript 复用内置 `item: type=give` 的物品构造、入包与满包掉落逻辑。 */
+    fun giveItem(player: Player?, material: String?, amount: String?): Boolean {
+        val target = player ?: return false
+        val mats = material?.trim()?.takeIf { it.isNotEmpty() && ';' !in it } ?: return false
+        val count = amount?.toIntOrNull()?.coerceAtLeast(1) ?: 1
+        ActionHandlers.parseAndHandleItem(target, "type=give;mats=$mats;amount=$count")
+        return true
     }
 
     /**
